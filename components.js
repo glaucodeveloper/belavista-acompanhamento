@@ -119,7 +119,7 @@ export class MapScene extends HTMLElement {
   }
   setPreview(source){
     const surface=this.querySelector('.mini-map-surface'); if(!surface||!source)return;
-    surface.style.backgroundImage=`linear-gradient(180deg,rgba(5,14,27,.08),rgba(5,14,27,.38)),url("${source}")`; this.dataset.mapPreview='ready';
+    surface.style.backgroundImage=`linear-gradient(180deg,rgba(5,14,27,.08),rgba(5,14,27,.38)),url("${source}")`; surface.style.backgroundSize=this.classList.contains('stage-map-thumb')?'160% auto':'115% auto'; surface.style.backgroundPosition='center center'; this.dataset.mapPreview='ready';
   }
   initWhenReady(){
     this.dataset.mapInit='waiting'; const start=Date.now(); const tick=()=>{ this.dataset.mapInit=window.L?'leaflet-found':'waiting'; if(window.L){ try{this.initLeaflet();}catch(err){this.dataset.mapInit='leaflet-error';console.warn('Leaflet indisponível, mantendo superfície de mapa.',err);} this.scheduleThree(); return; } if(Date.now()-start<7000) setTimeout(tick,100); else {this.dataset.mapInit='timeout';this.classList.add('fallback-only');} }; tick();
