@@ -54,6 +54,22 @@ export const spreadsheetSchema = {
   stages:['Terraplanagem','Drenagem','Rede de Água','Rede de Energia','Pavimentação','Praça e Lazer','Arborização','Projetos/Adm.','Outros']
 };
 
+export const activityCatalog = [
+  {nature:'Planejamento e projeto',name:'Revisar projeto executivo',initial:['Projeto','Revisão','Responsável técnico'],execution:['Versão aprovada','Pendências','Anexo','Data de validação']},
+  {nature:'Terraplanagem',name:'Executar corte e aterro',initial:['Trecho','Volume estimado (m³)','Equipamento'],execution:['Volume executado','Tipo de solo','Horas de equipamento','Comprovante fotográfico','Medição']},
+  {nature:'Drenagem',name:'Executar rede de drenagem',initial:['Trecho','Diâmetro','Extensão prevista (m)'],execution:['Extensão executada','Tubos aplicados','Cotas/declividade','Ensaio de estanqueidade','Medição']},
+  {nature:'Pavimentação',name:'Executar base e pavimento',initial:['Trecho','Tipo de pavimento','Área prevista (m²)'],execution:['Área executada','Espessura','Material aplicado','Ensaio de compactação','Medição']},
+  {nature:'Redes',name:'Implantar rede de água',initial:['Trecho','Diâmetro','Extensão prevista (m)'],execution:['Tubulação aplicada','Teste de pressão','Conexões','Registro fotográfico','Medição']},
+  {nature:'Redes',name:'Implantar rede elétrica',initial:['Trecho','Tensão','Quantidade de postes'],execution:['Postes instalados','Cabos aplicados','Equipe concessionária','Laudo/aceite','Medição']},
+  {nature:'Estruturas',name:'Executar fundação e estrutura',initial:['Elemento','Volume de concreto (m³)','Armadura prevista'],execution:['Concreto recebido','Aço aplicado','Fôrmas','Slump/rompimento','Medição']},
+  {nature:'Urbanização',name:'Executar praça e paisagismo',initial:['Área','Projeto paisagístico','Espécies/elementos'],execution:['Itens implantados','Irrigação','Mobiliário','Fotos de entrega','Medição']},
+  {nature:'Suprimentos',name:'Solicitar e receber material',initial:['Material','Quantidade','Unidade','Fornecedor'],execution:['Nota fiscal','Lote','Data de recebimento','Inspeção','Comprovante']},
+  {nature:'Qualidade',name:'Realizar inspeção ou ensaio',initial:['Serviço','Norma/critério','Amostragem'],execution:['Resultado','Laboratório','Laudo','Não conformidade','Ação corretiva']},
+  {nature:'Segurança',name:'Realizar DDS e inspeção de segurança',initial:['Frente','Equipe','Tema'],execution:['Participantes','Risco identificado','EPI/EPC','Registro','Ação corretiva']},
+  {nature:'Medição e financeiro',name:'Registrar medição e pagamento',initial:['Etapa','Fornecedor','Período'],execution:['Quantidade medida','Valor unitário','Valor total','Documento','Aprovação']},
+  {nature:'Administração',name:'Emitir relatório de etapa',initial:['Período','Responsável','Destinatários'],execution:['Avanço físico','Avanço financeiro','Anexos','Pendências','Aprovação final']}
+];
+
 export function* cycle(values, start=0) {
   let index = start;
   while (true) { yield values[index % values.length]; index += 1; }
