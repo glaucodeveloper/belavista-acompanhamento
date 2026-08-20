@@ -79,6 +79,6 @@ export function createStore(initial) {
 export const appStore = createStore({
   view:'assistant', selectedLead:0, selectedMaterial:2, chatOpen:true, chatManual:false,
   config:null, mapReady:false, installPrompt:null, lastAction:'Aplicação iniciada', theme:'dark',
-  sessionId:sessionStorage.getItem('belavista.session')||crypto.randomUUID().slice(0,8).toUpperCase(), sessionStarted:new Date().toISOString(), sidebarCollapsed:false, mapMode:'overview', adminMenu:false
+  sessionId:sessionStorage.getItem('belavista.session')||crypto.randomUUID().slice(0,8).toUpperCase(), sessionStarted:new Date().toISOString(), sidebarCollapsed:false, mapMode:'overview', adminMenu:false, selectedStage:2
 });
 sessionStorage.setItem('belavista.session',appStore.get().sessionId);
