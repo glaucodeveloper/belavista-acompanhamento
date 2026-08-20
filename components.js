@@ -5,6 +5,7 @@ const esc = (s='') => String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;',
 const notify = (message, tone='info') => { let host=document.querySelector('.app-main'); if(!host)return; let toast=host.querySelector('.action-toast'); if(!toast){toast=document.createElement('div');toast.className='action-toast';host.appendChild(toast);} toast.dataset.tone=tone; toast.textContent=message; toast.classList.add('show'); clearTimeout(toast._timer); toast._timer=setTimeout(()=>toast.classList.remove('show'),2800); };
 const validGeoPoint = point => point && Number.isFinite(Number(point.lat)) && Number.isFinite(Number(point.lng)) && Math.abs(Number(point.lat)) <= 90 && Math.abs(Number(point.lng)) <= 180;
 let mapPreviewSource='';
+const DEFAULT_SCENE_ZOOM=1.16, DEFAULT_TILT_BOOST=8;
 const publishMapPreview = source => { if(!source)return; mapPreviewSource=source; document.querySelectorAll('map-scene[compact]').forEach(scene=>scene.setPreview?.(source)); };
 
 export class GlassCard extends HTMLElement {
@@ -99,7 +100,7 @@ customElements.define('ai-chat', AiChat);
 
 export class MapScene extends HTMLElement {
   connectedCallback(){
-    this.sceneManualRotation=0; this.sceneManualZoom=1.08; this.sceneManualPan={x:0,y:0}; this.sceneTiltAdjust=0; this.dataset.sceneRotation='0deg'; this.dataset.sceneZoom='108%'; this.dataset.scenePan='0,0';
+    this.sceneManualRotation=0; this.sceneManualZoom=DEFAULT_SCENE_ZOOM; this.sceneManualPan={x:0,y:0}; this.sceneTiltAdjust=0; this.dataset.sceneRotation='0deg'; this.dataset.sceneZoom='116%'; this.dataset.scenePan='0,0';
     if(this.hasAttribute('compact')){ this.renderCompact(); return; }
     this.innerHTML=`<div class="map-fallback"></div><div class="map-host" aria-hidden="true"></div><div class="model-anchor" aria-hidden="true"><span>Aliança Park · masterplan 3D</span></div><canvas class="three-overlay"></canvas><div class="map-tint"></div><div class="map-badge">${ico('layers-3')} <span>Visão temática</span></div><div class="map-rotation-controls" aria-label="Controles de navegação do mapa"><span>MAPA · VISTA 3D</span><div class="map-pan-pad" aria-label="Panorâmica"><button type="button" data-scene-pan="up" aria-label="Mover mapa para cima">↑</button><button type="button" data-scene-pan="left" aria-label="Mover mapa para a esquerda">←</button><button type="button" data-scene-pan="reset" aria-label="Centralizar mapa">⌖</button><button type="button" data-scene-pan="right" aria-label="Mover mapa para a direita">→</button><button type="button" data-scene-pan="down" aria-label="Mover mapa para baixo">↓</button></div><div class="map-view-row"><button type="button" data-scene-zoom="-0.08" aria-label="Afastar mapa">−</button><button type="button" data-scene-zoom="0.08" aria-label="Aproximar mapa">＋</button><button type="button" data-scene-tilt="-4" aria-label="Reduzir inclinação">▿</button><button type="button" data-scene-tilt="4" aria-label="Aumentar inclinação">▵</button></div><div class="map-rotation-row"><button type="button" data-scene-rotate="-15" aria-label="Girar para a esquerda">↺</button><button type="button" data-scene-rotate="15" aria-label="Girar para a direita">↻</button><button type="button" data-scene-rotate="reset" aria-label="Restaurar orientação">N</button></div><button type="button" class="map-fit-button" data-scene-fit aria-label="Ajustar enquadramento">⌗ Ajustar enquadramento</button><small>Arraste para girar · Shift + arraste para pan</small></div>`;
     this.querySelectorAll('[data-scene-rotate]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();const value=button.dataset.sceneRotate;this.setSceneRotation(value==='reset'?0:this.sceneManualRotation+Number(value),true);}));
@@ -148,7 +149,7 @@ export class MapScene extends HTMLElement {
       const {GLTFLoader}=await import('https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/loaders/GLTFLoader.js');
       const canvas=this.querySelector('.three-overlay'); this.renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:false,powerPreference:'low-power'}); this.renderer.setPixelRatio(1);
       this.dataset.three='ready';
-      this.scene=new THREE.Scene(); this.scene.add(new THREE.HemisphereLight(0xcfe4ff,0x1a2735,2.6)); const keyLight=new THREE.DirectionalLight(0xffffff,4.2); keyLight.position.set(-120,-160,220); this.scene.add(keyLight); this.sceneStage=new THREE.Group(); this.scene.add(this.sceneStage); this.camera=new THREE.OrthographicCamera(); this.camera.position.z=10;
+      this.scene=new THREE.Scene(); this.scene.add(new THREE.HemisphereLight(0xcfe4ff,0x1a2735,2.6)); const keyLight=new THREE.DirectionalLight(0xffffff,4.2); keyLight.position.set(-120,-160,220); this.scene.add(keyLight); this.sceneStage=new THREE.Group(); this.sceneStage.scale.setScalar(.86); this.scene.add(this.sceneStage); this.camera=new THREE.OrthographicCamera(); this.camera.position.z=10;
       this.mapSurfaceCanvas=document.createElement('canvas'); this.mapSurfaceTexture=new THREE.CanvasTexture(this.mapSurfaceCanvas); this.mapSurfaceTexture.colorSpace=THREE.SRGBColorSpace;
       this.mapSurface=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:this.mapSurfaceTexture,side:THREE.DoubleSide,transparent:true,depthWrite:false})); this.mapSurface.position.z=-60; this.sceneStage.add(this.mapSurface);
       const geo=new THREE.CircleGeometry(8,32); const colors=[0x7d64ff,0x2fe6ae,0xffb020,0x55a8ff,0xff5c58];
@@ -158,7 +159,7 @@ export class MapScene extends HTMLElement {
       this.modelGroup=new THREE.Group(); this.sceneStage.add(this.modelGroup);
       this.modelParts={lots:[],streets:[],other:[]}; this.raycaster=new THREE.Raycaster(); this.pointer=new THREE.Vector2();
       this.selectionHalo=new THREE.Mesh(new THREE.RingGeometry(8,13,48),new THREE.MeshBasicMaterial({color:0x2fe6ae,transparent:true,opacity:.88,side:THREE.DoubleSide,depthTest:false}));
-      this.selectionHalo.visible=false; this.sceneStage.add(this.selectionHalo); this.applySceneView(appStore.get().view,false); this.loadMasterplan(THREE,GLTFLoader);
+      this.selectionHalo.visible=false; this.sceneStage.add(this.selectionHalo); this.applySceneView(appStore.get().view,true); this.loadMasterplan(THREE,GLTFLoader);
       let down=null,lastX=0,lastY=0,dragging=false,panning=false; canvas.addEventListener('contextmenu',event=>event.preventDefault()); canvas.addEventListener('wheel',event=>{event.preventDefault();this.setSceneZoom(this.sceneManualZoom+(event.deltaY<0?.06:-.06),false);},{passive:false}); canvas.addEventListener('pointerdown',event=>{down={x:event.clientX,y:event.clientY};lastX=event.clientX;lastY=event.clientY;dragging=false;panning=event.button===2||event.shiftKey;canvas.setPointerCapture?.(event.pointerId);}); canvas.addEventListener('pointermove',event=>{if(!down)return;const total=Math.hypot(event.clientX-down.x,event.clientY-down.y);if(!dragging&&total>6)dragging=true;if(dragging){const dx=event.clientX-lastX,dy=event.clientY-lastY;if(panning)this.setScenePan(this.sceneManualPan.x+dx,this.sceneManualPan.y+dy,false);else this.setSceneRotation(this.sceneManualRotation+dx*.35,false);lastX=event.clientX;lastY=event.clientY;this._suppressMapToggleUntil=performance.now()+300;}}); canvas.addEventListener('pointerup',event=>{if(!down){return;}const total=Math.hypot(event.clientX-down.x,event.clientY-down.y);if(!dragging&&total<=6){const rect=canvas.getBoundingClientRect(),point={x:((event.clientX-rect.left)/rect.width)*canvas.clientWidth,y:((event.clientY-rect.top)/rect.height)*canvas.clientHeight};if(this.pickModelAt(point))this._suppressMapToggleUntil=performance.now()+280;}else this._suppressMapToggleUntil=performance.now()+320;canvas.releasePointerCapture?.(event.pointerId);down=null;dragging=false;panning=false;}); canvas.addEventListener('pointercancel',()=>{down=null;dragging=false;panning=false;});
       this.syncThree();
     } catch(err){ this.dataset.three='fallback'; console.warn('Three.js indisponível, mantendo mapa 2D.',err); }
@@ -181,7 +182,7 @@ export class MapScene extends HTMLElement {
         this.modelParts[kind].push(node); if(node.material)node.material.transparent=true;
       });
       this.dataset.modelParts=`lotes:${this.modelParts.lots.length}|ruas:${this.modelParts.streets.length}|outros:${this.modelParts.other.length}`;
-      this.modelGroup.add(model); this.modelGroup.visible=true; this.modelReady=true; this.classList.add('model-ready'); this.syncThree(); try{publishMapPreview(this.renderer.domElement.toDataURL('image/jpeg',.78));}catch(err){console.warn('Prévia do masterplan indisponível.',err);publishMapPreview('./assets/reference/dashboard.png');}
+      this.modelGroup.add(model); this.modelGroup.visible=true; this.modelReady=true; this.classList.add('model-ready'); this.syncThree(); this.applySceneView(appStore.get().view,true); try{publishMapPreview(this.renderer.domElement.toDataURL('image/jpeg',.78));}catch(err){console.warn('Prévia do masterplan indisponível.',err);publishMapPreview('./assets/reference/dashboard.png');}
     },progress=>{if(progress.total)this.dataset.modelProgress=Math.round(progress.loaded/progress.total*100)},err=>{console.warn('Modelo GLB indisponível, mantendo mapa 2D.',err);});
   }
   pickModelAt(point){
@@ -237,9 +238,9 @@ export class MapScene extends HTMLElement {
     const span=this.querySelector('.map-badge span'); if(span) span.textContent=this.dataset.selectedPart?`${this.dataset.selectedPart} · selecionado`:label;
   }
   applySceneView(view,animate=true){
-    const theme=viewThemes[view]||viewThemes.assistant,targetDegrees=Math.max(4,Math.min(28,(Number(theme.tilt)||18)+this.sceneTiltAdjust)),targetX=targetDegrees*Math.PI/180,targetScale=this.sceneManualZoom||1.08; this.dataset.sceneTilt=`${targetDegrees}deg`;
+    const theme=viewThemes[view]||viewThemes.assistant,targetDegrees=Math.max(8,Math.min(32,(Number(theme.tilt)||18)+DEFAULT_TILT_BOOST+this.sceneTiltAdjust)),targetX=targetDegrees*Math.PI/180,targetScale=this.sceneManualZoom||DEFAULT_SCENE_ZOOM; this.dataset.sceneTilt=`${targetDegrees}deg`;
     if(!this.sceneStage){this._sceneTargetX=targetX;return;}
-    const targetZ=(this.sceneManualRotation||0)*Math.PI/180,finish=()=>{this.sceneStage.rotation.x=targetX;this.sceneStage.rotation.z=targetZ;this.sceneStage.scale.set(targetScale,targetScale,targetScale);this.renderer?.render(this.scene,this.camera);};
+    const targetZ=(this.sceneManualRotation||0)*Math.PI/180,finish=()=>{this.sceneStage.rotation.x=targetX;this.sceneStage.rotation.z=targetZ;this.sceneStage.scale.set(targetScale,targetScale,targetScale);this.syncThree();this.renderer?.render(this.scene,this.camera);};
     if(!animate){finish();return;}
     const startX=this.sceneStage.rotation.x,startZ=this.sceneStage.rotation.z,startScale=this.sceneStage.scale.x||1,started=performance.now(),duration=780,token=Symbol('scene-transition');this._sceneTransition=token;
     const tick=now=>{if(this._sceneTransition!==token)return;const t=Math.min(1,(now-started)/duration),e=t<.5?4*t*t*(3-2*t):t;this.sceneStage.rotation.x=startX+(targetX-startX)*e;this.sceneStage.rotation.z=startZ+(targetZ-startZ)*e;const s=startScale+(targetScale-startScale)*e;this.sceneStage.scale.set(s,s,s);this.renderer?.render(this.scene,this.camera);if(t<1)requestAnimationFrame(tick);else finish();};
@@ -262,12 +263,12 @@ export class MapScene extends HTMLElement {
     const delta={up:[0,-step],down:[0,step],left:[-step,0],right:[step,0]}[direction]||[0,0]; this.setScenePan(pan.x+delta[0],pan.y+delta[1],animate);
   }
   setSceneZoom(value,animate=true){
-    const target=Math.max(.9,Math.min(1.42,Number(value)||1.08)); this.sceneManualZoom=target; this.dataset.sceneZoom=`${Math.round(target*100)}%`;
+    const target=Math.max(.9,Math.min(1.48,Number(value)||DEFAULT_SCENE_ZOOM)); this.sceneManualZoom=target; this.dataset.sceneZoom=`${Math.round(target*100)}%`;
     if(!this.sceneStage)return; const start=this.sceneStage.scale.x||1,targetScale=target; if(!animate){this._sceneTransition=Symbol('manual-zoom');this.sceneStage.scale.setScalar(targetScale);this.renderer?.render(this.scene,this.camera);return;}
-    const started=performance.now(),duration=320,token=Symbol('manual-zoom');this._sceneTransition=token;const tick=now=>{if(this._sceneTransition!==token)return;const t=Math.min(1,(now-started)/duration),e=t<.5?4*t*t*(3-2*t):t;this.sceneStage.scale.setScalar(start+(targetScale-start)*e);this.renderer?.render(this.scene,this.camera);if(t<1)requestAnimationFrame(tick);};requestAnimationFrame(tick);
+    const started=performance.now(),duration=320,token=Symbol('manual-zoom');this._sceneTransition=token;const tick=now=>{if(this._sceneTransition!==token)return;const t=Math.min(1,(now-started)/duration),e=t<.5?4*t*t*(3-2*t):t;this.sceneStage.scale.setScalar(start+(targetScale-start)*e);this.renderer?.render(this.scene,this.camera);if(t<1)requestAnimationFrame(tick);else this.syncThree();};requestAnimationFrame(tick);
   }
   setSceneTiltAdjust(value,animate=true){this.sceneTiltAdjust=Math.max(-8,Math.min(8,Number(value)||0));this.applySceneView(appStore.get().view,animate);}
-  fitSceneView(animate=true){this.sceneManualRotation=0;this.sceneManualZoom=1.08;this.sceneManualPan={x:0,y:0};this.sceneTiltAdjust=0;this.dataset.sceneRotation='0deg';this.dataset.sceneZoom='108%';this.dataset.scenePan='0,0';if(this.sceneStage)this.sceneStage.scale.setScalar(this.sceneManualZoom);this.syncThree();this.applySceneView(appStore.get().view,animate);if(animate)setTimeout(()=>this.syncThree(),850);}
+  fitSceneView(animate=true){this.sceneManualRotation=0;this.sceneManualZoom=DEFAULT_SCENE_ZOOM;this.sceneManualPan={x:0,y:0};this.sceneTiltAdjust=0;this.dataset.sceneRotation='0deg';this.dataset.sceneZoom='116%';this.dataset.scenePan='0,0';if(this.sceneStage)this.sceneStage.scale.setScalar(this.sceneManualZoom);this.syncThree();this.applySceneView(appStore.get().view,animate);if(animate)setTimeout(()=>this.syncThree(),850);}
 }
 customElements.define('map-scene', MapScene);
 
