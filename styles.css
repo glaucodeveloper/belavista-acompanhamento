@@ -100,6 +100,7 @@ view-layer[data-view="stages"] .stage-rail section:has(.rail-model){display:none
 .map-host{background:transparent!important}.leaflet-container{background:transparent!important}.leaflet-tile-pane{opacity:.88}.leaflet-overlay-pane,.leaflet-marker-pane,.leaflet-shadow-pane,.leaflet-popup-pane{z-index:4}.map-fallback{z-index:0}.map-host{z-index:1}.map-tint{z-index:5}.three-overlay{z-index:6!important}
 .map-fallback{background-image:none!important;background:radial-gradient(circle at 50% 40%,#182a3a 0%,#091623 58%,#050d17 100%)!important;filter:none!important}
 .model-anchor{z-index:6!important;opacity:.72!important}
+.map-host{opacity:1!important;pointer-events:none!important}.three-overlay{pointer-events:auto!important;transform:none!important;transform-origin:center!important;animation:none!important}.theme-enter .three-overlay,.theme-enter .map-host{animation:none!important}
 .model-ready .model-anchor{opacity:0!important;visibility:hidden}
 .map-badge{transition:background .2s,border-color .2s,color .2s}
 .map-scene[data-selected-kind="lots"] .map-badge{border-color:#2fe6ae;color:#b9ffe5}

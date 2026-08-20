@@ -36,9 +36,9 @@ export const demoData = {
 };
 
 export const viewThemes = {
-  assistant:{center:[-16.708,-49.092], zoom:15, tint:'purple', chat:'bottom', tilt:8},
-  map:{center:[-16.708,-49.092], zoom:16, tint:'teal', chat:'right', tilt:18},
-  stages:{center:[-16.704,-49.088], zoom:16, tint:'violet', chat:'right', tilt:24},
+  assistant:{center:[-16.708,-49.092], zoom:17, tint:'purple', chat:'bottom', tilt:8},
+  map:{center:[-16.708,-49.092], zoom:17, tint:'teal', chat:'right', tilt:18},
+  stages:{center:[-16.704,-49.088], zoom:17, tint:'violet', chat:'right', tilt:24},
   purchases:{center:[-16.711,-49.094], zoom:15, tint:'orange', chat:'left', tilt:12},
   inventory:{center:[-16.706,-49.089], zoom:15, tint:'blue', chat:'right', tilt:16},
   leads:{center:[-16.710,-49.091], zoom:16, tint:'purple', chat:'right', tilt:20},

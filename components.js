@@ -97,7 +97,7 @@ customElements.define('ai-chat', AiChat);
 
 export class MapScene extends HTMLElement {
   connectedCallback(){
-    this.innerHTML=`<div class="map-fallback"></div><div class="map-host"></div><div class="model-anchor" aria-hidden="true"><span>Aliança Park · masterplan 3D</span></div><canvas class="three-overlay"></canvas><div class="map-tint"></div><div class="map-badge">${ico('layers-3')} <span>Visão temática</span></div>`;
+    this.innerHTML=`<div class="map-fallback"></div><div class="map-host" aria-hidden="true"></div><div class="model-anchor" aria-hidden="true"><span>Aliança Park · masterplan 3D</span></div><canvas class="three-overlay"></canvas><div class="map-tint"></div><div class="map-badge">${ico('layers-3')} <span>Visão temática</span></div>`;
     this.initWhenReady(); appStore.subscribe(s=>{this.setTheme(s.view);this.dataset.mode=s.mapMode;});
     this.addEventListener('click',e=>{if(e.target.closest('.leaflet-control,.map-badge')||performance.now()<this._suppressMapToggleUntil)return;appStore.set({mapMode:appStore.get().mapMode==='overview'?'focus':'overview',lastAction:'Alternou foco do mapa'});});
   }
@@ -114,7 +114,7 @@ export class MapScene extends HTMLElement {
     const initial=viewThemes.assistant; const center=L.latLng(Number(initial.center[0]),Number(initial.center[1]));
     if(!validGeoPoint(center))return;
     this.map=L.map(host,{zoomControl:false, attributionControl:true, preferCanvas:true, zoomAnimation:false, fadeAnimation:false}).setView(center,Number(initial.zoom)); this.dataset.leaflet='ready';
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(this.map);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(this.map);
     L.control.zoom({position:'bottomright'}).addTo(this.map);
     this.map.on('move zoom resize',()=>this.syncThree());
     this.map.on('click',event=>{if(this.pickModelAt(event.containerPoint))this._suppressMapToggleUntil=performance.now()+280;});
@@ -130,6 +130,8 @@ export class MapScene extends HTMLElement {
       const canvas=this.querySelector('.three-overlay'); this.renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:false,powerPreference:'low-power'}); this.renderer.setPixelRatio(1);
       this.dataset.three='ready';
       this.scene=new THREE.Scene(); this.scene.add(new THREE.HemisphereLight(0xcfe4ff,0x1a2735,2.6)); const keyLight=new THREE.DirectionalLight(0xffffff,4.2); keyLight.position.set(-120,-160,220); this.scene.add(keyLight); this.camera=new THREE.OrthographicCamera(); this.camera.position.z=10;
+      this.mapSurfaceCanvas=document.createElement('canvas'); this.mapSurfaceTexture=new THREE.CanvasTexture(this.mapSurfaceCanvas); this.mapSurfaceTexture.colorSpace=THREE.SRGBColorSpace;
+      this.mapSurface=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:this.mapSurfaceTexture,side:THREE.DoubleSide,transparent:true,depthWrite:false})); this.mapSurface.position.z=-60; this.scene.add(this.mapSurface);
       const geo=new THREE.CircleGeometry(8,32); const colors=[0x7d64ff,0x2fe6ae,0xffb020,0x55a8ff,0xff5c58];
       this.markerGroup=new THREE.Group(); this.scene.add(this.markerGroup);
       const coords=[[-16.708,-49.092],[-16.706,-49.089],[-16.711,-49.094],[-16.704,-49.088],[-16.710,-49.091]];
@@ -138,6 +140,7 @@ export class MapScene extends HTMLElement {
       this.modelParts={lots:[],streets:[],other:[]}; this.raycaster=new THREE.Raycaster(); this.pointer=new THREE.Vector2();
       this.selectionHalo=new THREE.Mesh(new THREE.RingGeometry(8,13,48),new THREE.MeshBasicMaterial({color:0x2fe6ae,transparent:true,opacity:.88,side:THREE.DoubleSide,depthTest:false}));
       this.selectionHalo.visible=false; this.scene.add(this.selectionHalo); this.loadMasterplan(THREE,GLTFLoader);
+      let down=null; canvas.addEventListener('pointerdown',event=>{down={x:event.clientX,y:event.clientY};}); canvas.addEventListener('pointerup',event=>{if(!down||Math.hypot(event.clientX-down.x,event.clientY-down.y)>6){down=null;return;}const rect=canvas.getBoundingClientRect(),point={x:((event.clientX-rect.left)/rect.width)*canvas.clientWidth,y:((event.clientY-rect.top)/rect.height)*canvas.clientHeight};if(this.pickModelAt(point))this._suppressMapToggleUntil=performance.now()+280;down=null;});
       this.syncThree();
     } catch(err){ this.dataset.three='fallback'; console.warn('Three.js indisponível, mantendo mapa 2D.',err); }
   }
@@ -146,7 +149,7 @@ export class MapScene extends HTMLElement {
     const modelUrl='./assets/model/alianca_park_masterplan_preview.glb'; this.dataset.modelSource='preview-glb';
     loader.load(modelUrl,gltf=>{
       const model=gltf.scene; const box=new THREE.Box3().setFromObject(model); const size=box.getSize(new THREE.Vector3()); const center=box.getCenter(new THREE.Vector3());
-      model.position.sub(center); const largest=Math.max(size.x,size.y,size.z)||1; const factor=145/largest; model.scale.setScalar(factor); model.rotation.x=-Math.PI/2.35; model.userData.baseScale=factor;
+      model.position.sub(center); const largest=Math.max(size.x,size.y,size.z)||1; const factor=145/largest; model.scale.setScalar(factor); model.position.z=6; model.rotation.x=-Math.PI/7; model.userData.baseScale=factor; model.userData.sourceSize=size; this.masterplanModel=model; this.masterplanLargest=largest;
       model.traverse(node=>{
         if(!node.isMesh)return;
         node.frustumCulled=false; node.renderOrder=8;
@@ -171,6 +174,17 @@ export class MapScene extends HTMLElement {
     let nearest=null,best=Infinity; for(const item of [...(this.modelParts?.lots||[]),...(this.modelParts?.streets||[])]){const box=new this.THREE.Box3().setFromObject(item),center=box.getCenter(new this.THREE.Vector3()).project(this.camera),sx=(center.x+1)*w/2,sy=(-center.y+1)*h/2,size=box.getSize(new this.THREE.Vector3()),radius=Math.max(16,Math.min(52,Math.max(size.x,size.y)/2));const distance=Math.hypot(point.x-sx,point.y-sy);if(distance<=radius&&distance<best){best=distance;nearest=item;}}
     if(!nearest)return false; this.selectModelPart(nearest); return true;
   }
+  refreshMapSurface(theme,w,h){
+    if(!this.mapSurfaceCanvas||!this.mapSurfaceTexture)return;
+    const zoom=Math.max(12,Math.min(18,Number(theme.zoom)||15)),cols=Math.ceil(w/256)+2,rows=Math.ceil(h/256)+2,lat=Number(theme.center[0]),lon=Number(theme.center[1]),rad=Math.PI/180,n=2**zoom;
+    const xf=(lon+180)/360*n,yf=(1-Math.asinh(Math.tan(lat*rad))/Math.PI)/2*n,x0=Math.floor(xf-cols/2),y0=Math.floor(yf-rows/2),key=`${zoom}|${x0}|${y0}|${cols}|${rows}`; if(key===this._mapSurfaceKey)return; this._mapSurfaceKey=key;
+    const canvas=this.mapSurfaceCanvas; canvas.width=cols*256; canvas.height=rows*256; const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); const token=key; let loaded=0,total=0;
+    const tileHosts=['https://tile.openstreetmap.org','https://tile.openstreetmap.de'];
+    const drawTile=(row,col,tileX,tileY,attempt=0)=>{const image=new Image();image.crossOrigin='anonymous';image.onload=()=>{if(this._mapSurfaceKey!==token)return;loaded++;ctx.drawImage(image,col*256,row*256,256,256);ctx.fillStyle='rgba(4,11,22,.34)';ctx.fillRect(col*256,row*256,256,256);this.dataset.mapTextureTiles=`${loaded}/${total}`;this.dataset.mapTexture=loaded===total?'ready':'loading';this.mapSurfaceTexture.needsUpdate=true;this.renderer?.render(this.scene,this.camera);};image.onerror=()=>{if(attempt+1<tileHosts.length)drawTile(row,col,tileX,tileY,attempt+1);else if(this._mapSurfaceKey===token){this.dataset.mapTextureTiles=`${loaded}/${total}`;this.dataset.mapTexture='partial';}};image.src=`${tileHosts[attempt]}/${zoom}/${tileX}/${tileY}.png`;};
+    for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){const tileX=((x0+col)%n+n)%n,tileY=y0+row;if(tileY<0||tileY>=n)continue;total++;drawTile(row,col,tileX,tileY);}
+    this.dataset.mapTexture='loading'; this.dataset.mapTextureTiles=`0/${total}`;
+    this.mapSurfaceTexture.needsUpdate=true;
+  }
   selectModelPart(node){
     const source=node.userData.partKind?node:node.parent?.userData?.partKind?node.parent:null; if(!source)return;
     const kind=source.userData.partKind,partId=source.userData.partId;
@@ -186,7 +200,8 @@ export class MapScene extends HTMLElement {
   syncThree(){
     if(!this.renderer||!this.map||!this.map._loaded) return; const host=this.querySelector('.map-host'); const w=host?.clientWidth,h=host?.clientHeight; if(!Number.isFinite(w)||!Number.isFinite(h)||w<2||h<2)return;
     this.renderer.setSize(w,h,false); this.camera.left=0;this.camera.right=w;this.camera.top=0;this.camera.bottom=h;this.camera.near=-100;this.camera.far=100;this.camera.updateProjectionMatrix();
-    if(this.modelGroup){const theme=viewThemes[appStore.get().view]||viewThemes.assistant,anchor=this.map.latLngToContainerPoint(L.latLng(Number(theme.center[0]),Number(theme.center[1])));if(Number.isFinite(anchor.x)&&Number.isFinite(anchor.y)){if(anchor.x===0&&anchor.y===0){anchor.x=w/2;anchor.y=h/2;}this.modelGroup.position.set(anchor.x,anchor.y,0);this.modelGroup.updateMatrixWorld(true);this.modelGroup.visible=true;}}
+    const theme=viewThemes[appStore.get().view]||viewThemes.assistant; this.mapSurface.position.set(w/2,h/2,-60); this.mapSurface.scale.set(w,h,1); this.refreshMapSurface(theme,w,h);
+    if(this.modelGroup){const theme=viewThemes[appStore.get().view]||viewThemes.assistant,anchor=this.map.latLngToContainerPoint(L.latLng(Number(theme.center[0]),Number(theme.center[1])));if(Number.isFinite(anchor.x)&&Number.isFinite(anchor.y)){if(anchor.x===0&&anchor.y===0){anchor.x=w/2;anchor.y=h/2;}this.modelGroup.position.set(anchor.x,anchor.y,0);if(this.masterplanModel&&this.masterplanLargest){const frame=Math.min(w,h)*.76;this.masterplanModel.scale.setScalar(frame/this.masterplanLargest);this.dataset.modelFit=`${Math.round(frame)}px`; }this.modelGroup.updateMatrixWorld(true);this.modelGroup.visible=true;}}
     for(const m of this.markerGroup?.children||[]){ const p=this.map.latLngToContainerPoint(L.latLng(Number(m.userData.latlng[0]),Number(m.userData.latlng[1]))); if(Number.isFinite(p.x)&&Number.isFinite(p.y))m.position.set(p.x,p.y,0); }
     this.renderer.render(this.scene,this.camera);
   }
@@ -194,7 +209,7 @@ export class MapScene extends HTMLElement {
     const theme=viewThemes[view]||viewThemes.assistant; this.dataset.tint=theme.tint;
     if(this.modelGroup){this.modelGroup.rotation.z=(theme.tilt||0)*Math.PI/180*.25; this.modelGroup.visible=true;}
     const center=L.latLng(Number(theme.center[0]),Number(theme.center[1]));
-    if(this.map&&this.map._loaded&&validGeoPoint(center)&&Number.isFinite(Number(theme.zoom))){const zoom=Number(theme.zoom);if(this._lastTheme&&this._lastTheme!==view){try{this.map.setView(center,zoom,{animate:false});}catch{}}this._lastTheme=view;requestAnimationFrame(()=>this.map.invalidateSize({pan:false}));}
+    if(this.map&&this.map._loaded&&validGeoPoint(center)&&Number.isFinite(Number(theme.zoom))){const zoom=Number(theme.zoom);if(!this._lastTheme||this._lastTheme!==view){try{this.map.setView(center,zoom,{animate:false});}catch{}}this._lastTheme=view;requestAnimationFrame(()=>this.map.invalidateSize({pan:false}));}
     this.classList.remove('theme-enter'); requestAnimationFrame(()=>this.classList.add('theme-enter'));
     this.style.setProperty('--map-tilt',`${theme.tilt}deg`);
     const label={assistant:'Execução atual',map:'Mapa geral',stages:'Cronograma',purchases:'Compras',inventory:'Materiais',leads:'Leads',collaborators:'Colaboradores',reports:'Indicadores',settings:'Configuração'}[view];
