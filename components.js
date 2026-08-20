@@ -3,6 +3,7 @@ import {appStore, demoData, viewThemes, spreadsheetSchema, activityCatalog} from
 const ico = (name, cls='') => `<i data-lucide="${name}" class="${cls}"></i>`;
 const esc = (s='') => String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const notify = (message, tone='info') => { let host=document.querySelector('.app-main'); if(!host)return; let toast=host.querySelector('.action-toast'); if(!toast){toast=document.createElement('div');toast.className='action-toast';host.appendChild(toast);} toast.dataset.tone=tone; toast.textContent=message; toast.classList.add('show'); clearTimeout(toast._timer); toast._timer=setTimeout(()=>toast.classList.remove('show'),2800); };
+const validGeoPoint = point => point && Number.isFinite(Number(point.lat)) && Number.isFinite(Number(point.lng)) && Math.abs(Number(point.lat)) <= 90 && Math.abs(Number(point.lng)) <= 180;
 
 export class GlassCard extends HTMLElement {
   connectedCallback(){ if(!this.classList.contains('glass-card')) this.classList.add('glass-card'); }
@@ -96,57 +97,108 @@ customElements.define('ai-chat', AiChat);
 
 export class MapScene extends HTMLElement {
   connectedCallback(){
-    this.innerHTML=`<div class="map-fallback"></div><div class="map-host"></div><canvas class="three-overlay"></canvas><div class="map-tint"></div><div class="map-badge">${ico('layers-3')} <span>Visão temática</span></div>`;
+    this.innerHTML=`<div class="map-fallback"></div><div class="map-host"></div><div class="model-anchor" aria-hidden="true"><span>Aliança Park · masterplan 3D</span></div><canvas class="three-overlay"></canvas><div class="map-tint"></div><div class="map-badge">${ico('layers-3')} <span>Visão temática</span></div>`;
     this.initWhenReady(); appStore.subscribe(s=>{this.setTheme(s.view);this.dataset.mode=s.mapMode;});
-    this.addEventListener('click',e=>{if(e.target.closest('.leaflet-control,.map-badge'))return;appStore.set({mapMode:appStore.get().mapMode==='overview'?'focus':'overview',lastAction:'Alternou foco do mapa'});});
+    this.addEventListener('click',e=>{if(e.target.closest('.leaflet-control,.map-badge')||performance.now()<this._suppressMapToggleUntil)return;appStore.set({mapMode:appStore.get().mapMode==='overview'?'focus':'overview',lastAction:'Alternou foco do mapa'});});
   }
   initWhenReady(){
-    const start=Date.now(); const tick=()=>{ if(window.L){ this.initLeaflet(); this.initThree(); return; } if(Date.now()-start<7000) setTimeout(tick,100); else this.classList.add('fallback-only'); }; tick();
+    this.dataset.mapInit='waiting'; const start=Date.now(); const tick=()=>{ this.dataset.mapInit=window.L?'leaflet-found':'waiting'; if(window.L){ try{this.initLeaflet();}catch(err){this.dataset.mapInit='leaflet-error';console.warn('Leaflet indisponível, mantendo superfície de mapa.',err);} this.scheduleThree(); return; } if(Date.now()-start<7000) setTimeout(tick,100); else {this.dataset.mapInit='timeout';this.classList.add('fallback-only');} }; tick();
+  }
+  scheduleThree(){
+    if(this._threeScheduled||this.renderer)return; this._threeScheduled=true;
+    const run=()=>this.initThree();
+    if('requestIdleCallback' in window) window.requestIdleCallback(run,{timeout:3500}); else setTimeout(run,1200);
   }
   initLeaflet(){
-    const host=this.querySelector('.map-host'); this.map=L.map(host,{zoomControl:false, attributionControl:true, preferCanvas:true}).setView(viewThemes.assistant.center,viewThemes.assistant.zoom);
+    const host=this.querySelector('.map-host'); if(!host||this.map)return;
+    const initial=viewThemes.assistant; const center=L.latLng(Number(initial.center[0]),Number(initial.center[1]));
+    if(!validGeoPoint(center))return;
+    this.map=L.map(host,{zoomControl:false, attributionControl:true, preferCanvas:true, zoomAnimation:false, fadeAnimation:false}).setView(center,Number(initial.zoom)); this.dataset.leaflet='ready';
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(this.map);
     L.control.zoom({position:'bottomright'}).addTo(this.map);
     this.map.on('move zoom resize',()=>this.syncThree());
-    appStore.set({mapReady:true}); this.setTheme(appStore.get().view);
+    this.map.on('click',event=>{if(this.pickModelAt(event.containerPoint))this._suppressMapToggleUntil=performance.now()+280;});
+    const refreshMap=()=>{if(!this.map)return;this.map.invalidateSize({pan:false});this.syncThree();};
+    if(window.ResizeObserver){this._mapResizeObserver=new ResizeObserver(()=>requestAnimationFrame(refreshMap));this._mapResizeObserver.observe(host);}
+    this.map.whenReady(()=>{this._mapReady=true; appStore.set({mapReady:true}); this.setTheme(appStore.get().view); requestAnimationFrame(refreshMap); setTimeout(refreshMap,320);});
   }
   async initThree(){
+    this.dataset.three='loading';
     try {
       const THREE=await import('https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js'); this.THREE=THREE;
       const {GLTFLoader}=await import('https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/loaders/GLTFLoader.js');
-      const canvas=this.querySelector('.three-overlay'); this.renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true});
-      this.scene=new THREE.Scene(); this.camera=new THREE.OrthographicCamera(); this.camera.position.z=10;
+      const canvas=this.querySelector('.three-overlay'); this.renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:false,powerPreference:'low-power'}); this.renderer.setPixelRatio(1);
+      this.dataset.three='ready';
+      this.scene=new THREE.Scene(); this.scene.add(new THREE.HemisphereLight(0xcfe4ff,0x1a2735,2.6)); const keyLight=new THREE.DirectionalLight(0xffffff,4.2); keyLight.position.set(-120,-160,220); this.scene.add(keyLight); this.camera=new THREE.OrthographicCamera(); this.camera.position.z=10;
       const geo=new THREE.CircleGeometry(8,32); const colors=[0x7d64ff,0x2fe6ae,0xffb020,0x55a8ff,0xff5c58];
       this.markerGroup=new THREE.Group(); this.scene.add(this.markerGroup);
       const coords=[[-16.708,-49.092],[-16.706,-49.089],[-16.711,-49.094],[-16.704,-49.088],[-16.710,-49.091]];
       coords.forEach((c,i)=>{ const mesh=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:colors[i],transparent:true,opacity:.92})); mesh.userData.latlng=c; this.markerGroup.add(mesh); });
-      this.modelGroup=new THREE.Group(); this.scene.add(this.modelGroup); this.loadMasterplan(THREE,GLTFLoader);
+      this.modelGroup=new THREE.Group(); this.scene.add(this.modelGroup);
+      this.modelParts={lots:[],streets:[],other:[]}; this.raycaster=new THREE.Raycaster(); this.pointer=new THREE.Vector2();
+      this.selectionHalo=new THREE.Mesh(new THREE.RingGeometry(8,13,48),new THREE.MeshBasicMaterial({color:0x2fe6ae,transparent:true,opacity:.88,side:THREE.DoubleSide,depthTest:false}));
+      this.selectionHalo.visible=false; this.scene.add(this.selectionHalo); this.loadMasterplan(THREE,GLTFLoader);
       this.syncThree();
-    } catch(err){ console.warn('Three.js indisponível, mantendo mapa 2D.',err); }
+    } catch(err){ this.dataset.three='fallback'; console.warn('Three.js indisponível, mantendo mapa 2D.',err); }
   }
   loadMasterplan(THREE,GLTFLoader){
     const loader=new GLTFLoader();
-    loader.load('./assets/model/alianca_park_masterplan_pdf_3d.glb',gltf=>{
+    const modelUrl='./assets/model/alianca_park_masterplan_preview.glb'; this.dataset.modelSource='preview-glb';
+    loader.load(modelUrl,gltf=>{
       const model=gltf.scene; const box=new THREE.Box3().setFromObject(model); const size=box.getSize(new THREE.Vector3()); const center=box.getCenter(new THREE.Vector3());
-      model.position.sub(center); const largest=Math.max(size.x,size.y,size.z)||1; const factor=145/largest; model.scale.setScalar(factor); model.rotation.x=-Math.PI/2.35;
-      model.traverse(node=>{if(node.isMesh){node.frustumCulled=false; if(node.material)node.material.transparent=true;}});
-      this.modelGroup.add(model); this.modelGroup.visible=appStore.get().mapMode==='focus'; this.modelReady=true; this.classList.add('model-ready'); this.syncThree();
+      model.position.sub(center); const largest=Math.max(size.x,size.y,size.z)||1; const factor=145/largest; model.scale.setScalar(factor); model.rotation.x=-Math.PI/2.35; model.userData.baseScale=factor;
+      model.traverse(node=>{
+        if(!node.isMesh)return;
+        node.frustumCulled=false; node.renderOrder=8;
+        const prepare=mat=>{if(!mat)return mat;const clone=mat.clone();clone.transparent=true;clone.opacity=Math.max(.72,Math.min(1,clone.opacity??1));clone.side=THREE.DoubleSide;clone.depthWrite=false;return clone;};
+        node.material=Array.isArray(node.material)?node.material.map(prepare):prepare(node.material); node.userData.defaultMaterial=node.material;
+        const name=String(node.name||'').toLowerCase();
+        const kind=/(lote|quadra|gleba)/.test(name)?'lots':/(asfalto|rua|road|street|meio.?fio|guia|paviment)/.test(name)?'streets':'other';
+        node.userData.partKind=kind; node.userData.partId=kind==='lots'?node.name:'streets';
+        node.userData.partLabel=kind==='lots'?`Lote ${node.name.replace(/^.*?lote[_ -]?/i,'').replace(/[_ -]?mesh.*$/i,'')}`:kind==='streets'?'Ruas e meio-fio':node.name||'Elemento do empreendimento';
+        this.modelParts[kind].push(node); if(node.material)node.material.transparent=true;
+      });
+      this.dataset.modelParts=`lotes:${this.modelParts.lots.length}|ruas:${this.modelParts.streets.length}|outros:${this.modelParts.other.length}`;
+      this.modelGroup.add(model); this.modelGroup.visible=true; this.modelReady=true; this.classList.add('model-ready'); this.syncThree();
     },progress=>{if(progress.total)this.dataset.modelProgress=Math.round(progress.loaded/progress.total*100)},err=>{console.warn('Modelo GLB indisponível, mantendo mapa 2D.',err);});
   }
+  pickModelAt(point){
+    if(!this.modelReady||!this.raycaster||!this.camera||!this.modelGroup)return false;
+    const host=this.querySelector('.map-host'),w=host?.clientWidth||0,h=host?.clientHeight||0;
+    if(!w||!h||!point)return false;
+    this.pointer.x=(point.x/w)*2-1; this.pointer.y=-(point.y/h)*2+1; this.camera.updateMatrixWorld(true); this.modelGroup.updateMatrixWorld(true); this.raycaster.setFromCamera(this.pointer,this.camera);
+    const hits=this.raycaster.intersectObject(this.modelGroup,true); const hit=hits[0]; if(hit?.object){this.selectModelPart(hit.object);return true;}
+    let nearest=null,best=Infinity; for(const item of [...(this.modelParts?.lots||[]),...(this.modelParts?.streets||[])]){const box=new this.THREE.Box3().setFromObject(item),center=box.getCenter(new this.THREE.Vector3()).project(this.camera),sx=(center.x+1)*w/2,sy=(-center.y+1)*h/2,size=box.getSize(new this.THREE.Vector3()),radius=Math.max(16,Math.min(52,Math.max(size.x,size.y)/2));const distance=Math.hypot(point.x-sx,point.y-sy);if(distance<=radius&&distance<best){best=distance;nearest=item;}}
+    if(!nearest)return false; this.selectModelPart(nearest); return true;
+  }
+  selectModelPart(node){
+    const source=node.userData.partKind?node:node.parent?.userData?.partKind?node.parent:null; if(!source)return;
+    const kind=source.userData.partKind,partId=source.userData.partId;
+    this.modelParts?.lots.concat(this.modelParts?.streets||[],this.modelParts?.other||[]).forEach(item=>{if(item.userData.highlightMaterial)item.material=item.userData.defaultMaterial;});
+    const matches=kind==='streets'?(this.modelParts.streets||[]):(this.modelParts[kind]||[]).filter(item=>item.userData.partId===partId);
+    const color=kind==='lots'?0x2fe6ae:kind==='streets'?0x78a9ff:0xffb020;
+    matches.forEach(item=>{const original=item.userData.defaultMaterial,paint=mat=>{const clone=mat.clone();if(clone.color)clone.color.setHex(color);if(clone.emissive){clone.emissive.setHex(color);clone.emissiveIntensity=.72;}clone.transparent=true;clone.opacity=Math.max(.68,clone.opacity??1);return clone;};item.userData.highlightMaterial=Array.isArray(original)?original.map(paint):paint(original);item.material=item.userData.highlightMaterial;});
+    const bounds=new this.THREE.Box3().setFromObject(source),center=bounds.getCenter(new this.THREE.Vector3()),size=bounds.getSize(new this.THREE.Vector3());
+    if(this.selectionHalo){this.selectionHalo.position.set(center.x,center.y,2);this.selectionHalo.scale.setScalar(Math.max(.7,Math.min(4.5,Math.max(size.x,size.y)/24)));this.selectionHalo.material.color.setHex(color);this.selectionHalo.visible=true;}
+    const label=kind==='streets'?'Ruas e meio-fio':source.userData.partLabel; this.dataset.selectedPart=label; this.dataset.selectedKind=kind;
+    appStore.set({lastAction:`Selecionou ${label}`}); const span=this.querySelector('.map-badge span'); if(span)span.textContent=`${label} · selecionado`; this.syncThree();
+  }
   syncThree(){
-    if(!this.renderer||!this.map) return; const host=this.querySelector('.map-host'); const w=host.clientWidth,h=host.clientHeight; if(!w||!h)return;
+    if(!this.renderer||!this.map||!this.map._loaded) return; const host=this.querySelector('.map-host'); const w=host?.clientWidth,h=host?.clientHeight; if(!Number.isFinite(w)||!Number.isFinite(h)||w<2||h<2)return;
     this.renderer.setSize(w,h,false); this.camera.left=0;this.camera.right=w;this.camera.top=0;this.camera.bottom=h;this.camera.near=-100;this.camera.far=100;this.camera.updateProjectionMatrix();
-    if(this.modelGroup) this.modelGroup.position.set(w*.5,h*.58,0);
-    for(const m of this.markerGroup.children){ const p=this.map.latLngToContainerPoint(m.userData.latlng); m.position.set(p.x,p.y,0); }
+    if(this.modelGroup){const theme=viewThemes[appStore.get().view]||viewThemes.assistant,anchor=this.map.latLngToContainerPoint(L.latLng(Number(theme.center[0]),Number(theme.center[1])));if(Number.isFinite(anchor.x)&&Number.isFinite(anchor.y)){if(anchor.x===0&&anchor.y===0){anchor.x=w/2;anchor.y=h/2;}this.modelGroup.position.set(anchor.x,anchor.y,0);this.modelGroup.updateMatrixWorld(true);this.modelGroup.visible=true;}}
+    for(const m of this.markerGroup?.children||[]){ const p=this.map.latLngToContainerPoint(L.latLng(Number(m.userData.latlng[0]),Number(m.userData.latlng[1]))); if(Number.isFinite(p.x)&&Number.isFinite(p.y))m.position.set(p.x,p.y,0); }
     this.renderer.render(this.scene,this.camera);
   }
   setTheme(view){
     const theme=viewThemes[view]||viewThemes.assistant; this.dataset.tint=theme.tint;
-    if(this.modelGroup){this.modelGroup.rotation.z=(theme.tilt||0)*Math.PI/180*.25; this.modelGroup.visible=appStore.get().mapMode==='focus';}
-    if(this.map) this.map.flyTo(theme.center,theme.zoom,{duration:.7});
+    if(this.modelGroup){this.modelGroup.rotation.z=(theme.tilt||0)*Math.PI/180*.25; this.modelGroup.visible=true;}
+    const center=L.latLng(Number(theme.center[0]),Number(theme.center[1]));
+    if(this.map&&this.map._loaded&&validGeoPoint(center)&&Number.isFinite(Number(theme.zoom))){const zoom=Number(theme.zoom);if(this._lastTheme&&this._lastTheme!==view){try{this.map.setView(center,zoom,{animate:false});}catch{}}this._lastTheme=view;requestAnimationFrame(()=>this.map.invalidateSize({pan:false}));}
+    this.classList.remove('theme-enter'); requestAnimationFrame(()=>this.classList.add('theme-enter'));
     this.style.setProperty('--map-tilt',`${theme.tilt}deg`);
     const label={assistant:'Execução atual',map:'Mapa geral',stages:'Cronograma',purchases:'Compras',inventory:'Materiais',leads:'Leads',collaborators:'Colaboradores',reports:'Indicadores',settings:'Configuração'}[view];
-    const span=this.querySelector('.map-badge span'); if(span) span.textContent=label;
+    const span=this.querySelector('.map-badge span'); if(span) span.textContent=this.dataset.selectedPart?`${this.dataset.selectedPart} · selecionado`:label;
   }
 }
 customElements.define('map-scene', MapScene);

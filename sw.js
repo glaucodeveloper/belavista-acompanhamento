@@ -1,5 +1,5 @@
-const SHELL = 'belavista-shell-v5';
-const RUNTIME = 'belavista-runtime-v5';
+const SHELL = 'belavista-shell-v6';
+const RUNTIME = 'belavista-runtime-v6';
 const APP_SHELL = [
   './', './index.html', './styles.css', './app.js', './components.js', './state.js',
   './manifest.webmanifest', './assets/icons/icon-192.png', './assets/icons/icon-512.png',
