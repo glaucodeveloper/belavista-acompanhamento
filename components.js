@@ -5,7 +5,7 @@ const esc = (s='') => String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;',
 const notify = (message, tone='info') => { let host=document.querySelector('.app-main'); if(!host)return; let toast=host.querySelector('.action-toast'); if(!toast){toast=document.createElement('div');toast.className='action-toast';host.appendChild(toast);} toast.dataset.tone=tone; toast.textContent=message; toast.classList.add('show'); clearTimeout(toast._timer); toast._timer=setTimeout(()=>toast.classList.remove('show'),2800); };
 const validGeoPoint = point => point && Number.isFinite(Number(point.lat)) && Number.isFinite(Number(point.lng)) && Math.abs(Number(point.lat)) <= 90 && Math.abs(Number(point.lng)) <= 180;
 let mapPreviewSource='';
-const DEFAULT_SCENE_ZOOM=1.16, DEFAULT_TILT_BOOST=8;
+const DEFAULT_SCENE_ZOOM=1.16, DEFAULT_TILT_BOOST=18;
 const publishMapPreview = source => { if(!source)return; mapPreviewSource=source; document.querySelectorAll('map-scene[compact]').forEach(scene=>scene.setPreview?.(source)); };
 
 export class GlassCard extends HTMLElement {
@@ -238,7 +238,7 @@ export class MapScene extends HTMLElement {
     const span=this.querySelector('.map-badge span'); if(span) span.textContent=this.dataset.selectedPart?`${this.dataset.selectedPart} · selecionado`:label;
   }
   applySceneView(view,animate=true){
-    const theme=viewThemes[view]||viewThemes.assistant,targetDegrees=Math.max(8,Math.min(32,(Number(theme.tilt)||18)+DEFAULT_TILT_BOOST+this.sceneTiltAdjust)),targetX=targetDegrees*Math.PI/180,targetScale=this.sceneManualZoom||DEFAULT_SCENE_ZOOM; this.dataset.sceneTilt=`${targetDegrees}deg`;
+    const theme=viewThemes[view]||viewThemes.assistant,targetDegrees=Math.max(12,Math.min(40,(Number(theme.tilt)||18)+DEFAULT_TILT_BOOST+this.sceneTiltAdjust)),targetX=targetDegrees*Math.PI/180,targetScale=this.sceneManualZoom||DEFAULT_SCENE_ZOOM; this.dataset.sceneTilt=`${targetDegrees}deg`;
     if(!this.sceneStage){this._sceneTargetX=targetX;return;}
     const targetZ=(this.sceneManualRotation||0)*Math.PI/180,finish=()=>{this.sceneStage.rotation.x=targetX;this.sceneStage.rotation.z=targetZ;this.sceneStage.scale.set(targetScale,targetScale,targetScale);this.syncThree();this.renderer?.render(this.scene,this.camera);};
     if(!animate){finish();return;}
