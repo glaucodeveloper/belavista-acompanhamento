@@ -48,6 +48,7 @@ customElements.define('belavista-app',BelavistaApp);
 function startApp(config){
   const boot=document.querySelector('#boot'); if(boot)boot.remove();
   const app=document.querySelector('belavista-app'); app.hidden=false; appStore.set({config,theme:'dark'}); document.documentElement.dataset.theme='dark';
+  if(window.matchMedia?.('(max-width: 760px)').matches) appStore.set({view:'records',lastAction:'Modo mobile de registros ativado'});
   if('serviceWorker' in navigator && location.protocol!=='file:') navigator.serviceWorker.register('./sw.js').catch(console.warn);
 }
 
