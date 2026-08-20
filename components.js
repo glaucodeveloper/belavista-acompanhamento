@@ -4,6 +4,8 @@ const ico = (name, cls='') => `<i data-lucide="${name}" class="${cls}"></i>`;
 const esc = (s='') => String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const notify = (message, tone='info') => { let host=document.querySelector('.app-main'); if(!host)return; let toast=host.querySelector('.action-toast'); if(!toast){toast=document.createElement('div');toast.className='action-toast';host.appendChild(toast);} toast.dataset.tone=tone; toast.textContent=message; toast.classList.add('show'); clearTimeout(toast._timer); toast._timer=setTimeout(()=>toast.classList.remove('show'),2800); };
 const validGeoPoint = point => point && Number.isFinite(Number(point.lat)) && Number.isFinite(Number(point.lng)) && Math.abs(Number(point.lat)) <= 90 && Math.abs(Number(point.lng)) <= 180;
+let mapPreviewSource='';
+const publishMapPreview = source => { if(!source)return; mapPreviewSource=source; document.querySelectorAll('map-scene[compact]').forEach(scene=>scene.setPreview?.(source)); };
 
 export class GlassCard extends HTMLElement {
   connectedCallback(){ if(!this.classList.contains('glass-card')) this.classList.add('glass-card'); }
@@ -112,6 +114,11 @@ export class MapScene extends HTMLElement {
     const stage=esc(this.getAttribute('data-stage')||'Etapa'),index=Number(this.getAttribute('data-map-index')||0);
     this.dataset.mapInit='compact'; this.dataset.mapStage=stage; this.dataset.mapIndex=String(index);
     this.innerHTML=`<div class="mini-map-surface" aria-label="Mapa da etapa ${stage}"><span class="mini-map-road road-a"></span><span class="mini-map-road road-b"></span><span class="mini-map-road road-c"></span><span class="mini-map-lot lot-a"></span><span class="mini-map-lot lot-b"></span><span class="mini-map-lot lot-c"></span><span class="mini-map-lot lot-d"></span><span class="mini-map-marker"></span><span class="mini-map-caption"><small>MAPA DA ETAPA</small><b>${stage}</b></span></div>`;
+    if(mapPreviewSource)this.setPreview(mapPreviewSource);
+  }
+  setPreview(source){
+    const surface=this.querySelector('.mini-map-surface'); if(!surface||!source)return;
+    surface.style.backgroundImage=`linear-gradient(180deg,rgba(5,14,27,.08),rgba(5,14,27,.38)),url("${source}")`; this.dataset.mapPreview='ready';
   }
   initWhenReady(){
     this.dataset.mapInit='waiting'; const start=Date.now(); const tick=()=>{ this.dataset.mapInit=window.L?'leaflet-found':'waiting'; if(window.L){ try{this.initLeaflet();}catch(err){this.dataset.mapInit='leaflet-error';console.warn('Leaflet indisponível, mantendo superfície de mapa.',err);} this.scheduleThree(); return; } if(Date.now()-start<7000) setTimeout(tick,100); else {this.dataset.mapInit='timeout';this.classList.add('fallback-only');} }; tick();
@@ -174,7 +181,7 @@ export class MapScene extends HTMLElement {
         this.modelParts[kind].push(node); if(node.material)node.material.transparent=true;
       });
       this.dataset.modelParts=`lotes:${this.modelParts.lots.length}|ruas:${this.modelParts.streets.length}|outros:${this.modelParts.other.length}`;
-      this.modelGroup.add(model); this.modelGroup.visible=true; this.modelReady=true; this.classList.add('model-ready'); this.syncThree();
+      this.modelGroup.add(model); this.modelGroup.visible=true; this.modelReady=true; this.classList.add('model-ready'); this.syncThree(); try{publishMapPreview(this.renderer.domElement.toDataURL('image/jpeg',.78));}catch(err){console.warn('Prévia do masterplan indisponível.',err);publishMapPreview('./assets/reference/dashboard.png');}
     },progress=>{if(progress.total)this.dataset.modelProgress=Math.round(progress.loaded/progress.total*100)},err=>{console.warn('Modelo GLB indisponível, mantendo mapa 2D.',err);});
   }
   pickModelAt(point){
