@@ -37,10 +37,9 @@ customElements.define('install-screen',InstallScreen);
 
 class BelavistaApp extends HTMLElement {
   connectedCallback(){ document.querySelector('#boot')?.remove(); this.render(); this.bind(); }
-  render(){this.innerHTML=`<div class="app-shell"><app-sidebar></app-sidebar><div class="app-main"><app-topbar></app-topbar><main class="scene"><map-scene></map-scene><view-layer></view-layer><ai-chat></ai-chat><div class="scene-switcher"><button data-view="assistant"><span>Execução atual</span></button><button data-view="collaborators"><span>Colaboradores</span></button><button data-view="stages"><span>Cronograma</span></button><button data-view="leads"><span>Leads</span></button><button data-view="inventory"><span>Materiais</span></button><button data-view="purchases"><span>Compras</span></button></div></main></div></div>`;window.lucide?.createIcons();}
+  render(){this.innerHTML=`<div class="app-shell ${appStore.get().sidebarCollapsed?'sidebar-collapsed':''}"><app-sidebar></app-sidebar><div class="app-main"><app-topbar></app-topbar><main class="scene"><map-scene></map-scene><view-layer></view-layer><ai-chat></ai-chat></main></div></div>`;window.lucide?.createIcons();}
   bind(){
-    this.querySelectorAll('.scene-switcher [data-view]').forEach(b=>b.addEventListener('click',()=>appStore.set({view:b.dataset.view,chatManual:false})));
-    appStore.subscribe(s=>{this.dataset.view=s.view;this.querySelectorAll('.scene-switcher [data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===s.view));setTimeout(()=>window.lucide?.createIcons(),0);});
+    appStore.subscribe(s=>{this.dataset.view=s.view;this.querySelector('.app-shell')?.classList.toggle('sidebar-collapsed',s.sidebarCollapsed);setTimeout(()=>window.lucide?.createIcons(),0);});
     this.addEventListener('click',e=>{if(e.target.closest('#reinstall')){localStorage.removeItem(STORAGE_KEY);location.href=location.pathname;}if(e.target.closest('#clearPat')){const cfg=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');cfg.pat='';localStorage.setItem(STORAGE_KEY,JSON.stringify(cfg));alert('PAT removido do armazenamento local.');}});
   }
 }
@@ -48,7 +47,7 @@ customElements.define('belavista-app',BelavistaApp);
 
 function startApp(config){
   const boot=document.querySelector('#boot'); if(boot)boot.remove();
-  const app=document.querySelector('belavista-app'); app.hidden=false; appStore.set({config});
+  const app=document.querySelector('belavista-app'); app.hidden=false; appStore.set({config,theme:'dark'}); document.documentElement.dataset.theme='dark';
   if('serviceWorker' in navigator && location.protocol!=='file:') navigator.serviceWorker.register('./sw.js').catch(console.warn);
 }
 

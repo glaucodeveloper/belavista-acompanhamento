@@ -36,15 +36,22 @@ export const demoData = {
 };
 
 export const viewThemes = {
-  assistant:{center:[-16.708,-49.092], zoom:15, tint:'purple', chat:'left'},
-  map:{center:[-16.708,-49.092], zoom:16, tint:'teal', chat:'right'},
-  stages:{center:[-16.704,-49.088], zoom:16, tint:'violet', chat:'right'},
-  purchases:{center:[-16.711,-49.094], zoom:15, tint:'orange', chat:'left'},
-  inventory:{center:[-16.706,-49.089], zoom:15, tint:'blue', chat:'right'},
-  leads:{center:[-16.710,-49.091], zoom:16, tint:'purple', chat:'right'},
-  collaborators:{center:[-16.706,-49.095], zoom:16, tint:'green', chat:'left'},
-  reports:{center:[-16.708,-49.092], zoom:14, tint:'cyan', chat:'right'},
-  settings:{center:[-16.708,-49.092], zoom:14, tint:'neutral', chat:'left'}
+  assistant:{center:[-16.708,-49.092], zoom:15, tint:'purple', chat:'bottom', tilt:8},
+  map:{center:[-16.708,-49.092], zoom:16, tint:'teal', chat:'right', tilt:18},
+  stages:{center:[-16.704,-49.088], zoom:16, tint:'violet', chat:'right', tilt:24},
+  purchases:{center:[-16.711,-49.094], zoom:15, tint:'orange', chat:'left', tilt:12},
+  inventory:{center:[-16.706,-49.089], zoom:15, tint:'blue', chat:'right', tilt:16},
+  leads:{center:[-16.710,-49.091], zoom:16, tint:'purple', chat:'right', tilt:20},
+  collaborators:{center:[-16.706,-49.095], zoom:16, tint:'green', chat:'left', tilt:10},
+  reports:{center:[-16.708,-49.092], zoom:14, tint:'cyan', chat:'right', tilt:6},
+  settings:{center:[-16.708,-49.092], zoom:14, tint:'neutral', chat:'left', tilt:4}
+};
+
+export const spreadsheetSchema = {
+  months:48,
+  sheets:['Lançamentos','Resumo Mensal','Orçamento','Indicadores','Como Usar'],
+  fields:['Mês','Data','Etapa','Subetapa/Descrição','Fornecedor','Documento','Quantidade','Unidade','Valor Unitário (R$)','Valor Total (R$)','Forma de Pagamento','Status'],
+  stages:['Terraplanagem','Drenagem','Rede de Água','Rede de Energia','Pavimentação','Praça e Lazer','Arborização','Projetos/Adm.','Outros']
 };
 
 export function* cycle(values, start=0) {
@@ -71,5 +78,7 @@ export function createStore(initial) {
 
 export const appStore = createStore({
   view:'assistant', selectedLead:0, selectedMaterial:2, chatOpen:true, chatManual:false,
-  config:null, mapReady:false, installPrompt:null
+  config:null, mapReady:false, installPrompt:null, lastAction:'Aplicação iniciada', theme:'dark',
+  sessionId:sessionStorage.getItem('belavista.session')||crypto.randomUUID().slice(0,8).toUpperCase(), sessionStarted:new Date().toISOString(), sidebarCollapsed:false, mapMode:'overview', adminMenu:false
 });
+sessionStorage.setItem('belavista.session',appStore.get().sessionId);
