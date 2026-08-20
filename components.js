@@ -97,9 +97,11 @@ customElements.define('ai-chat', AiChat);
 
 export class MapScene extends HTMLElement {
   connectedCallback(){
-    this.innerHTML=`<div class="map-fallback"></div><div class="map-host" aria-hidden="true"></div><div class="model-anchor" aria-hidden="true"><span>Aliança Park · masterplan 3D</span></div><canvas class="three-overlay"></canvas><div class="map-tint"></div><div class="map-badge">${ico('layers-3')} <span>Visão temática</span></div>`;
+    this.sceneManualRotation=0; this.dataset.sceneRotation='0deg';
+    this.innerHTML=`<div class="map-fallback"></div><div class="map-host" aria-hidden="true"></div><div class="model-anchor" aria-hidden="true"><span>Aliança Park · masterplan 3D</span></div><canvas class="three-overlay"></canvas><div class="map-tint"></div><div class="map-badge">${ico('layers-3')} <span>Visão temática</span></div><div class="map-rotation-controls" aria-label="Controles de rotação"><span>ORIENTAÇÃO</span><button type="button" data-scene-rotate="-15" aria-label="Girar para a esquerda">↺</button><button type="button" data-scene-rotate="15" aria-label="Girar para a direita">↻</button><button type="button" data-scene-rotate="reset" aria-label="Restaurar orientação">N</button><small>Arraste o mapa para girar</small></div>`;
+    this.querySelectorAll('[data-scene-rotate]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();const value=button.dataset.sceneRotate;this.setSceneRotation(value==='reset'?0:this.sceneManualRotation+Number(value),true);}));
     this.initWhenReady(); appStore.subscribe(s=>{this.setTheme(s.view);this.dataset.mode=s.mapMode;});
-    this.addEventListener('click',e=>{if(e.target.closest('.leaflet-control,.map-badge')||performance.now()<this._suppressMapToggleUntil)return;appStore.set({mapMode:appStore.get().mapMode==='overview'?'focus':'overview',lastAction:'Alternou foco do mapa'});});
+    this.addEventListener('click',e=>{if(e.target.closest('.leaflet-control,.map-badge,.map-rotation-controls')||performance.now()<this._suppressMapToggleUntil)return;appStore.set({mapMode:appStore.get().mapMode==='overview'?'focus':'overview',lastAction:'Alternou foco do mapa'});});
   }
   initWhenReady(){
     this.dataset.mapInit='waiting'; const start=Date.now(); const tick=()=>{ this.dataset.mapInit=window.L?'leaflet-found':'waiting'; if(window.L){ try{this.initLeaflet();}catch(err){this.dataset.mapInit='leaflet-error';console.warn('Leaflet indisponível, mantendo superfície de mapa.',err);} this.scheduleThree(); return; } if(Date.now()-start<7000) setTimeout(tick,100); else {this.dataset.mapInit='timeout';this.classList.add('fallback-only');} }; tick();
@@ -140,7 +142,7 @@ export class MapScene extends HTMLElement {
       this.modelParts={lots:[],streets:[],other:[]}; this.raycaster=new THREE.Raycaster(); this.pointer=new THREE.Vector2();
       this.selectionHalo=new THREE.Mesh(new THREE.RingGeometry(8,13,48),new THREE.MeshBasicMaterial({color:0x2fe6ae,transparent:true,opacity:.88,side:THREE.DoubleSide,depthTest:false}));
       this.selectionHalo.visible=false; this.sceneStage.add(this.selectionHalo); this.applySceneView(appStore.get().view,false); this.loadMasterplan(THREE,GLTFLoader);
-      let down=null; canvas.addEventListener('pointerdown',event=>{down={x:event.clientX,y:event.clientY};}); canvas.addEventListener('pointerup',event=>{if(!down||Math.hypot(event.clientX-down.x,event.clientY-down.y)>6){down=null;return;}const rect=canvas.getBoundingClientRect(),point={x:((event.clientX-rect.left)/rect.width)*canvas.clientWidth,y:((event.clientY-rect.top)/rect.height)*canvas.clientHeight};if(this.pickModelAt(point))this._suppressMapToggleUntil=performance.now()+280;down=null;});
+      let down=null,lastX=0,dragging=false; canvas.addEventListener('pointerdown',event=>{down={x:event.clientX,y:event.clientY};lastX=event.clientX;dragging=false;canvas.setPointerCapture?.(event.pointerId);}); canvas.addEventListener('pointermove',event=>{if(!down)return;const total=Math.hypot(event.clientX-down.x,event.clientY-down.y);if(!dragging&&total>6)dragging=true;if(dragging){this.setSceneRotation(this.sceneManualRotation+(event.clientX-lastX)*.35,false);lastX=event.clientX;this._suppressMapToggleUntil=performance.now()+300;}}); canvas.addEventListener('pointerup',event=>{if(!down){return;}const total=Math.hypot(event.clientX-down.x,event.clientY-down.y);if(!dragging&&total<=6){const rect=canvas.getBoundingClientRect(),point={x:((event.clientX-rect.left)/rect.width)*canvas.clientWidth,y:((event.clientY-rect.top)/rect.height)*canvas.clientHeight};if(this.pickModelAt(point))this._suppressMapToggleUntil=performance.now()+280;}else this._suppressMapToggleUntil=performance.now()+320;canvas.releasePointerCapture?.(event.pointerId);down=null;dragging=false;}); canvas.addEventListener('pointercancel',()=>{down=null;dragging=false;});
       this.syncThree();
     } catch(err){ this.dataset.three='fallback'; console.warn('Three.js indisponível, mantendo mapa 2D.',err); }
   }
@@ -220,11 +222,17 @@ export class MapScene extends HTMLElement {
   applySceneView(view,animate=true){
     const theme=viewThemes[view]||viewThemes.assistant,targetDegrees=Math.max(4,Math.min(14,Number(theme.tilt)||8)),targetX=targetDegrees*Math.PI/180; this.dataset.sceneTilt=`${targetDegrees}deg`;
     if(!this.sceneStage){this._sceneTargetX=targetX;return;}
-    const finish=()=>{this.sceneStage.rotation.x=targetX;this.sceneStage.rotation.z=0;this.sceneStage.scale.set(1,1,1);this.renderer?.render(this.scene,this.camera);};
+    const targetZ=(this.sceneManualRotation||0)*Math.PI/180,finish=()=>{this.sceneStage.rotation.x=targetX;this.sceneStage.rotation.z=targetZ;this.sceneStage.scale.set(1,1,1);this.renderer?.render(this.scene,this.camera);};
     if(!animate){finish();return;}
     const startX=this.sceneStage.rotation.x,startZ=this.sceneStage.rotation.z,startScale=this.sceneStage.scale.x||1,started=performance.now(),duration=780,token=Symbol('scene-transition');this._sceneTransition=token;
-    const tick=now=>{if(this._sceneTransition!==token)return;const t=Math.min(1,(now-started)/duration),e=t<.5?4*t*t*(3-2*t):t;this.sceneStage.rotation.x=startX+(targetX-startX)*e;this.sceneStage.rotation.z=startZ*(1-e);const s=startScale+(1-startScale)*e;this.sceneStage.scale.set(s,s,s);this.renderer?.render(this.scene,this.camera);if(t<1)requestAnimationFrame(tick);else finish();};
+    const tick=now=>{if(this._sceneTransition!==token)return;const t=Math.min(1,(now-started)/duration),e=t<.5?4*t*t*(3-2*t):t;this.sceneStage.rotation.x=startX+(targetX-startX)*e;this.sceneStage.rotation.z=startZ+(targetZ-startZ)*e;const s=startScale+(1-startScale)*e;this.sceneStage.scale.set(s,s,s);this.renderer?.render(this.scene,this.camera);if(t<1)requestAnimationFrame(tick);else finish();};
     requestAnimationFrame(tick);
+  }
+  setSceneRotation(degrees,animate=true){
+    const normalized=((Number(degrees)%360)+540)%360-180; this.sceneManualRotation=normalized; this.dataset.sceneRotation=`${Math.round(normalized)}deg`;
+    if(!this.sceneStage)return; const target=normalized*Math.PI/180,start=this.sceneStage.rotation.z;
+    if(!animate){this._sceneTransition=Symbol('manual-rotation');this.sceneStage.rotation.z=target;this.renderer?.render(this.scene,this.camera);return;}
+    const started=performance.now(),duration=420,token=Symbol('manual-rotation');this._sceneTransition=token;const tick=now=>{if(this._sceneTransition!==token)return;const t=Math.min(1,(now-started)/duration),e=t<.5?4*t*t*(3-2*t):t;this.sceneStage.rotation.z=start+(target-start)*e;this.renderer?.render(this.scene,this.camera);if(t<1)requestAnimationFrame(tick);};requestAnimationFrame(tick);
   }
 }
 customElements.define('map-scene', MapScene);
