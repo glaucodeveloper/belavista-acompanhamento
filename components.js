@@ -190,7 +190,7 @@ export class MapScene extends HTMLElement {
   }
   loadMasterplan(THREE,GLTFLoader){
     const loader=new GLTFLoader();
-    const modelUrl='./assets/model/alianca_park_masterplan_preview.glb'; this.dataset.modelSource='preview-glb';
+    const modelUrl='./assets/model/alianca_park_masterplan_preview.glb'; this.dataset.modelSource='loaded-glb'; this.dataset.modelRender='webgl';
     loader.load(modelUrl,gltf=>{
       const model=gltf.scene; const box=new THREE.Box3().setFromObject(model); const size=box.getSize(new THREE.Vector3());
       const largest=Math.max(size.x,size.y,size.z)||1; const factor=145/largest; model.scale.setScalar(factor); model.rotation.set(Math.PI/2,0,0); model.updateMatrixWorld(true);
@@ -275,7 +275,7 @@ export class MapScene extends HTMLElement {
     if(!Number.isFinite(w)||!Number.isFinite(h)||w<2||h<2)return;
     this.dataset.leafletZoom=String(this.map.getZoom());
     const mapCenter=this.map.getCenter(); this.dataset.leafletCenter=`${mapCenter.lat.toFixed(6)},${mapCenter.lng.toFixed(6)}`;
-    this.renderer.setSize(w,h,false); this.camera.left=0; this.camera.right=w; this.camera.top=0; this.camera.bottom=h; this.camera.near=-500; this.camera.far=500; this.camera.position.set(0,0,10); this.camera.lookAt(0,0,0); this.camera.updateProjectionMatrix();
+    const modelPitch=14*Math.PI/180; this.renderer.setSize(w,h,false); this.camera.left=-w/2; this.camera.right=w/2; this.camera.top=h/2; this.camera.bottom=-h/2; this.camera.near=-2400; this.camera.far=2400; this.camera.position.set(w/2,h/2,1200); this.camera.rotation.set(-modelPitch,0,0); this.camera.updateProjectionMatrix();
     const theme=viewThemes[appStore.get().view]||viewThemes.assistant;
     this.dataset.themeCenter=`${theme.center[0]},${theme.center[1]}`; this.dataset.themeZoom=String(theme.zoom);
     const panX=Number(this.sceneManualPan?.x)||0,panY=Number(this.sceneManualPan?.y)||0;
@@ -300,7 +300,7 @@ export class MapScene extends HTMLElement {
           const localScale=frame/this.masterplanLargest,sourceScale=this.modelSourceFootprint?.scale||localScale,footprint={x:(this.modelSourceFootprint?.x||this.masterplanLargest)*(localScale/sourceScale),y:(this.modelSourceFootprint?.y||this.masterplanLargest)*(localScale/sourceScale)},mapW=Math.max(1,footprint.x*1.14),mapH=Math.max(1,footprint.y*1.14),mapTheme={...theme,zoom:Number(this.dataset.mapFitZoom)||theme.zoom};
           const mapCoverage=Math.max(1,w*1.08/mapW,h*1.08/mapH),sceneMapW=mapW*mapCoverage,sceneMapH=mapH*mapCoverage; surfaceCenterX=sceneMapW/2; surfaceCenterY=sceneMapH/2;
           const overlay=this.querySelector('.three-overlay'); if(overlay){overlay.style.left='50%';overlay.style.top='50%';overlay.style.right='auto';overlay.style.bottom='auto';overlay.style.width=`${sceneMapW}px`;overlay.style.height=`${sceneMapH}px`;}
-          this.renderer.setSize(sceneMapW,sceneMapH,false); this.camera.left=0; this.camera.right=sceneMapW; this.camera.top=0; this.camera.bottom=sceneMapH; this.camera.near=-500; this.camera.far=500; this.camera.position.set(0,0,10); this.camera.lookAt(0,0,0); this.camera.updateProjectionMatrix(); if(this.sceneStage)this.sceneStage.position.set(surfaceCenterX,surfaceCenterY,0);
+          this.renderer.setSize(sceneMapW,sceneMapH,false); this.camera.left=-sceneMapW/2; this.camera.right=sceneMapW/2; this.camera.top=sceneMapH/2; this.camera.bottom=-sceneMapH/2; this.camera.near=-3600; this.camera.far=3600; this.camera.position.set(surfaceCenterX,surfaceCenterY,1800); this.camera.rotation.set(-modelPitch,0,0); this.camera.updateProjectionMatrix(); if(this.sceneStage)this.sceneStage.position.set(surfaceCenterX,surfaceCenterY,0);
           this.mapSurface.scale.set(sceneMapW,sceneMapH,1); this.refreshMapSurface(mapTheme,sceneMapW,sceneMapH); this.refreshOsmRaster(mapTheme,sceneMapW,sceneMapH); this.dataset.sceneFootprint=`${Math.round(footprint.x)}x${Math.round(footprint.y)}`; this.dataset.sceneMapScale=`${Math.round(sceneMapW)}x${Math.round(sceneMapH)}`; this.dataset.modelScreen=`centered · ${Math.round(footprint.x)}x${Math.round(footprint.y)}`;
           if(!this.initialSceneFocusApplied&&this.modelLeisureFocusNodes?.length){const leisureBounds=new this.THREE.Box3();this.modelLeisureFocusNodes.forEach(node=>leisureBounds.expandByObject(node));const leisureCenter=leisureBounds.getCenter(new this.THREE.Vector3()),focusX=leisureCenter.x-baseCenterX,focusY=leisureCenter.y-baseCenterY,focusPanX=-focusX*INITIAL_SCENE_ZOOM,focusPanY=-focusY*INITIAL_SCENE_ZOOM;this.sceneManualPan={x:focusPanX,y:focusPanY};this.style.setProperty('--scene-pan-x',`${focusPanX}px`);this.style.setProperty('--scene-pan-y',`${focusPanY}px`);this.dataset.sceneFocus='Área de lazer · pavilhão';this.dataset.leisureFocus=`${Math.round(focusX)},${Math.round(focusY)}`;this.initialSceneFocusApplied=true;}
         }
