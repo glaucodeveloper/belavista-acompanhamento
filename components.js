@@ -660,7 +660,7 @@ ViewLayer.prototype.bindGhostConnections = function(){
     window.addEventListener('pointerup',finish,{once:true});
     window.addEventListener('pointercancel',finish,{once:true});
     move(event);
-  });
+  },true);
 };
 
 const dashboardFilters=[
