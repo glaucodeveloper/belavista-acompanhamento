@@ -6,6 +6,7 @@
 }
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}body{overflow:hidden}button,input{font:inherit}button{color:inherit}
 svg{width:18px;height:18px;stroke-width:1.8}.boot-screen{position:fixed;inset:0;display:grid;place-items:center;background:#06111f;z-index:9999}.boot-screen p{color:var(--muted);margin-top:84px}.boot-orb{position:absolute;width:46px;height:46px;border:3px solid rgba(255,255,255,.12);border-top-color:var(--violet);border-radius:50%;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.surface-edge-label{display:flex;align-items:center;cursor:text}.surface-edge-label input{width:142px;min-height:22px;padding:2px 5px;border:0;outline:0;background:transparent;color:#fff;font:inherit}.surface-edge-label input:focus{background:#0b2d61;box-shadow:inset 0 0 0 1px #78a9ff}
 [hidden]{display:none!important}
 /* Installation */
 .install-wrap{min-height:100vh;display:grid;place-items:center;padding:36px;background:radial-gradient(circle at 20% 10%,rgba(124,92,255,.22),transparent 30%),radial-gradient(circle at 80% 70%,rgba(47,230,174,.12),transparent 28%),#06111f;overflow:auto}
