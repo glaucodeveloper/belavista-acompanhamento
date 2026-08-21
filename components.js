@@ -961,6 +961,84 @@ ViewLayer.prototype.addStageUtilities=function(){
   if(panel&&body)body.before(panel);
 };
 
+// Each stage keeps its operational views in one compact tab bar. The canvas
+// remains the primary free surface, while the other panes expose the same
+// stage data as schedule, agenda, and actionable to-dos.
+ViewLayer.prototype.splitStageTabs=function(){
+  const panel=this.querySelector('.stage-utilities');
+  if(!panel||panel.dataset.split)return;
+  const tabs=panel.querySelector('.utility-tabs');
+  const content=panel.querySelector('.utility-content');
+  if(!tabs||!content)return;
+  panel.dataset.split='true';
+
+  const agendaPane=document.createElement('div');
+  agendaPane.className='utility-pane';
+  agendaPane.dataset.pane='agenda';
+  agendaPane.append(...Array.from(content.childNodes));
+
+  tabs.innerHTML=`
+    <button class="utility-tab active" type="button" data-utility-tab="cronograma">${ico('calendar-clock')} Cronograma</button>
+    <button class="utility-tab" type="button" data-utility-tab="agenda">${ico('calendar-days')} Agenda</button>
+    <button class="utility-tab" type="button" data-utility-tab="canvas">${ico('workflow')} Canvas organizacional</button>
+    <button class="utility-tab" type="button" data-utility-tab="afazeres">${ico('list-checks')} A Fazeres</button>`;
+  content.replaceChildren();
+
+  const cronogramaPane=document.createElement('div');
+  cronogramaPane.className='utility-pane';
+  cronogramaPane.dataset.pane='cronograma';
+  cronogramaPane.innerHTML=`<div class="timeline-utility">
+    <span class="activity-kind">CRONOGRAMA DA ETAPA</span>
+    <h3>Dependências e marcos</h3>
+    <div class="mini-timeline"><b>Início</b><i></i><b>Medição</b><i></i><b>Validação</b><i></i><b>Conclusão</b></div>
+    <p>Visualização dos marcos previstos e das dependências da etapa.</p>
+  </div>`;
+
+  const canvasPane=document.createElement('div');
+  canvasPane.className='utility-pane utility-canvas-pane';
+  canvasPane.dataset.pane='canvas';
+  canvasPane.innerHTML=`<div class="utility-canvas-summary">
+    <div><span class="activity-kind">CANVAS ORGANIZACIONAL</span><h3>Superfície livre da etapa</h3><p>Use os cards abaixo para criar relações e abrir o fluxo de preenchimento.</p></div>
+    <div class="utility-canvas-stats"><b>3</b><small>cards ativos</small><b>2</b><small>relações</small></div>
+    <button type="button" class="agenda-action" data-utility-focus="stage-canvas">Ver superfície livre</button>
+  </div>`;
+
+  const todoPane=document.createElement('div');
+  todoPane.className='utility-pane';
+  todoPane.dataset.pane='afazeres';
+  const todoLabels=Array.from(agendaPane.querySelectorAll('.todo-grid label')).map(label=>label.cloneNode(true));
+  todoPane.innerHTML=`<div class="todo-focus">
+    <span class="activity-kind">A FAZERES DA ETAPA</span>
+    <h3>Execução diária</h3>
+    <p>Itens pendentes, responsáveis e alertas de prazo.</p>
+    <div class="todo-grid"></div>
+    <button type="button" class="agenda-action utility-add-todo">＋ Adicionar afazer</button>
+  </div>`;
+  todoPane.querySelector('.todo-grid').append(...todoLabels);
+
+  content.append(cronogramaPane,agendaPane,canvasPane,todoPane);
+  const panes=Array.from(content.querySelectorAll('[data-pane]'));
+  const show=name=>{
+    tabs.querySelectorAll('.utility-tab').forEach(tab=>tab.classList.toggle('active',tab.dataset.utilityTab===name));
+    panes.forEach(pane=>{pane.hidden=pane.dataset.pane!==name;});
+    notify(`${name==='afazeres'?'A fazeres':name[0].toUpperCase()+name.slice(1)} da etapa ativada.`);
+  };
+  tabs.querySelectorAll('[data-utility-tab]').forEach(tab=>tab.addEventListener('click',()=>show(tab.dataset.utilityTab)));
+  canvasPane.querySelector('[data-utility-focus]')?.addEventListener('click',()=>{
+    this.querySelector('.stage-canvas')?.scrollIntoView({behavior:'smooth',block:'start'});
+    notify('Superfície livre da etapa destacada.','success');
+  });
+  todoPane.querySelector('.utility-add-todo')?.addEventListener('click',()=>{
+    const label=prompt('Descreva o novo afazer da etapa:');
+    if(!label?.trim())return;
+    const item=document.createElement('label');
+    item.innerHTML=`<input type="checkbox"> ${esc(label.trim())} <small>Agora · responsável a definir</small>`;
+    todoPane.querySelector('.todo-grid').appendChild(item);
+    notify('Afazer adicionado à etapa.','success');
+  });
+  show('cronograma');
+};
+
 // Dashboard cards float above the persistent map and can be repositioned
 // without changing the map/model scene or triggering a view rerender.
 ViewLayer.prototype.bindDashboardCardDrag=function(){
