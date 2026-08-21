@@ -314,14 +314,14 @@ export class MapScene extends HTMLElement {
     const finish=()=>{this.setSceneVisual(targetTilt,targetRotation,targetScale);this.syncThree();};
     if(!animate){finish();return;}
     const started=performance.now(),duration=460,token=Symbol('scene-transition');this._sceneTransition=token;
-    const tick=now=>{if(this._sceneTransition!==token)return;const t=Math.min(1,(now-started)/duration),e=t<.5?4*t*t*(3-2*t):t;this.setSceneVisual(current.tilt+(targetTilt-current.tilt)*e,current.rotation+(targetRotation-current.rotation)*e,current.scale+(targetScale-current.scale)*e);if(t<1)requestAnimationFrame(tick);else finish();};
+    const tick=now=>{if(this._sceneTransition!==token)return;const t=Math.min(1,(now-started)/duration),e=t*t*(3-2*t);this.setSceneVisual(current.tilt+(targetTilt-current.tilt)*e,current.rotation+(targetRotation-current.rotation)*e,current.scale+(targetScale-current.scale)*e);if(t<1)requestAnimationFrame(tick);else finish();};
     requestAnimationFrame(tick);
   }
   setSceneRotation(degrees,animate=true){
     const normalized=((Number(degrees)%360)+540)%360-180; this.sceneManualRotation=normalized; this.dataset.sceneRotation=`${Math.round(normalized)}deg`;
     if(!this.sceneStage)return; const start=this._sceneVisual?.rotation||0;
     if(!animate){this._sceneTransition=Symbol('manual-rotation');this.setSceneVisual(this._sceneVisual?.tilt||Number.parseFloat(this.dataset.sceneTilt)||40,normalized,this._sceneVisual?.scale||this.sceneManualZoom);return;}
-    const started=performance.now(),duration=420,token=Symbol('manual-rotation');this._sceneTransition=token;const tick=now=>{if(this._sceneTransition!==token)return;const t=Math.min(1,(now-started)/duration),e=t<.5?4*t*t*(3-2*t):t;this.setSceneVisual(this._sceneVisual?.tilt||Number.parseFloat(this.dataset.sceneTilt)||40,start+(normalized-start)*e,this._sceneVisual?.scale||this.sceneManualZoom);if(t<1)requestAnimationFrame(tick);};requestAnimationFrame(tick);
+    const started=performance.now(),duration=420,token=Symbol('manual-rotation');this._sceneTransition=token;const tick=now=>{if(this._sceneTransition!==token)return;const t=Math.min(1,(now-started)/duration),e=t*t*(3-2*t);this.setSceneVisual(this._sceneVisual?.tilt||Number.parseFloat(this.dataset.sceneTilt)||40,start+(normalized-start)*e,this._sceneVisual?.scale||this.sceneManualZoom);if(t<1)requestAnimationFrame(tick);};requestAnimationFrame(tick);
   }
   setScenePan(x,y,animate=true){
     const w=this.querySelector('.three-overlay')?.clientWidth||1280,h=this.querySelector('.three-overlay')?.clientHeight||800;
@@ -341,7 +341,7 @@ export class MapScene extends HTMLElement {
   setSceneZoom(value,animate=true){
     const target=Math.max(.9,Math.min(MAX_SCENE_ZOOM,Number(value)||DEFAULT_SCENE_ZOOM)); this.sceneManualZoom=target; this.dataset.sceneZoom=`${Math.round(target*100)}%`; this.dataset.sceneZoomMax=`${Math.round(MAX_SCENE_ZOOM*100)}%`;
     if(!this.sceneStage)return; const start=this._sceneVisual?.scale||1,targetScale=target; if(!animate){this._sceneTransition=Symbol('manual-zoom');this.setSceneVisual(this._sceneVisual?.tilt||40,this._sceneVisual?.rotation||0,targetScale);return;}
-    const started=performance.now(),duration=320,token=Symbol('manual-zoom');this._sceneTransition=token;const tick=now=>{if(this._sceneTransition!==token)return;const t=Math.min(1,(now-started)/duration),e=t<.5?4*t*t*(3-2*t):t;this.setSceneVisual(this._sceneVisual?.tilt||40,this._sceneVisual?.rotation||0,start+(targetScale-start)*e);if(t<1)requestAnimationFrame(tick);else this.syncThree();};requestAnimationFrame(tick);
+    const started=performance.now(),duration=320,token=Symbol('manual-zoom');this._sceneTransition=token;const tick=now=>{if(this._sceneTransition!==token)return;const t=Math.min(1,(now-started)/duration),e=t*t*(3-2*t);this.setSceneVisual(this._sceneVisual?.tilt||40,this._sceneVisual?.rotation||0,start+(targetScale-start)*e);if(t<1)requestAnimationFrame(tick);else this.syncThree();};requestAnimationFrame(tick);
   }
   setSceneTiltAdjust(value,animate=true){this.sceneTiltAdjust=Math.max(-8,Math.min(8,Number(value)||0));this.applySceneView(appStore.get().view,animate);}
   fitSceneView(animate=true){this.sceneManualRotation=0;this.sceneManualZoom=DEFAULT_SCENE_ZOOM;this.sceneManualPan={x:0,y:0};this.sceneTiltAdjust=0;this.dataset.sceneRotation='0deg';this.dataset.sceneZoom='112%';this.dataset.scenePan='0,0';this.style.setProperty('--scene-pan-x','0px');this.style.setProperty('--scene-pan-y','0px');this.applySceneView(appStore.get().view,animate);if(animate)setTimeout(()=>this.syncThree(),520);}
