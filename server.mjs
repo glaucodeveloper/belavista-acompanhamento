@@ -8,7 +8,7 @@ try { const env = await readFile(join(serverRoot, '.env'), 'utf8'); for (const l
 const root = process.env.BELAVISTA_FRONTEND_ROOT ? resolve(process.env.BELAVISTA_FRONTEND_ROOT) : fileURLToPath(new URL('.', import.meta.url));
 const port = Number(process.env.PORT || 8080);
 const model = process.env.GEMINI_MODEL || 'gemini-3.7-flash';
-const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.webmanifest':'application/manifest+json'};
+const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.webmanifest':'application/manifest+json'};
 const {health,entitySummary,listRecords,createRecord,updateRecord,deleteRecord}=await import('./persistence.mjs');
 
 async function body(req){ let data=''; for await (const chunk of req) data+=chunk; return JSON.parse(data||'{}'); }

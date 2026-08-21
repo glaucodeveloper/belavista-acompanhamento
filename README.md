@@ -32,15 +32,23 @@ Abra:
 
 ```text
 http://localhost:8080
+```
 
 O chat usa o endpoint local `/api/gemini`, que encaminha a solicitação para a API Gemini. A chave nunca é enviada ao navegador. Sem `GEMINI_API_KEY`, o app permanece funcional em modo demonstração.
-```
 
 Para pular a tela de instalação e entrar direto na demonstração:
 
 ```text
 http://localhost:8080/?demo=1
 ```
+
+## Mapa e captação pública
+
+- O dashboard inicial usa o mapa compartilhado com filtros de Execução, Colaboradores, Cronograma, Leads, Materiais e Riscos.
+- A página pública exportada está em `public-leads.html` e pode ser aberta em `http://localhost:8080/public-leads.html`.
+- `public-lead-form.mjs` envia as intenções para o Realtime Database Firebase em `publicLeads`, usando autenticação anônima antes da gravação.
+- Ative **Authentication → Sign-in method → Anonymous** no projeto Firebase e publique `firebase.database.rules.json` nas regras do Realtime Database.
+- A configuração web do Firebase é pública por natureza; a proteção real fica nas regras, App Check e autenticação. Não coloque chaves privadas no frontend.
 
 ## GitHub + SSH
 

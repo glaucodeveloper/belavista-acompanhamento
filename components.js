@@ -1,4 +1,5 @@
 import {appStore, demoData, viewThemes, spreadsheetSchema, activityCatalog} from './state.js?v=2';
+import './public-lead-form.mjs?v=1';
 
 const ico = (name, cls='') => `<i data-lucide="${name}" class="${cls}"></i>`;
 const esc = (s='') => String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -411,6 +412,7 @@ export class ViewLayer extends HTMLElement {
   }
   render(){ const view=appStore.get().view; this.dataset.view=view; const labels={assistant:['Execução atual','Panorama operacional'],map:['Mapa operacional','Visão temática por utilidade'],stages:['Etapas da obra','Canvas de execução e dependências'],purchases:['Compras','Compromissos, prazos e fornecedores'],inventory:['Inventário','Materiais, reservas e consumo'],leads:['Leads','Captação pública e intenção de compra'],collaborators:['Colaboradores','Alocação e presença em campo'],reports:['Relatórios','Orçamento, realizado e indicadores'],settings:['Configuração','Integrações e parâmetros']}; const [title,subtitle]=labels[view]||labels.assistant; this.innerHTML=`<div class="activity-header"><div><span>${title}</span><small>${subtitle}</small></div><div class="activity-state"><i></i> Em acompanhamento <b>·</b> ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div></div>${view==='stages'?this.stagesCanvas():(this[view]?.() || this.assistant())}`; if(view==='stages'){this.addActivityNodes();this.addStageUtilities();this.splitStageTabs();} window.lucide?.createIcons(); this.bind(); }
   bind(){
+    this.querySelectorAll('.card-close').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();event.stopImmediatePropagation();button.closest('.float-card')?.remove();appStore.set({lastAction:'Ocultou um card do dashboard'});}));
     this.querySelector('.records-new')?.addEventListener('click',()=>{this.querySelector('.records-form-wrap')?.classList.add('open');});
     this.querySelectorAll('[data-record-edit]').forEach(b=>b.addEventListener('click',()=>{appStore.set({editingRecord:b.dataset.recordEdit});}));
     this.querySelectorAll('[data-record-delete]').forEach(b=>b.addEventListener('click',async()=>{if(!confirm('Excluir este registro?'))return;try{const response=await fetch(`/api/records/${encodeURIComponent(b.dataset.recordDelete)}`,{method:'DELETE'});if(!response.ok)throw new Error(`HTTP ${response.status}`);appStore.update(s=>({...s,records:s.records.filter(r=>r.id!==b.dataset.recordDelete),lastAction:'Excluiu registro no banco'}));notify('Registro excluído do banco local.','success');}catch(error){notify('Não foi possível excluir o registro.','warning');console.warn('Exclusão persistente indisponível.',error);}}));
@@ -458,6 +460,176 @@ export class ViewLayer extends HTMLElement {
   reports(){ return `<glass-card class="float-card reports-main"><div class="card-head"><div><h3>${ico('chart-no-axes-combined')} Relatórios / Indicadores</h3><small>Consolidação administrativa · ${spreadsheetSchema.months} meses</small></div><span class="chip violet">Atualizado agora</span></div><div class="report-grid"><div><small>Avanço físico</small><strong>68,4%</strong></div><div><small>Realizado</small><strong>R$ 1,84M</strong></div><div><small>Saldo projetado</small><strong>R$ 485k</strong></div><div><small>Variação mensal</small><strong>+8,2%</strong></div></div><table class="report-table"><thead><tr><th>Centro de custo</th><th>Orçado</th><th>Realizado</th><th>Consumo</th><th>Sinal</th></tr></thead><tbody>${[['Terraplanagem','R$ 420k','R$ 388k','92%','Dentro'],['Drenagem','R$ 610k','R$ 566k','93%','Atenção'],['Rede de Água','R$ 350k','R$ 210k','60%','Normal'],['Pavimentação','R$ 880k','R$ 622k','71%','Normal']].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td><span class="status ${r[4]==='Atenção'?'pendente':'concluido'}">${r[4]}</span></td></tr>`).join('')}</tbody></table><button>${ico('file-down')} Gerar relatório executivo</button></glass-card>`; }
   settings(){ return `<glass-card class="float-card settings-card"><h3>${ico('settings')} Configurações</h3><p>Configuração local da PWA e integração opcional com GitHub.</p><button id="reinstall">Reabrir instalação</button><button id="clearPat">Limpar PAT local</button></glass-card>`; }
 }
+
+// Conexões do canvas: um único gesto pointer-based para cards existentes e novos.
+// Fica fora da classe para substituir o handler legado sem reescrever o bloco
+// minificado de compatibilidade que ainda existe no arquivo.
+ViewLayer.prototype.bindGhostConnections = function(){
+  const canvas=this.querySelector('.dedicated-canvas');
+  if(!canvas||canvas.dataset.pointerConnections)return;
+  const svg=canvas.querySelector('.surface-edges');
+  if(!svg)return;
+  canvas.dataset.pointerConnections='true';
+
+  const point=(clientX,clientY)=>{
+    const rect=canvas.getBoundingClientRect();
+    return {x:clientX-rect.left+canvas.scrollLeft,y:clientY-rect.top+canvas.scrollTop};
+  };
+  const anchor=(node,side='out')=>{
+    const x=node.offsetLeft+(side==='in'?0:node.offsetWidth);
+    return {x,y:node.offsetTop+node.offsetHeight/2};
+  };
+  const curve=(x1,y1,x2,y2)=>{
+    const bend=Math.max(56,Math.min(190,Math.abs(x2-x1)*.45));
+    return `M ${x1} ${y1} C ${x1+bend} ${y1}, ${x2-bend} ${y2}, ${x2} ${y2}`;
+  };
+  const targetAt=(clientX,clientY)=>{
+    const node=document.elementFromPoint(clientX,clientY)?.closest('.workflow-card');
+    return node&&canvas.contains(node)?node:null;
+  };
+  const preview=(source,clientX,clientY,target)=>{
+    svg.querySelector('.connection-preview')?.remove();
+    const from=anchor(source,'out'),to=target?anchor(target,'in'):point(clientX,clientY);
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.classList.add('surface-edge','connection-preview');
+    path.setAttribute('d',curve(from.x,from.y,to.x,to.y));
+    svg.appendChild(path);
+  };
+  const relation=(from,to,label='depende de')=>{
+    if(!from||!to||from===to)return;
+    const duplicate=[...canvas.querySelectorAll('.surface-relation')].some(item=>item.dataset.from===from.dataset.nodeId&&item.dataset.to===to.dataset.nodeId);
+    if(duplicate)return;
+    const rel=document.createElement('span');
+    rel.className='surface-relation';
+    rel.dataset.from=from.dataset.nodeId;
+    rel.dataset.to=to.dataset.nodeId;
+    rel.dataset.label=label;
+    canvas.appendChild(rel);
+    this.drawSurfaceRelations(canvas);
+  };
+  const clearState=(source,target,ghost)=>{
+    source?.classList.remove('relation-source','connection-dragging');
+    target?.classList.remove('relation-target');
+    ghost?.remove();
+    svg.querySelector('.connection-preview')?.remove();
+  };
+  const showNewActivityForm=(source,clientX,clientY)=>{
+    const drop=point(clientX,clientY);
+    const form=document.createElement('form');
+    form.className='workflow-drop-form';
+    form.style.left=`${Math.max(12,drop.x-64)}px`;
+    form.style.top=`${Math.max(76,drop.y-18)}px`;
+    const options=activityCatalog.slice(0,8).map(item=>`<option value="${esc(item.name)}">${esc(item.nature)} · ${esc(item.name)}</option>`).join('');
+    form.innerHTML=`<b>Nova atividade conectada</b><small>Origem: ${esc(source.querySelector('strong')?.textContent||'atividade')}</small><label>Categoria<select name="categoria">${options}</select></label><label>Nome da atividade<input name="nome" required placeholder="Ex.: Validar execução da frente"></label><label>Tempo previsto <input name="horas" type="number" min="0.5" step="0.5" value="4"> h</label><div class="workflow-drop-actions"><button type="button" data-cancel>Cancelar</button><button type="submit">Criar e conectar</button></div>`;
+    canvas.appendChild(form);
+    form.querySelector('[data-cancel]')?.addEventListener('click',()=>form.remove());
+    form.addEventListener('submit',event=>{
+      event.preventDefault();
+      const data=new FormData(form),category=activityCatalog.find(item=>item.name===data.get('categoria'));
+      const name=String(data.get('nome')||category?.name||'Nova atividade').trim();
+      const card=document.createElement('button');
+      card.type='button';
+      card.className='dedicated-activity workflow-card';
+      card.dataset.nodeId=`workflow-${Date.now()}-${Math.round(Math.random()*1000)}`;
+      card.dataset.hours=String(data.get('horas')||4);
+      card.style.left=`${Math.max(12,drop.x-64)}px`;
+      card.style.top=`${Math.max(76,drop.y-18)}px`;
+      card.style.width='154px';
+      card.innerHTML=`<span class="activity-kind">${esc(category?.nature||'NOVA ATIVIDADE')}</span><strong>${esc(name)}</strong><small>${esc(data.get('horas')||4)} hora(s) previstas · responsável a definir</small><em>Preencher campos →</em><span class="surface-port" title="Arrastar para conectar">●</span><span class="surface-resize" title="Ajustar duração"></span>`;
+      form.replaceWith(card);
+      this.makeSurfaceDrag(card,canvas);
+      this.bindWorkflowFieldTrees();
+      relation(source,card,'gera');
+      notify('Card criado e conectado à atividade de origem.','success');
+    });
+    form.querySelector('input[name="nome"]')?.focus();
+  };
+  // Impede o antigo listener de clique da primeira renderização de disputar o gesto.
+  canvas.addEventListener('click',event=>{
+    if(event.target.closest('.surface-port')){
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  },true);
+  canvas.addEventListener('pointerdown',event=>{
+    const port=event.target.closest('.surface-port');
+    if(!port||event.button!==0)return;
+    const source=port.closest('.workflow-card');
+    if(!source)return;
+    event.preventDefault();
+    event.stopPropagation();
+    source.classList.add('relation-source','connection-dragging');
+    const ghost=document.createElement('div');
+    ghost.className='connection-ghost connection-ghost-card';
+    ghost.innerHTML='<span class="activity-kind">NOVA ATIVIDADE</span><strong>Solte para preencher</strong><small>ou leve até outro card</small>';
+    canvas.appendChild(ghost);
+    let target=null;
+    const move=ev=>{
+      target=targetAt(ev.clientX,ev.clientY);
+      canvas.querySelectorAll('.workflow-card').forEach(card=>card.classList.toggle('relation-target',card===target&&card!==source));
+      const p=point(ev.clientX,ev.clientY);
+      ghost.style.left=`${Math.max(12,p.x+14)}px`;
+      ghost.style.top=`${Math.max(76,p.y+14)}px`;
+      preview(source,ev.clientX,ev.clientY,target&&target!==source?target:null);
+    };
+    const finish=ev=>{
+      window.removeEventListener('pointermove',move);
+      window.removeEventListener('pointerup',finish);
+      window.removeEventListener('pointercancel',finish);
+      const finalTarget=targetAt(ev.clientX,ev.clientY);
+      clearState(source,finalTarget,ghost);
+      if(finalTarget&&finalTarget!==source){
+        relation(source,finalTarget,'depende de');
+        notify('Linha de relacionamento criada. Clique no rótulo para editar.','success');
+      }else{
+        showNewActivityForm(source,ev.clientX,ev.clientY);
+        notify('Defina a nova atividade conectada.');
+      }
+    };
+    window.addEventListener('pointermove',move);
+    window.addEventListener('pointerup',finish,{once:true});
+    window.addEventListener('pointercancel',finish,{once:true});
+    move(event);
+  });
+};
+
+const dashboardFilters=[
+  ['execution','Execução Atual','activity','drenagem'],
+  ['collaborators','Colaboradores','users','terraplanagem'],
+  ['schedule','Cronograma','calendar-clock','pavimentacao'],
+  ['leads','Leads','users-round','urbanizacao'],
+  ['materials','Materiais','boxes','rede-agua'],
+  ['risks','Riscos','triangle-alert','rede-eletrica']
+];
+
+export class MapFilterRail extends HTMLElement {
+  connectedCallback(){this.render();}
+  render(){
+    const active=appStore.get().mapFilter||'execution';
+    this.innerHTML=`<div class="map-filter-rail-head"><span>FILTROS DO MAPA</span><small>Selecione uma utilidade para destacar a área correspondente</small></div><div class="map-filter-rail-items">${dashboardFilters.map(([key,label,icon])=>`<button type="button" class="map-filter-chip ${active===key?'active':''}" data-map-filter="${key}">${ico(icon)}<span>${label}</span></button>`).join('')}</div>`;
+    this.querySelectorAll('[data-map-filter]').forEach(button=>button.addEventListener('click',()=>this.select(button.dataset.mapFilter)));
+    window.lucide?.createIcons();
+  }
+  select(key){
+    const filter=dashboardFilters.find(item=>item[0]===key)||dashboardFilters[0];
+    const map=document.querySelector('map-scene:not([compact])');
+    appStore.set({mapFilter:key,lastAction:`Filtrou mapa por ${filter[1]}`});
+    map?.setStageOverlay(filter[3],false);
+    this.render();
+  }
+}
+customElements.define('map-filter-rail',MapFilterRail);
+
+ViewLayer.prototype.assistant=function(){
+  const m=demoData.metrics;
+  return `<div class="dashboard-home"><div class="scene-title dashboard-title"><span>IA · Belavista</span><small>Panorama operacional do empreendimento</small></div><glass-card class="float-card dashboard-ai-panel"><div class="dashboard-panel-title"><span class="ai-logo">✦</span><div><h2>IA · Belavista</h2><small>Resumo operacional atualizado</small></div></div><p class="dashboard-greeting">Bom dia, Warley. 👋</p><p>Este é o resumo do empreendimento com base nos dados de hoje.</p><div class="dashboard-kpis"><div><b>${m.completeness||63}%</b><small>Completude<br>geral</small></div><div><b>${m.delayed}</b><small>Etapas<br>atrasadas</small></div><div><b>${m.criticalPurchases}</b><small>Compras<br>críticas</small></div><div><b>${m.review}</b><small>Pendências<br>de revisão</small></div></div><h3 class="dashboard-question">O que você deseja acompanhar agora?</h3><div class="dashboard-quick-actions"><button data-view="stages">${ico('calendar-check')} Ver etapas críticas</button><button data-view="inventory">${ico('package-check')} Ver compras necessárias</button><button data-view="stages">${ico('calendar-range')} Ver cronograma de atividades</button><button data-view="leads">${ico('user-round-search')} Ver leads hoje</button><button data-view="records">${ico('clipboard-pen-line')} Registrar andamento</button><button data-view="map">${ico('layers-3')} Abrir mapa de completude</button></div><div class="dashboard-prompt">Pergunte algo ou dê um comando…<span>↗</span></div><small class="dashboard-example">Ex.: “Adicionar compra de 20 postes para a rede elétrica”</small></glass-card><glass-card class="float-card dashboard-completion-card"><div class="card-head"><h3>${ico('layers-3')} Mapa de completude</h3><button class="card-close" aria-label="Ocultar card">×</button></div><small>Setores destacados conforme o filtro ativo</small><ul class="legend"><li><i class="dot green"></i> Acima de 75%</li><li><i class="dot teal"></i> 50% a 75%</li><li><i class="dot amber"></i> 25% a 50%</li><li><i class="dot red"></i> Abaixo de 25%</li></ul><button data-view="map">${ico('scan-search')} Ver detalhes</button></glass-card><glass-card class="float-card dashboard-collab-card"><h3>${ico('users')} Colaboradores ativos</h3><div class="dashboard-stat-row"><b>${m.collaborators}</b><span>Hoje no canteiro</span></div><div class="dashboard-stat-row"><b>8</b><span>Em atividades externas</span></div><div class="dashboard-stat-row"><b>5</b><span>Equipamentos em uso</span></div><button data-view="collaborators">${ico('users-round')} Ver equipe</button></glass-card><glass-card class="float-card dashboard-schedule-card"><div class="card-head"><h3>${ico('calendar-days')} Cronograma de atividades</h3><button class="card-close" aria-label="Ocultar card">×</button></div><small>Semana 18 · 28/04 — 04/05</small><div class="dashboard-week"><i></i><i></i><i></i><i class="today"></i><i class="warn"></i><i></i><i></i></div><div class="dashboard-list"><span>12 atividades planejadas</span><span>8 em andamento</span><span>2 atrasadas</span></div><button data-view="stages">${ico('external-link')} Ver cronograma</button></glass-card><glass-card class="float-card dashboard-leads-card"><div class="card-head"><h3>${ico('users-round')} Leads dos últimos 7 dias</h3><button class="card-close" aria-label="Ocultar card">×</button></div><div class="dashboard-sparkline">⌁⌃⌁⌃⌁⌃⌁⌃</div><div class="dashboard-lead-stats"><span><b>${m.leads}</b><small>Total de leads</small></span><span><b>A12, A15, B07</b><small>Mais procurados</small></span></div><button data-view="leads">${ico('external-link')} Ver leads</button></glass-card><glass-card class="float-card dashboard-purchases-card"><div class="card-head"><h3>${ico('shopping-cart')} Compras críticas</h3><button class="card-close" aria-label="Ocultar card">×</button></div><strong>Postes de concreto 11m</strong><div class="dashboard-purchase-metrics"><span>Estoque atual <b>12 un.</b></span><span>Necessário <b>20 un.</b></span><span>Déficit <b class="danger">8 un.</b></span></div><p>Previsão de entrega: 3 dias</p><button data-view="inventory">${ico('external-link')} Ver compras</button></glass-card><div class="dashboard-action-bar"><button data-view="stages">${ico('bot')} Explicar atrasos</button><button data-view="stages">${ico('wand-sparkles')} Sugerir próximos passos</button><button data-view="reports">${ico('triangle-alert')} Ver riscos</button><button data-view="reports">${ico('file-chart-column')} Resumo executivo</button></div><map-filter-rail></map-filter-rail></div>`;
+};
+
+ViewLayer.prototype.leads=function(){
+  const s=appStore.get().selectedLead,lead=demoData.leads[s];
+  return `<div class="kpi-strip"><stat-pill icon="users" label="Intenções cadastradas" value="238" tone="violet" sub="+28 hoje"></stat-pill><stat-pill icon="map-pin" label="Lotes com interesse" value="96" tone="blue"></stat-pill><stat-pill icon="phone" label="Leads em contato" value="61" tone="teal"></stat-pill><stat-pill icon="badge-check" label="Qualificados" value="37" tone="amber"></stat-pill></div><public-lead-form></public-lead-form><glass-card class="float-card lead-detail"><h3>${ico('user-round-search')} Lead selecionado</h3><div class="person"><span class="avatar">${lead.name[0]}</span><div><strong>${lead.name}</strong><small>${lead.status}</small></div></div><dl><dt>Lote desejado</dt><dd>${lead.lot}</dd><dt>Faixa de valor</dt><dd>${lead.budget}</dd><dt>Nascer do sol</dt><dd>${lead.sun}</dd><dt>Altitude</dt><dd>${lead.altitude}</dd><dt>Terreno</dt><dd>${lead.terrain}</dd><dt>Objetivo</dt><dd>${lead.objective}</dd></dl></glass-card><glass-card class="float-card lot-intents"><h3>${ico('users-round')} Intenções relacionadas</h3>${demoData.leads.map((x,i)=>`<button class="lead-row ${i===s?'selected':''}" data-lead="${i}"><span class="avatar">${x.name[0]}</span><span><b>${x.name}</b><small>${x.lot} · ${x.budget}</small></span><em>${x.status}</em></button>`).join('')}</glass-card>`;
+};
+
 customElements.define('view-layer', ViewLayer);
 
 export {ico, esc};

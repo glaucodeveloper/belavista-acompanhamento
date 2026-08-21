@@ -94,7 +94,7 @@ export function createStore(initial) {
 
 export const appStore = createStore({
   view:'assistant', selectedLead:0, selectedMaterial:2, chatOpen:true, chatManual:false,
-  config:null, mapReady:false, installPrompt:null, lastAction:'Aplicação iniciada', theme:'dark',
+  config:null, mapReady:false, mapFilter:'execution', installPrompt:null, lastAction:'Aplicação iniciada', theme:'dark',
   sessionId:sessionStorage.getItem('belavista.session')||crypto.randomUUID().slice(0,8).toUpperCase(), sessionStarted:new Date().toISOString(), sidebarCollapsed:false, mapMode:'overview', adminMenu:false, selectedStage:2, editingRecord:null, records:[{id:'REG-001',obra:'Aliança Park',atividade:'Drenagem Pluvial',data:'2024-06-06',hora:'08:30',responsavel:'Carlos Mendes',detalhes:'Medição da rede principal',status:'Pendente'}]
 });
 sessionStorage.setItem('belavista.session',appStore.get().sessionId);
