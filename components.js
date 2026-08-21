@@ -186,6 +186,15 @@ export class MapScene extends HTMLElement {
       this.selectionHalo=new THREE.Mesh(new THREE.RingGeometry(8,13,48),new THREE.MeshBasicMaterial({color:0x2fe6ae,transparent:true,opacity:.88,side:THREE.DoubleSide,depthTest:false}));
       this.selectionHalo.visible=false; this.sceneStage.add(this.selectionHalo); this.applySceneView(appStore.get().view,true); this.loadMasterplan(THREE,GLTFLoader);
       let down=null,lastX=0,lastY=0,dragging=false,panning=false,tilting=false; canvas.addEventListener('contextmenu',event=>event.preventDefault()); canvas.addEventListener('wheel',event=>{event.preventDefault();this.setSceneZoom(this.sceneManualZoom+(event.deltaY<0?.06:-.06),false);},{passive:false}); canvas.addEventListener('pointerdown',event=>{down={x:event.clientX,y:event.clientY};lastX=event.clientX;lastY=event.clientY;dragging=false;tilting=event.shiftKey&&event.button===0;panning=!tilting&&(event.button===0||event.button===1||event.button===2);canvas.setPointerCapture?.(event.pointerId);}); canvas.addEventListener('pointermove',event=>{if(!down)return;const total=Math.hypot(event.clientX-down.x,event.clientY-down.y);if(!dragging&&total>6)dragging=true;if(dragging){const dx=event.clientX-lastX,dy=event.clientY-lastY;if(tilting)this.setSceneTiltAdjust(this.sceneTiltAdjust+dy*.05,false);else if(panning)this.setScenePan(this.sceneManualPan.x+dx,this.sceneManualPan.y+dy,false);lastX=event.clientX;lastY=event.clientY;this._suppressMapToggleUntil=performance.now()+300;}}); canvas.addEventListener('pointerup',event=>{if(!down){return;}const total=Math.hypot(event.clientX-down.x,event.clientY-down.y);if(event.button!==2&&!dragging&&total<=6){const rect=canvas.getBoundingClientRect(),point={x:((event.clientX-rect.left)/rect.width)*canvas.clientWidth,y:((event.clientY-rect.top)/rect.height)*canvas.clientHeight};if(this.pickModelAt(point))this._suppressMapToggleUntil=performance.now()+280;}else this._suppressMapToggleUntil=performance.now()+320;canvas.releasePointerCapture?.(event.pointerId);down=null;dragging=false;panning=false;tilting=false;}); canvas.addEventListener('pointercancel',()=>{down=null;dragging=false;panning=false;tilting=false;});
+      // Keep a DOM tile layer available while the WebGL canvas is being held.
+      // This prevents a transient WebGL redraw/context loss from exposing an
+      // empty background during a pan or tilt gesture.
+      canvas.addEventListener('pointerdown',()=>{this.dataset.mapGesture='holding';});
+      const releaseMapGesture=()=>{delete this.dataset.mapGesture;};
+      canvas.addEventListener('pointerup',releaseMapGesture);
+      canvas.addEventListener('pointercancel',releaseMapGesture);
+      canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();this.dataset.threeContext='lost';this.dataset.mapTexture='fallback';});
+      canvas.addEventListener('webglcontextrestored',()=>{delete this.dataset.threeContext;this.dataset.mapTexture='loading';this.syncThree();});
       this.syncThree();
     } catch(err){ this.dataset.three='fallback'; console.warn('Three.js indisponível, mantendo mapa 2D.',err); }
   }
