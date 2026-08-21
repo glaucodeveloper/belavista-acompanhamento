@@ -7,6 +7,16 @@ const notify = (message, tone='info') => { let host=document.querySelector('.app
 const validGeoPoint = point => point && Number.isFinite(Number(point.lat)) && Number.isFinite(Number(point.lng)) && Math.abs(Number(point.lat)) <= 90 && Math.abs(Number(point.lng)) <= 180;
 let mapPreviewSource='';
 const DEFAULT_SCENE_ZOOM=1.12, INITIAL_SCENE_ZOOM=1.32, MAX_SCENE_ZOOM=3.2, DEFAULT_TILT_BOOST=34, SCENE_SURFACE_SCALE=1.55, MODEL_FIT_RATIO=1.32, MODEL_VERTICAL_EXAGGERATION=8, SCENE_MAP_Z=0, SCENE_MODEL_BASE_Z=0;
+const chatLayouts={
+  assistant:{left:28,top:92},
+  map:{left:18,top:76},
+  stages:{left:18,top:18},
+  records:{left:18,top:104},
+  inventory:{left:18,top:132},
+  leads:{left:18,top:160},
+  reports:{left:18,top:18},
+  settings:{left:18,top:104}
+};
 const publishMapPreview = source => { if(!source)return; mapPreviewSource=source; document.querySelectorAll('map-scene[compact]').forEach(scene=>scene.setPreview?.(source)); };
 const stageOverlayKey = value => { const text=String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); if(text.includes('terra'))return 'terraplanagem'; if(text.includes('dren'))return 'drenagem'; if(text.includes('agua'))return 'rede-agua'; if(text.includes('eletric'))return 'rede-eletrica'; if(text.includes('paviment'))return 'pavimentacao'; if(text.includes('praca')||text.includes('urban')||text.includes('arbor'))return 'urbanizacao'; return 'drenagem'; };
 const stageOverlayLabels={terraplanagem:'Terraplanagem',drenagem:'Drenagem', 'rede-agua':'Rede de água','rede-eletrica':'Rede elétrica',pavimentacao:'Pavimentação',urbanizacao:'Praças / urbanização'};
@@ -61,12 +71,26 @@ export class AppTopbar extends HTMLElement {
 customElements.define('app-topbar', AppTopbar);
 
 export class AiChat extends HTMLElement {
-  connectedCallback(){ this.render(); appStore.subscribe(()=>this.positionForView()); this.enableDrag(); }
+  connectedCallback(){ this._chatView=null; this._transitionTimer=null; this.render(); appStore.subscribe(()=>this.positionForView()); this.enableDrag(); }
   positionForView(){
-    if(appStore.get().chatManual) return;
-    this.style.removeProperty('left'); this.style.removeProperty('right'); this.style.removeProperty('top'); this.style.removeProperty('bottom');
+    const {view,chatManual}=appStore.get();
+    if(chatManual) return;
+    const layoutName=chatLayouts[view]?view:'assistant';
+    const layout=chatLayouts[layoutName];
+    const changed=this._chatView!==null&&this._chatView!==view;
+    this._chatView=view;
+    this.style.removeProperty('left'); this.style.removeProperty('right'); this.style.removeProperty('top'); this.style.removeProperty('bottom'); this.style.removeProperty('transform');
     this.classList.remove('dock-right','dock-bottom');
     this.classList.add('dock-left');
+    const applyLayout=()=>{this.style.setProperty('--chat-left',`${layout.left}px`);this.style.setProperty('--chat-top',`${layout.top}px`);this.dataset.chatLayout=layoutName;};
+    if(!changed){
+      applyLayout();
+      return;
+    }
+    this.classList.add('is-transiting');
+    clearTimeout(this._transitionTimer);
+    requestAnimationFrame(applyLayout);
+    this._transitionTimer=setTimeout(()=>this.classList.remove('is-transiting'),560);
   }
   render(){
     this.className='ai-chat floating-panel dock-left';
