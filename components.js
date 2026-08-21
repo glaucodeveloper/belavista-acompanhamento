@@ -5,7 +5,7 @@ const esc = (s='') => String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;',
 const notify = (message, tone='info') => { let host=document.querySelector('.app-main'); if(!host)return; let toast=host.querySelector('.action-toast'); if(!toast){toast=document.createElement('div');toast.className='action-toast';host.appendChild(toast);} toast.dataset.tone=tone; toast.textContent=message; toast.classList.add('show'); clearTimeout(toast._timer); toast._timer=setTimeout(()=>toast.classList.remove('show'),2800); };
 const validGeoPoint = point => point && Number.isFinite(Number(point.lat)) && Number.isFinite(Number(point.lng)) && Math.abs(Number(point.lat)) <= 90 && Math.abs(Number(point.lng)) <= 180;
 let mapPreviewSource='';
-const DEFAULT_SCENE_ZOOM=1.12, MAX_SCENE_ZOOM=2.2, DEFAULT_TILT_BOOST=26, SCENE_SURFACE_SCALE=1.55, MODEL_FIT_RATIO=1.32, SCENE_MAP_Z=0, SCENE_MODEL_BASE_Z=0;
+const DEFAULT_SCENE_ZOOM=1.12, INITIAL_SCENE_ZOOM=1.32, MAX_SCENE_ZOOM=3.2, DEFAULT_TILT_BOOST=34, SCENE_SURFACE_SCALE=1.55, MODEL_FIT_RATIO=1.32, SCENE_MAP_Z=0, SCENE_MODEL_BASE_Z=0;
 const publishMapPreview = source => { if(!source)return; mapPreviewSource=source; document.querySelectorAll('map-scene[compact]').forEach(scene=>scene.setPreview?.(source)); };
 const stageOverlayKey = value => { const text=String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); if(text.includes('terra'))return 'terraplanagem'; if(text.includes('dren'))return 'drenagem'; if(text.includes('agua'))return 'rede-agua'; if(text.includes('eletric'))return 'rede-eletrica'; if(text.includes('paviment'))return 'pavimentacao'; if(text.includes('praca')||text.includes('urban')||text.includes('arbor'))return 'urbanizacao'; return 'drenagem'; };
 const stageOverlayLabels={terraplanagem:'Terraplanagem',drenagem:'Drenagem', 'rede-agua':'Rede de água','rede-eletrica':'Rede elétrica',pavimentacao:'Pavimentação',urbanizacao:'Praças / urbanização'};
@@ -103,7 +103,7 @@ customElements.define('ai-chat', AiChat);
 
 export class MapScene extends HTMLElement {
   connectedCallback(){
-    this.sceneManualRotation=0; this.sceneManualZoom=DEFAULT_SCENE_ZOOM; this.sceneManualPan={x:0,y:0}; this.sceneTiltAdjust=0; this.stageOverlayKey=stageOverlayKey(demoData.activities.find(x=>x.id===appStore.get().selectedStage)?.name); this.dataset.sceneRotation='0deg'; this.dataset.sceneZoom='112%'; this.dataset.sceneZoomMax='220%'; this.dataset.scenePan='0,0';
+    this.sceneManualRotation=0; this.sceneManualZoom=INITIAL_SCENE_ZOOM; this.sceneManualPan={x:0,y:0}; this.sceneTiltAdjust=0; this.initialSceneFocusApplied=false; this.stageOverlayKey=stageOverlayKey(demoData.activities.find(x=>x.id===appStore.get().selectedStage)?.name); this.dataset.sceneRotation='0deg'; this.dataset.sceneZoom='132%'; this.dataset.sceneZoomMax=`${Math.round(MAX_SCENE_ZOOM*100)}%`; this.dataset.scenePan='0,0';
     if(this.hasAttribute('compact')){ this.renderCompact(); return; }
     this.innerHTML=`<div class="map-fallback"></div><div class="map-host" aria-hidden="true"></div><div class="scene-world"><div class="osm-raster" aria-hidden="true"></div><div class="model-anchor" aria-hidden="true"><span>Aliança Park · masterplan 3D</span></div><canvas class="three-overlay"></canvas></div><div class="map-tint"></div><div class="map-badge">${ico('layers-3')} <span>Visão temática</span></div><div class="map-rotation-controls" aria-label="Controles de navegação do mapa"><span>MAPA · VISTA 3D</span><div class="map-overlay-switcher" role="group" aria-label="Highlights de infraestrutura">${Object.entries(stageOverlayLabels).map(([key,label])=>`<button type="button" data-scene-overlay="${key}" class="overlay-${key}">${label}</button>`).join('')}</div><div class="map-pan-pad" aria-label="Panorâmica"><button type="button" data-scene-pan="up" aria-label="Mover mapa para cima">↑</button><button type="button" data-scene-pan="left" aria-label="Mover mapa para a esquerda">←</button><button type="button" data-scene-pan="reset" aria-label="Centralizar mapa">⌖</button><button type="button" data-scene-pan="right" aria-label="Mover mapa para a direita">→</button><button type="button" data-scene-pan="down" aria-label="Mover mapa para baixo">↓</button></div><div class="map-view-row"><button type="button" data-scene-zoom="-0.08" aria-label="Afastar mapa">−</button><button type="button" data-scene-zoom="0.08" aria-label="Aproximar mapa">＋</button><button type="button" data-scene-tilt="-4" aria-label="Reduzir inclinação">▿</button><button type="button" data-scene-tilt="4" aria-label="Aumentar inclinação">▵</button></div><div class="map-rotation-row"><button type="button" data-scene-rotate="-15" aria-label="Girar para a esquerda">↺</button><button type="button" data-scene-rotate="15" aria-label="Girar para a direita">↻</button><button type="button" data-scene-rotate="reset" aria-label="Restaurar orientação">N</button></div><button type="button" class="map-fit-button" data-scene-fit aria-label="Ajustar enquadramento">⌗ Ajustar enquadramento</button><small>Arraste para girar · botão direito + arraste para inclinar · Shift + arraste para pan</small></div>`;
     this.querySelectorAll('[data-scene-rotate]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();const value=button.dataset.sceneRotate;this.setSceneRotation(value==='reset'?0:this.sceneManualRotation+Number(value),true);}));
@@ -157,8 +157,8 @@ export class MapScene extends HTMLElement {
     const host=this.querySelector('.map-host'); if(!host||this.map)return;
     const initial=viewThemes.assistant; const center=L.latLng(Number(initial.center[0]),Number(initial.center[1]));
     if(!validGeoPoint(center))return;
-    this.map=L.map(host,{zoomControl:false, attributionControl:true, preferCanvas:true, zoomAnimation:false, fadeAnimation:false}).setView(center,Number(initial.zoom)); this.dataset.leaflet='ready';
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(this.map);
+    this.map=L.map(host,{zoomControl:false, attributionControl:true, preferCanvas:true, zoomAnimation:false, fadeAnimation:false, minZoom:13, maxZoom:20}).setView(center,Number(initial.zoom)); this.dataset.leaflet='ready'; this.dataset.mapNavigation='free scene · no 3D viewbox';
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap'}).addTo(this.map);
     L.control.zoom({position:'bottomright'}).addTo(this.map);
     this.map.on('move zoom resize',()=>this.syncThree());
     this.map.on('click',event=>{if(this.pickModelAt(event.containerPoint))this._suppressMapToggleUntil=performance.now()+280;});
@@ -192,14 +192,20 @@ export class MapScene extends HTMLElement {
     const loader=new GLTFLoader();
     const modelUrl='./assets/model/alianca_park_masterplan_preview.glb'; this.dataset.modelSource='preview-glb';
     loader.load(modelUrl,gltf=>{
-      const model=gltf.scene; const box=new THREE.Box3().setFromObject(model); const size=box.getSize(new THREE.Vector3()); const center=box.getCenter(new THREE.Vector3());
-      model.position.sub(center); const largest=Math.max(size.x,size.y,size.z)||1; const factor=145/largest; model.scale.setScalar(factor); model.rotation.set(Math.PI/2,0,0); model.updateMatrixWorld(true); const orientedBox=new THREE.Box3().setFromObject(model),orientedSize=orientedBox.getSize(new THREE.Vector3()); model.position.z+=SCENE_MODEL_BASE_Z-orientedBox.min.z; model.userData.baseScale=factor; model.userData.sourceSize=size; model.userData.alignedToMapPlane=true; this.modelSourceFootprint={x:orientedSize.x,y:orientedSize.y,scale:factor}; this.masterplanModel=model; this.masterplanLargest=largest;
+      const model=gltf.scene; const box=new THREE.Box3().setFromObject(model); const size=box.getSize(new THREE.Vector3());
+      const largest=Math.max(size.x,size.y,size.z)||1; const factor=145/largest; model.scale.setScalar(factor); model.rotation.set(Math.PI/2,0,0); model.updateMatrixWorld(true);
+      // Rotate the imported axis first, then center the oriented footprint. If
+      // centering happens before the axis conversion, the translation itself is
+      // rotated and the GLB drifts away from the OpenStreet surface.
+      const orientedCenter=new THREE.Box3().setFromObject(model).getCenter(new THREE.Vector3()); model.position.sub(orientedCenter); model.updateMatrixWorld(true);
+      const orientedBox=new THREE.Box3().setFromObject(model),orientedSize=orientedBox.getSize(new THREE.Vector3()); model.position.z+=SCENE_MODEL_BASE_Z-orientedBox.min.z; model.userData.baseScale=factor; model.userData.sourceSize=size; model.userData.alignedToMapPlane=true; this.modelSourceFootprint={x:orientedSize.x,y:orientedSize.y,scale:factor}; this.masterplanModel=model; this.masterplanLargest=largest;
       model.traverse(node=>{
         if(!node.isMesh)return;
         node.frustumCulled=true; node.renderOrder=8;
         const prepare=mat=>{if(!mat)return mat;const clone=mat.clone();clone.transparent=true;clone.opacity=Math.max(.72,Math.min(1,clone.opacity??1));clone.side=THREE.DoubleSide;clone.depthWrite=false;return clone;};
         node.material=Array.isArray(node.material)?node.material.map(prepare):prepare(node.material); node.userData.defaultMaterial=node.material;
         const name=String(node.name||'').toLowerCase();
+        if(/pavilhao.?telhado|pavilhao.?base/.test(name)){const mark=mat=>{const clone=mat?.clone?.()||mat;if(clone?.color)clone.color.setHex(0xffc857);if(clone?.emissive){clone.emissive.setHex(0xf59e0b);clone.emissiveIntensity=.55;}if(clone)clone.opacity=1;return clone;};node.material=Array.isArray(node.material)?node.material.map(mark):mark(node.material);node.userData.focusStructure=true;node.renderOrder=18;}
         const semanticRole=String(node.userData?.belavistaRole||'').toLowerCase();
         const kind=semanticRole==='lot'||semanticRole==='lots'?'lots':semanticRole==='street'||semanticRole==='streets'||semanticRole==='road'?'streets':/(lote|quadra|gleba)/.test(name)?'lots':/(asfalto|rua|road|street|meio.?fio|guia|paviment)/.test(name)?'streets':'other';
         node.userData.partKind=kind; node.userData.partId=kind==='lots'?node.name:'streets';
@@ -207,6 +213,8 @@ export class MapScene extends HTMLElement {
         this.modelParts[kind].push(node); if(node.material)node.material.transparent=true;
       });
       this.dataset.modelParts=`lotes:${this.modelParts.lots.length}|ruas:${this.modelParts.streets.length}|outros:${this.modelParts.other.length}`;
+      const leisureNodes=[],structureNodes=[]; model.traverse(node=>{const name=String(node.name||'').toLowerCase();if(/area.?de.?lazer|court|gym.?pad|pavilhao|play|praca/.test(name))leisureNodes.push(node);if(/pavilhao.?telhado|pavilhao.?base/.test(name))structureNodes.push(node);});
+      if(leisureNodes.length){this.modelLeisureNodes=leisureNodes;this.modelLeisureFocusNodes=structureNodes.length?structureNodes:leisureNodes;this.dataset.leisureNodes=String(leisureNodes.length);this.dataset.focusStructureNodes=String(this.modelLeisureFocusNodes.length);}
       this.modelGroup.add(model); this.modelGroup.visible=true; this.modelReady=true; this.classList.add('model-ready'); this.buildStageOverlayTargets(); this.setStageOverlay(this.stageOverlayKey,false); this.syncThree(); this.applySceneView(appStore.get().view,true); try{publishMapPreview(this.renderer.domElement.toDataURL('image/jpeg',.78));}catch(err){console.warn('Prévia do masterplan indisponível.',err);publishMapPreview('./assets/reference/dashboard.png');}
     },progress=>{if(progress.total)this.dataset.modelProgress=Math.round(progress.loaded/progress.total*100)},err=>{console.warn('Modelo GLB indisponível, mantendo mapa 2D.',err);});
   }
@@ -261,7 +269,7 @@ export class MapScene extends HTMLElement {
     this.renderer.setSize(w,h,false); this.camera.left=0; this.camera.right=w; this.camera.top=0; this.camera.bottom=h; this.camera.near=-500; this.camera.far=500; this.camera.updateProjectionMatrix();
     const theme=viewThemes[appStore.get().view]||viewThemes.assistant;
     this.dataset.themeCenter=`${theme.center[0]},${theme.center[1]}`; this.dataset.themeZoom=String(theme.zoom);
-    const panX=Math.max(-w*.32,Math.min(w*.32,Number(this.sceneManualPan?.x)||0)),panY=Math.max(-h*.26,Math.min(h*.26,Number(this.sceneManualPan?.y)||0));
+    const panX=Number(this.sceneManualPan?.x)||0,panY=Number(this.sceneManualPan?.y)||0;
     this.sceneManualPan={x:panX,y:panY}; this.style.setProperty('--scene-pan-x',`${panX}px`); this.style.setProperty('--scene-pan-y',`${panY}px`); const baseCenterX=w/2,baseCenterY=h/2,centerX=baseCenterX,centerY=baseCenterY; this.sceneBaseCenter={x:baseCenterX,y:baseCenterY}; this.dataset.scenePan=`${Math.round(panX)},${Math.round(panY)}`;
     const surfaceW=w*SCENE_SURFACE_SCALE,surfaceH=h*SCENE_SURFACE_SCALE;
     if(this.sceneStage)this.sceneStage.position.set(centerX,centerY,0);
@@ -278,11 +286,12 @@ export class MapScene extends HTMLElement {
         // exact origin of the map surface; Leaflet is not allowed to offset it.
         this.modelGroup.position.set(0,0,0);
         if(this.masterplanModel&&this.masterplanLargest){
-          const frame=Math.min(w,h)*MODEL_FIT_RATIO; this.masterplanModel.scale.setScalar(frame/this.masterplanLargest); this.dataset.modelFit=`${Math.round(frame)}px`; this.dataset.modelFitRatio=String(MODEL_FIT_RATIO);
+          const frame=Math.min(w,h)*MODEL_FIT_RATIO; this.masterplanModel.scale.setScalar(frame/this.masterplanLargest); this.masterplanModel.updateMatrixWorld(true); this.dataset.modelFit=`${Math.round(frame)}px`; this.dataset.modelFitRatio=String(MODEL_FIT_RATIO);
           const lat=Number(theme.center[0]),metersPerPixel=this.masterplanLargest/frame,zoom=Math.round(Math.log2(156543.033928*Math.cos(lat*Math.PI/180)/metersPerPixel)); this.dataset.mapFitZoom=String(Math.max(12,Math.min(18,zoom)));
           const localScale=frame/this.masterplanLargest,sourceScale=this.modelSourceFootprint?.scale||localScale,footprint={x:(this.modelSourceFootprint?.x||this.masterplanLargest)*(localScale/sourceScale),y:(this.modelSourceFootprint?.y||this.masterplanLargest)*(localScale/sourceScale)},mapW=Math.max(1,footprint.x*1.14),mapH=Math.max(1,footprint.y*1.14),mapTheme={...theme,zoom:Number(this.dataset.mapFitZoom)||theme.zoom};
           const mapCoverage=Math.max(1,w*1.08/mapW,h*1.08/mapH),sceneMapW=mapW*mapCoverage,sceneMapH=mapH*mapCoverage;
           this.mapSurface.scale.set(sceneMapW,sceneMapH,1); this.refreshMapSurface(mapTheme,sceneMapW,sceneMapH); this.refreshOsmRaster(mapTheme,sceneMapW,sceneMapH); this.dataset.sceneFootprint=`${Math.round(footprint.x)}x${Math.round(footprint.y)}`; this.dataset.sceneMapScale=`${Math.round(sceneMapW)}x${Math.round(sceneMapH)}`; this.dataset.modelScreen=`centered · ${Math.round(footprint.x)}x${Math.round(footprint.y)}`;
+          if(!this.initialSceneFocusApplied&&this.modelLeisureFocusNodes?.length){const leisureBounds=new this.THREE.Box3();this.modelLeisureFocusNodes.forEach(node=>leisureBounds.expandByObject(node));const leisureCenter=leisureBounds.getCenter(new this.THREE.Vector3()),focusX=leisureCenter.x-baseCenterX,focusY=leisureCenter.y-baseCenterY,focusPanX=-focusX*INITIAL_SCENE_ZOOM,focusPanY=-focusY*INITIAL_SCENE_ZOOM;this.sceneManualPan={x:focusPanX,y:focusPanY};this.style.setProperty('--scene-pan-x',`${focusPanX}px`);this.style.setProperty('--scene-pan-y',`${focusPanY}px`);this.dataset.sceneFocus='Área de lazer · pavilhão';this.dataset.leisureFocus=`${Math.round(focusX)},${Math.round(focusY)}`;this.initialSceneFocusApplied=true;}
         }
         this.modelGroup.updateMatrixWorld(true); this.modelGroup.visible=true;
         if(this.masterplanModel)this.dataset.modelOffset='0,0';
@@ -325,7 +334,7 @@ export class MapScene extends HTMLElement {
   }
   setScenePan(x,y,animate=true){
     const w=this.querySelector('.three-overlay')?.clientWidth||1280,h=this.querySelector('.three-overlay')?.clientHeight||800;
-    const target={x:Math.max(-w*.32,Math.min(w*.32,Number(x)||0)),y:Math.max(-h*.26,Math.min(h*.26,Number(y)||0))}; this.sceneManualPan=target; this.dataset.scenePan=`${Math.round(target.x)},${Math.round(target.y)}`;
+    const target={x:Number(x)||0,y:Number(y)||0}; this.sceneManualPan=target; this.dataset.scenePan=`${Math.round(target.x)},${Math.round(target.y)}`;
     if(!this.sceneStage){return;}
     // O pan é uma transformação da cena inteira. Recalcular o modelo via Leaflet
     // aqui fazia o mapa e o GLB percorrerem coordenadas diferentes durante o drag.
