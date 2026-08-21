@@ -102,6 +102,16 @@ view-layer[data-view="stages"] .stage-rail section:has(.rail-model){display:none
 .map-fallback{background-image:none!important;background:radial-gradient(circle at 50% 40%,#182a3a 0%,#091623 58%,#050d17 100%)!important;filter:none!important}
 .model-anchor{z-index:6!important;opacity:.72!important}
 
+/* Keep the OSM raster present after the tile texture is ready. It lives inside
+   the shared scene-world, so it stays synchronized with the GLB controls. */
+map-scene[data-map-texture="ready"] .osm-raster,
+map-scene[data-map-texture="loading"] .osm-raster,
+map-scene[data-map-texture="partial"] .osm-raster,
+map-scene[data-map-texture="fallback"] .osm-raster{
+  opacity:.92!important;
+  visibility:visible!important;
+}
+
 /* Initial dashboard: keep only the reference composition visible. */
 view-layer[data-view="assistant"] .dashboard-title,
 view-layer[data-view="assistant"] .dashboard-collab-card,
