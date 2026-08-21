@@ -249,6 +249,26 @@ view-layer[data-view="reports"] .report-footer svg{width:12px;height:12px;vertic
 @media(max-width:1050px){view-layer[data-view="reports"] .reports-toolbar{grid-template-columns:1fr 1fr}.report-toolbar-title{grid-column:1/-1}.report-toolbar-button{width:100%}}
 @media(max-width:760px){view-layer[data-view="reports"]{padding:14px 12px}.reports-toolbar{grid-template-columns:1fr!important}.report-toolbar-title{grid-column:auto}.report-footer{align-items:flex-start!important;flex-direction:column}}
 @media print{.sidebar,.topbar,.activity-header,.reports-toolbar,.ai-chat{display:none!important}view-layer[data-view="reports"]{padding:0!important;background:#fff!important}view-layer[data-view="reports"] .reports-main{border:0!important;box-shadow:none!important;background:#fff!important;color:#111!important}view-layer[data-view="reports"] .report-table th,view-layer[data-view="reports"] .report-table td{color:#111!important;border-color:#ccc!important}}
+
+/* Reports use the available workspace width and a readable Carbon baseline. */
+view-layer[data-view="reports"]{font-size:13px;line-height:1.45}
+view-layer[data-view="reports"] .reports-workspace{width:100%;max-width:none;margin:0;gap:16px}
+view-layer[data-view="reports"] .reports-toolbar{grid-template-columns:minmax(280px,1.6fr) repeat(3,minmax(170px,1fr)) auto auto;gap:10px;padding:14px}
+view-layer[data-view="reports"] .report-toolbar-title strong{font-size:15px}
+view-layer[data-view="reports"] .report-toolbar-title small,view-layer[data-view="reports"] .reports-toolbar label{font-size:11px}
+view-layer[data-view="reports"] .reports-toolbar select{min-height:38px;font-size:12px}
+view-layer[data-view="reports"] .report-toolbar-button,.report-inline-export{min-height:38px;font-size:11px;padding:0 12px}
+view-layer[data-view="reports"] .reports-main{width:100%!important;min-height:calc(100% - 4px);padding:22px!important}
+view-layer[data-view="reports"] .report-context{font-size:11px;padding:11px 0}
+view-layer[data-view="reports"] .report-metric{min-height:88px;padding:14px}
+view-layer[data-view="reports"] .report-metric small,view-layer[data-view="reports"] .report-metric span{font-size:11px}
+view-layer[data-view="reports"] .report-metric strong{font-size:24px}
+view-layer[data-view="reports"] .report-table th{font-size:11px;padding:12px 10px}
+view-layer[data-view="reports"] .report-table td{font-size:12px;padding:12px 10px}
+view-layer[data-view="reports"] .report-signal{font-size:11px;padding:4px 7px}
+view-layer[data-view="reports"] .report-footer{font-size:11px}
+@media(max-width:1050px){view-layer[data-view="reports"] .reports-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){view-layer[data-view="reports"] .reports-toolbar{grid-template-columns:1fr!important}view-layer[data-view="reports"] .reports-main{padding:16px!important}.report-table th,.report-table td{padding:10px 8px!important}}
 .surface-edge.connection-preview{stroke:#c6e0ff;stroke-width:2.5;stroke-dasharray:7 5;filter:drop-shadow(0 0 4px rgba(15,98,254,.75))}.surface-port{z-index:18;transition:transform .12s,background .12s,box-shadow .12s}.surface-port:hover,.connection-dragging .surface-port{background:#24a148;box-shadow:0 0 0 4px rgba(36,161,72,.22);transform:scale(1.15)}.workflow-card.relation-target{border-color:#24a148!important;box-shadow:0 0 0 2px rgba(36,161,72,.3),0 8px 24px rgba(36,161,72,.16);transform:translateY(-2px)}.workflow-card.connection-dragging{z-index:55}.connection-ghost-card{display:grid;gap:5px;background:rgba(15,98,254,.82);border-color:#c6e0ff;box-shadow:0 8px 20px rgba(0,0,0,.35);opacity:.86}.connection-ghost-card strong{font-size:11px}.connection-ghost-card small{color:#e8f1ff;font-size:9px}.workflow-drop-form{width:246px}.workflow-drop-form>b{font-size:12px;color:#f4f4f4}.workflow-drop-form>small{font-size:9px;color:#a8a8a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.workflow-drop-form label{display:grid;gap:4px;color:#c6c6c6;font-size:9px}.workflow-drop-form input,.workflow-drop-form select{width:100%;box-sizing:border-box}.workflow-drop-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}.workflow-drop-actions button[data-cancel]{background:#1f1f1f;color:#c6c6c6}
 
 /* Keep the OpenStreet raster readable in the shared Three.js scene. */
