@@ -160,7 +160,7 @@ export class MapScene extends HTMLElement {
   connectedCallback(){
     this.mapTileMode=appStore.get().mapTileMode||'satellite'; this.dataset.mapTileMode=this.mapTileMode; this.sceneManualRotation=0; this.sceneManualZoom=INITIAL_SCENE_ZOOM; this.sceneManualPan={x:0,y:0}; this.sceneUserInteracted=false; this.sceneTiltAdjust=0; this.initialSceneFocusApplied=false; this.stageOverlayKey=stageOverlayKey(demoData.activities.find(x=>x.id===appStore.get().selectedStage)?.name); this.dataset.sceneRotation='0deg'; this.dataset.sceneZoom='132%'; this.dataset.sceneZoomMax=`${Math.round(MAX_SCENE_ZOOM*100)}%`; this.dataset.scenePan='0,0'; this.dataset.sceneAnchor='center'; this.style.setProperty('--scene-anchor-x','50%'); this.style.setProperty('--scene-anchor-y','50%');
     if(this.hasAttribute('compact')){ this.renderCompact(); return; }
-    this.innerHTML=`<div class="map-fallback"></div><div class="map-host" aria-hidden="true"></div><div class="scene-world"><div class="osm-raster" aria-hidden="true"></div><canvas class="three-overlay"></canvas></div><div class="map-tint"></div><div class="map-badge">${ico('layers-3')} <span>Satélite realista · visão temática</span></div><div class="map-gesture-legend" aria-label="Gestos de navegação do mapa"><span>Arraste para mover</span><b>Botão direito</b><span>pan</span><b>Shift + arraste</b><span>inclinar</span><b>Roda do mouse</b><span>zoom</span></div>`;
+    this.innerHTML=`<div class="map-fallback"></div><div class="map-host" aria-hidden="true"></div><div class="scene-world"><div class="osm-raster" aria-hidden="true"></div><canvas class="three-overlay"></canvas></div><div class="map-tint"></div><div class="map-badge">${ico('layers-3')} <span>Satélite realista · visão temática</span></div><div class="map-category-switcher" role="group" aria-label="Categorias de visualização do mapa">${Object.entries(stageOverlayLabels).map(([key,label])=>`<button type="button" data-scene-overlay="${key}" class="overlay-${key}">${label}</button>`).join('')}</div><div class="map-gesture-legend" aria-label="Gestos de navegação do mapa"><span>Arraste para mover</span><b>Botão direito</b><span>pan</span><b>Shift + arraste</b><span>inclinar</span><b>Roda do mouse</b><span>zoom</span></div>`;
     this.setMapTileMode(this.mapTileMode,false);
     this.querySelectorAll('[data-scene-rotate]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();const value=button.dataset.sceneRotate;this.setSceneRotation(value==='reset'?0:this.sceneManualRotation+Number(value),true); }));
     this.querySelectorAll('[data-scene-pan]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();const value=button.dataset.scenePan;if(value==='reset')this.setScenePan(0,0,true);else this.nudgeScenePan(value,true);}));
@@ -170,7 +170,7 @@ export class MapScene extends HTMLElement {
     this.querySelectorAll('[data-map-tiles]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();this.setMapTileMode(button.dataset.mapTiles,true);}));
     this.querySelector('[data-scene-fit]')?.addEventListener('click',event=>{event.stopPropagation();this.fitSceneView(true);});
     this._lastOverlayStageId=appStore.get().selectedStage; this.initWhenReady(); appStore.subscribe(s=>{this.setTheme(s.view);this.dataset.mode=s.mapMode;this.setMapTileMode(s.mapTileMode||'satellite',false);const stage=demoData.activities.find(x=>x.id===s.selectedStage);if(stage&&this._lastOverlayStageId!==s.selectedStage){this._lastOverlayStageId=s.selectedStage;this.setStageOverlay(stage.name,false);}});
-    this.addEventListener('click',e=>{if(e.target.closest('.leaflet-control,.map-badge,.map-rotation-controls')||performance.now()<this._suppressMapToggleUntil)return;appStore.set({mapMode:appStore.get().mapMode==='overview'?'focus':'overview',lastAction:'Alternou foco do mapa'});});
+    this.addEventListener('click',e=>{if(e.target.closest('.leaflet-control,.map-badge,.map-category-switcher,.map-gesture-legend,.map-rotation-controls')||performance.now()<this._suppressMapToggleUntil)return;appStore.set({mapMode:appStore.get().mapMode==='overview'?'focus':'overview',lastAction:'Alternou foco do mapa'});});
   }
   renderCompact(){
     const stage=esc(this.getAttribute('data-stage')||'Etapa'),index=Number(this.getAttribute('data-map-index')||0);
@@ -212,14 +212,26 @@ export class MapScene extends HTMLElement {
     this.dataset.overlayManifest='ready'; this.dataset.overlayTargetTotal=String(all.length);
   }
   setStageOverlay(stage,announce=false){
-    const key=stageOverlayLabels[stage]?stage:stageOverlayKey(stage); this.stageOverlayKey=key; this.dataset.overlayKey=key; this.dataset.overlayLabel=stageOverlayLabels[key]||key;
+    const key=stageOverlayLabels[stage]?stage:stageOverlayKey(stage);
+    if(announce&&this.dataset.highlightActive==='true'&&this.stageOverlayKey===key){this.clearStageOverlay(true);return;}
+    this.stageOverlayKey=key; this.dataset.overlayKey=key; this.dataset.overlayLabel=stageOverlayLabels[key]||key; this.dataset.highlightActive='true';
     this.querySelectorAll('[data-scene-overlay]').forEach(button=>button.classList.toggle('active',button.dataset.sceneOverlay===key));
-    if(!this.modelReady||!this.stageOverlayTargets)return;
+    if(!this.modelReady||!this.stageOverlayTargets){if(announce){notify(`Highlight de ${this.dataset.overlayLabel} ativado.`,'success');appStore.set({mapFilter:key,lastAction:`Ativou highlight de ${this.dataset.overlayLabel}`});}return;}
     const all=[...(this.modelParts?.lots||[]),...(this.modelParts?.streets||[])]; all.forEach(item=>{if(item.userData.overlayMaterial)item.material=item.userData.defaultMaterial;});
     const color=stageOverlayColors[key]||0x2fe6ae,paint=mat=>{if(!mat)return mat;const clone=mat.clone();if(clone.color)clone.color.setHex(color);if(clone.emissive){clone.emissive.setHex(color);clone.emissiveIntensity=.6;}clone.transparent=true;clone.opacity=Math.max(.72,Math.min(.92,clone.opacity??1));clone.depthWrite=false;return clone;};
     const targets=this.stageOverlayTargets[key]||[]; targets.forEach(item=>{item.userData.overlayMaterial=Array.isArray(item.userData.defaultMaterial)?item.userData.defaultMaterial.map(paint):paint(item.userData.defaultMaterial);item.material=item.userData.overlayMaterial;});
     this.dataset.overlayTargets=String(targets.length); this.dataset.overlayColor=`#${color.toString(16).padStart(6,'0')}`; const span=this.querySelector('.map-badge span');if(span&&!this.dataset.selectedPart)span.textContent=`Highlight · ${this.dataset.overlayLabel}`; this.renderer?.render(this.scene,this.camera);
-    if(announce){notify(`Highlight de ${this.dataset.overlayLabel} aplicado no mapa.`,'success');appStore.set({lastAction:`Aplicou highlight de ${this.dataset.overlayLabel}`});}
+    if(announce){notify(`Highlight de ${this.dataset.overlayLabel} aplicado no mapa.`,'success');appStore.set({mapFilter:key,lastAction:`Aplicou highlight de ${this.dataset.overlayLabel}`});}
+  }
+  clearStageOverlay(announce=false){
+    const all=[...(this.modelParts?.lots||[]),...(this.modelParts?.streets||[]),...(this.modelParts?.other||[])];
+    all.forEach(item=>{if(item.userData.overlayMaterial||item.userData.highlightMaterial)item.material=item.userData.defaultMaterial;delete item.userData.overlayMaterial;delete item.userData.highlightMaterial;});
+    if(this.selectionHalo)this.selectionHalo.visible=false;
+    this.stageOverlayKey=null; this.dataset.highlightActive='false'; this.dataset.overlayLabel='Nenhum highlight'; delete this.dataset.overlayKey; delete this.dataset.overlayTargets; delete this.dataset.overlayColor; delete this.dataset.selectedPart; delete this.dataset.selectedKind;
+    this.querySelectorAll('[data-scene-overlay]').forEach(button=>button.classList.remove('active'));
+    const span=this.querySelector('.map-badge span'); if(span)span.textContent='Satélite realista · visão temática';
+    this.renderer?.render(this.scene,this.camera);
+    if(announce){notify('Highlight desativado no mapa.');appStore.set({mapFilter:null,lastAction:'Desativou highlight do mapa'});}
   }
   initLeaflet(){
     const host=this.querySelector('.map-host'); if(!host||this.map)return;
@@ -308,9 +320,9 @@ export class MapScene extends HTMLElement {
     const canvas=this.querySelector('.three-overlay'),rect=canvas?.getBoundingClientRect(),w=canvas?.clientWidth||0,h=canvas?.clientHeight||0;
     if(!w||!h||!point)return false;
     this.pointer.x=(point.x/w)*2-1; this.pointer.y=-(point.y/h)*2+1; this.camera.updateMatrixWorld(true); this.modelGroup.updateMatrixWorld(true); this.raycaster.setFromCamera(this.pointer,this.camera);
-    const hits=this.raycaster.intersectObject(this.modelGroup,true); const hit=hits[0]; if(hit?.object){this.selectModelPart(hit.object);return true;}
+    const hits=this.raycaster.intersectObject(this.modelGroup,true); const hit=hits[0]; if(hit?.object){this.toggleCategoryFromPart(hit.object);return true;}
     let nearest=null,best=Infinity; for(const item of [...(this.modelParts?.lots||[]),...(this.modelParts?.streets||[])]){const box=new this.THREE.Box3().setFromObject(item),center=box.getCenter(new this.THREE.Vector3()).project(this.camera),sx=(center.x+1)*w/2,sy=(-center.y+1)*h/2,size=box.getSize(new this.THREE.Vector3()),radius=Math.max(16,Math.min(52,Math.max(size.x,size.y)/2));const distance=Math.hypot(point.x-sx,point.y-sy);if(distance<=radius&&distance<best){best=distance;nearest=item;}}
-    if(!nearest)return false; this.selectModelPart(nearest); return true;
+    if(!nearest)return false; this.toggleCategoryFromPart(nearest); return true;
   }
   refreshMapSurface(theme,w,h){
     if(!this.mapSurfaceCanvas||!this.mapSurfaceTexture)return;
@@ -333,8 +345,15 @@ export class MapScene extends HTMLElement {
     for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){const tileX=((x0+col)%n+n)%n,tileY=y0+row;if(tileY<0||tileY>=n)continue;const image=new Image();image.width=256;image.height=256;image.alt='';image.decoding='async';image.loading='eager';image.style.left=`${col*256}px`;image.style.top=`${row*256}px`;let attempt=0;const load=()=>{image.src=sources[attempt].url(zoom,tileX,tileY);};image.onerror=()=>{if(attempt+1<sources.length){attempt++;load();}};image.onload=()=>{if(sources[attempt]?.id==='satellite')this.dataset.mapTileSource='Esri World Imagery';};load();host.append(image);}
     host.dataset.ready='true'; this.dataset.osmRaster=`${mode} · ${zoom} · ${cols}x${rows}`;
   }
+  toggleCategoryFromPart(node){
+    let source=node; while(source&&!source.userData?.partKind)source=source.parent;
+    if(!source)return false;
+    const category=source.userData.partKind==='streets'?'pavimentacao':source.userData.partKind==='lots'?'terraplanagem':'urbanizacao';
+    if(this.dataset.highlightActive==='true'&&this.stageOverlayKey===category){this.clearStageOverlay(true);return true;}
+    this.setStageOverlay(category,true); this.selectModelPart(source); return true;
+  }
   selectModelPart(node){
-    const source=node.userData.partKind?node:node.parent?.userData?.partKind?node.parent:null; if(!source)return;
+    let source=node; while(source&&!source.userData?.partKind)source=source.parent; if(!source)return;
     const kind=source.userData.partKind,partId=source.userData.partId;
     this.modelParts?.lots.concat(this.modelParts?.streets||[],this.modelParts?.other||[]).forEach(item=>{if(item.userData.highlightMaterial)item.material=item.userData.defaultMaterial;});
     const matches=kind==='streets'?(this.modelParts.streets||[]):(this.modelParts[kind]||[]).filter(item=>item.userData.partId===partId);
