@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
-PORT="${1:-8080}"
-python3 -m http.server "$PORT"
+PORT="${1:-${PORT:-8080}}"
+export PORT
+exec node server.mjs
