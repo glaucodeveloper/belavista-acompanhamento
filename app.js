@@ -1,4 +1,4 @@
-import './components.js?v=69';
+import './components.js?v=73';
 import {appStore} from './state.js';
 
 const STORAGE_KEY='belavista.install.v1';
