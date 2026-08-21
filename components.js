@@ -256,6 +256,7 @@ export class MapScene extends HTMLElement {
     const surfaceW=w*SCENE_SURFACE_SCALE,surfaceH=h*SCENE_SURFACE_SCALE;
     if(this.sceneStage)this.sceneStage.position.set(centerX,centerY,0);
     this.mapSurface.position.set(0,0,SCENE_MAP_Z); this.mapSurface.scale.set(surfaceW,surfaceH,1); this.refreshMapSurface(theme,surfaceW,surfaceH);
+    this.dataset.sceneComposition='map raster + GLB siblings · shared center/scale/pitch';
     if(this.modelGroup){
       const anchor=this.map.latLngToContainerPoint(L.latLng(Number(theme.center[0]),Number(theme.center[1])));
       if(Number.isFinite(anchor.x)&&Number.isFinite(anchor.y)){
@@ -263,10 +264,14 @@ export class MapScene extends HTMLElement {
         // The GLB and the map are siblings of the same tilted scene. Never recenter
         // from projected 3D bounds: model height changes the projection when tilted
         // and would make the footprint drift away from the map on every frame.
-        this.modelGroup.position.set(anchor.x-baseCenterX,anchor.y-baseCenterY,0);
+        // The source GLB is centered in Blender coordinates. Keep it at the
+        // exact origin of the map surface; Leaflet is not allowed to offset it.
+        this.modelGroup.position.set(0,0,0);
         if(this.masterplanModel&&this.masterplanLargest){
           const frame=Math.min(w,h)*MODEL_FIT_RATIO; this.masterplanModel.scale.setScalar(frame/this.masterplanLargest); this.dataset.modelFit=`${Math.round(frame)}px`; this.dataset.modelFitRatio=String(MODEL_FIT_RATIO);
           const lat=Number(theme.center[0]),metersPerPixel=this.masterplanLargest/frame,zoom=Math.round(Math.log2(156543.033928*Math.cos(lat*Math.PI/180)/metersPerPixel)); this.dataset.mapFitZoom=String(Math.max(12,Math.min(18,zoom)));
+          const footprint=new this.THREE.Box3().setFromObject(this.masterplanModel).getSize(new this.THREE.Vector3()),mapW=Math.max(1,footprint.x*1.14),mapH=Math.max(1,footprint.y*1.14),mapTheme={...theme,zoom:Number(this.dataset.mapFitZoom)||theme.zoom};
+          this.mapSurface.scale.set(mapW,mapH,1); this.refreshMapSurface(mapTheme,mapW,mapH); this.dataset.sceneFootprint=`${Math.round(footprint.x)}x${Math.round(footprint.y)}`; this.dataset.sceneMapScale=`${Math.round(mapW)}x${Math.round(mapH)}`;
         }
         this.modelGroup.updateMatrixWorld(true); this.modelGroup.visible=true;
         if(this.masterplanModel){
