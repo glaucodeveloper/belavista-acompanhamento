@@ -604,6 +604,77 @@ export class ViewLayer extends HTMLElement {
   settings(){ return `<glass-card class="float-card settings-card"><h3>${ico('settings')} Configurações</h3><p>Configuração local da PWA e integração opcional com GitHub.</p><button id="reinstall">Reabrir instalação</button><button id="clearPat">Limpar PAT local</button></glass-card>`; }
 }
 
+// A visão geral de etapas usa o mesmo gesto de relação do canvas dedicado:
+// porta lateral → linha Bézier → outro card ou formulário de nova atividade.
+ViewLayer.prototype.addActivityNodes = function(){
+  const canvas=this.querySelector('.stage-canvas');
+  if(!canvas||canvas.querySelector('.activity-layer'))return;
+  const layer=document.createElement('div');
+  layer.className='activity-layer';
+  layer.innerHTML=`<div class="activity-layer-title">ATIVIDADES RELACIONADAS <small>Arraste o card para mover · arraste ● para conectar</small></div>
+    <article class="activity-node workflow-card" data-node-id="overview-act-drenagem" data-activity-id="act-drenagem" data-stage="Drenagem Pluvial" style="left:34px;top:560px"><span class="activity-kind">ATIVIDADE · DRENAGEM</span><strong>Executar rede principal</strong><small>Responsável: Carlos Mendes · 82%</small><span class="surface-port activity-connect" title="Arrastar para conectar" aria-label="Arrastar para conectar">●</span></article>
+    <article class="activity-node workflow-card" data-node-id="overview-act-bocas" data-activity-id="act-bocas" data-stage="Drenagem Pluvial" style="left:310px;top:590px"><span class="activity-kind">SUBATIVIDADE</span><strong>Validar bocas de lobo</strong><small>Dependência: rede principal</small><span class="surface-port activity-connect" title="Arrastar para conectar" aria-label="Arrastar para conectar">●</span></article>
+    <article class="activity-node workflow-card" data-node-id="overview-act-pav" data-activity-id="act-pav" data-stage="Pavimentação" style="left:590px;top:790px"><span class="activity-kind">ATIVIDADE · PAVIMENTAÇÃO</span><strong>Liberar frente de pavimentação</strong><small>Aguardando drenagem · 35%</small><span class="surface-port activity-connect" title="Arrastar para conectar" aria-label="Arrastar para conectar">●</span></article>
+    <svg class="activity-edges" aria-hidden="true"></svg>`;
+  canvas.appendChild(layer);
+
+  const nodes=[...layer.querySelectorAll('.workflow-card')];
+  const relations=[{from:nodes[0],to:nodes[2],label:'Drenagem → Pavimentação'}];
+  const point=(clientX,clientY)=>{const rect=canvas.getBoundingClientRect();return {x:clientX-rect.left+canvas.scrollLeft,y:clientY-rect.top+canvas.scrollTop};};
+  const anchor=(node,side='out')=>({x:node.offsetLeft+(side==='in'?0:node.offsetWidth),y:node.offsetTop+node.offsetHeight/2});
+  const curve=(x1,y1,x2,y2)=>{const bend=Math.max(56,Math.min(190,Math.abs(x2-x1)*.45));return `M ${x1} ${y1} C ${x1+bend} ${y1}, ${x2-bend} ${y2}, ${x2} ${y2}`;};
+  const svg=layer.querySelector('.activity-edges');
+  const draw=()=>{
+    svg.innerHTML='';
+    layer.querySelectorAll('.overview-relation-label').forEach(label=>label.remove());
+    relations.forEach((rel,index)=>{
+      if(!rel.from.isConnected||!rel.to.isConnected)return;
+      const from=anchor(rel.from,'out'),to=anchor(rel.to,'in');
+      const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.classList.add('activity-edge'); path.dataset.relationIndex=String(index); path.setAttribute('d',curve(from.x,from.y,to.x,to.y)); svg.appendChild(path);
+      const label=document.createElement('button');
+      label.type='button'; label.className='activity-relation overview-relation-label'; label.dataset.relationIndex=String(index); label.textContent=rel.label;
+      label.style.left=`${Math.max(18,(from.x+to.x)/2-70)}px`; label.style.top=`${Math.max(520,(from.y+to.y)/2-12)}px`;
+      label.title='Editar rótulo da relação';
+      label.addEventListener('click',event=>{event.stopPropagation();const next=prompt('Rótulo da relação:',rel.label);if(next?.trim()){rel.label=next.trim();draw();}});
+      layer.appendChild(label);
+    });
+  };
+  const bindNodeDrag=node=>{
+    if(node.dataset.overviewDragBound)return;
+    node.dataset.overviewDragBound='true';
+    node.addEventListener('pointerdown',event=>{
+      if(event.button!==0||event.target.closest('.surface-port,.activity-connect'))return;
+      event.preventDefault(); event.stopPropagation();
+      const origin={x:event.clientX,y:event.clientY},initial={x:node.offsetLeft,y:node.offsetTop}; let moved=false;
+      const move=ev=>{const dx=ev.clientX-origin.x,dy=ev.clientY-origin.y;if(!moved&&Math.hypot(dx,dy)<2)return;moved=true;node.classList.add('dragging');node.style.left=`${Math.max(8,initial.x+dx)}px`;node.style.top=`${Math.max(520,initial.y+dy)}px`;draw();};
+      const finish=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',finish);window.removeEventListener('pointercancel',finish);node.classList.remove('dragging');if(moved){node.dataset.dragged='true';setTimeout(()=>delete node.dataset.dragged,120);appStore.set({lastAction:`Reposicionou atividade ${node.querySelector('strong')?.textContent||''}`});}};
+      node.setPointerCapture?.(event.pointerId); window.addEventListener('pointermove',move); window.addEventListener('pointerup',finish,{once:true}); window.addEventListener('pointercancel',finish,{once:true});
+    });
+  };
+  nodes.forEach(bindNodeDrag);
+  const targetAt=(clientX,clientY)=>{const target=document.elementFromPoint(clientX,clientY)?.closest('.workflow-card');return target&&canvas.contains(target)?target:null;};
+  const addRelation=(from,to,label='depende de')=>{if(!from||!to||from===to||relations.some(rel=>rel.from===from&&rel.to===to))return;relations.push({from,to,label});draw();};
+  const showNewActivityForm=(source,clientX,clientY)=>{
+    const drop=point(clientX,clientY),form=document.createElement('form'); form.className='workflow-drop-form'; form.style.left=`${Math.max(12,drop.x-64)}px`; form.style.top=`${Math.max(520,drop.y-18)}px`;
+    const options=activityCatalog.slice(0,8).map(item=>`<option value="${esc(item.name)}">${esc(item.nature)} · ${esc(item.name)}</option>`).join('');
+    form.innerHTML=`<b>Nova atividade conectada</b><small>Origem: ${esc(source.querySelector('strong')?.textContent||'atividade')}</small><label>Categoria<select name="categoria">${options}</select></label><label>Nome da atividade<input name="nome" required placeholder="Ex.: Validar execução da frente"></label><label>Tempo previsto <input name="horas" type="number" min="0.5" step="0.5" value="4"> h</label><div class="workflow-drop-actions"><button type="button" data-cancel>Cancelar</button><button type="submit">Criar e conectar</button></div>`;
+    canvas.appendChild(form); form.querySelector('[data-cancel]')?.addEventListener('click',()=>form.remove());
+    form.addEventListener('submit',event=>{event.preventDefault();const data=new FormData(form),category=activityCatalog.find(item=>item.name===data.get('categoria')),card=document.createElement('article');card.className='activity-node workflow-card';card.dataset.nodeId=`overview-workflow-${Date.now()}-${Math.round(Math.random()*1000)}`;card.dataset.stage=category?.nature||'Nova atividade';card.style.left=`${Math.max(12,drop.x-64)}px`;card.style.top=`${Math.max(520,drop.y-18)}px`;card.innerHTML=`<span class="activity-kind">${esc(category?.nature||'NOVA ATIVIDADE')}</span><strong>${esc(String(data.get('nome')||category?.name||'Nova atividade').trim())}</strong><small>${esc(data.get('horas')||4)} hora(s) previstas · responsável a definir</small><span class="surface-port activity-connect" title="Arrastar para conectar" aria-label="Arrastar para conectar">●</span>`;form.replaceWith(card);bindNodeDrag(card);nodes.push(card);addRelation(source,card,'gera');notify('Card criado e conectado à atividade de origem.','success');});
+    form.querySelector('input[name="nome"]')?.focus();
+  };
+  canvas.addEventListener('pointerdown',event=>{
+    const port=event.target.closest('.surface-port,.activity-connect'); if(!port||event.button!==0)return;
+    const source=port.closest('.workflow-card'); if(!source)return;
+    event.preventDefault(); event.stopImmediatePropagation(); port.setPointerCapture?.(event.pointerId); source.classList.add('relation-source','connection-dragging');
+    const ghost=document.createElement('div'); ghost.className='connection-ghost connection-ghost-card'; ghost.innerHTML='<span class="activity-kind">NOVA ATIVIDADE</span><strong>Solte para preencher</strong><small>ou leve até outro card</small>'; canvas.appendChild(ghost); let target=null;
+    const preview=(ev)=>{target=targetAt(ev.clientX,ev.clientY);nodes.forEach(node=>node.classList.toggle('relation-target',node===target&&node!==source));const from=anchor(source,'out'),to=target&&target!==source?anchor(target,'in'):point(ev.clientX,ev.clientY),path=svg.querySelector('.overview-connection-preview')||document.createElementNS('http://www.w3.org/2000/svg','path');path.classList.add('activity-edge','overview-connection-preview');path.setAttribute('d',curve(from.x,from.y,to.x,to.y));if(!path.parentNode)svg.appendChild(path);const p=point(ev.clientX,ev.clientY);ghost.style.left=`${Math.max(12,p.x+14)}px`;ghost.style.top=`${Math.max(520,p.y+14)}px`;};
+    const finish=ev=>{window.removeEventListener('pointermove',preview);window.removeEventListener('pointerup',finish);window.removeEventListener('pointercancel',finish);port.releasePointerCapture?.(event.pointerId);svg.querySelector('.overview-connection-preview')?.remove();nodes.forEach(node=>node.classList.remove('relation-target'));source.classList.remove('relation-source','connection-dragging');ghost.remove();const finalTarget=targetAt(ev.clientX,ev.clientY);if(finalTarget&&finalTarget!==source){addRelation(source,finalTarget,'depende de');notify('Linha de relacionamento criada. Clique no rótulo para editar.','success');}else showNewActivityForm(source,ev.clientX,ev.clientY);};
+    window.addEventListener('pointermove',preview); window.addEventListener('pointerup',finish,{once:true}); window.addEventListener('pointercancel',finish,{once:true}); preview(event);
+  },true);
+  draw();
+};
+
 // Conexões do canvas: um único gesto pointer-based para cards existentes e novos.
 // Fica fora da classe para substituir o handler legado sem reescrever o bloco
 // minificado de compatibilidade que ainda existe no arquivo.
