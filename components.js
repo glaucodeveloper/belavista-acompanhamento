@@ -82,7 +82,7 @@ export class AppTopbar extends HTMLElement {
 customElements.define('app-topbar', AppTopbar);
 
 export class AiChat extends HTMLElement {
-  connectedCallback(){ this._chatView=null; this._transitionTimer=null; this.render(); appStore.subscribe(()=>this.positionForView()); this.enableDrag(); }
+  connectedCallback(){ this._chatView=null; this._transitionTimer=null; this.render(); appStore.subscribe(()=>this.positionForView()); this.enableDrag(); this.enableResize(); }
   positionForView(){
     const {view,chatManual}=appStore.get();
     if(chatManual) return;
@@ -106,7 +106,7 @@ export class AiChat extends HTMLElement {
   render(){
     this.className='ai-chat floating-panel dock-left';
     const m=demoData.metrics;
-    this.innerHTML=`<div class="chat-head drag-handle" title="Arraste para mover"><span class="ai-logo">✦</span><div><strong>IA · Belavista</strong><small>Resumo operacional atualizado · <span class="chat-drag-hint">ARRASTE PARA MOVER</span></small></div><button class="icon-btn compact close-chat">${ico('minus')}</button></div><div class="chat-scroll"><div class="chat-greeting"><strong>Bom dia, Warley. 👋</strong><span>Este é o resumo do empreendimento com base nos dados de hoje.</span></div><div class="chat-summary"><div><b>${m.completeness||63}%</b><small>Completude<br>geral</small></div><div><b>${m.delayed}</b><small>Etapas<br>atrasadas</small></div><div><b>${m.criticalPurchases}</b><small>Compras<br>críticas</small></div><div><b>${m.review}</b><small>Pendências<br>de revisão</small></div></div><h3 class="chat-question">O que você deseja acompanhar agora?</h3><div class="chat-quick-actions"><button data-view="stages">${ico('calendar-check')} Ver etapas críticas</button><button data-view="inventory">${ico('package-check')} Ver compras necessárias</button><button data-view="stages">${ico('calendar-range')} Ver cronograma de atividades</button><button data-view="leads">${ico('user-round-search')} Ver leads hoje</button><button data-view="records">${ico('clipboard-pen-line')} Registrar andamento</button><button data-view="map">${ico('layers-3')} Abrir mapa de completude</button></div><div class="chat-log" aria-live="polite"></div></div><form class="chat-form"><input aria-label="Mensagem para IA" placeholder="Pergunte algo ou dê um comando…"/><button aria-label="Enviar">${ico('send')}</button></form>`;
+    this.innerHTML=`<div class="chat-head drag-handle" title="Arraste para mover"><span class="ai-logo">✦</span><div><strong>IA · Belavista</strong><small>Resumo operacional atualizado · <span class="chat-drag-hint">ARRASTE PARA MOVER</span></small></div><button class="icon-btn compact close-chat">${ico('minus')}</button></div><div class="chat-scroll"><div class="chat-greeting"><strong>Bom dia, Warley. 👋</strong><span>Este é o resumo do empreendimento com base nos dados de hoje.</span></div><div class="chat-summary"><div><b>${m.completeness||63}%</b><small>Completude<br>geral</small></div><div><b>${m.delayed}</b><small>Etapas<br>atrasadas</small></div><div><b>${m.criticalPurchases}</b><small>Compras<br>críticas</small></div><div><b>${m.review}</b><small>Pendências<br>de revisão</small></div></div><h3 class="chat-question">O que você deseja acompanhar agora?</h3><div class="chat-quick-actions"><button data-view="stages">${ico('calendar-check')} Ver etapas críticas</button><button data-view="inventory">${ico('package-check')} Ver compras necessárias</button><button data-view="stages">${ico('calendar-range')} Ver cronograma de atividades</button><button data-view="leads">${ico('user-round-search')} Ver leads hoje</button><button data-view="records">${ico('clipboard-pen-line')} Registrar andamento</button><button data-view="map">${ico('layers-3')} Abrir mapa de completude</button></div><div class="chat-log" aria-live="polite"></div></div><form class="chat-form"><input aria-label="Mensagem para IA" placeholder="Pergunte algo ou dê um comando…"/><button aria-label="Enviar">${ico('send')}</button></form>${['n','ne','e','se','s','sw','w','nw'].map(edge=>`<span class="chat-resize-handle resize-${edge}" data-resize="${edge}" aria-label="Redimensionar pela borda ${edge}"></span>`).join('')}`;
     this.querySelector('.close-chat').addEventListener('click',()=>this.classList.toggle('collapsed'));
     this.querySelectorAll('[data-cmd]').forEach(b=>b.addEventListener('click',()=>this.respond(b.dataset.cmd)));
     this.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>appStore.set({view:b.dataset.view,lastAction:`Abriu ${b.textContent.trim()}`})));
@@ -152,6 +152,27 @@ export class AiChat extends HTMLElement {
       handle.setPointerCapture?.(e.pointerId); this.classList.add('is-dragging'); appStore.set({chatManual:true});
       window.addEventListener('pointermove',move); window.addEventListener('pointerup',stop); window.addEventListener('pointercancel',stop);
     });
+  }
+  enableResize(){
+    this.querySelectorAll('[data-resize]').forEach(handle=>handle.addEventListener('pointerdown',event=>{
+      if(event.button!==0)return;
+      event.preventDefault(); event.stopPropagation();
+      const parent=this.parentElement?.getBoundingClientRect(),rect=this.getBoundingClientRect(); if(!parent)return;
+      const direction=handle.dataset.resize,initial={left:rect.left-parent.left,top:rect.top-parent.top,width:rect.width,height:rect.height};
+      const minWidth=Math.min(320,Math.max(220,parent.width-16)),minHeight=Math.min(260,Math.max(180,parent.height-24));
+      const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
+      const maxWidth=Math.max(minWidth,parent.width-initial.left-8),maxHeight=Math.max(minHeight,parent.height-initial.top-8);
+      const move=ev=>{
+        const dx=ev.clientX-event.clientX,dy=ev.clientY-event.clientY; let left=initial.left,top=initial.top,width=initial.width,height=initial.height;
+        if(direction.includes('e'))width=clamp(initial.width+dx,minWidth,maxWidth);
+        if(direction.includes('s'))height=clamp(initial.height+dy,minHeight,maxHeight);
+        if(direction.includes('w')){left=clamp(initial.left+dx,8,initial.left+initial.width-minWidth);width=initial.left+initial.width-left;}
+        if(direction.includes('n')){top=clamp(initial.top+dy,8,initial.top+initial.height-minHeight);height=initial.top+initial.height-top;}
+        this.style.left=`${left}px`; this.style.top=`${top}px`; this.style.right='auto'; this.style.bottom='auto'; this.style.width=`${width}px`; this.style.height=`${height}px`; this.style.transform='none';
+      };
+      const stop=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',stop);window.removeEventListener('pointercancel',stop);handle.releasePointerCapture?.(event.pointerId);this.classList.remove('is-resizing');this.style.removeProperty('transition');};
+      appStore.set({chatManual:true,lastAction:'Redimensionou janela da IA'}); this.style.transition='none'; this.classList.add('is-resizing'); handle.setPointerCapture?.(event.pointerId); window.addEventListener('pointermove',move); window.addEventListener('pointerup',stop,{once:true}); window.addEventListener('pointercancel',stop,{once:true});
+    }));
   }
 }
 customElements.define('ai-chat', AiChat);

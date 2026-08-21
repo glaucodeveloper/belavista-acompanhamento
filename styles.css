@@ -286,6 +286,21 @@ map-scene .map-category-switcher .overlay-rede-eletrica.active{border-color:#9b7
 map-scene .map-category-switcher .overlay-pavimentacao.active{border-color:#ff7c45;color:#ffd1c0;background:rgba(255,124,69,.14)}
 map-scene .map-category-switcher .overlay-urbanizacao.active{border-color:#42be65;color:#baf5c8;background:rgba(66,190,101,.14)}
 map-scene[compact] .map-category-switcher{display:none}
+
+/* The assistant window sizes itself to content and can be resized from any edge. */
+ai-chat.floating-panel{width:min(388px,calc(100% - 24px));min-width:320px;min-height:260px;height:fit-content;max-width:calc(100% - 16px);max-height:calc(100% - 24px)}
+ai-chat.floating-panel.collapsed{min-width:220px;min-height:0;height:auto}
+ai-chat .chat-resize-handle{position:absolute;z-index:50;display:block;pointer-events:auto;touch-action:none}
+ai-chat .resize-n,ai-chat .resize-s{left:10px;right:10px;height:9px;cursor:ns-resize}
+ai-chat .resize-n{top:0}ai-chat .resize-s{bottom:0}
+ai-chat .resize-e,ai-chat .resize-w{top:10px;bottom:10px;width:9px;cursor:ew-resize}
+ai-chat .resize-e{right:0}ai-chat .resize-w{left:0}
+ai-chat .resize-ne,ai-chat .resize-sw{width:14px;height:14px}
+ai-chat .resize-ne{right:0;top:0;cursor:nesw-resize}ai-chat .resize-sw{left:0;bottom:0;cursor:nesw-resize}
+ai-chat .resize-se,ai-chat .resize-nw{width:14px;height:14px}
+ai-chat .resize-se{right:0;bottom:0;cursor:nwse-resize}ai-chat .resize-nw{left:0;top:0;cursor:nwse-resize}
+ai-chat.is-resizing{user-select:none}
+@media(max-width:760px){ai-chat.floating-panel{min-width:0;min-height:220px;max-width:calc(100% - 24px)}ai-chat.floating-panel.collapsed{min-height:0}}
 .surface-edge.connection-preview{stroke:#c6e0ff;stroke-width:2.5;stroke-dasharray:7 5;filter:drop-shadow(0 0 4px rgba(15,98,254,.75))}.surface-port{z-index:18;transition:transform .12s,background .12s,box-shadow .12s}.surface-port:hover,.connection-dragging .surface-port{background:#24a148;box-shadow:0 0 0 4px rgba(36,161,72,.22);transform:scale(1.15)}.workflow-card.relation-target{border-color:#24a148!important;box-shadow:0 0 0 2px rgba(36,161,72,.3),0 8px 24px rgba(36,161,72,.16);transform:translateY(-2px)}.workflow-card.connection-dragging{z-index:55}.connection-ghost-card{display:grid;gap:5px;background:rgba(15,98,254,.82);border-color:#c6e0ff;box-shadow:0 8px 20px rgba(0,0,0,.35);opacity:.86}.connection-ghost-card strong{font-size:11px}.connection-ghost-card small{color:#e8f1ff;font-size:9px}.workflow-drop-form{width:246px}.workflow-drop-form>b{font-size:12px;color:#f4f4f4}.workflow-drop-form>small{font-size:9px;color:#a8a8a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.workflow-drop-form label{display:grid;gap:4px;color:#c6c6c6;font-size:9px}.workflow-drop-form input,.workflow-drop-form select{width:100%;box-sizing:border-box}.workflow-drop-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}.workflow-drop-actions button[data-cancel]{background:#1f1f1f;color:#c6c6c6}
 
 /* Keep the OpenStreet raster readable in the shared Three.js scene. */
