@@ -17,6 +17,17 @@ const chatLayouts={
   reports:{left:18,top:18},
   settings:{left:18,top:104}
 };
+const mapTileSources={
+  satellite:[
+    {id:'satellite',url:(z,x,y)=>`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`},
+    {id:'osm',url:(z,x,y)=>`https://tile.openstreetmap.org/${z}/${x}/${y}.png`},
+    {id:'osm-de',url:(z,x,y)=>`https://tile.openstreetmap.de/${z}/${x}/${y}.png`}
+  ],
+  osm:[
+    {id:'osm',url:(z,x,y)=>`https://tile.openstreetmap.org/${z}/${x}/${y}.png`},
+    {id:'osm-de',url:(z,x,y)=>`https://tile.openstreetmap.de/${z}/${x}/${y}.png`}
+  ]
+};
 const publishMapPreview = source => { if(!source)return; mapPreviewSource=source; document.querySelectorAll('map-scene[compact]').forEach(scene=>scene.setPreview?.(source)); };
 const stageOverlayKey = value => { const text=String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); if(text.includes('terra'))return 'terraplanagem'; if(text.includes('dren'))return 'drenagem'; if(text.includes('agua'))return 'rede-agua'; if(text.includes('eletric'))return 'rede-eletrica'; if(text.includes('paviment'))return 'pavimentacao'; if(text.includes('praca')||text.includes('urban')||text.includes('arbor'))return 'urbanizacao'; return 'drenagem'; };
 const stageOverlayLabels={terraplanagem:'Terraplanagem',drenagem:'Drenagem', 'rede-agua':'Rede de água','rede-eletrica':'Rede elétrica',pavimentacao:'Pavimentação',urbanizacao:'Praças / urbanização'};
@@ -147,16 +158,18 @@ customElements.define('ai-chat', AiChat);
 
 export class MapScene extends HTMLElement {
   connectedCallback(){
-    this.sceneManualRotation=0; this.sceneManualZoom=INITIAL_SCENE_ZOOM; this.sceneManualPan={x:0,y:0}; this.sceneUserInteracted=false; this.sceneTiltAdjust=0; this.initialSceneFocusApplied=false; this.stageOverlayKey=stageOverlayKey(demoData.activities.find(x=>x.id===appStore.get().selectedStage)?.name); this.dataset.sceneRotation='0deg'; this.dataset.sceneZoom='132%'; this.dataset.sceneZoomMax=`${Math.round(MAX_SCENE_ZOOM*100)}%`; this.dataset.scenePan='0,0'; this.dataset.sceneAnchor='center'; this.style.setProperty('--scene-anchor-x','50%'); this.style.setProperty('--scene-anchor-y','50%');
+    this.mapTileMode=appStore.get().mapTileMode||'satellite'; this.dataset.mapTileMode=this.mapTileMode; this.sceneManualRotation=0; this.sceneManualZoom=INITIAL_SCENE_ZOOM; this.sceneManualPan={x:0,y:0}; this.sceneUserInteracted=false; this.sceneTiltAdjust=0; this.initialSceneFocusApplied=false; this.stageOverlayKey=stageOverlayKey(demoData.activities.find(x=>x.id===appStore.get().selectedStage)?.name); this.dataset.sceneRotation='0deg'; this.dataset.sceneZoom='132%'; this.dataset.sceneZoomMax=`${Math.round(MAX_SCENE_ZOOM*100)}%`; this.dataset.scenePan='0,0'; this.dataset.sceneAnchor='center'; this.style.setProperty('--scene-anchor-x','50%'); this.style.setProperty('--scene-anchor-y','50%');
     if(this.hasAttribute('compact')){ this.renderCompact(); return; }
-    this.innerHTML=`<div class="map-fallback"></div><div class="map-host" aria-hidden="true"></div><div class="scene-world"><div class="osm-raster" aria-hidden="true"></div><canvas class="three-overlay"></canvas></div><div class="map-tint"></div><div class="map-badge">${ico('layers-3')} <span>Visão temática</span></div><div class="map-rotation-controls" aria-label="Controles de navegação do mapa"><span>MAPA · VISTA 3D</span><div class="map-overlay-switcher" role="group" aria-label="Highlights de infraestrutura">${Object.entries(stageOverlayLabels).map(([key,label])=>`<button type="button" data-scene-overlay="${key}" class="overlay-${key}">${label}</button>`).join('')}</div><div class="map-pan-pad" aria-label="Panorâmica"><button type="button" data-scene-pan="up" aria-label="Mover mapa para cima">↑</button><button type="button" data-scene-pan="left" aria-label="Mover mapa para a esquerda">←</button><button type="button" data-scene-pan="reset" aria-label="Centralizar mapa">⌖</button><button type="button" data-scene-pan="right" aria-label="Mover mapa para a direita">→</button><button type="button" data-scene-pan="down" aria-label="Mover mapa para baixo">↓</button></div><div class="map-view-row"><button type="button" data-scene-zoom="-0.08" aria-label="Afastar mapa">−</button><button type="button" data-scene-zoom="0.08" aria-label="Aproximar mapa">＋</button><button type="button" data-scene-tilt="-4" aria-label="Reduzir inclinação">▿</button><button type="button" data-scene-tilt="4" aria-label="Aumentar inclinação">▵</button></div><div class="map-rotation-row"><button type="button" data-scene-rotate="-15" aria-label="Girar para a esquerda">↺</button><button type="button" data-scene-rotate="15" aria-label="Girar para a direita">↻</button><button type="button" data-scene-rotate="reset" aria-label="Restaurar orientação">N</button></div><button type="button" class="map-fit-button" data-scene-fit aria-label="Ajustar enquadramento">⌗ Ajustar enquadramento</button><small>Arraste para pan · botão direito também move · Shift + arraste inclina · use ↺↻ para girar</small></div>`;
-    this.querySelectorAll('[data-scene-rotate]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();const value=button.dataset.sceneRotate;this.setSceneRotation(value==='reset'?0:this.sceneManualRotation+Number(value),true);}));
+    this.innerHTML=`<div class="map-fallback"></div><div class="map-host" aria-hidden="true"></div><div class="scene-world"><div class="osm-raster" aria-hidden="true"></div><canvas class="three-overlay"></canvas></div><div class="map-tint"></div><div class="map-badge">${ico('layers-3')} <span>Satélite realista · visão temática</span></div><div class="map-rotation-controls" aria-label="Controles de navegação do mapa"><span>MAPA · VISTA 3D</span><div class="map-tile-switcher" role="group" aria-label="Base cartográfica"><button type="button" data-map-tiles="satellite">Satélite realista</button><button type="button" data-map-tiles="osm">Mapa OSM</button></div><div class="map-overlay-switcher" role="group" aria-label="Highlights de infraestrutura">${Object.entries(stageOverlayLabels).map(([key,label])=>`<button type="button" data-scene-overlay="${key}" class="overlay-${key}">${label}</button>`).join('')}</div><div class="map-pan-pad" aria-label="Panorâmica"><button type="button" data-scene-pan="up" aria-label="Mover mapa para cima">↑</button><button type="button" data-scene-pan="left" aria-label="Mover mapa para a esquerda">←</button><button type="button" data-scene-pan="reset" aria-label="Centralizar mapa">⌖</button><button type="button" data-scene-pan="right" aria-label="Mover mapa para a direita">→</button><button type="button" data-scene-pan="down" aria-label="Mover mapa para baixo">↓</button></div><div class="map-view-row"><button type="button" data-scene-zoom="-0.08" aria-label="Afastar mapa">−</button><button type="button" data-scene-zoom="0.08" aria-label="Aproximar mapa">＋</button><button type="button" data-scene-tilt="-4" aria-label="Reduzir inclinação">▿</button><button type="button" data-scene-tilt="4" aria-label="Aumentar inclinação">▵</button></div><div class="map-rotation-row"><button type="button" data-scene-rotate="-15" aria-label="Girar para a esquerda">↺</button><button type="button" data-scene-rotate="15" aria-label="Girar para a direita">↻</button><button type="button" data-scene-rotate="reset" aria-label="Restaurar orientação">N</button></div><button type="button" class="map-fit-button" data-scene-fit aria-label="Ajustar enquadramento">⌗ Ajustar enquadramento</button><small>Arraste para pan · botão direito também move · Shift + arraste inclina · use ↺↻ para girar<br><span class="map-tile-credit">Source: Esri, Maxar, Earthstar Geographics · © OpenStreetMap contributors</span></small></div>`;
+    this.setMapTileMode(this.mapTileMode,false);
+    this.querySelectorAll('[data-scene-rotate]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();const value=button.dataset.sceneRotate;this.setSceneRotation(value==='reset'?0:this.sceneManualRotation+Number(value),true); }));
     this.querySelectorAll('[data-scene-pan]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();const value=button.dataset.scenePan;if(value==='reset')this.setScenePan(0,0,true);else this.nudgeScenePan(value,true);}));
     this.querySelectorAll('[data-scene-zoom]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();this.setSceneZoom(this.sceneManualZoom+Number(button.dataset.sceneZoom),true);}));
     this.querySelectorAll('[data-scene-tilt]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();this.setSceneTiltAdjust(this.sceneTiltAdjust+Number(button.dataset.sceneTilt),true);}));
     this.querySelectorAll('[data-scene-overlay]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();this.setStageOverlay(button.dataset.sceneOverlay,true);}));
+    this.querySelectorAll('[data-map-tiles]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();this.setMapTileMode(button.dataset.mapTiles,true);}));
     this.querySelector('[data-scene-fit]')?.addEventListener('click',event=>{event.stopPropagation();this.fitSceneView(true);});
-    this._lastOverlayStageId=appStore.get().selectedStage; this.initWhenReady(); appStore.subscribe(s=>{this.setTheme(s.view);this.dataset.mode=s.mapMode;const stage=demoData.activities.find(x=>x.id===s.selectedStage);if(stage&&this._lastOverlayStageId!==s.selectedStage){this._lastOverlayStageId=s.selectedStage;this.setStageOverlay(stage.name,false);}});
+    this._lastOverlayStageId=appStore.get().selectedStage; this.initWhenReady(); appStore.subscribe(s=>{this.setTheme(s.view);this.dataset.mode=s.mapMode;this.setMapTileMode(s.mapTileMode||'satellite',false);const stage=demoData.activities.find(x=>x.id===s.selectedStage);if(stage&&this._lastOverlayStageId!==s.selectedStage){this._lastOverlayStageId=s.selectedStage;this.setStageOverlay(stage.name,false);}});
     this.addEventListener('click',e=>{if(e.target.closest('.leaflet-control,.map-badge,.map-rotation-controls')||performance.now()<this._suppressMapToggleUntil)return;appStore.set({mapMode:appStore.get().mapMode==='overview'?'focus':'overview',lastAction:'Alternou foco do mapa'});});
   }
   renderCompact(){
@@ -176,6 +189,17 @@ export class MapScene extends HTMLElement {
     if(this._threeScheduled||this.renderer)return; this._threeScheduled=true;
     const run=()=>this.initThree();
     if('requestIdleCallback' in window) window.requestIdleCallback(run,{timeout:3500}); else setTimeout(run,1200);
+  }
+  setMapTileMode(mode='satellite',announce=false){
+    const next=mode==='osm'?'osm':'satellite';
+    const changed=this.mapTileMode!==next;
+    this.mapTileMode=next; this.dataset.mapTileMode=next;
+    this.querySelectorAll('[data-map-tiles]').forEach(button=>button.classList.toggle('active',button.dataset.mapTiles===next));
+    if(!changed)return;
+    if(this._mapSurfaceKey)this._mapSurfaceKey='';
+    if(this._osmRasterKey)this._osmRasterKey='';
+    if(this.modelReady)this.syncThree();
+    if(announce){const label=next==='satellite'?'Satélite realista':'Mapa OSM';notify(`${label} ativado na cena compartilhada.`,'success');appStore.set({mapTileMode:next,lastAction:`Alterou base cartográfica para ${label}`});}
   }
   buildStageOverlayTargets(){
     if(!this.THREE||!this.modelGroup)return;
@@ -219,7 +243,7 @@ export class MapScene extends HTMLElement {
       this.dataset.three='ready';
       this.scene=new THREE.Scene(); this.scene.add(new THREE.HemisphereLight(0xcfe4ff,0x1a2735,2.6)); const keyLight=new THREE.DirectionalLight(0xffffff,4.2); keyLight.position.set(-120,-160,220); this.scene.add(keyLight); this.sceneStage=new THREE.Group(); this.sceneStage.scale.setScalar(1); this.scene.add(this.sceneStage); this.camera=new THREE.PerspectiveCamera(34,1,.1,10000); this.dataset.cameraProjection='perspective';
       this.mapSurfaceCanvas=document.createElement('canvas'); this.mapSurfaceTexture=new THREE.CanvasTexture(this.mapSurfaceCanvas); this.mapSurfaceTexture.colorSpace=THREE.SRGBColorSpace;
-      this.mapSurface=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:this.mapSurfaceTexture,side:THREE.DoubleSide,transparent:true,depthTest:false,depthWrite:false})); this.mapSurface.renderOrder=1; this.mapSurface.visible=true; this.mapSurface.position.z=SCENE_MAP_Z; this.sceneStage.add(this.mapSurface); this.dataset.mapRasterMode='webgl-raster'; this.dataset.mapContact=`OpenStreet raster + GLB na mesma cena Three.js · surface z=${SCENE_MAP_Z} · model base z=${SCENE_MODEL_BASE_Z}`;
+      this.mapSurface=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:this.mapSurfaceTexture,side:THREE.DoubleSide,transparent:true,depthTest:false,depthWrite:false})); this.mapSurface.renderOrder=1; this.mapSurface.visible=true; this.mapSurface.position.z=SCENE_MAP_Z; this.sceneStage.add(this.mapSurface); this.dataset.mapRasterMode='webgl-raster'; this.dataset.mapContact=`Satélite realista + OpenStreet fallback + GLB na mesma cena Three.js · surface z=${SCENE_MAP_Z} · model base z=${SCENE_MODEL_BASE_Z}`;
       const geo=new THREE.CircleGeometry(8,32); const colors=[0x7d64ff,0x2fe6ae,0xffb020,0x55a8ff,0xff5c58];
       this.markerGroup=new THREE.Group(); this.sceneStage.add(this.markerGroup);
       const coords=[[-16.708,-49.092],[-16.706,-49.089],[-16.711,-49.094],[-16.704,-49.088],[-16.710,-49.091]];
@@ -292,10 +316,10 @@ export class MapScene extends HTMLElement {
     if(!this.mapSurfaceCanvas||!this.mapSurfaceTexture)return;
     this.mapSurface.visible=true;
     const zoom=Math.max(12,Math.min(18,Number(theme.zoom)||15)),rasterW=Math.min(1280,Math.max(512,w)),rasterH=Math.min(1280,Math.max(512,h)),cols=Math.ceil(rasterW/256)+2,rows=Math.ceil(rasterH/256)+2,lat=Number(theme.center[0]),lon=Number(theme.center[1]),rad=Math.PI/180,n=2**zoom;
-    const xf=(lon+180)/360*n,yf=(1-Math.asinh(Math.tan(lat*rad))/Math.PI)/2*n,x0=Math.floor(xf-cols/2),y0=Math.floor(yf-rows/2),key=`${zoom}|${x0}|${y0}|${cols}|${rows}`; if(key===this._mapSurfaceKey)return; this._mapSurfaceKey=key;
+    const xf=(lon+180)/360*n,yf=(1-Math.asinh(Math.tan(lat*rad))/Math.PI)/2*n,x0=Math.floor(xf-cols/2),y0=Math.floor(yf-rows/2),mode=this.mapTileMode||'satellite',key=`${mode}|${zoom}|${x0}|${y0}|${cols}|${rows}`; if(key===this._mapSurfaceKey)return; this._mapSurfaceKey=key;
     const canvas=this.mapSurfaceCanvas; canvas.width=cols*256; canvas.height=rows*256; const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); const token=key; let loaded=0,total=0;
-    const tileHosts=['https://tile.openstreetmap.org','https://tile.openstreetmap.de'];
-    const drawTile=(row,col,tileX,tileY,attempt=0)=>{const image=new Image();image.crossOrigin='anonymous';image.onload=()=>{if(this._mapSurfaceKey!==token)return;loaded++;ctx.drawImage(image,col*256,row*256,256,256);ctx.fillStyle='rgba(4,11,22,.14)';ctx.fillRect(col*256,row*256,256,256);this.dataset.mapTextureTiles=`${loaded}/${total}`;this.dataset.mapTexture=loaded===total?'ready':'loading';this.mapSurfaceTexture.needsUpdate=true;this.renderer?.render(this.scene,this.camera);};image.onerror=()=>{if(attempt+1<tileHosts.length)drawTile(row,col,tileX,tileY,attempt+1);else if(this._mapSurfaceKey===token){this.dataset.mapTextureTiles=`${loaded}/${total}`;this.dataset.mapTexture='partial';}};image.src=`${tileHosts[attempt]}/${zoom}/${tileX}/${tileY}.png`;};
+    const sources=mapTileSources[mode]||mapTileSources.satellite;
+    const drawTile=(row,col,tileX,tileY,attempt=0)=>{const image=new Image();image.crossOrigin='anonymous';image.onload=()=>{if(this._mapSurfaceKey!==token)return;loaded++;ctx.drawImage(image,col*256,row*256,256,256);if(sources[attempt]?.id==='satellite'){this.dataset.mapTileSource='Esri World Imagery';}else if(!this.dataset.mapTileSource)this.dataset.mapTileSource='OpenStreetMap';ctx.fillStyle=mode==='satellite'?'rgba(4,11,22,.04)':'rgba(4,11,22,.14)';ctx.fillRect(col*256,row*256,256,256);this.dataset.mapTextureTiles=`${loaded}/${total}`;this.dataset.mapTexture=loaded===total?'ready':'loading';this.mapSurfaceTexture.needsUpdate=true;this.renderer?.render(this.scene,this.camera);};image.onerror=()=>{if(attempt+1<sources.length)drawTile(row,col,tileX,tileY,attempt+1);else if(this._mapSurfaceKey===token){this.dataset.mapTextureTiles=`${loaded}/${total}`;this.dataset.mapTexture='partial';}};image.src=sources[attempt].url(zoom,tileX,tileY);};
     for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){const tileX=((x0+col)%n+n)%n,tileY=y0+row;if(tileY<0||tileY>=n)continue;total++;drawTile(row,col,tileX,tileY);}
     this.dataset.mapTexture='loading'; this.dataset.mapTextureTiles=`0/${total}`;
     this.mapSurfaceTexture.needsUpdate=true;
@@ -303,11 +327,11 @@ export class MapScene extends HTMLElement {
   refreshOsmRaster(theme,w,h){
     const host=this.querySelector('.osm-raster'); if(!host)return;
     const zoom=Math.max(12,Math.min(18,Number(theme.zoom)||15)),rasterW=Math.min(1280,Math.max(512,w)),rasterH=Math.min(1280,Math.max(512,h)),cols=Math.ceil(rasterW/256)+2,rows=Math.ceil(rasterH/256)+2,lat=Number(theme.center[0]),lon=Number(theme.center[1]),rad=Math.PI/180,n=2**zoom;
-    const xf=(lon+180)/360*n,yf=(1-Math.asinh(Math.tan(lat*rad))/Math.PI)/2*n,x0=Math.floor(xf-cols/2),y0=Math.floor(yf-rows/2),key=`${zoom}|${x0}|${y0}|${cols}|${rows}`;
+    const xf=(lon+180)/360*n,yf=(1-Math.asinh(Math.tan(lat*rad))/Math.PI)/2*n,x0=Math.floor(xf-cols/2),y0=Math.floor(yf-rows/2),mode=this.mapTileMode||'satellite',key=`${mode}|${zoom}|${x0}|${y0}|${cols}|${rows}`;
     if(key===this._osmRasterKey)return; this._osmRasterKey=key; host.replaceChildren(); host.style.width=`${cols*256}px`; host.style.height=`${rows*256}px`;
-    const tileHosts=['https://tile.openstreetmap.org','https://tile.openstreetmap.de'];
-    for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){const tileX=((x0+col)%n+n)%n,tileY=y0+row;if(tileY<0||tileY>=n)continue;const image=new Image();image.width=256;image.height=256;image.alt='';image.decoding='async';image.loading='eager';image.style.left=`${col*256}px`;image.style.top=`${row*256}px`;image.src=`${tileHosts[0]}/${zoom}/${tileX}/${tileY}.png`;image.onerror=()=>{if(image.dataset.fallback)return;image.dataset.fallback='1';image.src=`${tileHosts[1]}/${zoom}/${tileX}/${tileY}.png`;};host.append(image);}
-    host.dataset.ready='true'; this.dataset.osmRaster=`${zoom} · ${cols}x${rows}`;
+    const sources=mapTileSources[mode]||mapTileSources.satellite;
+    for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){const tileX=((x0+col)%n+n)%n,tileY=y0+row;if(tileY<0||tileY>=n)continue;const image=new Image();image.width=256;image.height=256;image.alt='';image.decoding='async';image.loading='eager';image.style.left=`${col*256}px`;image.style.top=`${row*256}px`;let attempt=0;const load=()=>{image.src=sources[attempt].url(zoom,tileX,tileY);};image.onerror=()=>{if(attempt+1<sources.length){attempt++;load();}};image.onload=()=>{if(sources[attempt]?.id==='satellite')this.dataset.mapTileSource='Esri World Imagery';};load();host.append(image);}
+    host.dataset.ready='true'; this.dataset.osmRaster=`${mode} · ${zoom} · ${cols}x${rows}`;
   }
   selectModelPart(node){
     const source=node.userData.partKind?node:node.parent?.userData?.partKind?node.parent:null; if(!source)return;

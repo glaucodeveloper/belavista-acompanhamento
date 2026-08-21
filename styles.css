@@ -102,6 +102,13 @@ view-layer[data-view="stages"] .stage-rail section:has(.rail-model){display:none
 .map-fallback{background-image:none!important;background:radial-gradient(circle at 50% 40%,#182a3a 0%,#091623 58%,#050d17 100%)!important;filter:none!important}
 .model-anchor{z-index:6!important;opacity:.72!important}
 
+map-scene .map-tile-switcher{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:3px}
+map-scene .map-tile-switcher button{min-height:24px;padding:0 7px;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(255,255,255,.06);color:#dce9ff;cursor:pointer;font:8px "IBM Plex Mono",monospace;white-space:nowrap}
+map-scene .map-tile-switcher button:hover,map-scene .map-tile-switcher button.active{border-color:#78a9ff;background:rgba(15,98,254,.34);color:#fff}
+map-scene .map-tile-credit{color:#728096}
+map-scene[data-map-tile-mode="satellite"] .osm-raster{filter:saturate(1.08) contrast(1.04) brightness(.82)}
+map-scene[data-map-tile-mode="satellite"] .map-tint{background:linear-gradient(90deg,rgba(5,14,27,.02),rgba(5,14,27,0)),radial-gradient(circle at 55% 40%,transparent 28%,rgba(4,11,22,.08) 76%,rgba(4,11,22,.16) 100%)!important}
+
 /* Keep the OSM raster present after the tile texture is ready. It lives inside
    the shared scene-world, so it stays synchronized with the GLB controls. */
 map-scene[data-map-texture="ready"] .osm-raster,
