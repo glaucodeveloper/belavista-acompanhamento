@@ -72,7 +72,7 @@ export class AiChat extends HTMLElement {
   }
   render(){
     this.className='ai-chat floating-panel dock-left';
-    this.innerHTML=`<div class="chat-head drag-handle"><span class="ai-logo">✦</span><div><strong>IA · Belavista</strong><small>Assistente contextual</small></div><button class="icon-btn compact close-chat">${ico('minus')}</button></div><div class="chat-scroll"><div class="ai-msg">Bom dia, Warley. Estou acompanhando o contexto desta tela e posso abrir cards, explicar riscos ou registrar ações.</div><div class="chat-summary"><div><b>63%</b><small>completude</small></div><div><b>2</b><small>etapas atrasadas</small></div><div><b>3</b><small>compras críticas</small></div></div><div class="chat-actions"><button data-cmd="Atrasos">${ico('triangle-alert')} Explicar atrasos</button><button data-cmd="Próximos passos">${ico('wand-sparkles')} Sugerir próximos passos</button><button data-cmd="Riscos">${ico('shield-alert')} Ver riscos</button></div><div class="chat-log" aria-live="polite"></div></div><form class="chat-form"><input aria-label="Mensagem para IA" placeholder="Pergunte algo ou dê um comando…"/><button aria-label="Enviar">${ico('send')}</button></form>`;
+    this.innerHTML=`<div class="chat-head drag-handle" title="Arraste para mover"><span class="ai-logo">✦</span><div><strong>IA · Belavista</strong><small>Assistente contextual · <span class="chat-drag-hint">ARRASTE PARA MOVER</span></small></div><button class="icon-btn compact close-chat">${ico('minus')}</button></div><div class="chat-scroll"><div class="ai-msg">Bom dia, Warley. Estou acompanhando o contexto desta tela e posso abrir cards, explicar riscos ou registrar ações.</div><div class="chat-summary"><div><b>63%</b><small>completude</small></div><div><b>2</b><small>etapas atrasadas</small></div><div><b>3</b><small>compras críticas</small></div></div><div class="chat-actions"><button data-cmd="Atrasos">${ico('triangle-alert')} Explicar atrasos</button><button data-cmd="Próximos passos">${ico('wand-sparkles')} Sugerir próximos passos</button><button data-cmd="Riscos">${ico('shield-alert')} Ver riscos</button></div><div class="chat-log" aria-live="polite"></div></div><form class="chat-form"><input aria-label="Mensagem para IA" placeholder="Pergunte algo ou dê um comando…"/><button aria-label="Enviar">${ico('send')}</button></form>`;
     this.querySelector('.close-chat').addEventListener('click',()=>this.classList.toggle('collapsed'));
     this.querySelectorAll('[data-cmd]').forEach(b=>b.addEventListener('click',()=>this.respond(b.dataset.cmd)));
     this.querySelector('form').addEventListener('submit',e=>{e.preventDefault(); const input=e.currentTarget.querySelector('input'); if(!input.value.trim())return; this.respond(input.value.trim()); input.value='';});
@@ -94,10 +94,29 @@ export class AiChat extends HTMLElement {
     log.scrollTop=log.scrollHeight;
   }
   enableDrag(){
-    const handle=this.querySelector('.drag-handle'); let drag=null;
-    handle.addEventListener('pointerdown',e=>{ if(e.target.closest('button')) return; const r=this.getBoundingClientRect(); drag={x:e.clientX-r.left,y:e.clientY-r.top}; handle.setPointerCapture(e.pointerId); appStore.set({chatManual:true}); });
-    handle.addEventListener('pointermove',e=>{ if(!drag)return; const parent=this.parentElement.getBoundingClientRect(); const x=Math.max(8,Math.min(parent.width-this.offsetWidth-8,e.clientX-parent.left-drag.x)); const y=Math.max(80,Math.min(parent.height-this.offsetHeight-8,e.clientY-parent.top-drag.y)); this.style.left=x+'px'; this.style.top=y+'px'; this.style.right='auto'; this.style.bottom='auto'; });
-    handle.addEventListener('pointerup',()=>drag=null);
+    const handle=this.querySelector('.drag-handle'); if(!handle)return;
+    let drag=null;
+    const move=(e)=>{
+      if(!drag||e.pointerId!==drag.pointerId)return;
+      const parent=this.parentElement.getBoundingClientRect();
+      const x=Math.max(8,Math.min(parent.width-this.offsetWidth-8,e.clientX-parent.left-drag.x));
+      const y=Math.max(80,Math.min(parent.height-this.offsetHeight-8,e.clientY-parent.top-drag.y));
+      this.style.left=x+'px'; this.style.top=y+'px'; this.style.right='auto'; this.style.bottom='auto';
+    };
+    const stop=(e)=>{
+      if(drag&&(!e||e.pointerId===drag.pointerId)){
+        handle.releasePointerCapture?.(drag.pointerId);
+        drag=null; this.classList.remove('is-dragging');
+        window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',stop); window.removeEventListener('pointercancel',stop);
+      }
+    };
+    handle.addEventListener('pointerdown',e=>{
+      if(e.button!==0||e.target.closest('button'))return;
+      e.preventDefault();
+      const r=this.getBoundingClientRect(); drag={pointerId:e.pointerId,x:e.clientX-r.left,y:e.clientY-r.top};
+      handle.setPointerCapture?.(e.pointerId); this.classList.add('is-dragging'); appStore.set({chatManual:true});
+      window.addEventListener('pointermove',move); window.addEventListener('pointerup',stop); window.addEventListener('pointercancel',stop);
+    });
   }
 }
 customElements.define('ai-chat', AiChat);
