@@ -460,6 +460,28 @@ export class MapScene extends HTMLElement {
   setSceneTiltAdjust(value,animate=true){this.sceneTiltAdjust=Math.max(-8,Math.min(8,Number(value)||0));this.applySceneView(appStore.get().view,animate);}
   fitSceneView(animate=true){this.sceneManualRotation=0;this.sceneManualZoom=DEFAULT_SCENE_ZOOM;this.sceneManualPan={x:0,y:0};this.sceneTiltAdjust=0;this.dataset.sceneRotation='0deg';this.dataset.sceneZoom='112%';this.dataset.scenePan='0,0';this.style.setProperty('--scene-pan-x','0px');this.style.setProperty('--scene-pan-y','0px');this.applySceneView(appStore.get().view,animate);if(animate)setTimeout(()=>this.syncThree(),520);}
 }
+// A tilt is a visual transform of the already-loaded shared scene. It must not
+// ask Leaflet or the tile compositor to rebuild the OpenStreet surface.
+MapScene.prototype.setSceneTiltAdjust=function(value,animate=true){
+  this.sceneTiltAdjust=Math.max(-8,Math.min(8,Number(value)||0));
+  const theme=viewThemes[appStore.get().view]||viewThemes.assistant;
+  const targetTilt=Math.max(16,Math.min(42,(Number(theme.tilt)||18)+DEFAULT_TILT_BOOST+this.sceneTiltAdjust));
+  this.dataset.sceneTilt=`${targetTilt}deg`;
+  const current=this._sceneVisual||{tilt:targetTilt,rotation:this.sceneManualRotation||0,scale:this.sceneManualZoom||DEFAULT_SCENE_ZOOM};
+  if(!animate){this._sceneTransition=Symbol('manual-tilt');this.setSceneVisual(targetTilt,current.rotation,current.scale);return;}
+  const started=performance.now(),duration=320,token=Symbol('manual-tilt');this._sceneTransition=token;
+  const tick=now=>{if(this._sceneTransition!==token)return;const t=Math.min(1,(now-started)/duration),e=t*t*(3-2*t);this.setSceneVisual(current.tilt+(targetTilt-current.tilt)*e,current.rotation,current.scale);if(t<1)requestAnimationFrame(tick);};
+  requestAnimationFrame(tick);
+};
+
+// Keep the map/model instance alive while the SPA swaps view-layer content.
+const mapSceneSetTheme = MapScene.prototype.setTheme;
+MapScene.prototype.setTheme=function(view){
+  if(this._themeView===view && this._mapSceneThemeGuard===view)return;
+  this._mapSceneThemeGuard=view;
+  return mapSceneSetTheme.call(this,view);
+};
+
 customElements.define('map-scene', MapScene);
 
 const statusClass = s => String(s).toLowerCase().replaceAll(' ','-').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -927,6 +949,55 @@ ViewLayer.prototype.bindRecords=function(){
   page.querySelectorAll('.record-actions [data-record-open]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();appStore.set({selectedRecord:button.dataset.recordOpen,lastAction:`Abriu drill-in do registro ${button.dataset.recordOpen}`});}));
   page.querySelector('[data-record-close]')?.addEventListener('click',()=>appStore.set({selectedRecord:null}));
 };
+
+// The stage utility session belongs to the stage header, before the free
+// activity surface. The old generated activity buttons are legacy duplicates;
+// the activity-layer below is the functional relation surface that remains.
+const viewLayerAddStageUtilities = ViewLayer.prototype.addStageUtilities;
+ViewLayer.prototype.addStageUtilities=function(){
+  viewLayerAddStageUtilities.call(this);
+  this.querySelectorAll('.stage-activity-card').forEach(card=>card.remove());
+  const shell=this.querySelector('.stage-shell'),panel=shell?.querySelector('.stage-utilities'),body=shell?.querySelector('.stage-body');
+  if(panel&&body)body.before(panel);
+};
+
+// Dashboard cards float above the persistent map and can be repositioned
+// without changing the map/model scene or triggering a view rerender.
+ViewLayer.prototype.bindDashboardCardDrag=function(){
+  const home=this.querySelector('.dashboard-home');
+  if(!home)return;
+  home.querySelectorAll(':scope > .float-card').forEach(card=>{
+    if(card.dataset.dashboardDragBound)return;
+    card.dataset.dashboardDragBound='true';
+    card.style.touchAction='none';
+    card.addEventListener('pointerdown',event=>{
+      if(event.button!==0||event.target.closest('button,input,textarea,select,a'))return;
+      event.preventDefault();
+      const parent=home.getBoundingClientRect(),rect=card.getBoundingClientRect();
+      const initial={x:rect.left-parent.left,y:rect.top-parent.top},origin={x:event.clientX,y:event.clientY};
+      let moved=false;
+      const move=ev=>{
+        const dx=ev.clientX-origin.x,dy=ev.clientY-origin.y;
+        if(!moved&&Math.hypot(dx,dy)<3)return;
+        moved=true;
+        const x=Math.max(8,Math.min(Math.max(8,parent.width-card.offsetWidth-8),initial.x+dx));
+        const y=Math.max(8,Math.min(Math.max(8,parent.height-card.offsetHeight-8),initial.y+dy));
+        card.style.left=`${x}px`;card.style.top=`${y}px`;card.style.right='auto';card.style.bottom='auto';card.style.transform='none';
+        card.classList.add('dashboard-card-dragging');
+      };
+      const finish=()=>{
+        window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',finish);window.removeEventListener('pointercancel',finish);
+        card.releasePointerCapture?.(event.pointerId);card.classList.remove('dashboard-card-dragging');
+        if(moved)notify('Card do mapa reposicionado.');
+      };
+      card.setPointerCapture?.(event.pointerId);
+      window.addEventListener('pointermove',move);window.addEventListener('pointerup',finish,{once:true});window.addEventListener('pointercancel',finish,{once:true});
+    });
+  });
+};
+
+const viewLayerBind = ViewLayer.prototype.bind;
+ViewLayer.prototype.bind=function(){viewLayerBind.call(this);this.bindDashboardCardDrag();};
 
 customElements.define('view-layer', ViewLayer);
 
