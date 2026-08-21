@@ -173,7 +173,7 @@ export class MapScene extends HTMLElement {
       const {GLTFLoader}=await import('https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/loaders/GLTFLoader.js');
       const canvas=this.querySelector('.three-overlay'); this.renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'low-power',precision:'highp'}); this.renderer.setPixelRatio(Math.min(2,Math.max(1.5,window.devicePixelRatio||1))); this.renderer.outputColorSpace=THREE.SRGBColorSpace; this.renderer.toneMapping=THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure=1.08;
       this.dataset.three='ready';
-      this.scene=new THREE.Scene(); this.scene.add(new THREE.HemisphereLight(0xcfe4ff,0x1a2735,2.6)); const keyLight=new THREE.DirectionalLight(0xffffff,4.2); keyLight.position.set(-120,-160,220); this.scene.add(keyLight); this.sceneStage=new THREE.Group(); this.sceneStage.scale.setScalar(1); this.scene.add(this.sceneStage); this.camera=new THREE.OrthographicCamera(); this.camera.position.z=10;
+      this.scene=new THREE.Scene(); this.scene.add(new THREE.HemisphereLight(0xcfe4ff,0x1a2735,2.6)); const keyLight=new THREE.DirectionalLight(0xffffff,4.2); keyLight.position.set(-120,-160,220); this.scene.add(keyLight); this.sceneStage=new THREE.Group(); this.sceneStage.scale.setScalar(1); this.scene.add(this.sceneStage); this.camera=new THREE.PerspectiveCamera(34,1,.1,10000); this.dataset.cameraProjection='perspective';
       this.mapSurfaceCanvas=document.createElement('canvas'); this.mapSurfaceTexture=new THREE.CanvasTexture(this.mapSurfaceCanvas); this.mapSurfaceTexture.colorSpace=THREE.SRGBColorSpace;
       this.mapSurface=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:this.mapSurfaceTexture,side:THREE.DoubleSide,transparent:true,depthTest:false,depthWrite:false})); this.mapSurface.renderOrder=1; this.mapSurface.visible=false; this.mapSurface.position.z=SCENE_MAP_Z; this.sceneStage.add(this.mapSurface); this.dataset.mapRasterMode='dom-raster'; this.dataset.mapContact=`DOM OpenStreet base + transparent WebGL GLB · surface z=${SCENE_MAP_Z} · model base z=${SCENE_MODEL_BASE_Z}`;
       const geo=new THREE.CircleGeometry(8,32); const colors=[0x7d64ff,0x2fe6ae,0xffb020,0x55a8ff,0xff5c58];
@@ -216,7 +216,7 @@ export class MapScene extends HTMLElement {
       this.dataset.modelParts=`lotes:${this.modelParts.lots.length}|ruas:${this.modelParts.streets.length}|outros:${this.modelParts.other.length}`;
       const leisureNodes=[],structureNodes=[]; model.traverse(node=>{const name=String(node.name||'').toLowerCase();if(/area.?de.?lazer|court|gym.?pad|pavilhao|play|praca/.test(name))leisureNodes.push(node);if(/pavilhao.?telhado|pavilhao.?base/.test(name))structureNodes.push(node);});
       if(leisureNodes.length){this.modelLeisureNodes=leisureNodes;this.modelLeisureFocusNodes=structureNodes.length?structureNodes:leisureNodes;this.dataset.leisureNodes=String(leisureNodes.length);this.dataset.focusStructureNodes=String(this.modelLeisureFocusNodes.length);this.addFocusStructureOutlines(THREE,this.modelLeisureFocusNodes);}
-      this.modelGroup.add(model); this.modelGroup.visible=true; this.modelReady=true; this.classList.add('model-ready'); this.buildStageOverlayTargets(); this.setStageOverlay(this.stageOverlayKey,false); this.syncThree(); this.applySceneView(appStore.get().view,true); try{publishMapPreview(this.renderer.domElement.toDataURL('image/jpeg',.78));}catch(err){console.warn('Prévia do masterplan indisponível.',err);publishMapPreview('./assets/reference/dashboard.png');}
+      this.modelGroup.add(model); this.modelGroup.visible=true; this.modelReady=true; this.classList.add('model-ready'); this.buildStageOverlayTargets(); this.setStageOverlay(this.stageOverlayKey,false); this.sceneManualPan={x:0,y:0}; this.style.setProperty('--scene-pan-x','0px'); this.style.setProperty('--scene-pan-y','0px'); this.dataset.scenePan='0,0'; this.dataset.sceneFocus='Centro do loteamento'; this.syncThree(); this.applySceneView(appStore.get().view,true); try{publishMapPreview(this.renderer.domElement.toDataURL('image/jpeg',.78));}catch(err){console.warn('Prévia do masterplan indisponível.',err);publishMapPreview('./assets/reference/dashboard.png');}
     },progress=>{if(progress.total)this.dataset.modelProgress=Math.round(progress.loaded/progress.total*100)},err=>{console.warn('Modelo GLB indisponível, mantendo mapa 2D.',err);});
   }
   addFocusStructureOutlines(THREE,nodes){
@@ -269,13 +269,22 @@ export class MapScene extends HTMLElement {
     const label=kind==='streets'?'Ruas e meio-fio':source.userData.partLabel; this.dataset.selectedPart=label; this.dataset.selectedKind=kind;
     appStore.set({lastAction:`Selecionou ${label}`}); const span=this.querySelector('.map-badge span'); if(span)span.textContent=`${label} · selecionado`; this.syncThree();
   }
+  configurePerspectiveCamera(w,h,targetX=(Number(w)||2)/2,targetY=(Number(h)||2)/2){
+    if(!this.camera)return;
+    const width=Math.max(2,Number(w)||2),height=Math.max(2,Number(h)||2),distance=Math.max(width,height)*1.55;
+    this.camera.aspect=width/height; this.camera.fov=34; this.camera.near=.1; this.camera.far=10000;
+    // A shallow elevated position exposes the GLB's vertical structures while
+    // keeping its footprint centered on the same origin as the OpenStreet raster.
+    this.camera.position.set(targetX,targetY-distance*.22,distance); this.camera.lookAt(targetX,targetY,0); this.camera.updateProjectionMatrix();
+    this.dataset.cameraProjection='perspective'; this.dataset.cameraDistance=String(Math.round(distance));
+  }
   syncThree(){
     if(!this.renderer||!this.map||!this.map._loaded)return;
     const host=this.querySelector('.map-host'),w=host?.clientWidth,h=host?.clientHeight;
     if(!Number.isFinite(w)||!Number.isFinite(h)||w<2||h<2)return;
     this.dataset.leafletZoom=String(this.map.getZoom());
     const mapCenter=this.map.getCenter(); this.dataset.leafletCenter=`${mapCenter.lat.toFixed(6)},${mapCenter.lng.toFixed(6)}`;
-    const modelPitch=14*Math.PI/180; this.renderer.setSize(w,h,false); this.camera.left=-w/2; this.camera.right=w/2; this.camera.top=h/2; this.camera.bottom=-h/2; this.camera.near=-2400; this.camera.far=2400; this.camera.position.set(w/2,h/2,1200); this.camera.rotation.set(-modelPitch,0,0); this.camera.updateProjectionMatrix();
+    this.configurePerspectiveCamera(w,h);
     const theme=viewThemes[appStore.get().view]||viewThemes.assistant;
     this.dataset.themeCenter=`${theme.center[0]},${theme.center[1]}`; this.dataset.themeZoom=String(theme.zoom);
     const panX=Number(this.sceneManualPan?.x)||0,panY=Number(this.sceneManualPan?.y)||0;
@@ -300,9 +309,9 @@ export class MapScene extends HTMLElement {
           const localScale=frame/this.masterplanLargest,sourceScale=this.modelSourceFootprint?.scale||localScale,footprint={x:(this.modelSourceFootprint?.x||this.masterplanLargest)*(localScale/sourceScale),y:(this.modelSourceFootprint?.y||this.masterplanLargest)*(localScale/sourceScale)},mapW=Math.max(1,footprint.x*1.14),mapH=Math.max(1,footprint.y*1.14),mapTheme={...theme,zoom:Number(this.dataset.mapFitZoom)||theme.zoom};
           const mapCoverage=Math.max(1,w*1.08/mapW,h*1.08/mapH),sceneMapW=mapW*mapCoverage,sceneMapH=mapH*mapCoverage; surfaceCenterX=sceneMapW/2; surfaceCenterY=sceneMapH/2;
           const overlay=this.querySelector('.three-overlay'); if(overlay){overlay.style.left='50%';overlay.style.top='50%';overlay.style.right='auto';overlay.style.bottom='auto';overlay.style.width=`${sceneMapW}px`;overlay.style.height=`${sceneMapH}px`;}
-          this.renderer.setSize(sceneMapW,sceneMapH,false); this.camera.left=-sceneMapW/2; this.camera.right=sceneMapW/2; this.camera.top=sceneMapH/2; this.camera.bottom=-sceneMapH/2; this.camera.near=-3600; this.camera.far=3600; this.camera.position.set(surfaceCenterX,surfaceCenterY,1800); this.camera.rotation.set(-modelPitch,0,0); this.camera.updateProjectionMatrix(); if(this.sceneStage)this.sceneStage.position.set(surfaceCenterX,surfaceCenterY,0);
+          this.renderer.setSize(sceneMapW,sceneMapH,false); this.configurePerspectiveCamera(sceneMapW,sceneMapH,sceneMapW/2,sceneMapH/2); if(this.sceneStage)this.sceneStage.position.set(surfaceCenterX,surfaceCenterY,0);
           this.mapSurface.scale.set(sceneMapW,sceneMapH,1); this.refreshMapSurface(mapTheme,sceneMapW,sceneMapH); this.refreshOsmRaster(mapTheme,sceneMapW,sceneMapH); this.dataset.sceneFootprint=`${Math.round(footprint.x)}x${Math.round(footprint.y)}`; this.dataset.sceneMapScale=`${Math.round(sceneMapW)}x${Math.round(sceneMapH)}`; this.dataset.modelScreen=`centered · ${Math.round(footprint.x)}x${Math.round(footprint.y)}`;
-          if(!this.initialSceneFocusApplied&&this.modelLeisureFocusNodes?.length){const leisureBounds=new this.THREE.Box3();this.modelLeisureFocusNodes.forEach(node=>leisureBounds.expandByObject(node));const leisureCenter=leisureBounds.getCenter(new this.THREE.Vector3()),focusX=leisureCenter.x-baseCenterX,focusY=leisureCenter.y-baseCenterY,focusPanX=-focusX*INITIAL_SCENE_ZOOM,focusPanY=-focusY*INITIAL_SCENE_ZOOM;this.sceneManualPan={x:focusPanX,y:focusPanY};this.style.setProperty('--scene-pan-x',`${focusPanX}px`);this.style.setProperty('--scene-pan-y',`${focusPanY}px`);this.dataset.sceneFocus='Área de lazer · pavilhão';this.dataset.leisureFocus=`${Math.round(focusX)},${Math.round(focusY)}`;this.initialSceneFocusApplied=true;}
+          if(!this.initialSceneFocusApplied){this.sceneManualPan={x:0,y:0};this.style.setProperty('--scene-pan-x','0px');this.style.setProperty('--scene-pan-y','0px');this.dataset.scenePan='0,0';this.dataset.sceneFocus='Centro do loteamento';this.dataset.leisureFocus='0,0';this.initialSceneFocusApplied=true;}
         }
         this.modelGroup.updateMatrixWorld(true); this.modelGroup.visible=true;
         if(this.masterplanModel)this.dataset.modelOffset='0,0';
