@@ -1,4 +1,4 @@
-import {appStore, demoData, viewThemes, spreadsheetSchema, activityCatalog} from './state.js?v=2';
+import {appStore, demoData, viewThemes, spreadsheetSchema, activityCatalog} from './state.js?v=3';
 import './public-lead-form.mjs?v=1';
 
 const ico = (name, cls='') => `<i data-lucide="${name}" class="${cls}"></i>`;
@@ -38,7 +38,7 @@ export class AppSidebar extends HTMLElement {
     this.querySelector('#sidebarToggle')?.addEventListener('click',()=>appStore.set({sidebarCollapsed:!appStore.get().sidebarCollapsed}));
     this.querySelector('#adminTrigger')?.addEventListener('click',()=>appStore.set({adminMenu:!appStore.get().adminMenu,lastAction:'Abriu menu do administrador'}));
     this.querySelectorAll('.admin-menu button').forEach(button=>button.addEventListener('click',()=>{notify(`${button.textContent.trim()} selecionado.`);appStore.set({adminMenu:false,lastAction:button.textContent.trim()});}));
-    this.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('click',()=>appStore.set({view:btn.dataset.view, chatManual:false, lastAction:`Abriu ${btn.textContent.trim()}`})));
+    this.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('click',()=>appStore.set({view:btn.dataset.view, lastAction:`Abriu ${btn.textContent.trim()}`})));
     window.lucide?.createIcons();
   }
 }
@@ -64,17 +64,17 @@ export class AiChat extends HTMLElement {
   connectedCallback(){ this.render(); appStore.subscribe(()=>this.positionForView()); this.enableDrag(); }
   positionForView(){
     if(appStore.get().chatManual) return;
-    const theme=viewThemes[appStore.get().view]||viewThemes.assistant;
     this.style.removeProperty('left'); this.style.removeProperty('right'); this.style.removeProperty('top'); this.style.removeProperty('bottom');
-    this.classList.toggle('dock-right', theme.chat==='right');
-    this.classList.toggle('dock-bottom', theme.chat==='bottom');
-    this.classList.toggle('dock-left', theme.chat!=='right'&&theme.chat!=='bottom');
+    this.classList.remove('dock-right','dock-bottom');
+    this.classList.add('dock-left');
   }
   render(){
     this.className='ai-chat floating-panel dock-left';
-    this.innerHTML=`<div class="chat-head drag-handle" title="Arraste para mover"><span class="ai-logo">✦</span><div><strong>IA · Belavista</strong><small>Assistente contextual · <span class="chat-drag-hint">ARRASTE PARA MOVER</span></small></div><button class="icon-btn compact close-chat">${ico('minus')}</button></div><div class="chat-scroll"><div class="ai-msg">Bom dia, Warley. Estou acompanhando o contexto desta tela e posso abrir cards, explicar riscos ou registrar ações.</div><div class="chat-summary"><div><b>63%</b><small>completude</small></div><div><b>2</b><small>etapas atrasadas</small></div><div><b>3</b><small>compras críticas</small></div></div><div class="chat-actions"><button data-cmd="Atrasos">${ico('triangle-alert')} Explicar atrasos</button><button data-cmd="Próximos passos">${ico('wand-sparkles')} Sugerir próximos passos</button><button data-cmd="Riscos">${ico('shield-alert')} Ver riscos</button></div><div class="chat-log" aria-live="polite"></div></div><form class="chat-form"><input aria-label="Mensagem para IA" placeholder="Pergunte algo ou dê um comando…"/><button aria-label="Enviar">${ico('send')}</button></form>`;
+    const m=demoData.metrics;
+    this.innerHTML=`<div class="chat-head drag-handle" title="Arraste para mover"><span class="ai-logo">✦</span><div><strong>IA · Belavista</strong><small>Resumo operacional atualizado · <span class="chat-drag-hint">ARRASTE PARA MOVER</span></small></div><button class="icon-btn compact close-chat">${ico('minus')}</button></div><div class="chat-scroll"><div class="chat-greeting"><strong>Bom dia, Warley. 👋</strong><span>Este é o resumo do empreendimento com base nos dados de hoje.</span></div><div class="chat-summary"><div><b>${m.completeness||63}%</b><small>Completude<br>geral</small></div><div><b>${m.delayed}</b><small>Etapas<br>atrasadas</small></div><div><b>${m.criticalPurchases}</b><small>Compras<br>críticas</small></div><div><b>${m.review}</b><small>Pendências<br>de revisão</small></div></div><h3 class="chat-question">O que você deseja acompanhar agora?</h3><div class="chat-quick-actions"><button data-view="stages">${ico('calendar-check')} Ver etapas críticas</button><button data-view="inventory">${ico('package-check')} Ver compras necessárias</button><button data-view="stages">${ico('calendar-range')} Ver cronograma de atividades</button><button data-view="leads">${ico('user-round-search')} Ver leads hoje</button><button data-view="records">${ico('clipboard-pen-line')} Registrar andamento</button><button data-view="map">${ico('layers-3')} Abrir mapa de completude</button></div><div class="chat-log" aria-live="polite"></div></div><form class="chat-form"><input aria-label="Mensagem para IA" placeholder="Pergunte algo ou dê um comando…"/><button aria-label="Enviar">${ico('send')}</button></form>`;
     this.querySelector('.close-chat').addEventListener('click',()=>this.classList.toggle('collapsed'));
     this.querySelectorAll('[data-cmd]').forEach(b=>b.addEventListener('click',()=>this.respond(b.dataset.cmd)));
+    this.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>appStore.set({view:b.dataset.view,lastAction:`Abriu ${b.textContent.trim()}`})));
     this.querySelector('form').addEventListener('submit',e=>{e.preventDefault(); const input=e.currentTarget.querySelector('input'); if(!input.value.trim())return; this.respond(input.value.trim()); input.value='';});
     this.positionForView(); window.lucide?.createIcons();
   }
@@ -561,7 +561,7 @@ export class ViewLayer extends HTMLElement {
     this.querySelectorAll('[data-record-delete]').forEach(b=>b.addEventListener('click',async()=>{if(!confirm('Excluir este registro?'))return;try{const response=await fetch(`/api/records/${encodeURIComponent(b.dataset.recordDelete)}`,{method:'DELETE'});if(!response.ok)throw new Error(`HTTP ${response.status}`);appStore.update(s=>({...s,records:s.records.filter(r=>r.id!==b.dataset.recordDelete),lastAction:'Excluiu registro no banco'}));notify('Registro excluído do banco local.','success');}catch(error){notify('Não foi possível excluir o registro.','warning');console.warn('Exclusão persistente indisponível.',error);}}));
     this.querySelector('.record-cancel')?.addEventListener('click',()=>appStore.set({editingRecord:null}));
     this.querySelector('.record-form')?.addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.currentTarget),value=Object.fromEntries(f.entries()),editingId=appStore.get().editingRecord;try{const response=await fetch(editingId?`/api/records/${encodeURIComponent(editingId)}`:'/api/records',{method:editingId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(value)});if(!response.ok)throw new Error(`HTTP ${response.status}`);const record=await response.json();appStore.update(s=>({...s,records:editingId?s.records.map(r=>r.id===editingId?record:r):[record,...s.records],editingRecord:null,lastAction:editingId?'Atualizou registro no banco':'Criou registro no banco'}));notify('Registro salvo no banco local.','success');}catch(error){notify('Banco local indisponível; registro não confirmado.','warning');console.warn('Persistência de registro indisponível.',error);}});
-    this.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>appStore.set({view:b.dataset.view,chatManual:false,lastAction:`Abriu ${b.textContent.trim()}`})));
+    this.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>appStore.set({view:b.dataset.view,lastAction:`Abriu ${b.textContent.trim()}`})));
     this.querySelectorAll('[data-lead]').forEach(b=>b.addEventListener('click',()=>{appStore.set({selectedLead:+b.dataset.lead});this.render();}));
     this.querySelectorAll('[data-stage-index]').forEach(b=>b.addEventListener('click',()=>{appStore.set({selectedStage:+b.dataset.stageIndex,lastAction:`Abriu a etapa ${b.dataset.stageIndex}`});this.render();}));
     this.querySelectorAll('.stage-detail-card').forEach(b=>b.addEventListener('click',e=>{if(e.target.closest('.stage-activity-card,.activity-connect'))return;this._dedicated=true;this.openDedicatedStage();this.bindDedicatedWorkflow();this.enhanceDedicatedSurface();this.addCatalogPalette();this.bindCatalogButtons();this.addFineDurationControls();this.bindGhostConnections();this.watchSurfaceRelations();this.bindWorkflowFieldTrees();}));
