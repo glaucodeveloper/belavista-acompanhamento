@@ -175,7 +175,7 @@ export class MapScene extends HTMLElement {
       this.dataset.three='ready';
       this.scene=new THREE.Scene(); this.scene.add(new THREE.HemisphereLight(0xcfe4ff,0x1a2735,2.6)); const keyLight=new THREE.DirectionalLight(0xffffff,4.2); keyLight.position.set(-120,-160,220); this.scene.add(keyLight); this.sceneStage=new THREE.Group(); this.sceneStage.scale.setScalar(1); this.scene.add(this.sceneStage); this.camera=new THREE.PerspectiveCamera(34,1,.1,10000); this.dataset.cameraProjection='perspective';
       this.mapSurfaceCanvas=document.createElement('canvas'); this.mapSurfaceTexture=new THREE.CanvasTexture(this.mapSurfaceCanvas); this.mapSurfaceTexture.colorSpace=THREE.SRGBColorSpace;
-      this.mapSurface=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:this.mapSurfaceTexture,side:THREE.DoubleSide,transparent:true,depthTest:false,depthWrite:false})); this.mapSurface.renderOrder=1; this.mapSurface.visible=false; this.mapSurface.position.z=SCENE_MAP_Z; this.sceneStage.add(this.mapSurface); this.dataset.mapRasterMode='dom-raster'; this.dataset.mapContact=`DOM OpenStreet base + transparent WebGL GLB · surface z=${SCENE_MAP_Z} · model base z=${SCENE_MODEL_BASE_Z}`;
+      this.mapSurface=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:this.mapSurfaceTexture,side:THREE.DoubleSide,transparent:true,depthTest:false,depthWrite:false})); this.mapSurface.renderOrder=1; this.mapSurface.visible=true; this.mapSurface.position.z=SCENE_MAP_Z; this.sceneStage.add(this.mapSurface); this.dataset.mapRasterMode='webgl-raster'; this.dataset.mapContact=`OpenStreet raster + GLB na mesma cena Three.js · surface z=${SCENE_MAP_Z} · model base z=${SCENE_MODEL_BASE_Z}`;
       const geo=new THREE.CircleGeometry(8,32); const colors=[0x7d64ff,0x2fe6ae,0xffb020,0x55a8ff,0xff5c58];
       this.markerGroup=new THREE.Group(); this.sceneStage.add(this.markerGroup);
       const coords=[[-16.708,-49.092],[-16.706,-49.089],[-16.711,-49.094],[-16.704,-49.088],[-16.710,-49.091]];
@@ -237,7 +237,6 @@ export class MapScene extends HTMLElement {
   }
   refreshMapSurface(theme,w,h){
     if(!this.mapSurfaceCanvas||!this.mapSurfaceTexture)return;
-    if(this.dataset.mapRasterMode==='dom-raster'){this.mapSurface.visible=false;this.dataset.mapTexture='dom-raster';this.dataset.mapTextureTiles='0/0';return;}
     this.mapSurface.visible=true;
     const zoom=Math.max(12,Math.min(18,Number(theme.zoom)||15)),rasterW=Math.min(1280,Math.max(512,w)),rasterH=Math.min(1280,Math.max(512,h)),cols=Math.ceil(rasterW/256)+2,rows=Math.ceil(rasterH/256)+2,lat=Number(theme.center[0]),lon=Number(theme.center[1]),rad=Math.PI/180,n=2**zoom;
     const xf=(lon+180)/360*n,yf=(1-Math.asinh(Math.tan(lat*rad))/Math.PI)/2*n,x0=Math.floor(xf-cols/2),y0=Math.floor(yf-rows/2),key=`${zoom}|${x0}|${y0}|${cols}|${rows}`; if(key===this._mapSurfaceKey)return; this._mapSurfaceKey=key;
@@ -285,7 +284,7 @@ export class MapScene extends HTMLElement {
     const minX=Math.min(...points.map(point=>point.x)),maxX=Math.max(...points.map(point=>point.x)),minY=Math.min(...points.map(point=>point.y)),maxY=Math.max(...points.map(point=>point.y)),currentX=(minX+maxX)/2,currentY=(minY+maxY)/2;
     const worldCenter=box.getCenter(new THREE.Vector3()); worldCenter.z=z; const p0=worldCenter.clone().project(this.camera),px=worldCenter.clone().add(new THREE.Vector3(1,0,0)).project(this.camera),py=worldCenter.clone().add(new THREE.Vector3(0,1,0)).project(this.camera),a=px.x-p0.x,b=py.x-p0.x,c=px.y-p0.y,d=py.y-p0.y,det=a*d-b*c;
     if(Math.abs(det)<1e-8)return;
-    const dx=((-currentX)*d-b*(-currentY))/det,dy=(a*(-currentY)-(-currentX)*c)/det; this.modelGroup.position.set(dx,dy,0); this.modelGroup.updateMatrixWorld(true); this.dataset.modelOffset=`${Math.round(dx)},${Math.round(dy)}`; this.dataset.modelProjectedDrift=`${currentX.toFixed(3)},${currentY.toFixed(3)}`; this.dataset.modelProjectedCenter='0.000,0.000';
+    const dx=((-currentX)*d-b*(-currentY))/det,dy=(a*(-currentY)-(-currentX)*c)/det,angle=this.sceneStage?.rotation.z||0,localDx=dx*Math.cos(angle)+dy*Math.sin(angle),localDy=-dx*Math.sin(angle)+dy*Math.cos(angle); this.modelGroup.position.set(localDx,localDy,0); this.modelGroup.updateMatrixWorld(true); this.dataset.modelOffset=`${Math.round(localDx)},${Math.round(localDy)}`; this.dataset.modelProjectedDrift=`${currentX.toFixed(3)},${currentY.toFixed(3)}`; this.dataset.modelProjectedCenter='0.000,0.000';
   }
   syncThree(){
     if(!this.renderer||!this.map||!this.map._loaded)return;
@@ -339,8 +338,8 @@ export class MapScene extends HTMLElement {
     const span=this.querySelector('.map-badge span'); if(span) span.textContent=this.dataset.selectedPart?`${this.dataset.selectedPart} · selecionado`:label;
   }
   setSceneVisual(tilt,rotation,scale){
-    this._sceneVisual={tilt,rotation,scale}; this.style.setProperty('--scene-tilt',`${tilt}deg`); this.style.setProperty('--scene-rotation',`${rotation}deg`); this.style.setProperty('--scene-zoom',String(scale));
-    if(this.sceneStage){this.sceneStage.rotation.set(0,0,0);this.sceneStage.scale.setScalar(1);}
+    this._sceneVisual={tilt,rotation,scale}; this.style.setProperty('--scene-tilt',`${tilt}deg`); this.style.setProperty('--scene-rotation','0deg'); this.style.setProperty('--scene-zoom',String(scale));
+    if(this.sceneStage){this.sceneStage.rotation.set(0,0,(Number(rotation)||0)*Math.PI/180);this.sceneStage.scale.setScalar(1);this.dataset.sceneTransform='Three.js shared scene · map + model';}
     this.renderer?.render(this.scene,this.camera);
   }
   applySceneView(view,animate=true){
