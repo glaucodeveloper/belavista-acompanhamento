@@ -20,6 +20,7 @@ ROAD_RE = re.compile(r"asfalto|rua|road|street|meio.?fio|guia|paviment", re.I)
 LOT_RE = re.compile(r"lote|quadra|gleba|divisa", re.I)
 TREE_RE = re.compile(r"arvore|tree|tronco|copa|folhagem", re.I)
 ANNOTATION_RE = re.compile(r"^cota|label|text|annotation", re.I)
+KEEP_LANDSCAPE = False
 
 
 def role_for(name: str) -> str:
@@ -141,6 +142,13 @@ for obj in list(bpy.context.scene.objects):
     obj["overlayId"] = obj.name
     obj["sourceGeometry"] = "pdf-masterplan"
     manifest["roles"][key].append(obj.name)
+
+    if role == "landscape" and not KEEP_LANDSCAPE:
+        # Vegetation is ornamental in this preview and accounts for hundreds
+        # of draw calls. Keep its names in the manifest for provenance, but
+        # omit it from the interactive local GLB so lots and streets stay fast.
+        bpy.data.objects.remove(obj, do_unlink=True)
+        continue
 
     material_for(obj, role)
     if role in {"lot", "street"}:

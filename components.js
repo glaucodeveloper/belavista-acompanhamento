@@ -5,7 +5,7 @@ const esc = (s='') => String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;',
 const notify = (message, tone='info') => { let host=document.querySelector('.app-main'); if(!host)return; let toast=host.querySelector('.action-toast'); if(!toast){toast=document.createElement('div');toast.className='action-toast';host.appendChild(toast);} toast.dataset.tone=tone; toast.textContent=message; toast.classList.add('show'); clearTimeout(toast._timer); toast._timer=setTimeout(()=>toast.classList.remove('show'),2800); };
 const validGeoPoint = point => point && Number.isFinite(Number(point.lat)) && Number.isFinite(Number(point.lng)) && Math.abs(Number(point.lat)) <= 90 && Math.abs(Number(point.lng)) <= 180;
 let mapPreviewSource='';
-const DEFAULT_SCENE_ZOOM=1.24, MAX_SCENE_ZOOM=2.2, DEFAULT_TILT_BOOST=26, SCENE_SURFACE_SCALE=1.55, MODEL_FIT_RATIO=.96, SCENE_MAP_Z=0, SCENE_MODEL_BASE_Z=0;
+const DEFAULT_SCENE_ZOOM=1.12, MAX_SCENE_ZOOM=2.2, DEFAULT_TILT_BOOST=26, SCENE_SURFACE_SCALE=1.55, MODEL_FIT_RATIO=1.32, SCENE_MAP_Z=0, SCENE_MODEL_BASE_Z=0;
 const publishMapPreview = source => { if(!source)return; mapPreviewSource=source; document.querySelectorAll('map-scene[compact]').forEach(scene=>scene.setPreview?.(source)); };
 const stageOverlayKey = value => { const text=String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); if(text.includes('terra'))return 'terraplanagem'; if(text.includes('dren'))return 'drenagem'; if(text.includes('agua'))return 'rede-agua'; if(text.includes('eletric'))return 'rede-eletrica'; if(text.includes('paviment'))return 'pavimentacao'; if(text.includes('praca')||text.includes('urban')||text.includes('arbor'))return 'urbanizacao'; return 'drenagem'; };
 const stageOverlayLabels={terraplanagem:'Terraplanagem',drenagem:'Drenagem', 'rede-agua':'Rede de água','rede-eletrica':'Rede elétrica',pavimentacao:'Pavimentação',urbanizacao:'Praças / urbanização'};
@@ -103,7 +103,7 @@ customElements.define('ai-chat', AiChat);
 
 export class MapScene extends HTMLElement {
   connectedCallback(){
-    this.sceneManualRotation=0; this.sceneManualZoom=DEFAULT_SCENE_ZOOM; this.sceneManualPan={x:0,y:0}; this.sceneTiltAdjust=0; this.stageOverlayKey=stageOverlayKey(demoData.activities.find(x=>x.id===appStore.get().selectedStage)?.name); this.dataset.sceneRotation='0deg'; this.dataset.sceneZoom='124%'; this.dataset.sceneZoomMax='220%'; this.dataset.scenePan='0,0';
+    this.sceneManualRotation=0; this.sceneManualZoom=DEFAULT_SCENE_ZOOM; this.sceneManualPan={x:0,y:0}; this.sceneTiltAdjust=0; this.stageOverlayKey=stageOverlayKey(demoData.activities.find(x=>x.id===appStore.get().selectedStage)?.name); this.dataset.sceneRotation='0deg'; this.dataset.sceneZoom='112%'; this.dataset.sceneZoomMax='220%'; this.dataset.scenePan='0,0';
     if(this.hasAttribute('compact')){ this.renderCompact(); return; }
     this.innerHTML=`<div class="map-fallback"></div><div class="map-host" aria-hidden="true"></div><div class="model-anchor" aria-hidden="true"><span>Aliança Park · masterplan 3D</span></div><canvas class="three-overlay"></canvas><div class="map-tint"></div><div class="map-badge">${ico('layers-3')} <span>Visão temática</span></div><div class="map-rotation-controls" aria-label="Controles de navegação do mapa"><span>MAPA · VISTA 3D</span><div class="map-overlay-switcher" role="group" aria-label="Highlights de infraestrutura">${Object.entries(stageOverlayLabels).map(([key,label])=>`<button type="button" data-scene-overlay="${key}" class="overlay-${key}">${label}</button>`).join('')}</div><div class="map-pan-pad" aria-label="Panorâmica"><button type="button" data-scene-pan="up" aria-label="Mover mapa para cima">↑</button><button type="button" data-scene-pan="left" aria-label="Mover mapa para a esquerda">←</button><button type="button" data-scene-pan="reset" aria-label="Centralizar mapa">⌖</button><button type="button" data-scene-pan="right" aria-label="Mover mapa para a direita">→</button><button type="button" data-scene-pan="down" aria-label="Mover mapa para baixo">↓</button></div><div class="map-view-row"><button type="button" data-scene-zoom="-0.08" aria-label="Afastar mapa">−</button><button type="button" data-scene-zoom="0.08" aria-label="Aproximar mapa">＋</button><button type="button" data-scene-tilt="-4" aria-label="Reduzir inclinação">▿</button><button type="button" data-scene-tilt="4" aria-label="Aumentar inclinação">▵</button></div><div class="map-rotation-row"><button type="button" data-scene-rotate="-15" aria-label="Girar para a esquerda">↺</button><button type="button" data-scene-rotate="15" aria-label="Girar para a direita">↻</button><button type="button" data-scene-rotate="reset" aria-label="Restaurar orientação">N</button></div><button type="button" class="map-fit-button" data-scene-fit aria-label="Ajustar enquadramento">⌗ Ajustar enquadramento</button><small>Arraste para girar · botão direito + arraste para inclinar · Shift + arraste para pan</small></div>`;
     this.querySelectorAll('[data-scene-rotate]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();const value=button.dataset.sceneRotate;this.setSceneRotation(value==='reset'?0:this.sceneManualRotation+Number(value),true);}));
@@ -193,10 +193,10 @@ export class MapScene extends HTMLElement {
     const modelUrl='./assets/model/alianca_park_masterplan_preview.glb'; this.dataset.modelSource='preview-glb';
     loader.load(modelUrl,gltf=>{
       const model=gltf.scene; const box=new THREE.Box3().setFromObject(model); const size=box.getSize(new THREE.Vector3()); const center=box.getCenter(new THREE.Vector3());
-      model.position.sub(center); const largest=Math.max(size.x,size.y,size.z)||1; const factor=145/largest; model.scale.setScalar(factor); model.rotation.set(0,0,0); model.updateMatrixWorld(true); const orientedBox=new THREE.Box3().setFromObject(model); model.position.z+=SCENE_MODEL_BASE_Z-orientedBox.min.z; model.userData.baseScale=factor; model.userData.sourceSize=size; model.userData.alignedToMapPlane=true; this.masterplanModel=model; this.masterplanLargest=largest;
+      model.position.sub(center); const largest=Math.max(size.x,size.y,size.z)||1; const factor=145/largest; model.scale.setScalar(factor); model.rotation.set(Math.PI/2,0,0); model.updateMatrixWorld(true); const orientedBox=new THREE.Box3().setFromObject(model),orientedSize=orientedBox.getSize(new THREE.Vector3()); model.position.z+=SCENE_MODEL_BASE_Z-orientedBox.min.z; model.userData.baseScale=factor; model.userData.sourceSize=size; model.userData.alignedToMapPlane=true; this.modelSourceFootprint={x:orientedSize.x,y:orientedSize.y,scale:factor}; this.masterplanModel=model; this.masterplanLargest=largest;
       model.traverse(node=>{
         if(!node.isMesh)return;
-        node.frustumCulled=false; node.renderOrder=8;
+        node.frustumCulled=true; node.renderOrder=8;
         const prepare=mat=>{if(!mat)return mat;const clone=mat.clone();clone.transparent=true;clone.opacity=Math.max(.72,Math.min(1,clone.opacity??1));clone.side=THREE.DoubleSide;clone.depthWrite=false;return clone;};
         node.material=Array.isArray(node.material)?node.material.map(prepare):prepare(node.material); node.userData.defaultMaterial=node.material;
         const name=String(node.name||'').toLowerCase();
@@ -255,7 +255,7 @@ export class MapScene extends HTMLElement {
     this.sceneManualPan={x:panX,y:panY}; const baseCenterX=w/2,baseCenterY=h/2,centerX=baseCenterX+panX,centerY=baseCenterY+panY; this.sceneBaseCenter={x:baseCenterX,y:baseCenterY}; this.dataset.scenePan=`${Math.round(panX)},${Math.round(panY)}`;
     const surfaceW=w*SCENE_SURFACE_SCALE,surfaceH=h*SCENE_SURFACE_SCALE;
     if(this.sceneStage)this.sceneStage.position.set(centerX,centerY,0);
-    this.mapSurface.position.set(0,0,SCENE_MAP_Z); this.mapSurface.scale.set(surfaceW,surfaceH,1); this.refreshMapSurface(theme,surfaceW,surfaceH);
+    this.mapSurface.position.set(0,0,SCENE_MAP_Z); this.mapSurface.scale.set(surfaceW,surfaceH,1); if(this.modelReady)this.refreshMapSurface(theme,surfaceW,surfaceH);
     this.dataset.sceneComposition='map raster + GLB siblings · shared center/scale/pitch';
     if(this.modelGroup){
       const anchor=this.map.latLngToContainerPoint(L.latLng(Number(theme.center[0]),Number(theme.center[1])));
@@ -270,15 +270,11 @@ export class MapScene extends HTMLElement {
         if(this.masterplanModel&&this.masterplanLargest){
           const frame=Math.min(w,h)*MODEL_FIT_RATIO; this.masterplanModel.scale.setScalar(frame/this.masterplanLargest); this.dataset.modelFit=`${Math.round(frame)}px`; this.dataset.modelFitRatio=String(MODEL_FIT_RATIO);
           const lat=Number(theme.center[0]),metersPerPixel=this.masterplanLargest/frame,zoom=Math.round(Math.log2(156543.033928*Math.cos(lat*Math.PI/180)/metersPerPixel)); this.dataset.mapFitZoom=String(Math.max(12,Math.min(18,zoom)));
-          const footprint=new this.THREE.Box3().setFromObject(this.masterplanModel).getSize(new this.THREE.Vector3()),mapW=Math.max(1,footprint.x*1.14),mapH=Math.max(1,footprint.y*1.14),mapTheme={...theme,zoom:Number(this.dataset.mapFitZoom)||theme.zoom};
-          this.mapSurface.scale.set(mapW,mapH,1); this.refreshMapSurface(mapTheme,mapW,mapH); this.dataset.sceneFootprint=`${Math.round(footprint.x)}x${Math.round(footprint.y)}`; this.dataset.sceneMapScale=`${Math.round(mapW)}x${Math.round(mapH)}`;
+          const localScale=frame/this.masterplanLargest,sourceScale=this.modelSourceFootprint?.scale||localScale,footprint={x:(this.modelSourceFootprint?.x||this.masterplanLargest)*(localScale/sourceScale),y:(this.modelSourceFootprint?.y||this.masterplanLargest)*(localScale/sourceScale)},mapW=Math.max(1,footprint.x*1.14),mapH=Math.max(1,footprint.y*1.14),mapTheme={...theme,zoom:Number(this.dataset.mapFitZoom)||theme.zoom};
+          this.mapSurface.scale.set(mapW,mapH,1); this.refreshMapSurface(mapTheme,mapW,mapH); this.dataset.sceneFootprint=`${Math.round(footprint.x)}x${Math.round(footprint.y)}`; this.dataset.sceneMapScale=`${Math.round(mapW)}x${Math.round(mapH)}`; this.dataset.modelScreen=`centered · ${Math.round(footprint.x)}x${Math.round(footprint.y)}`;
         }
         this.modelGroup.updateMatrixWorld(true); this.modelGroup.visible=true;
-        if(this.masterplanModel){
-          const bounds=new this.THREE.Box3().setFromObject(this.masterplanModel),corners=[];
-          for(const x of [bounds.min.x,bounds.max.x])for(const y of [bounds.min.y,bounds.max.y])for(const z of [bounds.min.z,bounds.max.z])corners.push(new this.THREE.Vector3(x,y,z).project(this.camera));
-          const xs=corners.map(p=>(p.x+1)*w/2),ys=corners.map(p=>(1-p.y)*h/2); this.dataset.modelOffset='0,0'; this.dataset.modelScreen=`${Math.round(Math.min(...xs))},${Math.round(Math.min(...ys))},${Math.round(Math.max(...xs)-Math.min(...xs))}x${Math.round(Math.max(...ys)-Math.min(...ys))}`;
-        }
+        if(this.masterplanModel)this.dataset.modelOffset='0,0';
       }
     }
     for(const m of this.markerGroup?.children||[]){const p=this.map.latLngToContainerPoint(L.latLng(Number(m.userData.latlng[0]),Number(m.userData.latlng[1])));if(Number.isFinite(p.x)&&Number.isFinite(p.y))m.position.set(p.x-baseCenterX,p.y-baseCenterY,0);}
@@ -300,7 +296,7 @@ export class MapScene extends HTMLElement {
     if(!this.sceneStage){this._sceneTargetX=targetX;return;}
     const targetZ=(this.sceneManualRotation||0)*Math.PI/180,finish=()=>{this.sceneStage.rotation.x=targetX;this.sceneStage.rotation.z=targetZ;this.sceneStage.scale.set(targetScale,targetScale,targetScale);this.syncThree();this.renderer?.render(this.scene,this.camera);};
     if(!animate){finish();return;}
-    const startX=this.sceneStage.rotation.x,startZ=this.sceneStage.rotation.z,startScale=this.sceneStage.scale.x||1,started=performance.now(),duration=780,token=Symbol('scene-transition');this._sceneTransition=token;
+    const startX=this.sceneStage.rotation.x,startZ=this.sceneStage.rotation.z,startScale=this.sceneStage.scale.x||1,started=performance.now(),duration=460,token=Symbol('scene-transition');this._sceneTransition=token;
     const tick=now=>{if(this._sceneTransition!==token)return;const t=Math.min(1,(now-started)/duration),e=t<.5?4*t*t*(3-2*t):t;this.sceneStage.rotation.x=startX+(targetX-startX)*e;this.sceneStage.rotation.z=startZ+(targetZ-startZ)*e;const s=startScale+(targetScale-startScale)*e;this.sceneStage.scale.set(s,s,s);this.renderer?.render(this.scene,this.camera);if(t<1)requestAnimationFrame(tick);else finish();};
     requestAnimationFrame(tick);
   }
@@ -330,7 +326,7 @@ export class MapScene extends HTMLElement {
     const started=performance.now(),duration=320,token=Symbol('manual-zoom');this._sceneTransition=token;const tick=now=>{if(this._sceneTransition!==token)return;const t=Math.min(1,(now-started)/duration),e=t<.5?4*t*t*(3-2*t):t;this.sceneStage.scale.setScalar(start+(targetScale-start)*e);this.renderer?.render(this.scene,this.camera);if(t<1)requestAnimationFrame(tick);else this.syncThree();};requestAnimationFrame(tick);
   }
   setSceneTiltAdjust(value,animate=true){this.sceneTiltAdjust=Math.max(-8,Math.min(8,Number(value)||0));this.applySceneView(appStore.get().view,animate);}
-  fitSceneView(animate=true){this.sceneManualRotation=0;this.sceneManualZoom=DEFAULT_SCENE_ZOOM;this.sceneManualPan={x:0,y:0};this.sceneTiltAdjust=0;this.dataset.sceneRotation='0deg';this.dataset.sceneZoom='124%';this.dataset.scenePan='0,0';if(this.sceneStage)this.sceneStage.scale.setScalar(this.sceneManualZoom);this.syncThree();this.applySceneView(appStore.get().view,animate);if(animate)setTimeout(()=>this.syncThree(),850);}
+  fitSceneView(animate=true){this.sceneManualRotation=0;this.sceneManualZoom=DEFAULT_SCENE_ZOOM;this.sceneManualPan={x:0,y:0};this.sceneTiltAdjust=0;this.dataset.sceneRotation='0deg';this.dataset.sceneZoom='112%';this.dataset.scenePan='0,0';if(this.sceneStage)this.sceneStage.scale.setScalar(this.sceneManualZoom);this.syncThree();this.applySceneView(appStore.get().view,animate);if(animate)setTimeout(()=>this.syncThree(),520);}
 }
 customElements.define('map-scene', MapScene);
 
