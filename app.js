@@ -1,3 +1,4 @@
+import './api-client.js?v=1';
 import './components.js?v=136';
 import {appStore} from './state.js';
 

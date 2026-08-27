@@ -34,7 +34,7 @@ Abra:
 http://localhost:8080
 ```
 
-O chat usa o endpoint local `/api/gemini`, que encaminha a solicitação para a API Gemini. A chave nunca é enviada ao navegador. Sem `GEMINI_API_KEY`, o app permanece funcional em modo demonstração.
+O chat usa `/api/ai` e `/api/gemini`. Sem `BELAVISTA_API_BASE`, o servidor local continua respondendo a API básica e pode usar Gemini. Com `BELAVISTA_API_BASE`, ele encaminha `/api/*` para o Worker Cloudflare, preservando a UI atual.
 
 Para pular a tela de instalação e entrar direto na demonstração:
 
@@ -90,6 +90,15 @@ As imagens fornecidas estão copiadas em `assets/reference/` apenas como referê
 
 ```text
 belavista-ai-monitor/
+├── api-client.js
+├── worker/
+│   ├── src/
+│   ├── migrations/
+│   └── wrangler.jsonc.example
+├── docs/
+│   └── CLOUDFLARE-NVIDIA-ARCHITECTURE.md
+├── apply-overlay.sh
+├── install-and-push.sh
 ├── index.html
 ├── styles.css
 ├── app.js
@@ -102,4 +111,16 @@ belavista-ai-monitor/
 │   └── reference/
 └── scripts/
     └── create-repo.sh
+```
+
+## Worker Cloudflare V10
+
+- Configure `BELAVISTA_API_BASE` para apontar para o Worker publicado quando quiser manter o frontend local consumindo a API remota.
+- A arquitetura e os bindings esperados estão em `docs/CLOUDFLARE-NVIDIA-ARCHITECTURE.md`.
+- A base do Worker fica em `worker/`, com D1 para dados operacionais, filas para digestão assíncrona e integração NVIDIA preparada.
+
+## Validação
+
+```bash
+npm run check
 ```

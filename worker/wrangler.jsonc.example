@@ -1,0 +1,33 @@
+{
+  "name": "belavista-cloudflare-worker",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-27",
+  "migrations_dir": "migrations",
+  "vars": {
+    "WORKERS_AI_MODEL": "@cf/nvidia/nemotron-3-120b-a12b"
+  },
+  "d1_databases": [
+    {
+      "binding": "BELAVISTA_DB",
+      "database_name": "belavista-v10",
+      "database_id": "replace-with-d1-id"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BELAVISTA_MEDIA",
+      "bucket_name": "belavista-media"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "BELAVISTA_QUEUE",
+        "queue": "belavista-digests"
+      }
+    ]
+  },
+  "ai": {
+    "binding": "AI"
+  }
+}
