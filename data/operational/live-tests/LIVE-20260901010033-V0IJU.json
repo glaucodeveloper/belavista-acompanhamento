@@ -2,7 +2,7 @@
   "id": "LIVE-20260901010033-V0IJU",
   "scenario": "obra-completa-live",
   "createdAt": "2026-09-01T01:00:35.864Z",
-  "updatedAt": "2026-09-01T01:01:12.163Z",
+  "updatedAt": "2026-09-01T01:01:21.791Z",
   "today": "2026-09-01",
   "configuration": {
     "stages": {
@@ -935,7 +935,22 @@
       }
     ],
     "inventoryMovements": [],
-    "purchaseRequests": [],
+    "purchaseRequests": [
+      {
+        "id": "BUY-LIVE-20260901010033-V0IJU-1-drenagem-assentar-Brita",
+        "status": "ordered",
+        "stageId": "drenagem",
+        "stageName": "Drenagem Pluvial",
+        "activityId": "drenagem-assentar",
+        "materialName": "Brita",
+        "quantity": 45,
+        "unit": "m3",
+        "unitCostCents": 18000,
+        "totalCostCents": 810000,
+        "expectedArrival": "2026-09-03",
+        "createdAt": "2026-09-01T01:01:21.791Z"
+      }
+    ],
     "fieldReturns": [
       {
         "id": "DIARY-MTHYNZLX",
@@ -1016,6 +1031,25 @@
         "category": "Aporte live",
         "description": "Aporte controlado para observar mudança de decisão com reserva preservada.",
         "at": "2026-09-01T01:01:12.163Z"
+      }
+    },
+    {
+      "at": "2026-09-01T01:01:21.791Z",
+      "type": "purchase.ordered",
+      "message": "",
+      "event": {
+        "type": "purchase.ordered",
+        "id": "BUY-LIVE-20260901010033-V0IJU-1-drenagem-assentar-Brita",
+        "stageId": "drenagem",
+        "stageName": "Drenagem Pluvial",
+        "activityId": "drenagem-assentar",
+        "materialName": "Brita",
+        "quantity": 45,
+        "unit": "m3",
+        "unitCostCents": 18000,
+        "totalCostCents": 810000,
+        "expectedArrival": "2026-09-03",
+        "at": "2026-09-01T01:01:21.791Z"
       }
     }
   ]
