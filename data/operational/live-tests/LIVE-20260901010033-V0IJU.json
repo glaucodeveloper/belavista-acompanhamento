@@ -2,7 +2,7 @@
   "id": "LIVE-20260901010033-V0IJU",
   "scenario": "obra-completa-live",
   "createdAt": "2026-09-01T01:00:35.864Z",
-  "updatedAt": "2026-09-01T01:01:25.568Z",
+  "updatedAt": "2026-09-01T01:01:30.471Z",
   "today": "2026-09-01",
   "configuration": {
     "stages": {
@@ -969,6 +969,20 @@
         "totalCostCents": 810000,
         "expectedArrival": "2026-09-03",
         "createdAt": "2026-09-01T01:01:21.791Z"
+      },
+      {
+        "id": "BUY-LIVE-20260901010033-V0IJU-1-drenagem-compactar-Areia",
+        "status": "ordered",
+        "stageId": "drenagem",
+        "stageName": "Drenagem Pluvial",
+        "activityId": "drenagem-compactar",
+        "materialName": "Areia",
+        "quantity": 32,
+        "unit": "m3",
+        "unitCostCents": 12000,
+        "totalCostCents": 384000,
+        "expectedArrival": "2026-09-03",
+        "createdAt": "2026-09-01T01:01:30.471Z"
       }
     ],
     "fieldReturns": [
@@ -1084,6 +1098,25 @@
         "unit": "m3",
         "totalCostCents": 810000,
         "at": "2026-09-01T01:01:25.568Z"
+      }
+    },
+    {
+      "at": "2026-09-01T01:01:30.471Z",
+      "type": "purchase.ordered",
+      "message": "",
+      "event": {
+        "type": "purchase.ordered",
+        "id": "BUY-LIVE-20260901010033-V0IJU-1-drenagem-compactar-Areia",
+        "stageId": "drenagem",
+        "stageName": "Drenagem Pluvial",
+        "activityId": "drenagem-compactar",
+        "materialName": "Areia",
+        "quantity": 32,
+        "unit": "m3",
+        "unitCostCents": 12000,
+        "totalCostCents": 384000,
+        "expectedArrival": "2026-09-03",
+        "at": "2026-09-01T01:01:30.471Z"
       }
     }
   ]
