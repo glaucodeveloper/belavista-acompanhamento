@@ -2,7 +2,7 @@
   "id": "LIVE-20260901010033-V0IJU",
   "scenario": "obra-completa-live",
   "createdAt": "2026-09-01T01:00:35.864Z",
-  "updatedAt": "2026-09-01T01:01:21.791Z",
+  "updatedAt": "2026-09-01T01:01:25.568Z",
   "today": "2026-09-01",
   "configuration": {
     "stages": {
@@ -925,6 +925,15 @@
     "projectId": "project-LIVE-20260901010033-V0IJU",
     "cashEntries": [
       {
+        "id": "CASH-BUY-LIVE-20260901010033-V0IJU-1-drenagem-assentar-Brita",
+        "kind": "saida",
+        "stage": "Geral",
+        "category": "Compra recebida",
+        "description": "Recebimento de 45 m3 de Brita",
+        "amountCents": 810000,
+        "createdAt": "2026-09-01T01:01:25.568Z"
+      },
+      {
         "id": "LIVE-CASH-MTHYOHGJ",
         "kind": "entrada",
         "stage": "Geral",
@@ -934,11 +943,22 @@
         "createdAt": "2026-09-01T01:01:12.163Z"
       }
     ],
-    "inventoryMovements": [],
+    "inventoryMovements": [
+      {
+        "id": "INV-BUY-LIVE-20260901010033-V0IJU-1-drenagem-assentar-Brita-MTHYORSW",
+        "kind": "entrada",
+        "materialName": "Brita",
+        "quantity": 45,
+        "unit": "m3",
+        "sourceType": "live-test-receipt",
+        "sourceId": "BUY-LIVE-20260901010033-V0IJU-1-drenagem-assentar-Brita",
+        "createdAt": "2026-09-01T01:01:25.568Z"
+      }
+    ],
     "purchaseRequests": [
       {
         "id": "BUY-LIVE-20260901010033-V0IJU-1-drenagem-assentar-Brita",
-        "status": "ordered",
+        "status": "received",
         "stageId": "drenagem",
         "stageName": "Drenagem Pluvial",
         "activityId": "drenagem-assentar",
@@ -1050,6 +1070,20 @@
         "totalCostCents": 810000,
         "expectedArrival": "2026-09-03",
         "at": "2026-09-01T01:01:21.791Z"
+      }
+    },
+    {
+      "at": "2026-09-01T01:01:25.568Z",
+      "type": "purchase.receipt",
+      "message": "",
+      "event": {
+        "type": "purchase.receipt",
+        "purchaseId": "BUY-LIVE-20260901010033-V0IJU-1-drenagem-assentar-Brita",
+        "materialName": "Brita",
+        "quantity": 45,
+        "unit": "m3",
+        "totalCostCents": 810000,
+        "at": "2026-09-01T01:01:25.568Z"
       }
     }
   ]
