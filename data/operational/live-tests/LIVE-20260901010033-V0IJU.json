@@ -2,7 +2,7 @@
   "id": "LIVE-20260901010033-V0IJU",
   "scenario": "obra-completa-live",
   "createdAt": "2026-09-01T01:00:35.864Z",
-  "updatedAt": "2026-09-01T01:01:34.906Z",
+  "updatedAt": "2026-09-01T01:01:42.825Z",
   "today": "2026-09-01",
   "configuration": {
     "stages": {
@@ -1002,6 +1002,20 @@
         "totalCostCents": 384000,
         "expectedArrival": "2026-09-03",
         "createdAt": "2026-09-01T01:01:30.471Z"
+      },
+      {
+        "id": "BUY-LIVE-20260901010033-V0IJU-1-agua-rede-principal-Tubo-PEAD",
+        "status": "ordered",
+        "stageId": "agua",
+        "stageName": "Rede de Água",
+        "activityId": "agua-rede-principal",
+        "materialName": "Tubo PEAD",
+        "quantity": 620,
+        "unit": "m",
+        "unitCostCents": 4200,
+        "totalCostCents": 2604000,
+        "expectedArrival": "2026-09-06",
+        "createdAt": "2026-09-01T01:01:42.825Z"
       }
     ],
     "fieldReturns": [
@@ -1150,6 +1164,25 @@
         "unit": "m3",
         "totalCostCents": 384000,
         "at": "2026-09-01T01:01:34.906Z"
+      }
+    },
+    {
+      "at": "2026-09-01T01:01:42.825Z",
+      "type": "purchase.ordered",
+      "message": "",
+      "event": {
+        "type": "purchase.ordered",
+        "id": "BUY-LIVE-20260901010033-V0IJU-1-agua-rede-principal-Tubo-PEAD",
+        "stageId": "agua",
+        "stageName": "Rede de Água",
+        "activityId": "agua-rede-principal",
+        "materialName": "Tubo PEAD",
+        "quantity": 620,
+        "unit": "m",
+        "unitCostCents": 4200,
+        "totalCostCents": 2604000,
+        "expectedArrival": "2026-09-06",
+        "at": "2026-09-01T01:01:42.825Z"
       }
     }
   ]
