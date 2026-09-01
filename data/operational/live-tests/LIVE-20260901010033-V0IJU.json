@@ -2,7 +2,7 @@
   "id": "LIVE-20260901010033-V0IJU",
   "scenario": "obra-completa-live",
   "createdAt": "2026-09-01T01:00:35.864Z",
-  "updatedAt": "2026-09-01T01:02:00.637Z",
+  "updatedAt": "2026-09-01T01:02:09.035Z",
   "today": "2026-09-01",
   "configuration": {
     "stages": {
@@ -559,9 +559,11 @@
           }
         },
         "drenagem": {
-          "progress": 0,
+          "progress": 50,
           "completed": false,
-          "completedActivities": [],
+          "completedActivities": [
+            "drenagem-compactar"
+          ],
           "criteria": {
             "trecho-liberado": true
           }
@@ -1079,6 +1081,15 @@
         "notes": "Frente inicial conferida e concluída.",
         "progressPercent": 100,
         "createdAt": "2026-09-01T01:00:49.029Z"
+      },
+      {
+        "id": "DIARY-MTHYPPCB",
+        "stageId": "drenagem",
+        "activityId": "drenagem-compactar",
+        "responsavel": "Encarregado live",
+        "notes": "Diário real do ciclo 2: Reaterro e compactação do trecho executada conforme agenda do Worker.",
+        "progressPercent": 50,
+        "createdAt": "2026-09-01T01:02:09.035Z"
       }
     ]
   },
@@ -1282,6 +1293,19 @@
         "unit": "un",
         "totalCostCents": 1296000,
         "at": "2026-09-01T01:02:00.637Z"
+      }
+    },
+    {
+      "at": "2026-09-01T01:02:09.035Z",
+      "type": "work.diary",
+      "message": "",
+      "event": {
+        "type": "work.diary",
+        "stageId": "drenagem",
+        "activityId": "drenagem-compactar",
+        "responsavel": "Encarregado live",
+        "notes": "Diário real do ciclo 2: Reaterro e compactação do trecho executada conforme agenda do Worker.",
+        "at": "2026-09-01T01:02:09.035Z"
       }
     }
   ]
