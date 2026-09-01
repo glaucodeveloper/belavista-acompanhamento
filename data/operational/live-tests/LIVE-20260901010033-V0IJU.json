@@ -2,7 +2,7 @@
   "id": "LIVE-20260901010033-V0IJU",
   "scenario": "obra-completa-live",
   "createdAt": "2026-09-01T01:00:35.864Z",
-  "updatedAt": "2026-09-01T01:01:55.036Z",
+  "updatedAt": "2026-09-01T01:02:00.637Z",
   "today": "2026-09-01",
   "configuration": {
     "stages": {
@@ -925,6 +925,15 @@
     "projectId": "project-LIVE-20260901010033-V0IJU",
     "cashEntries": [
       {
+        "id": "CASH-BUY-LIVE-20260901010033-V0IJU-1-agua-rede-principal-Conex-es-PEAD",
+        "kind": "saida",
+        "stage": "Geral",
+        "category": "Compra recebida",
+        "description": "Recebimento de 72 un de Conexões PEAD",
+        "amountCents": 1296000,
+        "createdAt": "2026-09-01T01:02:00.637Z"
+      },
+      {
         "id": "CASH-BUY-LIVE-20260901010033-V0IJU-1-agua-rede-principal-Tubo-PEAD",
         "kind": "saida",
         "stage": "Geral",
@@ -991,6 +1000,16 @@
         "sourceType": "live-test-receipt",
         "sourceId": "BUY-LIVE-20260901010033-V0IJU-1-agua-rede-principal-Tubo-PEAD",
         "createdAt": "2026-09-01T01:01:49.312Z"
+      },
+      {
+        "id": "INV-BUY-LIVE-20260901010033-V0IJU-1-agua-rede-principal-Conex-es-PEAD-MTHYPIV1",
+        "kind": "entrada",
+        "materialName": "Conexões PEAD",
+        "quantity": 72,
+        "unit": "un",
+        "sourceType": "live-test-receipt",
+        "sourceId": "BUY-LIVE-20260901010033-V0IJU-1-agua-rede-principal-Conex-es-PEAD",
+        "createdAt": "2026-09-01T01:02:00.637Z"
       }
     ],
     "purchaseRequests": [
@@ -1038,7 +1057,7 @@
       },
       {
         "id": "BUY-LIVE-20260901010033-V0IJU-1-agua-rede-principal-Conex-es-PEAD",
-        "status": "ordered",
+        "status": "received",
         "stageId": "agua",
         "stageName": "Rede de Água",
         "activityId": "agua-rede-principal",
@@ -1249,6 +1268,20 @@
         "totalCostCents": 1296000,
         "expectedArrival": "2026-09-05",
         "at": "2026-09-01T01:01:55.036Z"
+      }
+    },
+    {
+      "at": "2026-09-01T01:02:00.637Z",
+      "type": "purchase.receipt",
+      "message": "",
+      "event": {
+        "type": "purchase.receipt",
+        "purchaseId": "BUY-LIVE-20260901010033-V0IJU-1-agua-rede-principal-Conex-es-PEAD",
+        "materialName": "Conexões PEAD",
+        "quantity": 72,
+        "unit": "un",
+        "totalCostCents": 1296000,
+        "at": "2026-09-01T01:02:00.637Z"
       }
     }
   ]
