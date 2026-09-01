@@ -2,7 +2,7 @@
   "id": "LIVE-20260901010033-V0IJU",
   "scenario": "obra-completa-live",
   "createdAt": "2026-09-01T01:00:35.864Z",
-  "updatedAt": "2026-09-01T01:01:49.312Z",
+  "updatedAt": "2026-09-01T01:01:55.036Z",
   "today": "2026-09-01",
   "configuration": {
     "stages": {
@@ -1035,6 +1035,20 @@
         "totalCostCents": 2604000,
         "expectedArrival": "2026-09-06",
         "createdAt": "2026-09-01T01:01:42.825Z"
+      },
+      {
+        "id": "BUY-LIVE-20260901010033-V0IJU-1-agua-rede-principal-Conex-es-PEAD",
+        "status": "ordered",
+        "stageId": "agua",
+        "stageName": "Rede de Água",
+        "activityId": "agua-rede-principal",
+        "materialName": "Conexões PEAD",
+        "quantity": 72,
+        "unit": "un",
+        "unitCostCents": 18000,
+        "totalCostCents": 1296000,
+        "expectedArrival": "2026-09-05",
+        "createdAt": "2026-09-01T01:01:55.036Z"
       }
     ],
     "fieldReturns": [
@@ -1216,6 +1230,25 @@
         "unit": "m",
         "totalCostCents": 2604000,
         "at": "2026-09-01T01:01:49.312Z"
+      }
+    },
+    {
+      "at": "2026-09-01T01:01:55.036Z",
+      "type": "purchase.ordered",
+      "message": "",
+      "event": {
+        "type": "purchase.ordered",
+        "id": "BUY-LIVE-20260901010033-V0IJU-1-agua-rede-principal-Conex-es-PEAD",
+        "stageId": "agua",
+        "stageName": "Rede de Água",
+        "activityId": "agua-rede-principal",
+        "materialName": "Conexões PEAD",
+        "quantity": 72,
+        "unit": "un",
+        "unitCostCents": 18000,
+        "totalCostCents": 1296000,
+        "expectedArrival": "2026-09-05",
+        "at": "2026-09-01T01:01:55.036Z"
       }
     }
   ]
