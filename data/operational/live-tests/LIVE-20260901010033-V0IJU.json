@@ -2,7 +2,7 @@
   "id": "LIVE-20260901010033-V0IJU",
   "scenario": "obra-completa-live",
   "createdAt": "2026-09-01T01:00:35.864Z",
-  "updatedAt": "2026-09-01T01:01:00.412Z",
+  "updatedAt": "2026-09-01T01:01:12.163Z",
   "today": "2026-09-01",
   "configuration": {
     "stages": {
@@ -923,7 +923,17 @@
   },
   "state": {
     "projectId": "project-LIVE-20260901010033-V0IJU",
-    "cashEntries": [],
+    "cashEntries": [
+      {
+        "id": "LIVE-CASH-MTHYOHGJ",
+        "kind": "entrada",
+        "stage": "Geral",
+        "category": "Aporte live",
+        "description": "Aporte controlado para observar mudança de decisão com reserva preservada.",
+        "amountCents": 20100000,
+        "createdAt": "2026-09-01T01:01:12.163Z"
+      }
+    ],
     "inventoryMovements": [],
     "purchaseRequests": [],
     "fieldReturns": [
@@ -994,6 +1004,18 @@
         ],
         "message": "Fiscalização liberou frentes tecnicamente disponíveis.",
         "at": "2026-09-01T01:01:00.412Z"
+      }
+    },
+    {
+      "at": "2026-09-01T01:01:12.163Z",
+      "type": "cash.entry",
+      "message": "",
+      "event": {
+        "type": "cash.entry",
+        "amountCents": 20100000,
+        "category": "Aporte live",
+        "description": "Aporte controlado para observar mudança de decisão com reserva preservada.",
+        "at": "2026-09-01T01:01:12.163Z"
       }
     }
   ]
