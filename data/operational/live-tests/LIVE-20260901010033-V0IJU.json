@@ -2,7 +2,7 @@
   "id": "LIVE-20260901010033-V0IJU",
   "scenario": "obra-completa-live",
   "createdAt": "2026-09-01T01:00:35.864Z",
-  "updatedAt": "2026-09-01T01:02:34.772Z",
+  "updatedAt": "2026-09-01T01:02:46.136Z",
   "today": "2026-09-01",
   "configuration": {
     "stages": {
@@ -1082,6 +1082,20 @@
         "totalCostCents": 1296000,
         "expectedArrival": "2026-09-05",
         "createdAt": "2026-09-01T01:01:55.036Z"
+      },
+      {
+        "id": "BUY-LIVE-20260901010033-V0IJU-6-agua-ramais-Ramais-de-gua",
+        "status": "ordered",
+        "stageId": "agua",
+        "stageName": "Rede de Água",
+        "activityId": "agua-ramais",
+        "materialName": "Ramais de água",
+        "quantity": 46,
+        "unit": "un",
+        "unitCostCents": 22000,
+        "totalCostCents": 1012000,
+        "expectedArrival": "2026-09-05",
+        "createdAt": "2026-09-01T01:02:46.136Z"
       }
     ],
     "fieldReturns": [
@@ -1374,6 +1388,25 @@
         "category": "Aporte de teste live",
         "description": "Caixa liberado após solicitação real do ciclo 5.",
         "at": "2026-09-01T01:02:34.772Z"
+      }
+    },
+    {
+      "at": "2026-09-01T01:02:46.136Z",
+      "type": "purchase.ordered",
+      "message": "",
+      "event": {
+        "type": "purchase.ordered",
+        "id": "BUY-LIVE-20260901010033-V0IJU-6-agua-ramais-Ramais-de-gua",
+        "stageId": "agua",
+        "stageName": "Rede de Água",
+        "activityId": "agua-ramais",
+        "materialName": "Ramais de água",
+        "quantity": 46,
+        "unit": "un",
+        "unitCostCents": 22000,
+        "totalCostCents": 1012000,
+        "expectedArrival": "2026-09-05",
+        "at": "2026-09-01T01:02:46.136Z"
       }
     }
   ]
