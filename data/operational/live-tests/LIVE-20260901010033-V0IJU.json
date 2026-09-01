@@ -2,7 +2,7 @@
   "id": "LIVE-20260901010033-V0IJU",
   "scenario": "obra-completa-live",
   "createdAt": "2026-09-01T01:00:35.864Z",
-  "updatedAt": "2026-09-01T01:00:41.672Z",
+  "updatedAt": "2026-09-01T01:00:49.029Z",
   "today": "2026-09-01",
   "configuration": {
     "stages": {
@@ -549,9 +549,11 @@
       ],
       "stageState": {
         "terraplanagem": {
-          "progress": 0,
-          "completed": false,
-          "completedActivities": [],
+          "progress": 100,
+          "completed": true,
+          "completedActivities": [
+            "terra-conferir-greide"
+          ],
           "criteria": {
             "topografia-base": true
           }
@@ -924,7 +926,17 @@
     "cashEntries": [],
     "inventoryMovements": [],
     "purchaseRequests": [],
-    "fieldReturns": []
+    "fieldReturns": [
+      {
+        "id": "DIARY-MTHYNZLX",
+        "stageId": "terraplanagem",
+        "activityId": "terra-conferir-greide",
+        "responsavel": "Encarregado live",
+        "notes": "Frente inicial conferida e concluída.",
+        "progressPercent": 100,
+        "createdAt": "2026-09-01T01:00:49.029Z"
+      }
+    ]
   },
   "history": [
     {
@@ -942,6 +954,19 @@
         "criterionId": "topografia-base",
         "message": "Topografia base conferida no teste live.",
         "at": "2026-09-01T01:00:41.672Z"
+      }
+    },
+    {
+      "at": "2026-09-01T01:00:49.029Z",
+      "type": "work.diary",
+      "message": "",
+      "event": {
+        "type": "work.diary",
+        "stageId": "terraplanagem",
+        "activityId": "terra-conferir-greide",
+        "responsavel": "Encarregado live",
+        "notes": "Frente inicial conferida e concluída.",
+        "at": "2026-09-01T01:00:49.029Z"
       }
     }
   ]
