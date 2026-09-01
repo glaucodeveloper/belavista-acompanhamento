@@ -2,7 +2,7 @@
   "id": "LIVE-20260901010033-V0IJU",
   "scenario": "obra-completa-live",
   "createdAt": "2026-09-01T01:00:35.864Z",
-  "updatedAt": "2026-09-01T01:00:49.029Z",
+  "updatedAt": "2026-09-01T01:01:00.412Z",
   "today": "2026-09-01",
   "configuration": {
     "stages": {
@@ -563,7 +563,7 @@
           "completed": false,
           "completedActivities": [],
           "criteria": {
-            "trecho-liberado": false
+            "trecho-liberado": true
           }
         },
         "agua": {
@@ -571,7 +571,7 @@
           "completed": false,
           "completedActivities": [],
           "criteria": {
-            "eixo-agua-liberado": false
+            "eixo-agua-liberado": true
           }
         },
         "eletrica": {
@@ -579,7 +579,7 @@
           "completed": false,
           "completedActivities": [],
           "criteria": {
-            "projeto-eletrico": false
+            "projeto-eletrico": true
           }
         },
         "pavimentacao": {
@@ -967,6 +967,33 @@
         "responsavel": "Encarregado live",
         "notes": "Frente inicial conferida e concluída.",
         "at": "2026-09-01T01:00:49.029Z"
+      }
+    },
+    {
+      "at": "2026-09-01T01:01:00.412Z",
+      "type": "criteria.batch",
+      "message": "Fiscalização liberou frentes tecnicamente disponíveis.",
+      "event": {
+        "type": "criteria.batch",
+        "items": [
+          {
+            "stageId": "drenagem",
+            "criterionId": "trecho-liberado",
+            "value": true
+          },
+          {
+            "stageId": "agua",
+            "criterionId": "eixo-agua-liberado",
+            "value": true
+          },
+          {
+            "stageId": "eletrica",
+            "criterionId": "projeto-eletrico",
+            "value": true
+          }
+        ],
+        "message": "Fiscalização liberou frentes tecnicamente disponíveis.",
+        "at": "2026-09-01T01:01:00.412Z"
       }
     }
   ]
