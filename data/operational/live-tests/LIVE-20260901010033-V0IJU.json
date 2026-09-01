@@ -2,7 +2,7 @@
   "id": "LIVE-20260901010033-V0IJU",
   "scenario": "obra-completa-live",
   "createdAt": "2026-09-01T01:00:35.864Z",
-  "updatedAt": "2026-09-01T01:02:09.035Z",
+  "updatedAt": "2026-09-01T01:02:17.512Z",
   "today": "2026-09-01",
   "configuration": {
     "stages": {
@@ -569,9 +569,11 @@
           }
         },
         "agua": {
-          "progress": 0,
+          "progress": 33,
           "completed": false,
-          "completedActivities": [],
+          "completedActivities": [
+            "agua-rede-principal"
+          ],
           "criteria": {
             "eixo-agua-liberado": true
           }
@@ -1090,6 +1092,15 @@
         "notes": "Diário real do ciclo 2: Reaterro e compactação do trecho executada conforme agenda do Worker.",
         "progressPercent": 50,
         "createdAt": "2026-09-01T01:02:09.035Z"
+      },
+      {
+        "id": "DIARY-MTHYPVVS",
+        "stageId": "agua",
+        "activityId": "agua-rede-principal",
+        "responsavel": "Encarregado live",
+        "notes": "Diário real do ciclo 3: Executar rede principal PEAD executada conforme agenda do Worker.",
+        "progressPercent": 33,
+        "createdAt": "2026-09-01T01:02:17.512Z"
       }
     ]
   },
@@ -1306,6 +1317,19 @@
         "responsavel": "Encarregado live",
         "notes": "Diário real do ciclo 2: Reaterro e compactação do trecho executada conforme agenda do Worker.",
         "at": "2026-09-01T01:02:09.035Z"
+      }
+    },
+    {
+      "at": "2026-09-01T01:02:17.512Z",
+      "type": "work.diary",
+      "message": "",
+      "event": {
+        "type": "work.diary",
+        "stageId": "agua",
+        "activityId": "agua-rede-principal",
+        "responsavel": "Encarregado live",
+        "notes": "Diário real do ciclo 3: Executar rede principal PEAD executada conforme agenda do Worker.",
+        "at": "2026-09-01T01:02:17.512Z"
       }
     }
   ]
