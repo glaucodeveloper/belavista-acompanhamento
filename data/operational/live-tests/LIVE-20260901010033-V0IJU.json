@@ -2,7 +2,7 @@
   "id": "LIVE-20260901010033-V0IJU",
   "scenario": "obra-completa-live",
   "createdAt": "2026-09-01T01:00:35.864Z",
-  "updatedAt": "2026-09-01T01:00:35.864Z",
+  "updatedAt": "2026-09-01T01:00:41.672Z",
   "today": "2026-09-01",
   "configuration": {
     "stages": {
@@ -553,7 +553,7 @@
           "completed": false,
           "completedActivities": [],
           "criteria": {
-            "topografia-base": false
+            "topografia-base": true
           }
         },
         "drenagem": {
@@ -931,6 +931,18 @@
       "at": "2026-09-01T01:00:35.864Z",
       "type": "session.created",
       "message": "Sessão de teste live criada no GitHub pelo Worker."
+    },
+    {
+      "at": "2026-09-01T01:00:41.672Z",
+      "type": "criterion.confirmed",
+      "message": "Topografia base conferida no teste live.",
+      "event": {
+        "type": "criterion.confirmed",
+        "stageId": "terraplanagem",
+        "criterionId": "topografia-base",
+        "message": "Topografia base conferida no teste live.",
+        "at": "2026-09-01T01:00:41.672Z"
+      }
     }
   ]
 }
