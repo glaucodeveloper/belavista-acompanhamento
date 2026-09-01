@@ -2,7 +2,7 @@
   "id": "LIVE-20260901010033-V0IJU",
   "scenario": "obra-completa-live",
   "createdAt": "2026-09-01T01:00:35.864Z",
-  "updatedAt": "2026-09-01T01:02:17.512Z",
+  "updatedAt": "2026-09-01T01:02:24.620Z",
   "today": "2026-09-01",
   "configuration": {
     "stages": {
@@ -569,10 +569,11 @@
           }
         },
         "agua": {
-          "progress": 33,
+          "progress": 67,
           "completed": false,
           "completedActivities": [
-            "agua-rede-principal"
+            "agua-rede-principal",
+            "agua-testar"
           ],
           "criteria": {
             "eixo-agua-liberado": true
@@ -1101,6 +1102,15 @@
         "notes": "Diário real do ciclo 3: Executar rede principal PEAD executada conforme agenda do Worker.",
         "progressPercent": 33,
         "createdAt": "2026-09-01T01:02:17.512Z"
+      },
+      {
+        "id": "DIARY-MTHYQ1D8",
+        "stageId": "agua",
+        "activityId": "agua-testar",
+        "responsavel": "Encarregado live",
+        "notes": "Diário real do ciclo 4: Testar e liberar rede de água do setor executada conforme agenda do Worker.",
+        "progressPercent": 67,
+        "createdAt": "2026-09-01T01:02:24.620Z"
       }
     ]
   },
@@ -1330,6 +1340,19 @@
         "responsavel": "Encarregado live",
         "notes": "Diário real do ciclo 3: Executar rede principal PEAD executada conforme agenda do Worker.",
         "at": "2026-09-01T01:02:17.512Z"
+      }
+    },
+    {
+      "at": "2026-09-01T01:02:24.620Z",
+      "type": "work.diary",
+      "message": "",
+      "event": {
+        "type": "work.diary",
+        "stageId": "agua",
+        "activityId": "agua-testar",
+        "responsavel": "Encarregado live",
+        "notes": "Diário real do ciclo 4: Testar e liberar rede de água do setor executada conforme agenda do Worker.",
+        "at": "2026-09-01T01:02:24.620Z"
       }
     }
   ]
