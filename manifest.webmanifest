@@ -1,6 +1,6 @@
 {
-  "name": "Belavista · Acompanhamento com IA",
-  "short_name": "Belavista IA",
+  "name": "Aliança Park · Acompanhamento com IA",
+  "short_name": "Aliança Park",
   "description": "Sistema de acompanhamento de loteamento centrado em IA, mapa e cards contextuais.",
   "start_url": "./?pwa=1",
   "scope": "./",

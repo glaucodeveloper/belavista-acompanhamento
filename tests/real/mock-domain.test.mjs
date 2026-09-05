@@ -1,0 +1,28 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {buildCompleteScenario} from './fixtures/obra-completa.mjs';
+import {buildCommercialScenario} from './fixtures/comercial.mjs';
+import {runReferenceOperationalLoop,applyFieldConfirmation,commercialSummary} from './reference/operational-loop-reference.mjs';
+import {findByActivity,reasonText,localityId,assigneeIds,foremanId,assertNoOverlap} from './helpers.mjs';
+const scenario=buildCompleteScenario('DOMAIN');
+const loop=runReferenceOperationalLoop(scenario);
+
+test('fixture cobre todas as etapas presumidas',()=>{assert.deepEqual(new Set(scenario.stages.map(s=>s.id)),new Set(['stage-terraplanagem','stage-drenagem','stage-agua','stage-eletrica','stage-pavimentacao','stage-pracas']));});
+test('cada encarregado está assinado a exatamente uma localidade',()=>{for(const p of scenario.personnel.filter(p=>/encarregado/i.test(p.role)))assert.ok(p.localityId);});
+test('cada atividade operacional tem localidade explícita',()=>{for(const a of scenario.activities)assert.ok(a.localityId,`${a.id} sem localityId`);});
+test('encarregado nunca é alocado fora da própria localidade',()=>{const people=new Map(scenario.personnel.map(p=>[p.id,p]));for(const item of loop.schedule)for(const id of assigneeIds(item)){assert.equal(people.get(id)?.localityId,localityId(item),`${id} saiu de ${people.get(id)?.localityId} para ${localityId(item)}`);}});
+test('Frente Norte usa José e nunca Marcos/Ana',()=>{for(const item of loop.schedule.filter(i=>i.localityId==='frente-norte')){assert.notEqual(foremanId(item),'enc-marcos');assert.notEqual(foremanId(item),'enc-ana');if(item.foremanId)assert.equal(item.foremanId,'enc-jose');}});
+test('Frente Sul usa Marcos na atividade elétrica',()=>{const item=findByActivity(loop.schedule,'act-eletrica-postes-sul');assert.ok(item);assert.equal(item.foremanId,'enc-marcos');assert.ok(item.assigneeIds.includes('ele-joao'));});
+test('Frente Central usa Ana e Lucas na pavimentação',()=>{const item=findByActivity(loop.schedule,'act-pavimentar-central');assert.ok(item);assert.equal(item.foremanId,'enc-ana');assert.ok(item.assigneeIds.includes('ped-lucas'));});
+test('prioridade enorme não fura quesito de água para pavimentação Norte',()=>{assert.equal(Boolean(findByActivity(loop.schedule,'act-pavimentar-norte')),false);assert.match(reasonText(findByActivity(loop.blocked,'act-pavimentar-norte')),/stage_sector_incomplete|não concluída|nao concluida/i);});
+test('prioridade baixa não impede água pronta de entrar na agenda',()=>{assert.ok(findByActivity(loop.schedule,'act-agua-setor-norte'));});
+test('fechamento de drenagem aguarda conclusão/evidência',()=>{const item=findByActivity(loop.blocked,'act-drenagem-fechamento');assert.ok(item);assert.match(reasonText(item),/dependência|dependencia|evidência|evidencia/i);});
+test('postes avançam mesmo com cabo insuficiente',()=>{assert.ok(findByActivity(loop.schedule,'act-eletrica-postes-sul'));assert.ok(findByActivity(loop.blocked,'act-eletrica-cabos-sul'));});
+test('praça bloqueia por função local indisponível',()=>{const item=findByActivity(loop.blocked,'act-praca-central');assert.ok(item);assert.match(reasonText(item),/personnel_missing|Pessoal incompatível/i);});
+test('mesmo encarregado não recebe sobreposição',()=>{for(const id of ['enc-jose','enc-marcos','enc-ana'])assertNoOverlap(loop.schedule,id);});
+test('provisão respeita caixa livre após comprometido e reserva',()=>{const expected=scenario.cash.currentCents-scenario.cash.committedCents-scenario.cash.reserveCents;assert.equal(loop.purchasing.spendableCents,expected);assert.ok(loop.purchasing.remainingCents>=0);});
+test('provisão considera compra já encomendada antes de sugerir quantidade',()=>{const manilha=loop.purchasing.proposals.find(p=>p.materialId==='mat-manilha');assert.equal(manilha,undefined,'85 em estoque + 100 encomendada já cobrem reorderTarget 185.');});
+test('confirmação de drenagem libera fechamento somente após evidência persistida',()=>{const after=applyFieldConfirmation(scenario,{activityId:'act-drenagem-conferencia',localityId:'frente-norte',foremanId:'enc-jose',confirmed:true,evidence:[{id:'ev-drenagem-conferencia',type:'field-confirmation'}]});const next=runReferenceOperationalLoop(after);assert.ok(findByActivity(next.schedule,'act-drenagem-fechamento'));});
+test('conclusão de água por localidade libera pavimentação daquela localidade',()=>{const after=applyFieldConfirmation(scenario,{activityId:'act-agua-setor-norte',localityId:'frente-norte',foremanId:'enc-jose',confirmed:true,evidence:[{id:'ev-agua-norte'}],completeStageSector:{stageId:'stage-agua'}});const next=runReferenceOperationalLoop(after);assert.ok(findByActivity(next.schedule,'act-pavimentar-norte'));});
+test('notificações de agenda vão ao encarregado específico, não a canal global compartilhado',()=>{for(const n of loop.notifications.filter(n=>n.recipientRole==='foreman')){assert.ok(n.recipientId.startsWith('enc-'));assert.ok(n.localityId);}});
+test('resumo comercial calcula comissão pela configuração do mock',()=>{const commercial=buildCommercialScenario('COMM');const summary=commercialSummary(commercial);assert.equal(summary.contractedCents,50_000_000);assert.equal(summary.commissionCents,2_500_000);});

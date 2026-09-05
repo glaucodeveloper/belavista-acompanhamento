@@ -1,0 +1,1647 @@
+{
+  "runId": "LIVE-20260901004726-WF4YQ",
+  "startedAt": "2026-09-01T00:47:26.866Z",
+  "endpoints": {
+    "workerBase": "https://belavista-cloudflare-worker.icaroglaucooliveira.workers.dev",
+    "hostingBase": "https://belavista-3f887.web.app",
+    "firebaseBase": "https://belavista-3f887-default-rtdb.firebaseio.com"
+  },
+  "scenes": [
+    {
+      "name": "0. Provar que estamos no sistema publicado",
+      "description": "Nenhuma lógica local é importada. Hosting, Worker, NVIDIA, GitHub e Firebase são acessados por HTTPS.",
+      "startedAt": "2026-09-01T00:47:26.866Z",
+      "finishedAt": "2026-09-01T00:47:28.261Z",
+      "result": {
+        "health": true,
+        "nvidiaModel": "google/diffusiongemma-26b-a4b-it",
+        "leadChatProvider": "nvidia-api"
+      }
+    },
+    {
+      "name": "1. Ler as tabelas reais da obra",
+      "description": "O teste nasce das etapas e do quadro de pessoal que o Worker lê do GitHub configurado, não de fixtures importadas.",
+      "startedAt": "2026-09-01T00:47:28.261Z",
+      "finishedAt": "2026-09-01T00:47:28.653Z",
+      "result": {
+        "stages": {
+          "projectId": "project-alianca-park",
+          "reserveCents": 15000000,
+          "planningHorizonDays": 90,
+          "stages": [
+            {
+              "id": "terraplanagem",
+              "name": "Terraplanagem",
+              "importance": "foundation",
+              "description": "Regularização inicial das áreas, conformação do greide e preparação das frentes que recebem as redes.",
+              "peculiarities": [
+                "Conferir cotas antes de liberar redes enterradas.",
+                "Evitar reabrir áreas já estabilizadas sem registro da causa."
+              ],
+              "dependencies": [],
+              "entryCriteria": [
+                {
+                  "id": "topografia-base",
+                  "label": "Levantamento topográfico base conferido"
+                }
+              ],
+              "requiredEvidence": [
+                "registro fotográfico do greide",
+                "conferência de cotas"
+              ],
+              "notificationRoles": [
+                "admin",
+                "foreman"
+              ],
+              "activities": [
+                {
+                  "id": "terra-conferir-greide",
+                  "title": "Conferir greide e frentes liberadas",
+                  "durationDays": 1,
+                  "roles": [
+                    {
+                      "role": "encarregado",
+                      "count": 1
+                    },
+                    {
+                      "role": "topografia",
+                      "count": 1
+                    }
+                  ],
+                  "materials": []
+                }
+              ]
+            },
+            {
+              "id": "drenagem",
+              "name": "Drenagem Pluvial",
+              "importance": "unblocker",
+              "description": "Execução de rede pluvial por trechos, assentamento de tubos/manilhas, caixas e recomposição com compactação.",
+              "peculiarities": [
+                "Executar por trecho para evitar vala aberta além da capacidade da equipe.",
+                "Compactação e evidência do trecho são necessárias antes de liberar a próxima camada."
+              ],
+              "dependencies": [
+                "terraplanagem"
+              ],
+              "entryCriteria": [
+                {
+                  "id": "trecho-liberado",
+                  "label": "Trecho de terraplanagem liberado"
+                }
+              ],
+              "requiredEvidence": [
+                "foto da vala",
+                "foto do assentamento",
+                "registro de compactação"
+              ],
+              "notificationRoles": [
+                "admin",
+                "foreman",
+                "supplies"
+              ],
+              "activities": [
+                {
+                  "id": "drenagem-assentar",
+                  "title": "Assentar rede pluvial do trecho",
+                  "durationDays": 3,
+                  "roles": [
+                    {
+                      "role": "encarregado",
+                      "count": 1
+                    },
+                    {
+                      "role": "drenagem",
+                      "count": 2
+                    }
+                  ],
+                  "materials": [
+                    {
+                      "name": "Tubo/manilha de drenagem",
+                      "quantity": 160,
+                      "unit": "m",
+                      "leadTimeDays": 4,
+                      "unitCostCents": 85000
+                    },
+                    {
+                      "name": "Brita",
+                      "quantity": 45,
+                      "unit": "m3",
+                      "leadTimeDays": 2,
+                      "unitCostCents": 18000
+                    }
+                  ]
+                },
+                {
+                  "id": "drenagem-compactar",
+                  "title": "Reaterro e compactação do trecho",
+                  "durationDays": 2,
+                  "dependsOn": [
+                    "drenagem-assentar"
+                  ],
+                  "roles": [
+                    {
+                      "role": "encarregado",
+                      "count": 1
+                    },
+                    {
+                      "role": "terraplanagem",
+                      "count": 1
+                    }
+                  ],
+                  "materials": [
+                    {
+                      "name": "Areia",
+                      "quantity": 32,
+                      "unit": "m3",
+                      "leadTimeDays": 2,
+                      "unitCostCents": 12000
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "agua",
+              "name": "Rede de Água",
+              "importance": "unblocker",
+              "description": "Implantação da rede principal e ramais PEAD, cavaletes, conexões, testes e liberação por setor.",
+              "peculiarities": [
+                "A rede de água deve ser concluída e testada antes da pavimentação do setor correspondente.",
+                "Registrar teste e liberação do setor antes de fechar a dependência."
+              ],
+              "dependencies": [
+                "terraplanagem"
+              ],
+              "entryCriteria": [
+                {
+                  "id": "eixo-agua-liberado",
+                  "label": "Eixo da rede de água liberado"
+                }
+              ],
+              "requiredEvidence": [
+                "teste da rede",
+                "foto de ramais",
+                "termo de liberação do setor"
+              ],
+              "notificationRoles": [
+                "admin",
+                "foreman",
+                "supplies"
+              ],
+              "activities": [
+                {
+                  "id": "agua-rede-principal",
+                  "title": "Executar rede principal PEAD",
+                  "durationDays": 4,
+                  "roles": [
+                    {
+                      "role": "encarregado",
+                      "count": 1
+                    },
+                    {
+                      "role": "encanador",
+                      "count": 2
+                    }
+                  ],
+                  "materials": [
+                    {
+                      "name": "Tubo PEAD",
+                      "quantity": 620,
+                      "unit": "m",
+                      "leadTimeDays": 5,
+                      "unitCostCents": 4200
+                    },
+                    {
+                      "name": "Conexões PEAD",
+                      "quantity": 72,
+                      "unit": "un",
+                      "leadTimeDays": 4,
+                      "unitCostCents": 18000
+                    }
+                  ]
+                },
+                {
+                  "id": "agua-ramais",
+                  "title": "Executar ramais e cavaletes do setor",
+                  "durationDays": 3,
+                  "dependsOn": [
+                    "agua-rede-principal"
+                  ],
+                  "roles": [
+                    {
+                      "role": "encarregado",
+                      "count": 1
+                    },
+                    {
+                      "role": "encanador",
+                      "count": 2
+                    }
+                  ],
+                  "materials": [
+                    {
+                      "name": "Ramais de água",
+                      "quantity": 46,
+                      "unit": "un",
+                      "leadTimeDays": 4,
+                      "unitCostCents": 22000
+                    },
+                    {
+                      "name": "Cavaletes",
+                      "quantity": 54,
+                      "unit": "un",
+                      "leadTimeDays": 4,
+                      "unitCostCents": 26000
+                    }
+                  ]
+                },
+                {
+                  "id": "agua-testar",
+                  "title": "Testar e liberar rede de água do setor",
+                  "durationDays": 1,
+                  "dependsOn": [
+                    "agua-ramais"
+                  ],
+                  "roles": [
+                    {
+                      "role": "encarregado",
+                      "count": 1
+                    },
+                    {
+                      "role": "encanador",
+                      "count": 1
+                    }
+                  ],
+                  "materials": []
+                }
+              ]
+            },
+            {
+              "id": "eletrica",
+              "name": "Rede Elétrica",
+              "importance": "infrastructure",
+              "description": "Implantação de postes, cabos, transformadores e luminárias conforme projeto e liberações da concessionária.",
+              "peculiarities": [
+                "Postes disponíveis podem ser instalados antes da compra integral de cabos.",
+                "Cabos e transformadores devem respeitar a sequência do projeto e as liberações da concessionária."
+              ],
+              "dependencies": [
+                "terraplanagem"
+              ],
+              "entryCriteria": [
+                {
+                  "id": "projeto-eletrico",
+                  "label": "Projeto elétrico disponível para execução"
+                }
+              ],
+              "requiredEvidence": [
+                "posição dos postes",
+                "conferência de projeto",
+                "registro de ligação"
+              ],
+              "notificationRoles": [
+                "admin",
+                "foreman",
+                "supplies"
+              ],
+              "activities": [
+                {
+                  "id": "eletrica-postes",
+                  "title": "Implantar postes disponíveis",
+                  "durationDays": 4,
+                  "roles": [
+                    {
+                      "role": "encarregado",
+                      "count": 1
+                    },
+                    {
+                      "role": "eletricista",
+                      "count": 2
+                    }
+                  ],
+                  "materials": [
+                    {
+                      "name": "Poste",
+                      "quantity": 24,
+                      "unit": "un",
+                      "leadTimeDays": 8,
+                      "unitCostCents": 145000
+                    }
+                  ]
+                },
+                {
+                  "id": "eletrica-cabos",
+                  "title": "Lançar cabos e preparar transformadores",
+                  "durationDays": 4,
+                  "dependsOn": [
+                    "eletrica-postes"
+                  ],
+                  "roles": [
+                    {
+                      "role": "encarregado",
+                      "count": 1
+                    },
+                    {
+                      "role": "eletricista",
+                      "count": 2
+                    }
+                  ],
+                  "materials": [
+                    {
+                      "name": "Cabo elétrico",
+                      "quantity": 1700,
+                      "unit": "m",
+                      "leadTimeDays": 7,
+                      "unitCostCents": 2300
+                    },
+                    {
+                      "name": "Transformador",
+                      "quantity": 1,
+                      "unit": "un",
+                      "leadTimeDays": 15,
+                      "unitCostCents": 2800000
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "pavimentacao",
+              "name": "Pavimentação",
+              "importance": "consolidation",
+              "description": "Preparação de base, meio-fio e assentamento do pavimento somente nos setores com redes enterradas liberadas.",
+              "peculiarities": [
+                "Não fechar setor antes da liberação da rede de água e drenagem.",
+                "Evitar provisão antecipada de volume elevado quando ainda não há frente liberada."
+              ],
+              "dependencies": [
+                "drenagem",
+                "agua"
+              ],
+              "entryCriteria": [
+                {
+                  "id": "setor-agua-liberado",
+                  "label": "Rede de água do setor testada e liberada"
+                },
+                {
+                  "id": "setor-drenagem-liberado",
+                  "label": "Drenagem do setor recomposta e conferida"
+                }
+              ],
+              "requiredEvidence": [
+                "liberação das redes enterradas",
+                "compactação da base",
+                "medição de área executada"
+              ],
+              "notificationRoles": [
+                "admin",
+                "foreman",
+                "supplies"
+              ],
+              "activities": [
+                {
+                  "id": "pav-base",
+                  "title": "Preparar base do setor liberado",
+                  "durationDays": 3,
+                  "roles": [
+                    {
+                      "role": "encarregado",
+                      "count": 1
+                    },
+                    {
+                      "role": "pavimentacao",
+                      "count": 3
+                    }
+                  ],
+                  "materials": [
+                    {
+                      "name": "Base/Brita graduada",
+                      "quantity": 380,
+                      "unit": "m3",
+                      "leadTimeDays": 3,
+                      "unitCostCents": 14500
+                    }
+                  ]
+                },
+                {
+                  "id": "pav-assentar",
+                  "title": "Assentar pavimento e meio-fio",
+                  "durationDays": 5,
+                  "dependsOn": [
+                    "pav-base"
+                  ],
+                  "roles": [
+                    {
+                      "role": "encarregado",
+                      "count": 1
+                    },
+                    {
+                      "role": "pavimentacao",
+                      "count": 4
+                    }
+                  ],
+                  "materials": [
+                    {
+                      "name": "Paralelepípedo",
+                      "quantity": 2400,
+                      "unit": "m2",
+                      "leadTimeDays": 5,
+                      "unitCostCents": 4500
+                    },
+                    {
+                      "name": "Meio-fio",
+                      "quantity": 540,
+                      "unit": "m",
+                      "leadTimeDays": 5,
+                      "unitCostCents": 3800
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "pracas",
+              "name": "Praças",
+              "importance": "finishing",
+              "description": "Implantação de áreas de convivência após consolidação das frentes pesadas do entorno.",
+              "peculiarities": [
+                "Evitar mobilizar acabamento enquanto há tráfego pesado recorrente no entorno."
+              ],
+              "dependencies": [
+                "pavimentacao"
+              ],
+              "entryCriteria": [
+                {
+                  "id": "entorno-estavel",
+                  "label": "Entorno da praça sem interferência de obra pesada"
+                }
+              ],
+              "requiredEvidence": [
+                "layout conferido",
+                "medição da área",
+                "registro de acabamento"
+              ],
+              "notificationRoles": [
+                "admin",
+                "foreman"
+              ],
+              "activities": [
+                {
+                  "id": "praca-implantar",
+                  "title": "Implantar praça e mobiliário",
+                  "durationDays": 6,
+                  "roles": [
+                    {
+                      "role": "encarregado",
+                      "count": 1
+                    },
+                    {
+                      "role": "acabamento",
+                      "count": 3
+                    }
+                  ],
+                  "materials": [
+                    {
+                      "name": "Piso externo",
+                      "quantity": 420,
+                      "unit": "m2",
+                      "leadTimeDays": 7,
+                      "unitCostCents": 6800
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "arborizacao",
+              "name": "Arborização",
+              "importance": "finishing",
+              "description": "Plantio e consolidação paisagística após definição das áreas e redução de interferências pesadas.",
+              "peculiarities": [
+                "Programar plantio considerando disponibilidade de irrigação e menor risco de dano por tráfego de obra."
+              ],
+              "dependencies": [
+                "pavimentacao"
+              ],
+              "entryCriteria": [
+                {
+                  "id": "areas-verdes-liberadas",
+                  "label": "Áreas verdes liberadas para plantio"
+                }
+              ],
+              "requiredEvidence": [
+                "mapa de plantio",
+                "registro das mudas",
+                "checagem inicial de irrigação"
+              ],
+              "notificationRoles": [
+                "admin",
+                "foreman"
+              ],
+              "activities": [
+                {
+                  "id": "arbor-plantio",
+                  "title": "Executar plantio do setor",
+                  "durationDays": 4,
+                  "roles": [
+                    {
+                      "role": "encarregado",
+                      "count": 1
+                    },
+                    {
+                      "role": "jardinagem",
+                      "count": 2
+                    }
+                  ],
+                  "materials": [
+                    {
+                      "name": "Mudas",
+                      "quantity": 120,
+                      "unit": "un",
+                      "leadTimeDays": 5,
+                      "unitCostCents": 8500
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "stageState": {
+            "terraplanagem": {
+              "progress": 100,
+              "completed": true,
+              "criteria": {
+                "topografia-base": true
+              }
+            },
+            "drenagem": {
+              "progress": 74,
+              "criteria": {
+                "trecho-liberado": true
+              }
+            },
+            "agua": {
+              "progress": 41,
+              "criteria": {
+                "eixo-agua-liberado": true
+              }
+            },
+            "eletrica": {
+              "progress": 16,
+              "criteria": {
+                "projeto-eletrico": true
+              }
+            },
+            "pavimentacao": {
+              "progress": 4,
+              "criteria": {
+                "setor-agua-liberado": false,
+                "setor-drenagem-liberado": false
+              }
+            },
+            "pracas": {
+              "progress": 0,
+              "criteria": {
+                "entorno-estavel": false
+              }
+            },
+            "arborizacao": {
+              "progress": 0,
+              "criteria": {
+                "areas-verdes-liberadas": false
+              }
+            }
+          }
+        },
+        "personnel": {
+          "projectId": "project-alianca-park",
+          "people": [
+            {
+              "id": "p-warley",
+              "name": "Warley",
+              "functions": [
+                "encarregado"
+              ],
+              "availability": {
+                "weekdays": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "capacityPerDay": 1
+              }
+            },
+            {
+              "id": "p-topo-1",
+              "name": "Equipe Topografia",
+              "functions": [
+                "topografia"
+              ],
+              "availability": {
+                "weekdays": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "capacityPerDay": 1
+              }
+            },
+            {
+              "id": "p-dren-1",
+              "name": "Equipe Drenagem A",
+              "functions": [
+                "drenagem"
+              ],
+              "availability": {
+                "weekdays": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "capacityPerDay": 1
+              }
+            },
+            {
+              "id": "p-dren-2",
+              "name": "Equipe Drenagem B",
+              "functions": [
+                "drenagem"
+              ],
+              "availability": {
+                "weekdays": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "capacityPerDay": 1
+              }
+            },
+            {
+              "id": "p-terra-1",
+              "name": "Operador Terraplanagem",
+              "functions": [
+                "terraplanagem"
+              ],
+              "availability": {
+                "weekdays": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "capacityPerDay": 1
+              }
+            },
+            {
+              "id": "p-agua-1",
+              "name": "Encanador A",
+              "functions": [
+                "encanador"
+              ],
+              "availability": {
+                "weekdays": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "capacityPerDay": 1
+              }
+            },
+            {
+              "id": "p-agua-2",
+              "name": "Encanador B",
+              "functions": [
+                "encanador"
+              ],
+              "availability": {
+                "weekdays": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "capacityPerDay": 1
+              }
+            },
+            {
+              "id": "p-ele-1",
+              "name": "Eletricista A",
+              "functions": [
+                "eletricista"
+              ],
+              "availability": {
+                "weekdays": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "capacityPerDay": 1
+              }
+            },
+            {
+              "id": "p-ele-2",
+              "name": "Eletricista B",
+              "functions": [
+                "eletricista"
+              ],
+              "availability": {
+                "weekdays": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "capacityPerDay": 1
+              }
+            },
+            {
+              "id": "p-pav-1",
+              "name": "Equipe Pavimentação 1",
+              "functions": [
+                "pavimentacao"
+              ],
+              "availability": {
+                "weekdays": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "capacityPerDay": 1
+              }
+            },
+            {
+              "id": "p-pav-2",
+              "name": "Equipe Pavimentação 2",
+              "functions": [
+                "pavimentacao"
+              ],
+              "availability": {
+                "weekdays": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "capacityPerDay": 1
+              }
+            },
+            {
+              "id": "p-pav-3",
+              "name": "Equipe Pavimentação 3",
+              "functions": [
+                "pavimentacao"
+              ],
+              "availability": {
+                "weekdays": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "capacityPerDay": 1
+              }
+            },
+            {
+              "id": "p-pav-4",
+              "name": "Equipe Pavimentação 4",
+              "functions": [
+                "pavimentacao"
+              ],
+              "availability": {
+                "weekdays": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "capacityPerDay": 1
+              }
+            },
+            {
+              "id": "p-acab-1",
+              "name": "Acabamento A",
+              "functions": [
+                "acabamento"
+              ],
+              "availability": {
+                "weekdays": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "capacityPerDay": 1
+              }
+            },
+            {
+              "id": "p-acab-2",
+              "name": "Acabamento B",
+              "functions": [
+                "acabamento"
+              ],
+              "availability": {
+                "weekdays": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "capacityPerDay": 1
+              }
+            },
+            {
+              "id": "p-acab-3",
+              "name": "Acabamento C",
+              "functions": [
+                "acabamento"
+              ],
+              "availability": {
+                "weekdays": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "capacityPerDay": 1
+              }
+            },
+            {
+              "id": "p-jard-1",
+              "name": "Jardinagem A",
+              "functions": [
+                "jardinagem"
+              ],
+              "availability": {
+                "weekdays": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "capacityPerDay": 1
+              }
+            },
+            {
+              "id": "p-jard-2",
+              "name": "Jardinagem B",
+              "functions": [
+                "jardinagem"
+              ],
+              "availability": {
+                "weekdays": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "capacityPerDay": 1
+              }
+            }
+          ]
+        },
+        "state": {
+          "projectId": "project-alianca-park",
+          "cashEntries": [
+            {
+              "id": "cash-demo-entry",
+              "kind": "entrada",
+              "stage": "Geral",
+              "category": "Caixa inicial demo",
+              "description": "Caixa operacional imaginário",
+              "amountCents": 68000000,
+              "createdAt": "2026-08-31T12:00:00.000Z"
+            },
+            {
+              "id": "cash-demo-committed",
+              "kind": "saida",
+              "stage": "Geral",
+              "category": "Comprometido",
+              "description": "Saídas e compromissos já assumidos",
+              "amountCents": 21400000,
+              "createdAt": "2026-08-31T12:05:00.000Z"
+            }
+          ],
+          "inventoryMovements": [
+            {
+              "id": "inv-drain-tube",
+              "kind": "entrada",
+              "materialName": "Tubo/manilha de drenagem",
+              "quantity": 85,
+              "unit": "m"
+            },
+            {
+              "id": "inv-drain-gravel",
+              "kind": "entrada",
+              "materialName": "Brita",
+              "quantity": 24,
+              "unit": "m3"
+            },
+            {
+              "id": "inv-drain-sand",
+              "kind": "entrada",
+              "materialName": "Areia",
+              "quantity": 18,
+              "unit": "m3"
+            },
+            {
+              "id": "inv-water-pead",
+              "kind": "entrada",
+              "materialName": "Tubo PEAD",
+              "quantity": 620,
+              "unit": "m"
+            },
+            {
+              "id": "inv-water-connections",
+              "kind": "entrada",
+              "materialName": "Conexões PEAD",
+              "quantity": 72,
+              "unit": "un"
+            },
+            {
+              "id": "inv-water-branches",
+              "kind": "entrada",
+              "materialName": "Ramais de água",
+              "quantity": 46,
+              "unit": "un"
+            },
+            {
+              "id": "inv-water-cavaletes",
+              "kind": "entrada",
+              "materialName": "Cavaletes",
+              "quantity": 54,
+              "unit": "un"
+            },
+            {
+              "id": "inv-ele-posts",
+              "kind": "entrada",
+              "materialName": "Poste",
+              "quantity": 24,
+              "unit": "un"
+            },
+            {
+              "id": "inv-ele-cable",
+              "kind": "entrada",
+              "materialName": "Cabo elétrico",
+              "quantity": 1700,
+              "unit": "m"
+            },
+            {
+              "id": "inv-ele-transformer",
+              "kind": "entrada",
+              "materialName": "Transformador",
+              "quantity": 1,
+              "unit": "un"
+            }
+          ],
+          "purchaseRequests": [],
+          "fieldReturns": []
+        }
+      }
+    },
+    {
+      "name": "2. Criar a obra inteira sem caixa e sem estoque",
+      "description": "A sessão é gravada de verdade no repositório, em data/operational/live-tests/<runId>.json. O estado começa com toda a obra por fazer.",
+      "startedAt": "2026-09-01T00:47:28.653Z",
+      "finishedAt": "2026-09-01T00:47:30.168Z",
+      "result": {
+        "github": {
+          "source": "github",
+          "path": "data/operational/live-tests/LIVE-20260901004726-WF4YQ.json",
+          "sha": "5dfd54ddceffb15835d4172a1e50ee5a260ee739",
+          "commitSha": "b4c9c00d69c8f22ef2badc546169a10d42c9c5de"
+        }
+      }
+    },
+    {
+      "name": "3. Estado zero — nada é presumido",
+      "description": "O Worker real consulta quesitos, dependências, pessoal e caixa; a NVIDIA deve explicar por que a obra ainda não pode avançar.",
+      "startedAt": "2026-09-01T00:47:30.168Z",
+      "finishedAt": "2026-09-01T00:47:32.957Z",
+      "result": {
+        "loopId": "LOOP-MTHY6WQY",
+        "trigger": "live-test.LIVE-20260901004726-WF4YQ.estado-zero-sem-caixa",
+        "configurationSource": {
+          "stages": "live-test-session",
+          "personnel": "live-test-session",
+          "commercial": "defaults",
+          "state": "live-test-session",
+          "github": {
+            "configured": true,
+            "repo": "glaucodeveloper/belavista-acompanhamento",
+            "branch": "codex/dashboard-firebase-leads",
+            "paths": {
+              "stages": "data/operational/stages.json",
+              "personnel": "data/operational/personnel.json",
+              "commercial": "data/operational/commercial.json",
+              "state": "data/operational/state.json"
+            }
+          }
+        },
+        "report": {
+          "generatedAt": "2026-09-01T00:47:30.682Z",
+          "today": "2026-09-01",
+          "horizonDays": 180,
+          "cash": {
+            "plannedCents": 0,
+            "committedCents": 0,
+            "realizedCents": 0,
+            "incomeCents": 0,
+            "balanceCents": 0,
+            "varianceCents": 0,
+            "reserveCents": 15000000,
+            "spendableCents": 0,
+            "provisionedCents": 0,
+            "remainingProvisionCents": 0
+          },
+          "canDoNow": [],
+          "scheduledNext": [],
+          "blocked": [
+            {
+              "stageId": "terraplanagem",
+              "stageName": "Terraplanagem",
+              "type": "stage-gate",
+              "reasons": [
+                "quesito pendente: Levantamento topográfico base conferido"
+              ],
+              "peculiarities": [
+                "Conferir cotas antes de liberar redes enterradas.",
+                "Evitar reabrir áreas já estabilizadas sem registro da causa."
+              ]
+            },
+            {
+              "stageId": "drenagem",
+              "stageName": "Drenagem Pluvial",
+              "type": "stage-gate",
+              "reasons": [
+                "dependência ainda não concluída: Terraplanagem",
+                "quesito pendente: Trecho de terraplanagem liberado"
+              ],
+              "peculiarities": [
+                "Executar por trecho para evitar vala aberta além da capacidade da equipe.",
+                "Compactação e evidência do trecho são necessárias antes de liberar a próxima camada."
+              ]
+            },
+            {
+              "stageId": "agua",
+              "stageName": "Rede de Água",
+              "type": "stage-gate",
+              "reasons": [
+                "dependência ainda não concluída: Terraplanagem",
+                "quesito pendente: Eixo da rede de água liberado"
+              ],
+              "peculiarities": [
+                "A rede de água deve ser concluída e testada antes da pavimentação do setor correspondente.",
+                "Registrar teste e liberação do setor antes de fechar a dependência."
+              ]
+            },
+            {
+              "stageId": "eletrica",
+              "stageName": "Rede Elétrica",
+              "type": "stage-gate",
+              "reasons": [
+                "dependência ainda não concluída: Terraplanagem",
+                "quesito pendente: Projeto elétrico disponível para execução"
+              ],
+              "peculiarities": [
+                "Postes disponíveis podem ser instalados antes da compra integral de cabos.",
+                "Cabos e transformadores devem respeitar a sequência do projeto e as liberações da concessionária."
+              ]
+            },
+            {
+              "stageId": "pavimentacao",
+              "stageName": "Pavimentação",
+              "type": "stage-gate",
+              "reasons": [
+                "dependência ainda não concluída: Drenagem Pluvial",
+                "dependência ainda não concluída: Rede de Água",
+                "quesito pendente: Rede de água do setor testada e liberada",
+                "quesito pendente: Drenagem do setor recomposta e conferida"
+              ],
+              "peculiarities": [
+                "Não fechar setor antes da liberação da rede de água e drenagem.",
+                "Evitar provisão antecipada de volume elevado quando ainda não há frente liberada."
+              ]
+            },
+            {
+              "stageId": "pracas",
+              "stageName": "Praças",
+              "type": "stage-gate",
+              "reasons": [
+                "dependência ainda não concluída: Pavimentação",
+                "quesito pendente: Entorno da praça sem interferência de obra pesada"
+              ],
+              "peculiarities": [
+                "Evitar mobilizar acabamento enquanto há tráfego pesado recorrente no entorno."
+              ]
+            },
+            {
+              "stageId": "arborizacao",
+              "stageName": "Arborização",
+              "type": "stage-gate",
+              "reasons": [
+                "dependência ainda não concluída: Pavimentação",
+                "quesito pendente: Áreas verdes liberadas para plantio"
+              ],
+              "peculiarities": [
+                "Programar plantio considerando disponibilidade de irrigação e menor risco de dano por tráfego de obra."
+              ]
+            }
+          ],
+          "procurement": [],
+          "materialNeeds": [],
+          "agenda": [],
+          "notifications": [
+            {
+              "id": "NTF-GATE-terraplanagem",
+              "role": "admin",
+              "severity": "warning",
+              "title": "Terraplanagem: liberação pendente",
+              "message": "quesito pendente: Levantamento topográfico base conferido",
+              "stageId": "terraplanagem"
+            },
+            {
+              "id": "NTF-GATE-drenagem",
+              "role": "admin",
+              "severity": "warning",
+              "title": "Drenagem Pluvial: liberação pendente",
+              "message": "dependência ainda não concluída: Terraplanagem; quesito pendente: Trecho de terraplanagem liberado",
+              "stageId": "drenagem"
+            },
+            {
+              "id": "NTF-GATE-agua",
+              "role": "admin",
+              "severity": "warning",
+              "title": "Rede de Água: liberação pendente",
+              "message": "dependência ainda não concluída: Terraplanagem; quesito pendente: Eixo da rede de água liberado",
+              "stageId": "agua"
+            },
+            {
+              "id": "NTF-GATE-eletrica",
+              "role": "admin",
+              "severity": "warning",
+              "title": "Rede Elétrica: liberação pendente",
+              "message": "dependência ainda não concluída: Terraplanagem; quesito pendente: Projeto elétrico disponível para execução",
+              "stageId": "eletrica"
+            },
+            {
+              "id": "NTF-GATE-pavimentacao",
+              "role": "admin",
+              "severity": "warning",
+              "title": "Pavimentação: liberação pendente",
+              "message": "dependência ainda não concluída: Drenagem Pluvial; dependência ainda não concluída: Rede de Água; quesito pendente: Rede de água do setor testada e liberada; quesito pendente: Drenagem do setor recomposta e conferida",
+              "stageId": "pavimentacao"
+            },
+            {
+              "id": "NTF-GATE-pracas",
+              "role": "admin",
+              "severity": "warning",
+              "title": "Praças: liberação pendente",
+              "message": "dependência ainda não concluída: Pavimentação; quesito pendente: Entorno da praça sem interferência de obra pesada",
+              "stageId": "pracas"
+            },
+            {
+              "id": "NTF-GATE-arborizacao",
+              "role": "admin",
+              "severity": "warning",
+              "title": "Arborização: liberação pendente",
+              "message": "dependência ainda não concluída: Pavimentação; quesito pendente: Áreas verdes liberadas para plantio",
+              "stageId": "arborizacao"
+            }
+          ],
+          "schedule": [],
+          "personnelProvision": {
+            "people": [
+              {
+                "id": "p-warley",
+                "name": "Warley",
+                "functions": [
+                  "encarregado"
+                ],
+                "availability": {
+                  "weekdays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                  ],
+                  "capacityPerDay": 1
+                }
+              },
+              {
+                "id": "p-topo-1",
+                "name": "Equipe Topografia",
+                "functions": [
+                  "topografia"
+                ],
+                "availability": {
+                  "weekdays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                  ],
+                  "capacityPerDay": 1
+                }
+              },
+              {
+                "id": "p-dren-1",
+                "name": "Equipe Drenagem A",
+                "functions": [
+                  "drenagem"
+                ],
+                "availability": {
+                  "weekdays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                  ],
+                  "capacityPerDay": 1
+                }
+              },
+              {
+                "id": "p-dren-2",
+                "name": "Equipe Drenagem B",
+                "functions": [
+                  "drenagem"
+                ],
+                "availability": {
+                  "weekdays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                  ],
+                  "capacityPerDay": 1
+                }
+              },
+              {
+                "id": "p-terra-1",
+                "name": "Operador Terraplanagem",
+                "functions": [
+                  "terraplanagem"
+                ],
+                "availability": {
+                  "weekdays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                  ],
+                  "capacityPerDay": 1
+                }
+              },
+              {
+                "id": "p-agua-1",
+                "name": "Encanador A",
+                "functions": [
+                  "encanador"
+                ],
+                "availability": {
+                  "weekdays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                  ],
+                  "capacityPerDay": 1
+                }
+              },
+              {
+                "id": "p-agua-2",
+                "name": "Encanador B",
+                "functions": [
+                  "encanador"
+                ],
+                "availability": {
+                  "weekdays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                  ],
+                  "capacityPerDay": 1
+                }
+              },
+              {
+                "id": "p-ele-1",
+                "name": "Eletricista A",
+                "functions": [
+                  "eletricista"
+                ],
+                "availability": {
+                  "weekdays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                  ],
+                  "capacityPerDay": 1
+                }
+              },
+              {
+                "id": "p-ele-2",
+                "name": "Eletricista B",
+                "functions": [
+                  "eletricista"
+                ],
+                "availability": {
+                  "weekdays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                  ],
+                  "capacityPerDay": 1
+                }
+              },
+              {
+                "id": "p-pav-1",
+                "name": "Equipe Pavimentação 1",
+                "functions": [
+                  "pavimentacao"
+                ],
+                "availability": {
+                  "weekdays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                  ],
+                  "capacityPerDay": 1
+                }
+              },
+              {
+                "id": "p-pav-2",
+                "name": "Equipe Pavimentação 2",
+                "functions": [
+                  "pavimentacao"
+                ],
+                "availability": {
+                  "weekdays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                  ],
+                  "capacityPerDay": 1
+                }
+              },
+              {
+                "id": "p-pav-3",
+                "name": "Equipe Pavimentação 3",
+                "functions": [
+                  "pavimentacao"
+                ],
+                "availability": {
+                  "weekdays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                  ],
+                  "capacityPerDay": 1
+                }
+              },
+              {
+                "id": "p-pav-4",
+                "name": "Equipe Pavimentação 4",
+                "functions": [
+                  "pavimentacao"
+                ],
+                "availability": {
+                  "weekdays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                  ],
+                  "capacityPerDay": 1
+                }
+              },
+              {
+                "id": "p-acab-1",
+                "name": "Acabamento A",
+                "functions": [
+                  "acabamento"
+                ],
+                "availability": {
+                  "weekdays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                  ],
+                  "capacityPerDay": 1
+                }
+              },
+              {
+                "id": "p-acab-2",
+                "name": "Acabamento B",
+                "functions": [
+                  "acabamento"
+                ],
+                "availability": {
+                  "weekdays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                  ],
+                  "capacityPerDay": 1
+                }
+              },
+              {
+                "id": "p-acab-3",
+                "name": "Acabamento C",
+                "functions": [
+                  "acabamento"
+                ],
+                "availability": {
+                  "weekdays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                  ],
+                  "capacityPerDay": 1
+                }
+              },
+              {
+                "id": "p-jard-1",
+                "name": "Jardinagem A",
+                "functions": [
+                  "jardinagem"
+                ],
+                "availability": {
+                  "weekdays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                  ],
+                  "capacityPerDay": 1
+                }
+              },
+              {
+                "id": "p-jard-2",
+                "name": "Jardinagem B",
+                "functions": [
+                  "jardinagem"
+                ],
+                "availability": {
+                  "weekdays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                  ],
+                  "capacityPerDay": 1
+                }
+              }
+            ],
+            "allocations": []
+          }
+        },
+        "explanation": {
+          "summary": "A obra encontra-se em estado de paralisia total devido à ausência de saldo disponível (caixa abaixo da reserva de R$ 150.000,00) e à pendência do critério de entrada inicial de terraplanagem. Todas as etapas subsequentes dependem da conclusão da terraplanagem, que por sua vez ainda não foi iniciada.",
+          "whatCanBeDoneNow": [
+            "Realizar a liberação de recursos financeiros para cobrir o déficit de caixa e permitir a mobilização da equipe inicial.",
+            "Executar a conferência técnica do levantamento topográfico base para destravar o início da etapa de terraplanagem."
+          ],
+          "stageExplanations": [
+            {
+              "stage": "Terraplanagem",
+              "reason": "Bloqueada por falta de critério técnico (levantamento topográfico não conferido). É a etapa base para todas as demais instalações enterradas.",
+              "nextAction": "Conferir as cotas de nível e realizar o registro fotográfico do greide para liberar as frentes de serviço."
+            },
+            {
+              "stage": "Drenagem Pluvial",
+              "reason": "Dependente direta da terraplanagem. A execução deve ser por trechos para não manter valas abertas excessivamente.",
+              "nextAction": "Aguardar liberação do trecho de terraplanagem para iniciar o assentamento de tubos e manilhas."
+            },
+            {
+              "stage": "Rede de Água",
+              "reason": "Dependente da terraplanagem. Exige que a rede seja testada antes de qualquer pavimentação no setor.",
+              "nextAction": "Instalar os ramais PEAD e realizar os testes de estanqueidade após a preparação do solo."
+            },
+            {
+              "stage": "Rede Elétrica",
+              "reason": "Dependente da terraplanagem e da disponibilidade do projeto. Permite instalação antecipada de postes antes dos cabos.",
+              "nextAction": "Validar o projeto elétrico e verificar a disponibilidade de postes para instalação conforme concessionária."
+            },
+            {
+              "stage": "Pavimentação",
+              "reason": "Etapa de acabamento crítico que depende da liberação total das redes de água e drenagem para evitar quebras futuras.",
+              "nextAction": "Preparar a base e meio-fio apenas após os setores de drenagem e água serem testados e fechados."
+            },
+            {
+              "stage": "Praças",
+              "reason": "Dependente da pavimentação. Deve evitar danos de acabamento pelo tráfego de máquinas pesadas.",
+              "nextAction": "Mobilizar equipe de acabamento apenas após a estabilização do entorno pavimentado."
+            },
+            {
+              "stage": "Arborização",
+              "reason": "Última etapa, depende da pavimentação e da definição de irrigação para garantir sobrevivência das mudas.",
+              "nextAction": "Programar o plantio após a redução das interferências de obra pesada no local."
+            }
+          ],
+          "risks": [
+            "Paralisia crítica do cronograma por falta de fluxo de caixa (saldo disponível de R$ 0,00).",
+            "Risco de retrabalho caso a pavimentação seja iniciada antes da conclusão das redes de água e drenagem.",
+            "Danos às áreas de paisagismo se a arborização ocorrer antes da estabilização do tráfego."
+          ],
+          "managementActions": [
+            "Ajustar o aporte de caixa para ultrapassar a reserva de R$ 150.000,00.",
+            "Mobilizar a equipe de topografia para validação imediata dos dados de base."
+          ],
+          "provider": "nvidia-api"
+        },
+        "realtime": {
+          "eventId": "LOOP-MTHY6WQY",
+          "namespace": "liveTests/LIVE-20260901004726-WF4YQ",
+          "agendaCount": 0,
+          "notificationCount": 7
+        },
+        "dryRun": false
+      }
+    }
+  ],
+  "proofs": {
+    "githubCommits": [
+      {
+        "context": "session.created",
+        "commitSha": "b4c9c00d69c8f22ef2badc546169a10d42c9c5de"
+      },
+      {
+        "context": "liberação técnica inicial",
+        "type": "criterion.confirmed",
+        "commitSha": "da325ce78e9ad61b6057929a892bce5d017860d1"
+      }
+    ],
+    "nvidiaCalls": [
+      {
+        "context": "estado-zero-sem-caixa",
+        "loopId": "LOOP-MTHY6WQY",
+        "provider": "nvidia-api"
+      }
+    ],
+    "firebaseEvents": [
+      {
+        "context": "estado-zero-sem-caixa",
+        "eventId": "LOOP-MTHY6WQY",
+        "provider": "nvidia-api"
+      }
+    ],
+    "publicLeadChat": {
+      "provider": "nvidia-api",
+      "reply": "Excelente escolha! O Aliança Park possui opções ideais para moradia com a orientação solar nascente, garantindo conforto térmico para o seu dia. Para seguirmos, gostaria de agendar uma visita ao local para conhecer os lotes disponíveis dentro do seu perfil?"
+    }
+  },
+  "ok": false,
+  "error": "AssertionError [ERR_ASSERTION]: liberação técnica inicial: a compreensão NÃO veio da NVIDIA real.\n\u001b[32mactual\u001b[39m \u001b[31mexpected\u001b[39m\n\n\u001b[39m'\u001b[39m\u001b[32md\u001b[39m\u001b[32me\u001b[39m\u001b[32mt\u001b[39m\u001b[32me\u001b[39m\u001b[32mr\u001b[39m\u001b[32mm\u001b[39m\u001b[32mi\u001b[39m\u001b[39mn\u001b[39m\u001b[31mv\u001b[39m\u001b[39mi\u001b[39m\u001b[32ms\u001b[39m\u001b[32mt\u001b[39m\u001b[31md\u001b[39m\u001b[39mi\u001b[39m\u001b[32mc\u001b[39m\u001b[31ma\u001b[39m\u001b[31m-\u001b[39m\u001b[31ma\u001b[39m\u001b[31mp\u001b[39m\u001b[31mi\u001b[39m\u001b[39m'\u001b[39m\n\n    at assertLiveNvidia (file:///home/icarogdo/dev/WWW/belavista-ai-monitor/worker/test/live/obra-completa.live.mjs:44:10)\n    at event (file:///home/icarogdo/dev/WWW/belavista-ai-monitor/worker/test/live/obra-completa.live.mjs:80:21)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async scene (file:///home/icarogdo/dev/WWW/belavista-ai-monitor/worker/test/live/obra-completa.live.mjs:60:16)\n    at async file:///home/icarogdo/dev/WWW/belavista-ai-monitor/worker/test/live/obra-completa.live.mjs:187:3",
+  "finishedAt": "2026-09-01T00:47:37.939Z"
+}

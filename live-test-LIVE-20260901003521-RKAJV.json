@@ -1,0 +1,34 @@
+{
+  "runId": "LIVE-20260901003521-RKAJV",
+  "startedAt": "2026-09-01T00:35:21.505Z",
+  "endpoints": {
+    "workerBase": "https://belavista-cloudflare-worker.icaroglaucooliveira.workers.dev",
+    "hostingBase": "https://belavista-3f887.web.app",
+    "firebaseBase": "https://belavista-3f887-default-rtdb.firebaseio.com"
+  },
+  "scenes": [
+    {
+      "name": "0. Provar que estamos no sistema publicado",
+      "description": "Nenhuma lógica local é importada. Hosting, Worker, NVIDIA, GitHub e Firebase são acessados por HTTPS.",
+      "startedAt": "2026-09-01T00:35:21.505Z",
+      "finishedAt": "2026-09-01T00:35:22.758Z",
+      "result": {
+        "health": true,
+        "nvidiaModel": "google/diffusiongemma-26b-a4b-it",
+        "leadChatProvider": "nvidia-api"
+      }
+    }
+  ],
+  "proofs": {
+    "githubCommits": [],
+    "nvidiaCalls": [],
+    "firebaseEvents": [],
+    "publicLeadChat": {
+      "provider": "nvidia-api",
+      "reply": "Excelente escolha! O Aliança Park possui opções privilegiadas para moradia com lotes com orientação sol da manhã, garantindo conforto térmico. Para prosseguirmos, gostaria de saber qual sua faixa de valor de interesse para eu filtrar as melhores unidades disponíveis."
+    }
+  },
+  "ok": false,
+  "error": "AssertionError [ERR_ASSERTION]: Worker não está conectado ao GitHub.\n\nfalse !== true\n\n    at file:///home/icarogdo/dev/WWW/belavista-ai-monitor/worker/test/live/obra-completa.live.mjs:165:12\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async scene (file:///home/icarogdo/dev/WWW/belavista-ai-monitor/worker/test/live/obra-completa.live.mjs:60:16)\n    at async file:///home/icarogdo/dev/WWW/belavista-ai-monitor/worker/test/live/obra-completa.live.mjs:163:17",
+  "finishedAt": "2026-09-01T00:35:22.947Z"
+}

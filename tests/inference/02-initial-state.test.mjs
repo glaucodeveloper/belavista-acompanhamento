@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {buildBaseState} from './fixtures/base-state.mjs';
+import {E} from './fixtures/events.mjs';
+import {ADMIN_TOKEN,infer,assertStrictNvidia,assertFullState,assertEventApplied,assertMetaUsed,decisionFor,reasonText,requestText,notificationText,assertNoImplicitForemanTransfer} from './helpers.mjs';
+const base=buildBaseState(`INIT-${Date.now().toString(36)}`);let result,state;
+test('S0 → IA gera estado operacional completo a partir do estado puro',async t=>{if(!ADMIN_TOKEN){t.skip('Defina BELAVISTA_ADMIN_ID_TOKEN');return;}const ev=E.initial();result=await infer(base,ev);assertStrictNvidia(result);state=assertFullState(result,{previousState:base});assertEventApplied(result,ev);assertNoImplicitForemanTransfer(result,base);});
+test('primeiro estado prova uso das metadescrições de Drenagem',t=>{if(!result){t.skip();return;}assertMetaUsed(result,{entityType:'stage',entityId:'stage-drenagem',fields:['executionDescription','peculiarities','requirements']});assertMetaUsed(result,{entityType:'activity',entityId:'act-drenagem-fechamento',fields:['executionDescription','peculiarities','requirements']});});
+test('primeiro estado analisa todas as atividades, não só as liberadas',t=>{if(!result){t.skip();return;}for(const a of base.activities)assert.ok(decisionFor(result,a.id),`IA não analisou ${a.id}`);});
+test('primeiro estado pede materiais/caixa quando a atividade precisa de provisão',t=>{if(!state){t.skip();return;}assert.match(requestText(state),/meio-fio|cabo|areia|brita|material/);assert.ok(state.resourceRequests.length||state.cashRequests.length,'Nenhuma solicitação de recurso/caixa foi criada.');});
+test('primeiro estado gera notificações derivadas da própria inferência',t=>{if(!state){t.skip();return;}assert.ok(state.notifications.length,'IA não gerou notificações no estado.');assert.match(notificationText(state),/encarregado|suppl|compr|agenda|frente/);});
+test('pavimentação Norte permanece bloqueada apesar do estoque alto de paver',t=>{if(!result){t.skip();return;}const d=decisionFor(result,'act-pavimentar-norte');assert.match(reasonText(d),/agua|água|libera|rede|setor/);});
+test('postes Sul podem aparecer como executáveis mesmo sem 2.000 m de cabo',t=>{if(!result){t.skip();return;}const d=decisionFor(result,'act-eletrica-postes-sul');assert.ok(d);assert.doesNotMatch(String(d.decision||d.status||d.action||''),/block.*cabo|wait.*cabo/i);});

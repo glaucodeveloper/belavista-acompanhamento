@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';import {join,resolve} from 'node:path';
+const root=resolve(process.env.BELAVISTA_ROOT||process.cwd());const read=rel=>readFile(join(root,rel),'utf8');
+test('página usa confirmação explícita antes do handoff ao WhatsApp Web',async()=>{const src=await read('public-lead-form.mjs');assert.match(src,/Confirme contato/);assert.match(src,/api\.whatsapp\.com\/send/);assert.match(src,/OK · abrir WhatsApp/);assert.match(src,/lead\.contact\.confirmed/);});
+test('Worker usa somente pseudo-notificação no listener do Firebase',async()=>{const src=await read('worker/src/public-lead-ai.js');assert.match(src,/firebase-realtime-listener/);assert.match(src,/confirmRequired:false/);assert.doesNotMatch(src,/sendWhatsAppMessage/);});
+test('runtime WhatsApp não possui entrega externa',async()=>{const src=await read('worker/src/whatsapp.js');assert.match(src,/externalDelivery:false/);assert.match(src,/pseudo:true/);assert.doesNotMatch(src,/fetch\(/);assert.doesNotMatch(src,/WHATSAPP_API_TOKEN/);});

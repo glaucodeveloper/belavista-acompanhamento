@@ -1,25 +1,122 @@
 <!doctype html>
 <html lang="pt-BR" data-theme="dark">
 <head>
+<script>
+/* BELAVISTA_NGROK_PREFIX_RUNTIME_V5371 */
+(()=>{
+  const ngrok=/\.ngrok-free\.dev$/i.test(location.hostname);
+  const prefix=location.pathname.match(/^\/\d+(?=\/|$)/)?.[0]||'';
+  globalThis.BELAVISTA_PORT_PREFIX=prefix;
+
+  if(ngrok){
+globalThis.BELAVISTA_DISABLE_SERVICE_WORKER=true;
+
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.getRegistrations()
+        .then(items=>Promise.all(items.map(item=>item.unregister())))
+        .catch(()=>{});
+    }
+  }
+})();
+</script>
+  <script src="./pat-freeze-guard-v5364.js?v=5.3.64"></script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#07111f" />
   <meta name="color-scheme" content="dark" />
-  <title>Belavista · Acompanhamento com IA</title>
-  <link rel="manifest" href="./manifest.webmanifest" />
+  <meta name="belavista-api-base" content="" />
+  <meta name="belavista-ai-base" content="https://belavista-cloudflare-worker.icaroglaucooliveira.workers.dev" />
+  <meta name="belavista-fcm-vapid-key" content="" />
+  <title>Aliança Park · Acompanhamento com IA</title>
+  <link rel="manifest" href="./admin-twa-manifest.webmanifest" />
   <link rel="icon" href="./assets/icons/icon-192.png" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQ3ynsEZwyWOM7Hfrqco0T+6xqjMZB4=" crossorigin="" />
-  <link rel="stylesheet" href="./styles.css?v=66" />
+  <link rel="preconnect" href="https://server.arcgisonline.com" crossorigin />
+  <link rel="preconnect" href="https://services.arcgisonline.com" crossorigin />
+  <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="./styles.css?v=solar-clock-hover-v5384" />
+  <link rel="stylesheet" href="./map-page-widgets-v5.css?v=operations-v19" />
+  <link rel="stylesheet" href="./dashboard-map-tabs-v3.css?v=map-tabs-v3" />
   <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}</script>
-  <script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script defer src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script id="belavista-boot-guard">
+    (()=>{
+      const showBootFailure=(reason)=>{
+        const boot=document.querySelector('#boot'); if(!boot)return;
+        boot.classList.add('boot-failed');
+        const p=boot.querySelector('p'); if(p)p.textContent='Falha ao inicializar. Recarregue com Ctrl+Shift+R.';
+        console.error('[Aliança Park boot]',reason);
+      };
+      window.addEventListener('error',event=>showBootFailure(event.error||event.message));
+      window.addEventListener('unhandledrejection',event=>showBootFailure(event.reason));
+    })();
+  </script>
+  <link rel="stylesheet" href="./execution-planning-v8.css?v=8">
+  <link rel="stylesheet" href="./admin-runtime-v11.css?v=admin-runtime-v11">
+  <link rel="stylesheet" href="./finance-mobile-cash-v5358.css?v=5.3.58">
+  <link rel="stylesheet" href="./chat-tab-widget-ghost-v5359.css?v=5.3.59">
+  <link rel="stylesheet" href="./final-workspaces-v5360.css?v=5.3.60">
+  <link rel="stylesheet" href="./stages-landing-v5361.css?v=5.3.61">
+  <link rel="stylesheet" href="./stages-navigation-v5374.css?v=5.3.74">
+<script data-belavista-worker-direct-v5362>
+(() => {
+  if (!/^(?:localhost|127\.0\.0\.1)$/i.test(location.hostname)) return;
+  globalThis.BELAVISTA_API_BASE = 'https://belavista-cloudflare-worker.icaroglaucooliveira.workers.dev';
+  globalThis.BELAVISTA_AI_BASE = 'https://belavista-cloudflare-worker.icaroglaucooliveira.workers.dev';
+})();
+</script>
+<link rel="stylesheet" href="./belavista-final-ui-v5362.css?v=5.3.63-scrollbar-layer">
+<link rel="stylesheet" href="./admin-brand-style-v1.css?v=alianza-brand-v2-satellite-ground-5381">
+<link rel="stylesheet" href="./admin-test-controls.css?v=1">
+<link rel="stylesheet" href="./activity-map-layer.css?v=1">
+<link rel="stylesheet" href="./records-activity-drill-in-v5377.css?v=records-activity-drill-in-v5377">
+<script>
+/* BELAVISTA_NGROK_SW_PURGE_V5372 */
+(()=>{
+  const ngrok=/\.ngrok-free\.dev$/i.test(location.hostname);
+  if(!ngrok)return;
+
+  globalThis.BELAVISTA_DISABLE_SERVICE_WORKER=true;
+
+  const reloadKey='belavista.ngrok.sw.purged.v5372';
+  if(sessionStorage.getItem(reloadKey)==='1')return;
+  sessionStorage.setItem(reloadKey,'1');
+
+  const purge=async()=>{
+    try{
+      if('serviceWorker' in navigator){
+        const regs=await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(reg=>reg.unregister()));
+      }
+      if('caches' in globalThis){
+        const keys=await caches.keys();
+        await Promise.all(keys.map(key=>caches.delete(key)));
+      }
+    }catch(error){
+      console.warn('[Aliança Park v5.3.72] purge SW/cache parcial',error);
+    }
+
+    const next=new URL(location.href);
+    next.searchParams.set('_bv','5372');
+    location.replace(next.href);
+  };
+
+  purge();
+})();
+</script>
 </head>
-<body>
+<body class="admin-shell-page">
   <div id="boot" class="boot-screen" aria-live="polite">
-    <div class="boot-orb"></div><p>Inicializando Belavista…</p>
+    <div class="boot-orb"></div><p>Inicializando Aliança Park…</p>
   </div>
   <install-screen></install-screen>
   <belavista-app hidden></belavista-app>
-  <script type="module" src="./app.js?v=136"></script>
+  <script type="module" src="./admin-auth.mjs?v=admin-auth-v3"></script>
+  <script type="module" src="./admin-original-bootstrap-v5351.mjs?v=satellite-ground-v5381"></script>
+  <script type="module" src="./records-activity-drill-in-v5377.mjs?v=records-drill-in-v5377-direct"></script>
+  <script type="module" src="./admin-test-controls.mjs?v=1"></script>
+  <script type="module" src="./activity-map-layer.mjs?v=1"></script>
 </body>
 </html>

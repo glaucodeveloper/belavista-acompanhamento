@@ -3,19 +3,37 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#07111f">
-  <title>Vista Verde · Receba condições</title>
-  <link rel="stylesheet" href="./styles.css?v=52">
-  <link rel="stylesheet" href="./public-leads.css?v=1">
+  <meta name="theme-color" content="#070b16">
+  <meta name="description" content="Aliança Park · Escolha seu lote em Amargosa, Bahia.">
+  <meta name="belavista-api-base" content="https://belavista-cloudflare-worker.icaroglaucooliveira.workers.dev">
+  <meta name="belavista-ai-base" content="https://belavista-cloudflare-worker.icaroglaucooliveira.workers.dev">
+  <meta name="belavista-fcm-vapid-key" content="">
+  <title>Aliança Park · Lotes em Amargosa, Bahia</title>
+  <link rel="manifest" href="./lead-manifest.webmanifest">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="./styles.css?v=solar-clock-hover-v5384">
+  <link rel="stylesheet" href="./public-leads.css?v=public-lot-selection-frame-v5383">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
   <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}</script>
+  <link rel="stylesheet" href="./public-model-loading-v531.css?v=alianca-marketing-v5.5.1-logo-alpha">
+<link rel="stylesheet" href="./belavista-final-ui-v5362.css?v=5.3.62">
+  <link rel="stylesheet" href="./activity-map-layer.css?v=1">
 </head>
 <body class="public-leads-page">
-  <header class="public-header"><div class="public-header-brand"><span class="brand-mark">◢</span><div><strong>Vista Verde</strong><small>LOTEAMENTO</small></div></div><nav><a href="#mapa">O empreendimento</a><a href="#mapa">Mapa de lotes</a><a href="#condicoes">Condições</a></nav><a class="public-header-cta" href="#condicoes">Quero receber condições</a></header>
-  <main>
-    <section id="mapa" class="public-map-shell"><map-scene data-public-map></map-scene><div class="public-map-copy"><span class="public-eyebrow">LANÇAMENTO</span><h1>Seu próximo lugar<br>para <em>morar ou investir</em></h1><p>Explore o loteamento, alterne os destaques do mapa e encontre a área que combina com o seu projeto.</p></div><map-filter-rail></map-filter-rail><div class="public-map-legend"><span><i class="dot green"></i> Disponível</span><span><i class="dot teal"></i> Infraestrutura</span><span><i class="dot amber"></i> Em implantação</span></div></section>
-    <section id="condicoes" class="public-condition-section"><div class="public-form-host"><public-lead-form></public-lead-form></div><div class="public-benefits"><span class="public-eyebrow">VISTA VERDE</span><h2>Condições alinhadas ao seu objetivo</h2><p>Conte com um atendimento consultivo para avaliar moradia, investimento, topografia, orientação solar e infraestrutura do loteamento.</p><div class="public-benefit-grid"><article><b>250 m²+</b><small>Lotes planejados para diferentes projetos</small></article><article><b>48 meses</b><small>Acompanhamento de implantação</small></article><article><b>3 objetivos</b><small>Moradia, investimento e veraneio</small></article></div></div></section>
-  </main>
-  <footer class="public-footer">© <span data-year></span> Vista Verde Loteamento · Atendimento especializado</footer>
-  <script type="module" src="./public-leads.js?v=1"></script>
+  <public-leads-surface></public-leads-surface>
+  <script type="module" src="./public-leads.js?v=public-solar-clock-v5384&route=ngrok-route-v1"></script>
+  <script type="module" src="./public-leads-map-v50.mjs?v=social-pbr-v552&route=ngrok-route-v1"></script>
+  <script type="module" src="./public-leads-context-v521.mjs?v=public-chat-collapse-v552&route=ngrok-route-v1"></script>
+  <script type="module" src="./public-model-loading-v531.mjs?v=alianca-marketing-v5.5.1-logo-alpha&route=ngrok-route-v1"></script>
+  <script type="module" src="./public-runtime-polish-v5332.mjs?v=5.3.32"></script>
+<script type="module" src="./public-model-quality-v5337.mjs?v=5.3.37"></script>
+<script type="module" src="./public-lead-intent-v5342.mjs?v=5.3.42"></script>
+  <script type="module" src="./public-pan-zoom-runtime-v5344.mjs?v=5.3.45-world-pan"></script>
+  <script type="module" src="./public-brand-return-reset-v5346.mjs?v=5.3.46"></script>
+<script type="module" src="./belavista-final-ui-v5362.mjs?v=5.3.62"></script>
+  <script type="module" src="./activity-map-layer.mjs?v=1&route=ngrok-route-v1"></script>
 </body>
 </html>

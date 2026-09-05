@@ -1,0 +1,18 @@
+{
+  "runId": "LIVE-20260901005427-JF8F1",
+  "startedAt": "2026-09-01T00:54:27.303Z",
+  "endpoints": {
+    "workerBase": "https://belavista-cloudflare-worker.icaroglaucooliveira.workers.dev",
+    "hostingBase": "https://belavista-3f887.web.app",
+    "firebaseBase": "https://belavista-3f887-default-rtdb.firebaseio.com"
+  },
+  "scenes": [],
+  "proofs": {
+    "githubCommits": [],
+    "nvidiaCalls": [],
+    "firebaseEvents": []
+  },
+  "ok": false,
+  "error": "AssertionError [ERR_ASSERTION]: Chat público não usou NVIDIA real.\n\u001b[32mactual\u001b[39m \u001b[31mexpected\u001b[39m\n\n\u001b[39m'\u001b[39m\u001b[32md\u001b[39m\u001b[32me\u001b[39m\u001b[32mt\u001b[39m\u001b[32me\u001b[39m\u001b[32mr\u001b[39m\u001b[32mm\u001b[39m\u001b[32mi\u001b[39m\u001b[39mn\u001b[39m\u001b[31mv\u001b[39m\u001b[39mi\u001b[39m\u001b[32ms\u001b[39m\u001b[32mt\u001b[39m\u001b[31md\u001b[39m\u001b[39mi\u001b[39m\u001b[32mc\u001b[39m\u001b[31ma\u001b[39m\u001b[31m-\u001b[39m\u001b[31ma\u001b[39m\u001b[31mp\u001b[39m\u001b[31mi\u001b[39m\u001b[39m'\u001b[39m\n\n    at file:///home/icarogdo/dev/WWW/belavista-ai-monitor/worker/test/live/obra-completa.live.mjs:157:12\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async scene (file:///home/icarogdo/dev/WWW/belavista-ai-monitor/worker/test/live/obra-completa.live.mjs:60:16)\n    at async file:///home/icarogdo/dev/WWW/belavista-ai-monitor/worker/test/live/obra-completa.live.mjs:151:3",
+  "finishedAt": "2026-09-01T00:54:28.429Z"
+}

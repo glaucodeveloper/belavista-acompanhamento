@@ -1,0 +1,32 @@
+/* BELAVISTA_STAGES_LANDING_V5361 */
+.stages-landing-v5361{height:100%;box-sizing:border-box;overflow:auto;padding:24px 26px 30px;background:#161616;color:#f4f4f4}
+.stages-landing-head-v5361{display:grid;grid-template-columns:minmax(320px,1fr) minmax(420px,.9fr);gap:18px;align-items:end;padding-bottom:18px;border-bottom:1px solid #393939}
+.stages-landing-head-v5361>div:first-child{display:grid;gap:5px}
+.stages-landing-head-v5361>div:first-child>span,.stages-schedule-v5361>header span,.stages-agenda-v5361>header span,.stage-detail-nav-v5361 span{color:#78a9ff;font:700 8px/1.3 "IBM Plex Mono",monospace;letter-spacing:.12em}
+.stages-landing-head-v5361 h1{margin:0;font-size:28px}.stages-landing-head-v5361 p{margin:0;max-width:680px;color:#a8a8a8;font-size:10px;line-height:1.45}
+.stages-landing-kpis-v5361{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #393939;background:#1f1f1f}
+.stages-landing-kpis-v5361 article{display:grid;gap:4px;padding:12px;border-right:1px solid #393939}.stages-landing-kpis-v5361 article:last-child{border-right:0}
+.stages-landing-kpis-v5361 small{color:#8d8d8d;font:7px "IBM Plex Mono",monospace;text-transform:uppercase}.stages-landing-kpis-v5361 b{color:#78a9ff;font:500 21px "IBM Plex Mono",monospace}
+.stages-landing-grid-v5361{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:12px;margin-top:18px;min-height:560px}
+.stages-schedule-v5361,.stages-agenda-v5361{display:grid;grid-template-rows:auto 1fr;min-height:0;border:1px solid #393939;background:#1f1f1f}
+.stages-schedule-v5361>header,.stages-agenda-v5361>header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid #393939}
+.stages-schedule-v5361>header>div,.stages-agenda-v5361>header>div{display:grid;gap:3px}.stages-schedule-v5361 h2,.stages-agenda-v5361 h2{margin:0;font-size:15px}
+.stages-schedule-v5361>header small{color:#8d8d8d;font-size:8px}.stages-agenda-v5361>header button{min-height:34px;padding:0 9px;border:1px solid #525252;background:#262626;color:#f4f4f4;cursor:pointer}
+.stages-schedule-scroll-v5361{display:flex;align-items:flex-start;gap:10px;min-height:0;padding:14px;overflow:auto}
+.stage-schedule-card-v5361{flex:0 0 230px;display:grid;gap:9px;padding:13px;text-align:left;border:1px solid #393939;border-left:3px solid #4589ff;background:#161616;color:#f4f4f4;cursor:pointer}
+.stage-schedule-card-v5361:hover{border-color:#4589ff;transform:translateY(-1px)}.stage-schedule-card-v5361.warn{border-left-color:#f1c21b}.stage-schedule-card-v5361.done{border-left-color:#24a148}
+.stage-schedule-card-v5361>span{color:#8d8d8d;font:700 7px "IBM Plex Mono",monospace}.stage-schedule-card-v5361 h2{margin:0;font-size:14px}.stage-schedule-card-v5361 p{margin:0;color:#a8a8a8;font-size:9px}
+.stage-schedule-card-v5361 i{display:block;height:4px;background:#393939}.stage-schedule-card-v5361 i em{display:block;height:100%;background:#4589ff}.stage-schedule-card-v5361.done i em{background:#24a148}.stage-schedule-card-v5361.warn i em{background:#f1c21b}
+.stage-schedule-card-v5361 footer{display:flex;justify-content:space-between;align-items:center;gap:8px}.stage-schedule-card-v5361 footer small{color:#8d8d8d;font-size:7px;text-align:right}
+.stages-agenda-list-v5361{min-height:0;overflow:auto;padding:7px}
+.stage-agenda-row-v5361{width:100%;display:grid;grid-template-columns:64px 1fr auto;align-items:center;gap:8px;min-height:56px;padding:8px;text-align:left;border:0;border-bottom:1px solid #303030;background:transparent;color:#f4f4f4;cursor:pointer}
+.stage-agenda-row-v5361:hover{background:#262626}.stage-agenda-row-v5361 time{color:#78a9ff;font:700 8px "IBM Plex Mono",monospace}.stage-agenda-row-v5361>span{display:grid;gap:3px}.stage-agenda-row-v5361 b{font-size:10px}.stage-agenda-row-v5361 small{color:#8d8d8d;font-size:8px}
+.stage-agenda-row-v5361 em{padding:4px 5px;border:1px solid #525252;color:#c6c6c6;font:8px "IBM Plex Mono",monospace;font-style:normal}.stages-empty-v5361{padding:24px;color:#8d8d8d;text-align:center}
+.stage-detail-shell-v5361{height:100%;box-sizing:border-box;overflow:auto;background:#161616;color:#f4f4f4}
+.stage-detail-nav-v5361{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:12px;padding:9px 16px;border-bottom:1px solid #393939;background:rgba(22,22,22,.96);backdrop-filter:blur(10px)}
+.stage-detail-nav-v5361>button{min-height:34px;padding:0 10px;border:1px solid #4589ff;background:#0f62fe;color:#fff;cursor:pointer}.stage-detail-nav-v5361>div{display:grid;gap:2px}.stage-detail-nav-v5361 b{font-size:11px}
+.stage-detail-current-v5361{min-height:calc(100% - 53px)}
+.stage-detail-current-v5361 [data-stage-pane][hidden],.stage-detail-current-v5361 [data-pane][hidden]{display:none!important}
+.stage-detail-current-v5361 [data-stage-pane].active,.stage-detail-current-v5361 [data-pane].active{display:block!important}
+@media(max-width:1050px){.stages-landing-head-v5361{grid-template-columns:1fr}.stages-landing-grid-v5361{grid-template-columns:1fr}.stages-agenda-v5361{min-height:330px}}
+@media(max-width:760px){.stages-landing-v5361{padding:12px}.stages-landing-kpis-v5361{grid-template-columns:1fr 1fr}.stage-schedule-card-v5361{flex-basis:205px}.stage-detail-nav-v5361{padding:8px}}

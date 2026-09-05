@@ -1,11 +1,6 @@
 {
   "rules": {
-    "publicLeads": {
-      ".read": false,
-      "$leadId": {
-        ".write": "auth != null",
-        ".validate": "newData.hasChildren(['name', 'whatsapp', 'email', 'objective', 'source', 'createdAt']) && newData.child('name').isString() && newData.child('name').val().length > 1 && newData.child('whatsapp').isString() && newData.child('email').isString() && newData.child('objective').isString()"
-      }
-    }
+    ".read": "now < 1789873200000",
+    ".write": "now < 1789873200000"
   }
 }

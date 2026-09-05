@@ -1,0 +1,29 @@
+{
+  "source": "TABELA DE PPREÇOS - ALIANÇA PARK.xlsx",
+  "sourcePdf": "TABELA DE PPREÇOS - ALIANÇA PARK.pdf",
+  "method": "calibrated_area_proportional",
+  "currency": "BRL",
+  "cashPrice": {
+    "standard250m2": 80000,
+    "standardRatePerM2": 320,
+    "premiumRatePerM2": 450,
+    "premiumAreaThresholdM2": 300
+  },
+  "statusColors": {
+    "Disponível": "#32c58b",
+    "Reservado": "#f6c343",
+    "Em análise": "#f59e0b",
+    "Indisponível": "#8795a1"
+  },
+  "formula": "areaM2 <= 300 ? areaM2 * 320 : areaM2 * 450",
+  "notes": [
+    "A tabela fornecida contém preços à vista por lote e área.",
+    "A fórmula proporcional é uma regra de visualização/composição e deve ser confirmada pelo administrador antes de uma proposta.",
+    "Os valores oficiais da tabela devem prevalecer quando houver correspondência exata de lote e quadra."
+  ],
+  "geospatialSource": {
+    "dwg": "PROJETO GEOMÉTRICO - ALIANÇA PARK LOTEAMENTO-PARA MEMORIAIS DAS ÁREAS VERDES.DWG",
+    "status": "aguardando conversão DWG para GeoJSON/CSV de pontos",
+    "requiredCoordinateSystem": "SIRGAS 2000 / UTM zona 22S ou sistema declarado no DWG"
+  }
+}

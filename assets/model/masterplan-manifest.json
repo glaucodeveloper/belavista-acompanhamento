@@ -1,6 +1,20 @@
 {
   "source": "alianca_park_masterplan_pdf_3d.glb",
-  "version": 2,
+  "version": 4,
+  "canonicalReference": {
+    "visual": "ALIANCA PARK - MEMORIAIS AREAS VERDES_assinado.pdf",
+    "geometryAndGps": "PROJETO GEOMÉTRICO - ALIANÇA PARK LOTEAMENTO-PARA MEMORIAIS DAS ÁREAS VERDES.DWG",
+    "policy": "PDF-derived GLB preserves the canonical presentation; DWG-derived georeference controls GPS and lot-center placement."
+  },
+  "geospatialSource": {
+    "manifest": "../data/dwg-georeference.json",
+    "epsg": 31984,
+    "crs": "SIRGAS 2000 / UTM zone 24S",
+    "lotCount": 298,
+    "alignmentMedianErrorM": 0.213,
+    "alignmentP90ErrorM": 1.145,
+    "reviewPolicy": "Lot matches above 2 m remain flagged for human review; they are not silently corrected against the PDF."
+  },
   "roles": {
     "lots": [
       "Lote_001",
@@ -1006,46 +1020,19 @@
       "Upper_Median_Row_17_Copa_1",
       "Upper_Median_Row_17_Copa_2"
     ],
-    "assets": [
+    "leisure": [
       "Area_de_lazer_base",
       "Court_A",
       "CourtBorder_0",
       "CourtCenter_0",
-      "Post_0_-1",
-      "Board_0_-1",
-      "Post_0_1",
-      "Board_0_1",
       "Court_B",
       "CourtBorder_1",
       "CourtCenter_1",
-      "Post_1_-1",
-      "Board_1_-1",
-      "Post_1_1",
-      "Board_1_1",
       "Court_C",
       "CourtBorder_2",
       "CourtCenter_2",
-      "Post_2_-1",
-      "Board_2_-1",
-      "Post_2_1",
-      "Board_2_1",
       "Gym_Pad",
       "GymPadBorder",
-      "GymPostA_0",
-      "GymBeam_0",
-      "GymSeat_0",
-      "GymPostA_1",
-      "GymBeam_1",
-      "GymSeat_1",
-      "GymPostA_2",
-      "GymBeam_2",
-      "GymSeat_2",
-      "GymPostA_3",
-      "GymBeam_3",
-      "GymSeat_3",
-      "GymPostA_4",
-      "GymBeam_4",
-      "GymSeat_4",
       "Pavilhao_base",
       "Pavilhao_coluna_0",
       "Pavilhao_coluna_1",
@@ -1069,6 +1056,35 @@
       "Banco_praca_5",
       "Banco_praca_6",
       "Banco_praca_7"
+    ],
+    "assets": [
+      "Post_0_-1",
+      "Board_0_-1",
+      "Post_0_1",
+      "Board_0_1",
+      "Post_1_-1",
+      "Board_1_-1",
+      "Post_1_1",
+      "Board_1_1",
+      "Post_2_-1",
+      "Board_2_-1",
+      "Post_2_1",
+      "Board_2_1",
+      "GymPostA_0",
+      "GymBeam_0",
+      "GymSeat_0",
+      "GymPostA_1",
+      "GymBeam_1",
+      "GymSeat_1",
+      "GymPostA_2",
+      "GymBeam_2",
+      "GymSeat_2",
+      "GymPostA_3",
+      "GymBeam_3",
+      "GymSeat_3",
+      "GymPostA_4",
+      "GymBeam_4",
+      "GymSeat_4"
     ]
   },
   "preserved": [
@@ -1694,5 +1710,22 @@
     "Divisa_296",
     "Divisa_297",
     "Divisa_298"
-  ]
+  ],
+  "placement": {
+    "reference": "Demonstrativo_Software_Gestao_Loteamento_atualizado.pdf",
+    "policy": "preserve-local-transforms",
+    "treeGroups": [
+      "Arvore_PDF",
+      "Outer_East_Row",
+      "Upper_Median_Row"
+    ],
+    "leisureGroups": [
+      "Area_de_lazer",
+      "Pavilhao",
+      "Play",
+      "Praca",
+      "Court",
+      "Gym_Pad"
+    ]
+  }
 }

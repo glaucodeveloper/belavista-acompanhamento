@@ -1,0 +1,42 @@
+/* BELAVISTA_PUBLIC_STATIC_STABLE_V534 */
+html[data-public-stable-runtime="5.3.4"],html[data-public-stable-runtime="5.3.4"] body{scroll-behavior:smooth}
+
+/* O mapa público vira uma composição estática derivada do PDF. Nenhum canvas,
+   tile ou GLB participa do carregamento inicial. */
+map-scene[data-public-presentation],
+map-scene[data-public-map]{
+  background-color:#0b361f!important;
+  background-image:
+    linear-gradient(90deg,rgba(4,27,16,.70) 0%,rgba(4,27,16,.36) 44%,rgba(2,18,12,.56) 100%),
+    linear-gradient(0deg,rgba(2,18,12,.28),rgba(2,18,12,.08) 42%,rgba(2,18,12,.18)),
+    url('./assets/public/alianca-park-masterplan-static-v534.webp')!important;
+  background-repeat:no-repeat!important;
+  background-size:cover,cover,132% auto!important;
+  background-position:center,center,58% 32%!important;
+  contain:layout paint style;
+}
+map-scene[data-public-presentation]>.map-host,
+map-scene[data-public-presentation]>.scene-world,
+map-scene[data-public-presentation]>.three-overlay,
+map-scene[data-public-presentation]>.map-tint,
+map-scene[data-public-presentation]>.map-badge,
+map-scene[data-public-presentation]>.map-category-switcher,
+map-scene[data-public-presentation]>.map-rotation-controls,
+map-scene[data-public-presentation]>.map-gesture-legend,
+map-scene[data-public-map]>.map-host,
+map-scene[data-public-map]>.scene-world,
+map-scene[data-public-map]>.three-overlay,
+map-scene[data-public-map]>.map-tint,
+map-scene[data-public-map]>.map-badge,
+map-scene[data-public-map]>.map-category-switcher,
+map-scene[data-public-map]>.map-rotation-controls,
+map-scene[data-public-map]>.map-gesture-legend{display:none!important}
+
+.public-hero-letter>span{letter-spacing:.24em!important}
+.public-hero-letter h1{max-width:700px!important;line-height:.93!important}
+.public-hero-letter h1 em{font-style:italic}
+
+/* Evita que loaders v5.3.x antigos ainda presentes em cache bloqueiem/interfiram. */
+[class^="public-model-loading-v53"],
+[class*=" public-model-loading-v53"]{display:none!important;pointer-events:none!important}
+.v533-model-status,[data-v533-model-status]{display:none!important}
