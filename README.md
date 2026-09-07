@@ -2,6 +2,12 @@
 
 Protótipo estático/PWA inspirado nas telas conceituais fornecidas para o sistema Aliança Park. O produto é centrado em **IA + mapa**, com módulos apresentados como cards flutuantes sobre uma cena espacial.
 
+## Portfólio
+
+O documento curricular completo, com frames reais da aplicação, arquitetura de entidades e ações, fluxo de obra, guia visual, stack tecnológico e evidências de QA está em [docs/portfolio.html](docs/portfolio.html).
+
+Também pode ser aberto pelo servidor local em [http://localhost:8080/docs/portfolio.html](http://localhost:8080/docs/portfolio.html) enquanto npm start estiver em execução.
+
 ## Principais características
 
 - OpenStreetMap em Leaflet como mapa-base.

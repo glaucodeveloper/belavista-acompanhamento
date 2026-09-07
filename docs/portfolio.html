@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Portfólio técnico e curricular do sistema Aliança Park: operação de loteamentos, CRM de leads, mapa 3D e automação orientada por caixa.">
+  <meta name="theme-color" content="#161616">
+  <title>Aliança Park · Portfólio do produto</title>
+  <style>
+    :root {
+      --bg: #161616;
+      --bg-deep: #0f0f0f;
+      --surface: #262626;
+      --surface-2: #2f2f2f;
+      --surface-3: #393939;
+      --text: #f4f4f4;
+      --muted: #c6c6c6;
+      --subtle: #8d8d8d;
+      --line: rgba(244,244,244,.12);
+      --blue: #0f62fe;
+      --blue-deep: #0043ce;
+      --green: #24a148;
+      --yellow: #f1c21b;
+      --orange: #ff832b;
+      --purple: #a56eff;
+      --red: #da1e28;
+      --serif: Georgia, 'Times New Roman', serif;
+      --sans: 'IBM Plex Sans', 'Segoe UI', Arial, sans-serif;
+      --mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+      --max: 1240px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.55;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(110deg, rgba(15,98,254,.08), transparent 32%, rgba(36,161,72,.035) 72%, transparent);
+      z-index: -1;
+    }
+    a { color: #78a9ff; text-decoration: none; }
+    a:hover { color: #b8d3ff; text-decoration: underline; }
+    img { display: block; max-width: 100%; }
+    code, pre, .mono { font-family: var(--mono); }
+    .wrap { width: min(calc(100% - 48px), var(--max)); margin: 0 auto; }
+
+    .topbar {
+      min-height: 68px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(22,22,22,.92);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(12px);
+    }
+    .topbar-inner { min-height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .brand { display: inline-flex; align-items: center; gap: 12px; color: var(--text); }
+    .brand:hover { text-decoration: none; color: var(--text); }
+    .brand-mark {
+      width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid #78a9ff;
+      color: white; background: linear-gradient(145deg, #0f62fe 0 44%, #24a148 44% 72%, #f1c21b 72%);
+      font: 700 12px/1 var(--mono); letter-spacing: -.08em;
+    }
+    .brand-copy { display: grid; line-height: 1.05; }
+    .brand-copy strong { font-size: 14px; letter-spacing: .07em; text-transform: uppercase; }
+    .brand-copy span { color: var(--subtle); font: 10px/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .nav { display: flex; align-items: center; gap: 18px; font: 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+    .nav a { color: var(--muted); }
+    .nav a:hover { color: var(--text); }
+    .nav .nav-cta { border: 1px solid rgba(120,169,255,.45); background: rgba(15,98,254,.16); padding: 8px 11px; color: var(--text); }
+
+    .hero { padding: 76px 0 64px; border-bottom: 1px solid var(--line); }
+    .hero-grid { display: grid; grid-template-columns: 1.16fr .84fr; gap: 64px; align-items: end; }
+    .eyebrow, .kicker { color: #78a9ff; font: 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 22px; max-width: 780px; font: 400 clamp(46px, 7vw, 88px)/.98 var(--serif); letter-spacing: -.045em; }
+    h1 em { color: #b4e876; font-style: italic; }
+    .hero-lede { max-width: 650px; color: var(--muted); font-size: 19px; line-height: 1.55; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 30px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 15px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font: 12px var(--mono); }
+    .btn:hover { text-decoration: none; border-color: rgba(120,169,255,.75); color: var(--text); }
+    .btn-primary { background: var(--blue); border-color: var(--blue); }
+    .btn-primary:hover { background: var(--blue-deep); border-color: var(--blue-deep); }
+    .hero-card { border: 1px solid rgba(120,169,255,.3); background: linear-gradient(145deg, rgba(38,38,38,.95), rgba(26,26,26,.92)); padding: 22px; }
+    .hero-card-head { display: flex; align-items: start; justify-content: space-between; gap: 16px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+    .hero-card h2 { margin: 0; font: 21px/1.1 var(--serif); }
+    .signal { display: inline-flex; align-items: center; gap: 7px; color: #a7f3b9; font: 10px var(--mono); white-space: nowrap; }
+    .signal::before { content: ''; width: 8px; height: 8px; background: var(--green); border-radius: 50%; box-shadow: 0 0 12px var(--green); }
+    .metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); }
+    .metric { padding: 20px 12px 6px 0; border-bottom: 1px solid var(--line); }
+    .metric:nth-child(odd) { border-right: 1px solid var(--line); padding-right: 18px; }
+    .metric:nth-child(even) { padding-left: 18px; }
+    .metric:nth-last-child(-n+2) { border-bottom: 0; }
+    .metric strong { display: block; font: 28px var(--mono); }
+    .metric span { color: var(--muted); font-size: 12px; }
+    .metric small { display: block; margin-top: 4px; color: var(--subtle); font: 10px var(--mono); }
+
+    section { padding: 74px 0; border-bottom: 1px solid var(--line); }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 36px; margin-bottom: 30px; }
+    .section-head h2 { margin: 8px 0 0; max-width: 760px; font: 400 clamp(30px, 4vw, 52px)/1.04 var(--serif); letter-spacing: -.035em; }
+    .section-head p { max-width: 460px; margin: 0; color: var(--muted); font-size: 15px; }
+    .label { color: var(--subtle); font: 10px var(--mono); letter-spacing: .09em; text-transform: uppercase; }
+    .lead-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .lead-card { min-height: 230px; padding: 22px; border: 1px solid var(--line); background: var(--surface); position: relative; overflow: hidden; }
+    .lead-card::after { content: ''; position: absolute; right: -40px; bottom: -55px; width: 150px; height: 150px; border: 1px solid rgba(120,169,255,.16); transform: rotate(45deg); }
+    .lead-card .num { color: var(--blue); font: 12px var(--mono); }
+    .lead-card h3 { margin: 32px 0 10px; font-size: 18px; }
+    .lead-card p { color: var(--muted); font-size: 14px; }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 18px; }
+    .chip { padding: 5px 7px; border: 1px solid var(--line); background: rgba(255,255,255,.035); color: var(--muted); font: 10px var(--mono); }
+
+    .diagram-shell { padding: 20px; border: 1px solid var(--line); background: var(--bg-deep); overflow-x: auto; }
+    .diagram-shell svg { width: 100%; min-width: 900px; height: auto; }
+    .diagram-shell .node { fill: #262626; stroke: #5f5f5f; stroke-width: 1; }
+    .diagram-shell .node-blue { fill: #172c54; stroke: #78a9ff; }
+    .diagram-shell .node-green { fill: #153b24; stroke: #42be65; }
+    .diagram-shell .node-yellow { fill: #3b3011; stroke: #f1c21b; }
+    .diagram-shell .node-purple { fill: #2b2045; stroke: #be95ff; }
+    .diagram-shell .node-red { fill: #45191b; stroke: #ff8389; }
+    .diagram-shell .svg-title { fill: #f4f4f4; font: 600 16px var(--sans); }
+    .diagram-shell .svg-copy { fill: #c6c6c6; font: 12px var(--sans); }
+    .diagram-shell .svg-mono { fill: #78a9ff; font: 10px var(--mono); letter-spacing: .08em; }
+    .diagram-shell .arrow { fill: none; stroke: #78a9ff; stroke-width: 2; stroke-dasharray: 5 4; marker-end: url(#arrow); }
+    .diagram-shell .arrow-green { stroke: #42be65; marker-end: url(#arrow-green); }
+    .diagram-shell .arrow-yellow { stroke: #f1c21b; marker-end: url(#arrow-yellow); }
+    .diagram-note { margin: 14px 0 0; color: var(--subtle); font: 11px var(--mono); }
+
+    .entity-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+    .entity { min-height: 180px; padding: 18px; background: var(--surface); }
+    .entity h3 { margin: 20px 0 8px; font-size: 16px; }
+    .entity p { color: var(--muted); font-size: 13px; }
+    .entity ul { margin: 0; padding-left: 16px; color: var(--subtle); font-size: 12px; }
+
+    .frames { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+    figure { margin: 0; border: 1px solid var(--line); background: var(--surface); overflow: hidden; }
+    figure img { width: 100%; aspect-ratio: 2.14 / 1; object-fit: cover; background: #101010; transition: transform .25s ease; }
+    figure:hover img { transform: scale(1.025); }
+    figcaption { padding: 14px 16px 16px; }
+    figcaption strong { display: block; margin-bottom: 4px; font-size: 14px; }
+    figcaption span { display: block; color: var(--muted); font-size: 12px; }
+    .frame-wide { grid-column: span 8; }
+    .frame-half { grid-column: span 4; }
+    .frame-third { grid-column: span 4; }
+
+    .timeline { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); background: var(--line); gap: 1px; }
+    .stage { min-height: 222px; padding: 20px; background: var(--surface); border-top: 3px solid var(--blue); }
+    .stage:nth-child(2) { border-color: var(--yellow); }
+    .stage:nth-child(3) { border-color: var(--green); }
+    .stage:nth-child(4) { border-color: var(--purple); }
+    .stage:nth-child(5) { border-color: var(--orange); }
+    .stage:nth-child(6) { border-color: var(--blue); }
+    .stage:nth-child(7) { border-color: var(--red); }
+    .stage:nth-child(8) { border-color: var(--yellow); }
+    .stage .stage-num { color: var(--subtle); font: 10px var(--mono); }
+    .stage h3 { margin: 24px 0 7px; font-size: 16px; }
+    .stage p { margin-bottom: 10px; color: var(--muted); font-size: 12px; }
+    .stage .stage-tag { color: var(--subtle); font: 10px var(--mono); }
+
+    .split { display: grid; grid-template-columns: .85fr 1.15fr; gap: 16px; }
+    .panel { padding: 24px; border: 1px solid var(--line); background: var(--surface); }
+    .panel h3 { margin: 8px 0 12px; font-size: 19px; }
+    .panel p { color: var(--muted); font-size: 14px; }
+    .steps { margin: 20px 0 0; padding: 0; list-style: none; counter-reset: step; }
+    .steps li { display: grid; grid-template-columns: 30px 1fr; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+    .steps li::before { counter-increment: step; content: counter(step, decimal-leading-zero); color: var(--blue); font: 11px var(--mono); }
+    pre { margin: 18px 0 0; overflow: auto; padding: 17px; background: #111; border: 1px solid var(--line); color: #b4e876; font-size: 12px; line-height: 1.6; }
+    .callout { margin-top: 14px; padding: 13px 15px; border-left: 3px solid var(--yellow); background: rgba(241,194,27,.08); color: var(--muted); font-size: 13px; }
+
+    .design-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 18px; }
+    .swatch { min-height: 92px; padding: 10px; display: flex; flex-direction: column; justify-content: end; border: 1px solid rgba(255,255,255,.15); font: 10px var(--mono); }
+    .swatch span { opacity: .8; }
+    .type-sample { display: grid; gap: 12px; margin-top: 20px; }
+    .type-sample .serif { font: 29px/1.05 var(--serif); }
+    .type-sample .sans { font: 18px/1.2 var(--sans); }
+    .type-sample .mono { color: #78a9ff; font: 11px var(--mono); letter-spacing: .09em; text-transform: uppercase; }
+    .component-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+    .fake-button, .fake-field, .fake-status { min-height: 38px; display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid var(--line); background: #1b1b1b; color: var(--muted); font: 11px var(--mono); }
+    .fake-button { background: var(--blue); border-color: var(--blue); color: white; }
+    .fake-status { gap: 7px; border-color: rgba(36,161,72,.5); color: #a7f3b9; }
+    .fake-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+
+    .stack { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .stack-card { padding: 18px; border: 1px solid var(--line); background: var(--surface); min-height: 175px; }
+    .stack-card h3 { margin: 22px 0 7px; font-size: 16px; }
+    .stack-card p { color: var(--muted); font-size: 12px; }
+    .stack-card .icon-letter { display: grid; place-items: center; width: 32px; height: 32px; background: var(--surface-3); color: #b4e876; font: 700 12px var(--mono); }
+
+    .qa-table { width: 100%; border-collapse: collapse; border: 1px solid var(--line); background: var(--surface); }
+    .qa-table th, .qa-table td { padding: 13px 15px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    .qa-table th { color: var(--subtle); font: 10px var(--mono); text-transform: uppercase; letter-spacing: .08em; }
+    .qa-table td { color: var(--muted); font-size: 13px; }
+    .qa-table tr:last-child td { border-bottom: 0; }
+    .pass { color: #a7f3b9 !important; font-family: var(--mono); white-space: nowrap; }
+
+    .footer { padding: 38px 0 54px; }
+    .footer-grid { display: flex; align-items: start; justify-content: space-between; gap: 30px; }
+    .footer p { max-width: 560px; color: var(--muted); font-size: 13px; }
+    .footer small { color: var(--subtle); font: 10px var(--mono); }
+
+    @media (max-width: 900px) {
+      .hero-grid, .split, .design-grid { grid-template-columns: 1fr; }
+      .lead-grid { grid-template-columns: 1fr 1fr; }
+      .timeline { grid-template-columns: repeat(2, 1fr); }
+      .stack { grid-template-columns: 1fr 1fr; }
+      .entity-grid { grid-template-columns: 1fr 1fr; }
+      .frame-wide { grid-column: span 12; }
+      .frame-half, .frame-third { grid-column: span 6; }
+      .section-head { display: block; }
+      .section-head p { margin-top: 15px; }
+    }
+    @media (max-width: 640px) {
+      .wrap { width: min(calc(100% - 28px), var(--max)); }
+      .topbar-inner { min-height: 60px; }
+      .nav { display: none; }
+      .hero { padding: 52px 0 42px; }
+      h1 { font-size: 52px; }
+      .hero-lede { font-size: 16px; }
+      section { padding: 52px 0; }
+      .lead-grid, .timeline, .stack, .entity-grid { grid-template-columns: 1fr; }
+      .frame-wide, .frame-half, .frame-third { grid-column: span 12; }
+      .swatches { grid-template-columns: repeat(2, 1fr); }
+      .qa-table { display: block; overflow-x: auto; white-space: nowrap; }
+      .footer-grid { display: block; }
+      .footer-grid > * + * { margin-top: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="#top" aria-label="Aliança Park, início do portfólio">
+        <span class="brand-mark">AP</span>
+        <span class="brand-copy"><strong>Aliança Park</strong><span>portfólio do produto · 2026</span></span>
+      </a>
+      <nav class="nav" aria-label="Seções do portfólio">
+        <a href="#produto">Produto</a>
+        <a href="#arquitetura">Arquitetura</a>
+        <a href="#frames">Frames</a>
+        <a href="#tecnologia">Tecnologia</a>
+        <a class="nav-cta" href="https://github.com/glaucodeveloper/belavista-acompanhamento">Repositório ↗</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <div class="wrap hero">
+      <div class="hero-grid">
+        <div>
+          <div class="eyebrow">Curricularização · caso real de produto</div>
+          <h1>Uma operação de loteamento que transforma <em>caixa</em> em decisão.</h1>
+          <p class="hero-lede">O Aliança Park conecta captação comercial, mapa 3D, execução de obra, materiais, equipes, comprovações e automações em uma mesma leitura operacional — do primeiro lead ao registro confirmado em campo.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#frames">Ver frames do sistema</a>
+            <a class="btn" href="#arquitetura">Ler arquitetura</a>
+            <a class="btn" href="../">Abrir aplicação</a>
+          </div>
+        </div>
+        <aside class="hero-card" aria-label="Resumo do produto">
+          <div class="hero-card-head">
+            <div><div class="label">Snapshot do produto</div><h2>Controle operacional integrado</h2></div>
+            <span class="signal">sistema vivo</span>
+          </div>
+          <div class="metric-grid">
+            <div class="metric"><strong>298</strong><span>lotes no contexto comercial</span><small>mapa / leads / reserva</small></div>
+            <div class="metric"><strong>8</strong><span>frentes de obra</span><small>catálogo operacional</small></div>
+            <div class="metric"><strong>90+</strong><span>atividades catalogadas</span><small>produção + requisitos</small></div>
+            <div class="metric"><strong>1</strong><span>fonte mestre</span><small>caixa · prioridade</small></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <section id="produto">
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="kicker">01 · visão do produto</div><h2>Três superfícies, um mesmo estado de negócio.</h2></div>
+          <p>A experiência foi organizada para manter telas longas como consulta e colocar a entrada de fatos em widgets, registros e ações de contexto.</p>
+        </div>
+        <div class="lead-grid">
+          <article class="lead-card"><div class="num">01 / PUBLIC</div><h3>Leads e reserva</h3><p>Landing page de atendimento com mapa do loteamento, markers de disponibilidade, chat de intenção e caminho para identificação e reserva.</p><div class="chip-row"><span class="chip">mapa 3D</span><span class="chip">chat</span><span class="chip">CRM</span></div></article>
+          <article class="lead-card"><div class="num">02 / ADMIN</div><h3>Centro de operação</h3><p>Dashboard administrativo com caixa mestre, frentes ativas, materiais, diário, corretores, relatórios e atalhos para registrar fatos.</p><div class="chip-row"><span class="chip">caixa</span><span class="chip">materiais</span><span class="chip">comissões</span></div></article>
+          <article class="lead-card"><div class="num">03 / FIELD</div><h3>Registro em campo</h3><p>Portal mobile para encarregados confirmarem serviços, adicionarem evidências, localização, produção e observações do diário de obra.</p><div class="chip-row"><span class="chip">PWA/TWA</span><span class="chip">evidências</span><span class="chip">offline-first</span></div></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="arquitetura">
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="kicker">02 · arquitetura de ações</div><h2>O sistema ouve fatos, calcula relações e propaga saídas.</h2></div>
+          <p>O fluxo abaixo resume a separação entre entradas autorizadas, ciclo de workers, inferência estruturada e atualizações para cada ponta.</p>
+        </div>
+        <div class="diagram-shell">
+          <svg viewBox="0 0 1220 520" role="img" aria-labelledby="flow-title flow-desc">
+            <title id="flow-title">Fluxo de entidades e ações do Aliança Park</title>
+            <desc id="flow-desc">Caixa, compras e registros entram no contexto operacional. O worker normaliza e infere relações para atualizar agenda, materiais, mapa e notificações.</desc>
+            <defs>
+              <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#78a9ff"/></marker>
+              <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#42be65"/></marker>
+              <marker id="arrow-yellow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#f1c21b"/></marker>
+            </defs>
+            <text x="25" y="24" class="svg-mono">ENTRADAS AUTORIZADAS</text>
+            <text x="480" y="24" class="svg-mono">LOOP VIVO DE DECISÃO</text>
+            <text x="955" y="24" class="svg-mono">SAÍDAS PROPAGADAS</text>
+            <rect class="node" x="25" y="54" width="205" height="102" rx="2"/><text x="43" y="84" class="svg-title">Pessoas e fatos</text><text x="43" y="109" class="svg-copy">dono · administrador</text><text x="43" y="130" class="svg-copy">encarregado · corretor</text>
+            <rect class="node-blue" x="258" y="54" width="205" height="102" rx="2"/><text x="276" y="84" class="svg-title">Entradas de domínio</text><text x="276" y="109" class="svg-copy">caixa · compra · produção</text><text x="276" y="130" class="svg-copy">lead · anexo · mensagem</text>
+            <rect class="node-blue" x="492" y="54" width="205" height="102" rx="2"/><text x="510" y="84" class="svg-title">Worker loop</text><text x="510" y="109" class="svg-copy">normaliza fatos</text><text x="510" y="130" class="svg-copy">ordena por prioridade</text>
+            <rect class="node-purple" x="726" y="54" width="205" height="102" rx="2"/><text x="744" y="84" class="svg-title">Compreensão</text><text x="744" y="109" class="svg-copy">regras + inferência</text><text x="744" y="130" class="svg-copy">saída estruturada</text>
+            <rect class="node-green" x="960" y="54" width="205" height="102" rx="2"/><text x="978" y="84" class="svg-title">Propagação</text><text x="978" y="109" class="svg-copy">agenda · materiais</text><text x="978" y="130" class="svg-copy">notificações · mapa</text>
+            <path class="arrow" d="M230 105 H258"/><path class="arrow" d="M463 105 H492"/><path class="arrow" d="M697 105 H726"/><path class="arrow arrow-green" d="M931 105 H960"/>
+            <text x="25" y="228" class="svg-mono">ENTIDADE OPERACIONAL</text>
+            <rect class="node-yellow" x="25" y="256" width="250" height="112" rx="2"/><text x="45" y="288" class="svg-title">Caixa mestre</text><text x="45" y="313" class="svg-copy">cobertura financeira</text><text x="45" y="334" class="svg-copy">define urgência e elegibilidade</text>
+            <rect class="node" x="310" y="256" width="250" height="112" rx="2"/><text x="330" y="288" class="svg-title">Etapa → atividade</text><text x="330" y="313" class="svg-copy">ritmo, unidade, equipe</text><text x="330" y="334" class="svg-copy">requisitos e localização 3D</text>
+            <rect class="node" x="595" y="256" width="250" height="112" rx="2"/><text x="615" y="288" class="svg-title">Registro confirmado</text><text x="615" y="313" class="svg-copy">produção · diário · anexo</text><text x="615" y="334" class="svg-copy">fonte auditável de campo</text>
+            <rect class="node-red" x="880" y="256" width="285" height="112" rx="2"/><text x="900" y="288" class="svg-title">Condição / impedimento</text><text x="900" y="313" class="svg-copy">ritmo abaixo · falta material</text><text x="900" y="334" class="svg-copy">dispara aviso ao responsável</text>
+            <path class="arrow arrow-yellow" d="M150 256 V190 H590 V156"/><path class="arrow" d="M435 256 V190 H590 V156"/><path class="arrow" d="M720 256 V190 H590 V156"/><path class="arrow arrow-yellow" d="M1022 256 V190 H820 V156"/>
+            <path class="arrow arrow-green" d="M697 156 V418 H435 V368"/><path class="arrow arrow-green" d="M931 156 V418 H720 V368"/>
+            <text x="25" y="454" class="svg-mono">REGRA DE CONTROLE</text>
+            <text x="25" y="480" class="svg-copy">Somente mudanças persistidas e perfis autorizados alteram o estado mestre; a IA sugere, relaciona e notifica.</text>
+          </svg>
+          <p class="diagram-note">Fluxo conceitual documentado para portfólio · a implantação atual mantém notificações externas em modo pseudo/hook até a configuração de produção.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="kicker">03 · modelo de entidades</div><h2>O mesmo fato reaparece no contexto em que é útil.</h2></div>
+          <p>A modelagem evita ilhas de informação: o lote conecta a intenção comercial; a atividade conecta produção, material, equipe, prova e cronograma.</p>
+        </div>
+        <div class="entity-grid">
+          <article class="entity"><div class="label">comercial</div><h3>Lote ↔ lead</h3><p>Disponibilidade, preço proporcional à área e intenção de compra.</p><ul><li>status do lote</li><li>marker 3D</li><li>chat e origem</li></ul></article>
+          <article class="entity"><div class="label">relacionamento</div><h3>Lead ↔ reserva</h3><p>Conversa, documentos e confirmação humana antes do compromisso.</p><ul><li>anexos</li><li>histórico</li><li>corretor e comissão</li></ul></article>
+          <article class="entity"><div class="label">obra</div><h3>Etapa ↔ atividade</h3><p>Sequência, dependência, unidade de produção e área selecionada no mapa 3D.</p><ul><li>ritmo / volume</li><li>requisitos</li><li>agenda</li></ul></article>
+          <article class="entity"><div class="label">evidência</div><h3>Registro ↔ propagação</h3><p>Fato confirmado alimenta progresso, materiais, caixa, calendário e alertas.</p><ul><li>diário</li><li>comprovante</li><li>notificação</li></ul></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="frames">
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="kicker">04 · frames de produto</div><h2>O produto em uso: da vitrine pública à supervisão da execução.</h2></div>
+          <p>Capturas da execução local do sistema, selecionadas para mostrar as superfícies principais, estados e detalhes de operação.</p>
+        </div>
+        <div class="frames">
+          <figure class="frame-wide"><img src="../assets/portfolio/screens/public-leads.jpg" alt="Página pública de leads com mapa do loteamento e chat de atendimento" loading="eager"><figcaption><strong>Página pública · leads, mapa e atendimento</strong><span>Vitrine do loteamento com conversa contextual e seleção de lotes.</span></figcaption></figure>
+          <figure class="frame-half"><img src="../assets/portfolio/screens/admin-dashboard.jpg" alt="Dashboard administrativo com mapa operacional" loading="lazy"><figcaption><strong>Dashboard inicial</strong><span>Panorama operacional com mapa e ações rápidas.</span></figcaption></figure>
+          <figure class="frame-half"><img src="../assets/portfolio/screens/admin-control-center.jpg" alt="Central administrativa de operação" loading="lazy"><figcaption><strong>Central de operação</strong><span>Caixa, materiais, etapas e regras editáveis no mesmo contexto.</span></figcaption></figure>
+          <figure class="frame-third"><img src="../assets/portfolio/screens/admin-stages.jpg" alt="Página administrativa de etapas da obra" loading="lazy"><figcaption><strong>Etapas da obra</strong><span>Frentes priorizadas pelo caixa e suas dependências.</span></figcaption></figure>
+          <figure class="frame-third"><img src="../assets/portfolio/screens/stage-drainage.jpg" alt="Detalhamento da etapa de drenagem" loading="lazy"><figcaption><strong>Workbench de etapa</strong><span>Requisitos, materiais, ritmo e cronograma da frente.</span></figcaption></figure>
+          <figure class="frame-third"><img src="../assets/portfolio/screens/activity-road-opening.jpg" alt="Página de atividade com mapa para seleção física" loading="lazy"><figcaption><strong>Atividade localizada no 3D</strong><span>Seleção por pintura de polígonos no modelo do loteamento.</span></figcaption></figure>
+          <figure class="frame-third"><img src="../assets/portfolio/screens/workers-monitor.jpg" alt="Monitoria dos workers de automação" loading="lazy"><figcaption><strong>Monitoria dos workers</strong><span>Visão do loop de automação e dos testes de propagação.</span></figcaption></figure>
+          <figure class="frame-third"><img src="../assets/portfolio/screens/admin-records.jpg" alt="Tela administrativa de registros" loading="lazy"><figcaption><strong>Registros de campo</strong><span>Histórico consultável para fatos de execução.</span></figcaption></figure>
+          <figure class="frame-third"><img src="../assets/portfolio/screens/admin-personnel.jpg" alt="Tela administrativa de pessoal" loading="lazy"><figcaption><strong>Pessoal e equipes</strong><span>Disponibilidade de pessoas para o cálculo de produção.</span></figcaption></figure>
+          <figure class="frame-third"><img src="../assets/portfolio/screens/admin-brokers.jpg" alt="Tela administrativa de corretores" loading="lazy"><figcaption><strong>Corretores</strong><span>Carteiras, repasses e visão de comissões.</span></figcaption></figure>
+          <figure class="frame-third"><img src="../assets/portfolio/screens/admin-finance.jpg" alt="Tela administrativa financeira" loading="lazy"><figcaption><strong>Financeiro</strong><span>Entradas de caixa, materiais e recibos auditáveis.</span></figcaption></figure>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="kicker">05 · execução de obra</div><h2>O cronograma nasce da relação entre frente, recurso e caixa.</h2></div>
+          <p>Sequência de referência do loteamento rural. Cada etapa pode abrir atividades, requisitos, materiais, equipe e localização física.</p>
+        </div>
+        <div class="timeline">
+          <article class="stage"><div class="stage-num">01 · PROJECT</div><h3>Projeto executivo</h3><p>Compatibilização de geometria, cotas, licenças e interfaces.</p><div class="stage-tag">gate: projeto aprovado</div></article>
+          <article class="stage"><div class="stage-num">02 · EARTHWORK</div><h3>Terraplanagem</h3><p>Corte, aterro, transporte e compactação medidos por produção.</p><div class="stage-tag">m³ · viagens internas</div></article>
+          <article class="stage"><div class="stage-num">03 · DRAINAGE</div><h3>Drenagem pluvial</h3><p>Valas, caixas, PVs, bocas de lobo, assentamento e testes.</p><div class="stage-tag">m · un · teste</div></article>
+          <article class="stage"><div class="stage-num">04 · WATER</div><h3>Rede de água</h3><p>Tubos PEAD, cavaletes e ramais para os lotes.</p><div class="stage-tag">m · lote atendido</div></article>
+          <article class="stage"><div class="stage-num">05 · CURBS</div><h3>Meio-fio</h3><p>Contorno de quadras, alinhamento e acabamento das ruas.</p><div class="stage-tag">m linear</div></article>
+          <article class="stage"><div class="stage-num">06 · PAVING</div><h3>Pavimentação</h3><p>Paralelepípedos aplicados por trecho liberado e conferido.</p><div class="stage-tag">m² · unidade produzida</div></article>
+          <article class="stage"><div class="stage-num">07 · ELECTRICAL</div><h3>Rede elétrica</h3><p>Última frente de implantação, dependente de requisitos e prazo da concessionária.</p><div class="stage-tag">postes · ligação Coelba</div></article>
+          <article class="stage"><div class="stage-num">08 · DELIVERY</div><h3>Entrega e encerramento</h3><p>As-built, certificados, aceite, pendências e fechamento.</p><div class="stage-tag">gate: documentação</div></article>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap split">
+        <article class="panel">
+          <div class="kicker">06 · loop de worker</div>
+          <h3>Inferência com contrato, não com improviso.</h3>
+          <p>O worker recebe o contexto global, calcula elegibilidade pelo caixa, interpreta dependências e devolve saídas estruturadas. A IA apoia a compreensão; a persistência e a autorização continuam sendo regras do sistema.</p>
+          <ol class="steps"><li>Receber evento de caixa, compra, registro, lead ou alteração de diretriz.</li><li>Normalizar entidade, etapa, atividade, unidade, prazo e responsável.</li><li>Ordenar prioridades por cobertura, dependências, produção e disponibilidade.</li><li>Gerar agenda, materiais, equipe, notificações e relações auditáveis.</li><li>Persistir o resultado e espelhar somente o necessário no realtime.</li></ol>
+        </article>
+        <article class="panel">
+          <div class="kicker">saída estruturada</div>
+          <h3>Exemplo de decisão que o sistema consegue transportar.</h3>
+          <pre>{
+  "event": "field_record.confirmed",
+  "stage": "earthwork",
+  "activity": "road-opening",
+  "production": { "value": 240, "unit": "m3" },
+  "context": { "cash": 48000, "team": "equipe A" },
+  "relations": [{ "to": "drainage", "type": "libera trecho" }],
+  "actions": ["update_schedule", "recalculate_materials"],
+  "notifications": [{ "audience": "owner", "reason": "rendimento" }]
+}</pre>
+          <div class="callout">Em produção, o disparo de mensagem externa depende da configuração segura do canal. Nesta demonstração, o fluxo de notificação permanece observável por hooks e pseudo-eventos.</div>
+        </article>
+      </div>
+    </section>
+
+    <section id="tecnologia">
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="kicker">07 · tecnologia</div><h2>Uma base web leve para uma operação rica em contexto.</h2></div>
+          <p>O stack foi escolhido para manter o protótipo executável localmente, publicável no Firebase Hosting e preparado para workers externos.</p>
+        </div>
+        <div class="stack">
+          <article class="stack-card"><div class="icon-letter">JS</div><h3>Node.js · ESM</h3><p>Servidor HTTP local, módulos ES, rotas administrativas e páginas públicas sem build obrigatório no ciclo de desenvolvimento.</p></article>
+          <article class="stack-card"><div class="icon-letter">3D</div><h3>Mapa operacional</h3><p>Web Components e camada de cena para modelo 3D, loteamento, markers, seleção de polígonos e leitura geográfica.</p></article>
+          <article class="stack-card"><div class="icon-letter">RT</div><h3>Firebase Realtime Database</h3><p>Espelho de mudanças e canal de observação para notificações e atualização dos clientes nas pontas.</p></article>
+          <article class="stack-card"><div class="icon-letter">AI</div><h3>Inferência NVIDIA</h3><p>Endpoint configurável para compreensão contextual, mantendo segredo no worker e contrato estruturado na aplicação.</p></article>
+          <article class="stack-card"><div class="icon-letter">PWA</div><h3>Service Worker / TWA</h3><p>Shell instalável e portal mobile dedicado a administradores e encarregados de campo.</p></article>
+          <article class="stack-card"><div class="icon-letter">DB</div><h3>Persistência local</h3><p>Estado operacional, trilha de eventos, compras, caixa, diário, anexos e regras de autorização para desenvolvimento.</p></article>
+          <article class="stack-card"><div class="icon-letter">QA</div><h3>Playwright · Node test</h3><p>Testes de contrato, worker, inferência mock, compra, navegação e verificação visual das páginas.</p></article>
+          <article class="stack-card"><div class="icon-letter">DOC</div><h3>PDF / Excel</h3><p>Base preparada para relatórios mensais, anuais e acumulados, com repasses por corretor e razões de comissão editáveis.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="kicker">08 · design guide</div><h2>Carbon escuro, precisão de operação e sinais de estado.</h2></div>
+          <p>O visual reduz ruído em tarefas críticas: fundos neutros, linhas finas, tipografia monoespaçada para dados e cor reservada aos estados.</p>
+        </div>
+        <div class="design-grid">
+          <article class="panel"><div class="label">tokens de cor</div><div class="swatches"><div class="swatch" style="background:#161616">bg0 <span>#161616</span></div><div class="swatch" style="background:#262626">surface <span>#262626</span></div><div class="swatch" style="background:#0f62fe">ação <span>#0F62FE</span></div><div class="swatch" style="background:#24a148">concluído <span>#24A148</span></div><div class="swatch" style="background:#f1c21b;color:#161616">atenção <span>#F1C21B</span></div><div class="swatch" style="background:#da1e28">bloqueio <span>#DA1E28</span></div><div class="swatch" style="background:#a56eff">comercial <span>#A56EFF</span></div><div class="swatch" style="background:#f4f4f4;color:#161616">texto <span>#F4F4F4</span></div></div></article>
+          <article class="panel"><div class="label">tipografia e componentes</div><div class="type-sample"><div class="serif">Decisão clara, operação visível.</div><div class="sans">Texto de apoio para orientar registro, acompanhamento e próxima ação.</div><div class="mono">CAIXA · ATIVIDADE · STATUS · AUDITÁVEL</div></div><div class="component-row"><span class="fake-button">Executar diretriz</span><span class="fake-field">R$ 48.000,00</span><span class="fake-status">Em acompanhamento</span></div></article>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="kicker">09 · governança e qualidade</div><h2>Autonomia com papéis, limites e prova de ciclo.</h2></div>
+          <p>O produto separa quem pode mudar a fonte mestre, quem calibra o sistema e quem registra o fato operacional.</p>
+        </div>
+        <table class="qa-table">
+          <thead><tr><th>superfície / papel</th><th>responsabilidade</th><th>evidência de qualidade</th></tr></thead>
+          <tbody>
+            <tr><td>Dono</td><td>Altera o fluxo de caixa, fonte de prioridade e cobertura das etapas.</td><td class="pass">autorização + histórico</td></tr>
+            <tr><td>Administrador</td><td>Calibra regras, catálogos, relações, workers e configurações.</td><td class="pass">diretriz versionada</td></tr>
+            <tr><td>Encarregado</td><td>Registra produção, confirma serviço, adiciona foto/comprovante e diário.</td><td class="pass">registro de campo</td></tr>
+            <tr><td>IA / worker</td><td>Compreende, relaciona, sugere, agenda e notifica dentro do contrato.</td><td class="pass">saída estruturada</td></tr>
+            <tr><td>Teste de ciclo</td><td>Simula compra, produção e alteração de caixa para observar agenda e propagação.</td><td class="pass">24/24 checks locais</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap split">
+        <article class="panel"><div class="kicker">10 · fontes do projeto</div><h3>Documentação que acompanha o código.</h3><p>O repositório mantém os contratos técnicos e operacionais para que o portfólio seja verificável e não apenas visual.</p><div class="chip-row"><a class="chip" href="./construction-planning-technical-manual.md">manual técnico</a><a class="chip" href="./initial-construction-planning.md">planejamento inicial</a><a class="chip" href="./CLOUDFLARE-NVIDIA-ARCHITECTURE.md">arquitetura worker</a><a class="chip" href="./rfc-dimensionamento-fisico-dwg.md">RFC DWG</a></div></article>
+        <article class="panel"><div class="kicker">11 · próximos incrementos</div><h3>Do protótipo observado à operação de produção.</h3><p>Os próximos passos naturais são publicar regras Firebase, ligar autenticação por perfil, habilitar o endpoint de inferência com segredo no worker, validar dados executivos e concluir o pipeline de relatórios.</p><div class="callout">A página é uma curricularização do produto e não substitui aprovação técnica, responsabilidade legal, projeto executivo ou validação da concessionária.</div></article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-grid">
+      <div><a class="brand" href="#top"><span class="brand-mark">AP</span><span class="brand-copy"><strong>Aliança Park</strong><span>operação de loteamentos</span></span></a><p>Portfólio técnico e visual do sistema desenvolvido para conectar comercial, obra, caixa e automação em uma leitura única.</p></div>
+      <div><small>repositório de referência</small><br><a href="https://github.com/glaucodeveloper/belavista-acompanhamento">github.com/glaucodeveloper/belavista-acompanhamento ↗</a><br><small>documento navegável · docs/portfolio.html</small></div>
+    </div>
+  </footer>
+</body>
+</html>
