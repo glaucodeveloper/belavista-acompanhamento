@@ -31,6 +31,7 @@ function apply(map){
       part.userData.activityMapStatus=match.assignment.status;
     }else if(part.userData.physicalProgressDefaultMaterial){part.material=part.userData.physicalProgressDefaultMaterial;delete part.userData.physicalProgressDefaultMaterial;delete part.userData.activityMapStatus;}
   }
+  map.applyStreetPaverInstanceStatusMap?.(strongest);
   legend.querySelector('[data-activity-map-count]').textContent=`${strongest.size} área${strongest.size===1?'':'s'}`;
   legend.hidden=assignments.length===0;
   if(map.renderer?.render)map.renderer.render(map.scene,map.camera);

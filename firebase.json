@@ -5,6 +5,9 @@
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "headers": [{"source": "**/*.@(js|mjs|css)", "headers": [{"key": "Cache-Control", "value": "public,max-age=3600"}]}],
     "rewrites": [
+      {"source": "/leads", "destination": "/public-leads.html"},
+      {"source": "/leads/**", "destination": "/public-leads.html"},
+      {"source": "/docs", "destination": "/docs/index.html"},
       {"source": "/admin/workers", "destination": "/admin-workers.html"},
       {"source": "/admin/workers/**", "destination": "/admin-workers.html"},
       {"source": "**", "destination": "/index.html"}

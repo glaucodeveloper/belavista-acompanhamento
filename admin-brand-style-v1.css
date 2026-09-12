@@ -312,9 +312,153 @@ body.admin-shell-page .scene:not(:has(>view-layer[data-view="map"]))>view-layer{
   z-index:20!important;
 }
 
+/* BELAVISTA_ADMIN_MAP_UI_PRIORITY_V5364
+   O mapa persistente é um plano visual compartilhado. No dashboard ele não
+   pode disputar o empilhamento com a interface, a barra de rolagem ou os
+   widgets. `display:contents` removia a caixa da view-layer e permitia que o
+   contexto interno do canvas ficasse visualmente acima dos irmãos. */
+@media (min-width:761px){
+  body.admin-shell-page main.scene:has(>view-layer[data-view="assistant"]),
+  body.admin-shell-page main.scene:has(>view-layer[data-view="map"]){
+    position:relative!important;
+    isolation:isolate!important;
+    overflow:hidden!important;
+  }
+
+  body.admin-shell-page main.scene:has(>view-layer[data-view="assistant"])>map-scene[data-persistent-map="true"],
+  body.admin-shell-page main.scene:has(>view-layer[data-view="map"])>map-scene[data-persistent-map="true"],
+  body.admin-shell-page main.scene:has(>view-layer[data-view="assistant"])>map-scene[data-admin-shared-public-map],
+  body.admin-shell-page main.scene:has(>view-layer[data-view="map"])>map-scene[data-admin-shared-public-map]{
+    position:absolute!important;
+    inset:0!important;
+    z-index:0!important;
+    isolation:isolate!important;
+    visibility:visible!important;
+    pointer-events:none!important;
+  }
+
+  /* Mesmo com painéis de seleção internos, o mapa não pode subir para o
+     primeiro plano por causa de `map-scene:has(.map-selection-panel)`. */
+  body.admin-shell-page main.scene:has(>view-layer[data-view="assistant"])>map-scene[data-persistent-map="true"]:has(.map-selection-panel),
+  body.admin-shell-page main.scene:has(>view-layer[data-view="map"])>map-scene[data-persistent-map="true"]:has(.map-selection-panel),
+  body.admin-shell-page main.scene:has(>view-layer[data-view="assistant"])>map-scene[data-admin-shared-public-map]:has(.map-selection-panel),
+  body.admin-shell-page main.scene:has(>view-layer[data-view="map"])>map-scene[data-admin-shared-public-map]:has(.map-selection-panel){
+    z-index:0!important;
+  }
+
+  body.admin-shell-page main.scene:has(>view-layer[data-view="map"])>map-scene[data-persistent-map="true"] .map-host,
+  body.admin-shell-page main.scene:has(>view-layer[data-view="map"])>map-scene[data-persistent-map="true"] .scene-world .three-overlay{
+    pointer-events:auto!important;
+  }
+
+  /* No dashboard o WebGL não pode capturar cliques, foco ou arraste. O
+     renderer continua montado para a troca imediata para a tela de mapa,
+     mas toda a superfície do mapa fica passiva enquanto a UI é exibida. */
+  body.admin-shell-page main.scene:has(>view-layer[data-view="assistant"])>map-scene[data-persistent-map="true"] .map-host,
+  body.admin-shell-page main.scene:has(>view-layer[data-view="assistant"])>map-scene[data-persistent-map="true"] .scene-world,
+  body.admin-shell-page main.scene:has(>view-layer[data-view="assistant"])>map-scene[data-persistent-map="true"] .scene-world .three-overlay,
+  body.admin-shell-page main.scene:has(>view-layer[data-view="assistant"])>map-scene[data-persistent-map="true"] .map-tint,
+  body.admin-shell-page main.scene:has(>view-layer[data-view="assistant"])>map-scene[data-admin-shared-public-map] .map-host,
+  body.admin-shell-page main.scene:has(>view-layer[data-view="assistant"])>map-scene[data-admin-shared-public-map] .scene-world,
+  body.admin-shell-page main.scene:has(>view-layer[data-view="assistant"])>map-scene[data-admin-shared-public-map] .scene-world .three-overlay,
+  body.admin-shell-page main.scene:has(>view-layer[data-view="assistant"])>map-scene[data-admin-shared-public-map] .map-tint{
+    pointer-events:none!important;
+  }
+
+  /* A view-layer real cria o plano de UI que o `z-index` precisa para
+     prevalecer sobre todos os filhos Leaflet/WebGL do mapa. */
+  body.admin-shell-page main.scene:has(>view-layer[data-view="assistant"])>view-layer[data-view="assistant"],
+  body.admin-shell-page main.scene:has(>view-layer[data-view="map"])>view-layer[data-view="map"]{
+    position:absolute!important;
+    inset:0!important;
+    display:block!important;
+    z-index:50!important;
+    min-width:0!important;
+    min-height:0!important;
+  }
+
+  /* O mapa permanece navegável nas áreas vazias; os componentes acionáveis
+     já possuem suas próprias regras de pointer-events. */
+  body.admin-shell-page main.scene>view-layer[data-view="assistant"],
+  body.admin-shell-page main.scene>view-layer[data-view="map"]{
+    pointer-events:none!important;
+  }
+
+  /* O dashboard é o dono da interação neste modo. */
+  body.admin-shell-page main.scene>view-layer[data-view="assistant"]{
+    pointer-events:auto!important;
+  }
+  body.admin-shell-page main.scene>view-layer[data-view="assistant"]>.dashboard-home{
+    position:relative!important;
+    z-index:51!important;
+    pointer-events:auto!important;
+  }
+}
+
 /* No historico o mapa e um dock deliberado. A faixa externa fica reservada
    para a scrollbar nativa da pagina, inclusive quando o painel cria overlay. */
 body.admin-shell-page .scene:has(>view-layer[data-view="records"])>map-scene{
   right:24px!important;
   max-width:calc(100% - 48px)!important;
 }
+
+/* UI_PRIORITY_FALLBACK_V1: a camada de interface sempre recebe os cliques
+   quando o mapa persistente permanece montado no shell administrativo. */
+body.admin-shell-page main.scene>map-scene[data-persistent-map="true"],
+body.admin-shell-page main.scene>map-scene[data-admin-shared-public-map]{
+  z-index:0!important;
+  pointer-events:none!important;
+}
+body.admin-shell-page main.scene>view-layer[data-view]{
+  position:absolute!important;
+  inset:0!important;
+  z-index:50!important;
+  min-width:0!important;
+  min-height:0!important;
+}
+body.admin-shell-page main.scene>view-layer[data-view="map"]{
+  pointer-events:none!important;
+}
+body.admin-shell-page main.scene>view-layer[data-view]:not([data-view="map"]){
+  pointer-events:auto!important;
+}
+
+body.admin-shell-page main.scene:not(:has(>view-layer[data-view="map"]))>map-scene[data-persistent-map="true"] *,
+body.admin-shell-page main.scene:not(:has(>view-layer[data-view="map"]))>map-scene[data-admin-shared-public-map] *{
+  pointer-events:none!important;
+}
+
+/* AI_CHAT_SAFE_DOCK_V1 · preserva o chat persistente sem cobrir a navegação */
+@media screen{
+  body.admin-shell-page main.scene>ai-chat.ai-chat:not([data-manual-position="true"]){
+    position:fixed!important;
+    left:auto!important;
+    top:auto!important;
+    right:24px!important;
+    bottom:24px!important;
+    width:min(360px,calc(100vw - 48px))!important;
+    max-width:min(360px,calc(100vw - 48px))!important;
+    max-height:min(460px,calc(100vh - 48px))!important;
+    z-index:60!important;
+  }
+  body.admin-shell-page main.scene>ai-chat.ai-chat:not([data-manual-position="true"]).collapsed{
+    width:220px!important;
+    max-width:220px!important;
+    max-height:none!important;
+  }
+  /* No modo mapa os filtros ficam na faixa inferior direita; o chat sobe
+     para manter a faixa de interação completamente clicável. */
+  body.admin-shell-page main.scene:has(>view-layer[data-view="map"])>ai-chat.ai-chat:not([data-manual-position="true"]){
+    top:24px!important;
+    bottom:auto!important;
+  }
+  /* A página pública já possui o atendimento do lead no próprio mapa;
+     evita duplicar a caixa global e cobrir a ação de reserva. */
+  body.admin-shell-page main.scene:has(>view-layer[data-view="leads"])>ai-chat.ai-chat{
+    display:none!important;
+  }
+}
+/* FOREMEN_DIRECTORY_V5424 */
+.foreman-registration-fields-v5424{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.foreman-registration-fields-v5424 label{display:grid;gap:6px;color:var(--soft);font-size:11px}.foreman-registration-fields-v5424 input{min-height:36px;padding:8px;border:1px solid var(--border);background:#161616;color:var(--text)}.foreman-photo-field-v5424{grid-column:1/-1}
+.foremen-layout-v5424{display:grid;grid-template-columns:minmax(280px,.8fr) minmax(0,1.2fr);gap:14px;margin-top:14px}.foreman-form-v5424{display:grid;gap:12px;padding:16px}.foreman-form-v5424 label{display:grid;gap:6px;color:var(--soft);font-size:11px}.foreman-form-v5424 input{min-height:36px;padding:8px;border:1px solid var(--border);background:#161616;color:var(--text)}.foreman-form-v5424 fieldset{display:grid;gap:8px;padding:12px;border:1px solid var(--border);color:var(--soft)}.foreman-form-v5424 fieldset label{display:block}.foreman-form-status-v5424{min-height:20px;color:var(--green);font-size:11px}.foreman-list-v5424{display:grid;gap:1px;background:var(--border)}.foreman-list-v5424 article{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:10px;align-items:center;padding:13px;background:#202020}.foreman-list-v5424 strong,.foreman-list-v5424 small,.foreman-list-v5424 p{display:block}.foreman-list-v5424 small,.foreman-list-v5424 p{margin-top:4px;color:var(--soft);font-size:10px}.foreman-activities-v5424{color:var(--blue);font:10px 'IBM Plex Mono',monospace}@media(max-width:760px){.foremen-layout-v5424{grid-template-columns:1fr}.foreman-list-v5424 article{grid-template-columns:32px minmax(0,1fr)}}
+@media(max-width:760px){.foreman-registration-fields-v5424{grid-template-columns:1fr}.foreman-photo-field-v5424{grid-column:auto}}

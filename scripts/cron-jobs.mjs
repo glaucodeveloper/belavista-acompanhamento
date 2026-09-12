@@ -2,7 +2,7 @@ import {mkdir,writeFile,readFile,readdir,stat} from 'node:fs/promises';
 import {join} from 'node:path';
 import {spawn} from 'node:child_process';
 import {DatabaseSync} from 'node:sqlite';
-import {recalculateOperationalState, runAutomationPlanner} from '../operational-engine.mjs';
+import {recalculateOperationalState, runAutomationPlanner, evaluateActivityConditionNotifications} from '../operational-engine.mjs';
 import {dispatchNotificationOutbox} from '../notification-service.mjs';
 
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -42,18 +42,22 @@ export function startBelavistaCronJobs({root,dbPath}){
     return runPython(reportScript,['--db',dbPath,'--out',reportRoot,'--month',month]);
   };
 
+  const activityConditionNotifications=async()=>evaluateActivityConditionNotifications({referenceDate:new Date().toISOString().slice(0,10)});
+
   const runJob=async(name,fn)=>{
     try{const result=await fn();const stamps=await safeJson(stampFile);stamps[name]={at:new Date().toISOString(),ok:true,result:typeof result==='string'?result.slice(-500):result};await mkdir(automationRoot,{recursive:true});await writeFile(stampFile,JSON.stringify(stamps,null,2));console.log(`[cron] ${name}: ok`);}catch(error){console.warn(`[cron] ${name}:`,error.message);const stamps=await safeJson(stampFile);stamps[name]={at:new Date().toISOString(),ok:false,error:error.message};await mkdir(automationRoot,{recursive:true});await writeFile(stampFile,JSON.stringify(stamps,null,2));}
   };
 
   // Ao iniciar: recalcula a leitura financeira operacional e garante os relatórios do mês.
   setTimeout(()=>runJob('stage-cashflow-snapshot',stageSnapshot),1200);
+  setTimeout(()=>runJob('activity-condition-notifications',activityConditionNotifications),1600);
   setTimeout(()=>runJob('notification-dispatch',dispatchNotificationOutbox),1900);
   setTimeout(()=>runJob('broker-monthly-reports',brokerReports),2600);
 
   // Recalcula o caixa/prontidão a cada hora. Relatórios são atualizados diariamente às 06h.
   setInterval(()=>runJob('stage-cashflow-snapshot',stageSnapshot),60*60*1000).unref?.();
+  setInterval(()=>runJob('activity-condition-notifications',activityConditionNotifications),60*1000).unref?.();
   setInterval(()=>runJob('notification-dispatch',dispatchNotificationOutbox),60*1000).unref?.();
   setInterval(async()=>{const now=new Date();if(now.getHours()===6)await runJob('broker-monthly-reports',brokerReports);},60*60*1000).unref?.();
-  console.log('[cron] jobs ativos: caixa/prontidão+automação (startup+1h), notificações (startup+1min), relatórios (startup+06h)');
+  console.log('[cron] jobs ativos: caixa/prontidão+automação (startup+1h), condições de atividade (startup+1min), notificações (startup+1min), relatórios (startup+06h)');
 }

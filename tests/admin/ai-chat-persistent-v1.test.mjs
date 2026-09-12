@@ -15,8 +15,8 @@ const worker=read('sw.js');
 
 test('chat da IA é uma única instância persistente do shell',()=>{
   assert.match(app,/map-scene[\s\S]*view-layer[\s\S]*ai-chat/);
-  assert.match(app,/personnel-production-v5373/);
-  assert.match(bootstrap,/app\.js\?v=personnel-production-v5373/);
+  assert.match(app,/records-activity-drill-in-v5377/);
+  assert.match(bootstrap,/app\.js\?v=ctrl-wheel-zoom-v5389/);
 });
 
 test('histórico e monitoramento reagem à navegação e ao estado do sistema',()=>{
@@ -43,6 +43,6 @@ test('sidebar fica identificada como pronta e continua acessível no shell',()=>
 });
 
 test('cache do shell acompanha a versão da instância persistente',()=>{
-  assert.match(html,/styles\.css\?v=operational-map-highlights-v5370/);
-  assert.match(worker,/operational-map-highlights-v5370/);
+  assert.match(html,/styles\.css\?v=solar-clock-hover-v5384/);
+  assert.match(worker,/ctrl-wheel-zoom-v5386/);
 });

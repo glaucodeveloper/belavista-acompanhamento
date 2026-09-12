@@ -38,6 +38,18 @@ function dependencyStatus(activity,activitiesById,dependencies=[]){
   return {ready:blockedBy.length===0,blockedBy};
 }
 
+function pendingStatus(activity,requirement,pending=[]){
+  const activityId=activity?.id||requirement?.activityId;
+  const stage=String(requirement?.stageName||activity?.stageName||activity?.stage||'').toLowerCase();
+  const relevant=pending.filter(item=>{
+    if(!item||['resolved','done','closed','completed'].includes(String(item.status||'').toLowerCase()))return false;
+    const ids=[item.activityId,item.activity_id,item.requirementId,item.requirement_id].filter(Boolean);
+    const stages=[item.stage,item.stageName,item.stageKey].filter(Boolean).map(value=>String(value).toLowerCase());
+    return Boolean(item.blocking!==false&&(ids.includes(activityId)||stages.includes(stage)||(!ids.length&&!stages.length)));
+  });
+  return {ready:relevant.length===0,items:relevant.map(item=>({id:item.id||'',title:item.title||item.label||item.detail||'Pendência operacional',status:item.status||'pending'}))};
+}
+
 function priorityScore({project,activity,requirement,today}){
   const daysUntilNeed=Math.floor((dateValue(requirement.neededBy)-today)/DAY_MS);
   const urgency=Math.max(0,60-Math.max(-15,daysUntilNeed));
@@ -54,6 +66,7 @@ export function buildMaterialPlan(data={},options={}){
   const projectsById=new Map(projects.map(item=>[item.id,item]));
   const inventory=inventoryBalances(data.inventoryMovements);
   const pending=pendingQuantities(data.purchaseRequests);
+  const operationalPending=[...(data.pending||[]),...(data.blockers||[]),...(data.raidItems||[])];
   const realizedIncome=(data.cashEntries||[]).filter(item=>item.kind==='entrada').reduce((sum,item)=>sum+cents(item.amountCents),0);
   const realizedOutflow=(data.cashEntries||[]).filter(item=>item.kind==='saida').reduce((sum,item)=>sum+cents(item.amountCents),0);
   const projectedNet=(data.cashForecasts||[])
@@ -75,6 +88,7 @@ export function buildMaterialPlan(data={},options={}){
       const ordered=pending.get(requirement.id)||0;
       const missingQuantity=roundQuantity(quantity(requirement.quantity)-stock-ordered);
       const dependency=dependencyStatus(activity,activitiesById,data.dependencies);
+      const pendingState=pendingStatus(activity,requirement,operationalPending);
       return {
         requirement,
         activity,
@@ -84,7 +98,8 @@ export function buildMaterialPlan(data={},options={}){
         missingQuantity,
         missingCostCents:cents(missingQuantity*cents(requirement.unitCostCents)),
         dependency,
-        score:priorityScore({project,activity,requirement,today})
+        pending:pendingState,
+        score:priorityScore({project,activity,requirement,today})+(pendingState.ready?0:25)
       };
     })
     .sort((a,b)=>b.score-a.score||dateValue(a.requirement.neededBy)-dateValue(b.requirement.neededBy));
@@ -96,7 +111,11 @@ export function buildMaterialPlan(data={},options={}){
   let allocatedCents=0;
 
   for(const candidate of candidates){
-    const {requirement,activity,project,missingQuantity,missingCostCents,dependency}=candidate;
+    const {requirement,activity,project,missingQuantity,missingCostCents,dependency,pending:pendingState}=candidate;
+    if(!pendingState.ready){
+      decisions.push({...candidate,action:'blocked_pending',purchaseQuantity:0,allocatedCents:0});
+      continue;
+    }
     if(missingQuantity<=0){
       decisions.push({...candidate,action:dependency.ready?'activity_ready':'blocked_dependency',purchaseQuantity:0,allocatedCents:0});
       continue;
@@ -125,6 +144,7 @@ export function buildMaterialPlan(data={},options={}){
     materialNeedCents,
     allocatedCents,
     coverage:Number(Math.min(1,Math.max(0,coverage)).toFixed(4)),
+    pendingCount:operationalPending.filter(item=>!['resolved','done','closed','completed'].includes(String(item?.status||'').toLowerCase())).length,
     decisions
   };
 }

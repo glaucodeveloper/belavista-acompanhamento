@@ -10,7 +10,7 @@ const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 
 test('admin usa a camada visual Aliança Park sem contaminar a página pública',()=>{
   assert.match(html,/body class="admin-shell-page"/);
-  assert.match(html,/admin-brand-style-v1\.css\?v=alianza-brand-v1/);
+  assert.match(html,/admin-brand-style-v1\.css\?v=alianza-brand-v4-dashboard-hit-testing-5365/);
   assert.match(css,/body\.admin-shell-page\{/);
   assert.match(css,/--admin-gold:#f2b632/);
   assert.match(css,/--admin-lime:#a8d34b/);

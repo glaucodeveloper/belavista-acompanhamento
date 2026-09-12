@@ -20,9 +20,20 @@ test('registros expõe navegação drill-in de etapa para atividade e apontament
   assert.match(module, /data-records-drill-stage/);
   assert.match(module, /data-records-drill-activity/);
   assert.match(module, /activity-record-form-v5377/);
+  assert.match(module, /records-drill-layout-v5377/);
+  assert.match(module, /records-drill-sidebar-v5377/);
+  assert.match(module, /records-drill-workspace-v5377/);
+  assert.match(module, /records-drill-registration-v5377/);
+  assert.match(module, /records-drill-map-panel-v5377/);
+  assert.match(module, /data-record-drill-paint/);
+  assert.match(module, /data-record-drill-fit/);
+  assert.match(module, /data-record-drill-clear/);
+  assert.match(module, /name="mapArea"/);
   assert.match(module, /apiFetch\('\/api\/records'/);
   assert.match(module, /selectedRecordsStageV5377/);
   assert.match(module, /selectedRecordsActivityV5377/);
+  assert.match(module, /data-records-open-new/);
+  assert.match(read('components.js'), /data-records-open-new/);
 });
 
 test('materiais permanecem no contexto único de caixa com comprovação', () => {
@@ -37,9 +48,12 @@ test('materiais permanecem no contexto único de caixa com comprovação', () =>
 });
 
 test('superfície de registros é responsiva para lançamento em celular', () => {
-  const css = read('records-activity-drill-in-v5377.css');
+  const css = `${read('records-activity-drill-in-v5377.css')}\n${read('styles.css')}`;
   assert.match(css, /records-drill-page-v5377/);
   assert.match(css, /@media\(max-width:760px\)/);
   assert.match(css, /activity-record-form-v5377/);
+  assert.match(css, /records-drill-layout-v5377/);
+  assert.match(css, /grid-template-columns:minmax\(220px,25%\)/);
+  assert.match(css, /records-drill-map-panel-v5377/);
   assert.match(css, /width:100%/);
 });

@@ -187,9 +187,9 @@ class PublicLeadForm extends HTMLElement{connectedCallback(){if(!this.querySelec
 if(!customElements.get('public-lead-form'))customElements.define('public-lead-form',PublicLeadForm);
 
 const HIGHLIGHT_COPY={
-  available:{index:'01',title:'Seu lugar começa aqui',text:'Lotes disponíveis aparecem em verde: escolha com calma, compare posições e peça condições pelo chat.'},
-  reserved:{index:'02',title:'Escolhas que já ganharam destino',text:'Em amarelo, as reservas em andamento mostram que cada nova quadra já começa a virar vizinhança.'},
-  negotiation:{index:'03',title:'Conversas que abrem caminhos',text:'Os destaques azuis indicam lotes em negociação — o atendimento pode apresentar alternativas próximas.'},
+  available:{index:'01',title:'Verde para escolher',text:'Veja os lotes disponíveis, compare posições e converse com a equipe antes de decidir.'},
+  reserved:{index:'02',title:'Escolhas em andamento',text:'Em amarelo, cada reserva em andamento sinaliza uma oportunidade que está ganhando destino.'},
+  negotiation:{index:'03',title:'Converse sobre o próximo passo',text:'Em azul, os lotes em negociação convidam você a comparar alternativas e condições próximas.'},
   sold:{index:'04',title:'Uma comunidade tomando forma',text:'Em vermelho, os lotes vendidos contam a história de quem já escolheu viver no Aliança Park.'}
 };
 
@@ -197,24 +197,36 @@ const pageMarkup=()=>`<div class="public-leads-experience">
   <section class="public-map-story" data-map-story>
     <div class="public-map-sticky">
       <div class="public-map-static-bg" aria-hidden="true"></div>
-      <map-scene data-public-map data-public-presentation data-stage="Aliança Park · comercial" aria-label="Mapa interativo do loteamento" data-public-static-base="true"></map-scene>
+      <map-scene data-public-map data-public-presentation data-stage="Aliança Park · comercial" aria-label="Mapa interativo do loteamento" data-public-static-base="true" data-public-static-capture="/assets/public/dwg-satellite-treated-v5411.png"></map-scene>
       <div class="public-map-vignette"></div>
 
       <div class="public-hero-letter" data-hero-letter>
         <span>ALIANÇA PARK · AMARGOSA, BAHIA</span>
         <h1>Escolha seu lote<br><em>em Amargosa, Bahia.</em></h1>
-        <p>Explore o loteamento no mapa e converse com a NVIDIA IA para disponibilidade, identificação e reserva.</p>
+        <p>Consulte disponibilidade, compare posições e avance para uma reserva assistida.</p>
       </div>
 
       <div class="public-scroll-legend" data-scroll-legend aria-live="off">
         <span data-legend-index>MAPA</span>
-        <div><b data-legend-title>Explore o loteamento</b><small data-legend-text>Role para revelar o mapa e converse no atendimento para consultar disponibilidade, condições e reserva.</small></div>
+        <div><b data-legend-title>Encontre seu lugar</b><small data-legend-text>Consulte lotes, compare posições e converse com a equipe para planejar sua visita ou iniciar uma reserva.</small></div>
       </div>
 
       <public-lead-chat></public-lead-chat>
       <div class="public-selected-lot" data-selected-lot hidden></div>
     </div>
 
+  </section>
+
+  <section class="public-place-story public-reveal" data-public-reveal>
+    <div class="public-place-copy">
+      <span>UM NOVO LUGAR EM AMARGOSA</span>
+      <h2>Espaço para construir planos.<br><em>Calma para viver bem.</em></h2>
+      <p>O Aliança Park aproxima natureza, mobilidade e uma escolha acompanhada do primeiro contato à reserva.</p>
+    </div>
+    <div class="public-place-graphic" aria-hidden="true">
+      <i></i><i></i><i></i><i></i><i></i><i></i>
+      <b>298</b><small>oportunidades para escolher</small>
+    </div>
   </section>
 
   <section class="public-seals" id="selos">
@@ -226,6 +238,27 @@ const pageMarkup=()=>`<div class="public-leads-experience">
       <article><i data-lucide="shield-check"></i><b>Rastreabilidade</b><small>Lead e reserva registrados pelo Worker.</small></article>
     </div>
   </section>
+
+  <section class="public-contact public-reveal" id="contato" data-public-reveal>
+    <div class="public-contact-copy">
+      <span>FALE COM A EQUIPE</span>
+      <h2>Conheça o loteamento<br>do seu jeito.</h2>
+      <p>Converse para consultar disponibilidade, organizar uma visita e entender as próximas etapas da reserva.</p>
+      <div class="public-contact-actions">
+        <a href="#" data-contact-channel="instagram" aria-disabled="true"><b>Instagram</b><small>@instagram_do_empreendimento</small></a>
+        <a href="#" data-contact-channel="whatsapp" aria-disabled="true"><b>Mensagem pelo WhatsApp</b><small>Número a configurar</small></a>
+      </div>
+    </div>
+    <aside class="public-credentials" aria-label="Dados legais do empreendimento">
+      <span>IDENTIFICAÇÃO DO EMPREENDIMENTO</span>
+      <dl>
+        <div><dt>CREA</dt><dd>A informar</dd></div>
+        <div><dt>CNPJ</dt><dd>A informar</dd></div>
+        <div><dt>CNPJ da obra</dt><dd>A informar</dd></div>
+      </dl>
+      <small>Campos reservados para os dados oficiais antes da publicação definitiva.</small>
+    </aside>
+  </section>
 </div>`;
 
 export class PublicLeadsSurface extends HTMLElement{
@@ -234,6 +267,12 @@ export class PublicLeadsSurface extends HTMLElement{
     if(this._publicScrollHandler)removeEventListener('scroll',this._publicScrollHandler);
     if(this._publicResizeHandler)removeEventListener('resize',this._publicResizeHandler);
     if(this._publicRaf)cancelAnimationFrame(this._publicRaf);
+    if(this._publicModelStartTimer)clearTimeout(this._publicModelStartTimer);
+    if(this._publicWheelHandler)removeEventListener('wheel',this._publicWheelHandler,{capture:true});
+    if(this._publicTouchStartHandler)removeEventListener('touchstart',this._publicTouchStartHandler,{capture:true});
+    if(this._publicTouchMoveHandler)removeEventListener('touchmove',this._publicTouchMoveHandler,{capture:true});
+    if(this._publicTouchEndHandler)removeEventListener('touchend',this._publicTouchEndHandler,{capture:true});
+    this._publicRevealObserver?.disconnect?.();
   }
   render(){this.innerHTML=pageMarkup();}
   map(){return this.querySelector('map-scene[data-public-map]');}
@@ -308,7 +347,67 @@ export class PublicLeadsSurface extends HTMLElement{
     addEventListener('scroll',requestRender,{passive:true});
     addEventListener('resize',requestRender,{passive:true});
 
+    const revealNodes=[...this.querySelectorAll('[data-public-reveal],.public-seals')];
+    this._publicRevealObserver=new IntersectionObserver(entries=>entries.forEach(entry=>{
+      if(entry.isIntersecting)entry.target.classList.add('is-visible');
+    }),{threshold:.16,rootMargin:'0px 0px -8%'});
+    revealNodes.forEach(node=>this._publicRevealObserver.observe(node));
+
+    let wheelCharge=0,lastWheelAt=0,snapLocked=false;
+    this._publicWheelHandler=event=>{
+      if(event.ctrlKey||event.metaKey||Math.abs(event.deltaX)>Math.abs(event.deltaY)||snapLocked)return;
+      const now=performance.now();
+      if(now-lastWheelAt>420)wheelCharge=0;
+      lastWheelAt=now;
+      const top=story.getBoundingClientRect().top+scrollY;
+      const travel=Math.max(1,story.offsetHeight-innerHeight);
+      const firstGate=top+innerHeight*.2;
+      const secondGate=top+travel-innerHeight*.12;
+      const down=event.deltaY>0;
+      const nearFirst=down&&scrollY>=top&&scrollY<firstGate;
+      const nearSecond=down&&scrollY>=secondGate-innerHeight*.22&&scrollY<secondGate;
+      if(!nearFirst&&!nearSecond){wheelCharge=0;return;}
+      event.preventDefault();
+      wheelCharge+=Math.abs(event.deltaY);
+      const resistance=nearFirst?180:240;
+      if(wheelCharge<resistance)return;
+      wheelCharge=0;snapLocked=true;
+      const target=nearFirst?top+innerHeight*.42:story.nextElementSibling?.getBoundingClientRect().top+scrollY;
+      scrollTo({top:Number.isFinite(target)?target:secondGate,behavior:'smooth'});
+      setTimeout(()=>{snapLocked=false;},720);
+    };
+    addEventListener('wheel',this._publicWheelHandler,{passive:false,capture:true});
+
+    let touchStartY=0,touchCharge=0;
+    const snapForTouch=()=>{
+      const top=story.getBoundingClientRect().top+scrollY;
+      const travel=Math.max(1,story.offsetHeight-innerHeight);
+      const firstGate=top+innerHeight*.2;
+      const secondGate=top+travel-innerHeight*.12;
+      if(touchCharge<72||snapLocked)return;
+      let target=null;
+      if(scrollY>=top&&scrollY<firstGate)target=top+innerHeight*.42;
+      else if(scrollY>=secondGate-innerHeight*.22&&scrollY<secondGate)target=story.nextElementSibling?.getBoundingClientRect().top+scrollY;
+      if(!Number.isFinite(target))return;
+      snapLocked=true;
+      scrollTo({top:target,behavior:'smooth'});
+      setTimeout(()=>{snapLocked=false;},720);
+    };
+    this._publicTouchStartHandler=event=>{touchStartY=event.touches?.[0]?.clientY||0;touchCharge=0;};
+    this._publicTouchMoveHandler=event=>{
+      const y=event.touches?.[0]?.clientY||touchStartY;
+      const delta=touchStartY-y;
+      if(delta>0)touchCharge+=delta;
+      touchStartY=y;
+    };
+    this._publicTouchEndHandler=()=>{snapForTouch();touchCharge=0;};
+    addEventListener('touchstart',this._publicTouchStartHandler,{passive:true,capture:true});
+    addEventListener('touchmove',this._publicTouchMoveHandler,{passive:true,capture:true});
+    addEventListener('touchend',this._publicTouchEndHandler,{passive:true,capture:true});
+
     const startPublic3D=()=>map?.startPublic3D?.();
+    // O modelo é parte da composição inicial; não deve depender do primeiro scroll.
+    this._publicModelStartTimer=setTimeout(startPublic3D,180);
     map?.addEventListener('pointerdown',startPublic3D,{once:true,passive:true});
     map?.addEventListener('click',()=>setTimeout(()=>{
       const lot=this.selectedLot();if(!lot)return;

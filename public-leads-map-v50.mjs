@@ -62,12 +62,31 @@ function tuneLighting(map){
   }
 }
 function tuneMaterials(map){
-  if(!map?.THREE||!map.modelReady||!map.masterplanModel||map.dataset.publicMaterialsV50==='true')return false;
+  if(!map?.THREE||!map.modelReady||!map.masterplanModel)return false;
+  const publicSatellite=map.dataset.publicRoadPolicy==='satellite-only'||map.matches?.('map-scene[data-public-presentation],map-scene[data-public-map]');
+  if(publicSatellite){
+    map.disablePublicCobbleTexture?.();
+    map.disablePublicSyntheticRoads?.();
+    map.dataset.publicPalette='white-lot-outlines + satellite-ground-only';
+    map.dataset.publicRoadTexture='disabled · satellite image is the road surface';
+    map.dataset.publicRoadTextureSource='none · synthetic cobble removed';
+    map.dataset.publicMaterialsV50='preserved-public-presentation-satellite-only';
+    map.dataset.publicModelAlignment='DWG plan heading preserved · guide roads come from aerial image';
+    return true;
+  }
+  if(map.dataset.publicMaterialsV50==='true')return false;
+  if(map.dataset.publicRoadPolicy==='satellite-only'){
+    map.disablePublicSyntheticRoads?.();
+    map.dataset.publicPalette='white-lot-outlines + satellite-ground-only';
+    map.dataset.publicMaterialsV50='preserved-public-presentation-satellite-only';
+    map.dataset.publicModelAlignment='DWG plan heading preserved · guide roads come from aerial image';
+    return true;
+  }
   // O componente principal já aplicou a implantação pública: foto aérea
-  // contínua, contornos brancos e material importado de paralelepípedo. Não
+  // contínua, contornos brancos e sem uma malha viária sintética. Não
   // volte a pintar lotes/ruas com a paleta antiga depois desse estágio.
   if(map.dataset.publicLotPresentation){
-    map.dataset.publicPalette='white-lot-outlines + imported-cobble-v54';
+    map.dataset.publicPalette='white-lot-outlines + satellite-ground-only';
     map.dataset.publicMaterialsV50='preserved-public-presentation-v54';
     return true;
   }

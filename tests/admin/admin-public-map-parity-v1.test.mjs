@@ -6,6 +6,7 @@ import {fileURLToPath} from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const components=fs.readFileSync(path.join(root,'components.js'),'utf8');
+const activityMapEditor=fs.readFileSync(path.join(root,'activity-map-editor.mjs'),'utf8');
 const bridge=fs.readFileSync(path.join(root,'admin-public-map-surface-v5352.mjs'),'utf8');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const css=fs.readFileSync(path.join(root,'admin-brand-style-v1.css'),'utf8');
@@ -45,10 +46,19 @@ test('admin carrega a mesma calibração visual do /leads sem importar o atendim
   assert.doesNotMatch(css,/alianca-park-grass-hires-v5319\.webp/);
 });
 
+test('map-scene alterna extensão de etapas e seleção de polígonos nos registros',()=>{
+  assert.match(components,/this\.dataset\.dashboardProgressMap=view==='assistant'\|\|view==='map'\?'enabled':'available'/);
+  assert.match(components,/this\.dataset\.recordPolygonSelection=view==='records'\?'enabled':'available'/);
+  assert.match(components,/if\(view==='records'\)\{/);
+  assert.match(components,/this\.setStageOverlay\(stage\.name,false\)/);
+  assert.match(components,/this\.sceneStage\?\.updateMatrixWorld\(true\);this\.renderActiveSceneV5370\(\);return true;/);
+  assert.match(activityMapEditor,/activityMapStandaloneParts\?\.some\(part=>part\?\.userData\?\.partKind==='lots'\)/);
+});
+
 test('admin executa o app uma única vez pelo bootstrap original',()=>{
   assert.match(html,/admin-original-bootstrap-v5351\.mjs/);
   assert.doesNotMatch(html,/app\.js\?v=/);
-  assert.match(fs.readFileSync(path.join(root,'admin-original-bootstrap-v5351.mjs'),'utf8'),/app\.js\?v=personnel-production-v5373/);
+  assert.match(fs.readFileSync(path.join(root,'admin-original-bootstrap-v5351.mjs'),'utf8'),/app\.js\?v=ctrl-wheel-zoom-v5389/);
 });
 
 test('extensões administrativas são carregadas depois do shell',()=>{
@@ -56,7 +66,9 @@ test('extensões administrativas são carregadas depois do shell',()=>{
   const scripts=[...body.matchAll(/<script[^>]+src="([^"]+)"/g)].map(match=>match[1]);
   assert.deepEqual(scripts,[
     './admin-auth.mjs?v=admin-auth-v3',
-    './admin-original-bootstrap-v5351.mjs?v=personnel-production-v5373',
+    './admin-twa-runtime.mjs?v=admin-twa-runtime-v1',
+    './admin-original-bootstrap-v5351.mjs?v=ctrl-wheel-zoom-v5389',
+    './records-activity-drill-in-v5377.mjs?v=records-drill-in-v5377-direct',
     './admin-test-controls.mjs?v=1',
     './activity-map-layer.mjs?v=1'
   ]);

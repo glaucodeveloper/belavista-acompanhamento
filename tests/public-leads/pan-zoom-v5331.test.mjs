@@ -35,12 +35,18 @@ test('limite do pan acompanha a inclinação real da câmera',()=>{
   assert.match(components,/target=this\.clampScenePan\(requested\.x,requested\.y\)/);
 });
 
-test('Ctrl + roda retorna o zoom e Ctrl + arraste mantém a inclinação',()=>{
+test('Ctrl + roda controla o zoom e Ctrl + arraste mantém a inclinação',()=>{
   const components=read('components.js');
-  assert.match(components,/if\(event\.ctrlKey\)\{/);
-  assert.match(components,/this\.setSceneZoom\(this\.sceneManualZoom\+\(event\.deltaY<0\?\.06:-\.06\),false\)/);
+  assert.match(components,/const zoomSceneAtCursorByCtrlWheel=event=>\{/);
+  assert.match(components,/if\(!event\.ctrlKey\|\|event\.defaultPrevented\)return;/);
+  assert.match(components,/event\.preventDefault\(\);\n        event\.stopPropagation\(\);/);
+  assert.match(components,/this\.addEventListener\('wheel',zoomSceneAtCursorByCtrlWheel,\{capture:true,passive:false\}\)/);
+  assert.match(components,/this\.setSceneZoomAt\(nextZoom,event\.clientX,event\.clientY,false\)/);
+  assert.match(components,/this\.dataset\.sceneWheelZoom='ctrl-wheel · cursor-ground'/);
+  assert.match(components,/setSceneZoomAt\(value,clientX,clientY,animate=false\)/);
+  assert.match(components,/mapZoomAnchor='cursor-ground · rotation-aware'/);
   assert.match(components,/this\.queueSceneBoundsCommit\('ctrl-wheel-zoom'\)/);
-  assert.doesNotMatch(components,/queueSceneBoundsCommit\('ctrl-wheel-tilt'\)/);
+  assert.doesNotMatch(components,/queueSceneBoundsCommit\('wheel'\)/);
   assert.match(components,/tilting=!selecting&&event\.button===0&&\(event\.ctrlKey\|\|event\.shiftKey\)/);
   assert.match(components,/else if\(tilting\)this\.setSceneTiltAdjust\(this\.sceneTiltAdjust\+dy\*TILT_DRAG_SENSITIVITY,false\)/);
   assert.match(components,/MAX_SCENE_TILT=48/);
@@ -48,6 +54,14 @@ test('Ctrl + roda retorna o zoom e Ctrl + arraste mantém a inclinação',()=>{
   assert.match(components,/sceneTiltBounds=`\$\{bounds\.min\}–\$\{bounds\.max\}deg`/);
   assert.match(components,/publicCameraInteracted!=='true'/);
   assert.doesNotMatch(components,/if\(this\.isPublicCustomerExperience\(\)\)return;/);
+});
+
+test('a roda só aplica zoom com Ctrl no mapa principal, compacto e Leaflet',()=>{
+  const components=read('components.js');
+  assert.match(components,/if\(!event\.ctrlKey\)return;event\.preventDefault\(\);const source=sharedMapScene/);
+  assert.match(components,/scrollWheelZoom:false/);
+  assert.match(components,/if\(!event\.ctrlKey\|\|event\.defaultPrevented\)return;/);
+  assert.match(components,/this\.addEventListener\('wheel',zoomSceneAtCursorByCtrlWheel,\{capture:true,passive:false\}\)/);
 });
 
 test('filtros informacionais entram e saem do modelo 3D com transição',()=>{
@@ -76,7 +90,7 @@ test('loader entrega 80% e mantém os 20% finais no modelo',()=>{
   assert.match(loader,/close\(info\.state==='ready'\?'ready':'handoff-80'\)/);
   assert.match(loader,/setTimeout\(\(\)=>loader\.remove\(\),260\)/);
   assert.match(style,/public-model-area-spinner__ring/);
-  assert.match(style,/publicModelAreaSpin/);
+  assert.match(style,/loadingLogoPulse/);
   assert.match(style,/var\(--model-area-progress/);
 });
 

@@ -27,6 +27,13 @@ const loadRuntime=()=>runtimePromise||(runtimePromise=(async()=>{
   ]);
   const app=appSdk.initializeApp(FIREBASE_CONFIG);
   const auth=authSdk.getAuth(app);
+  // Keep the authenticated operational session across TWA/browser restarts.
+  // The fallback is intentionally non-fatal: restricted WebViews can refuse
+  // persistent storage, in which case Firebase keeps its normal session mode.
+  if(typeof authSdk.setPersistence==='function'&&authSdk.browserLocalPersistence){
+    try{await authSdk.setPersistence(auth,authSdk.browserLocalPersistence);}
+    catch(error){console.info('Persistência local do Firebase indisponível neste contexto.',error);}
+  }
   import(`https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-analytics.js`).then(sdk=>{try{sdk.getAnalytics(app);}catch(error){console.info('Firebase Analytics indisponível neste contexto.',error);}}).catch(()=>{});
   return {app,auth,db:databaseSdk.getDatabase(app),storage:storageSdk.getStorage(app),...authSdk,...databaseSdk,...storageSdk};
 })().catch(error=>{runtimePromise=null;throw error;}));
@@ -220,6 +227,10 @@ export async function saveFieldConfirmation(input={}){
 
 export async function subscribePublicLeads(onChange){
   const runtime=await loadRuntime();
+  if(!runtime?.db||typeof runtime.ref!=='function'||typeof runtime.onValue!=='function'){
+    console.info('Firebase Realtime Database indisponível; leads em tempo real desativados.');
+    return ()=>{};
+  }
   return runtime.onValue(runtime.ref(runtime.db,'publicLeads'),snapshot=>onChange(snapshot.val()||{}));
 }
 
@@ -284,7 +295,7 @@ export async function signInOperationalUser(email,password,allowedRoles=['admin'
   const credential=await runtime.signInWithEmailAndPassword(runtime.auth,String(email||'').trim(),String(password||''));
   const tokenResult=await credential.user.getIdTokenResult(true);
   const claimedRole=normalizeAuthRole(tokenResult.claims?.role||tokenResult.claims?.userRole||tokenResult.claims?.['https://belavista/role']);
-  const role=isLocalDeveloper(credential.user.email||email)?'developer':claimedRole==='developer'?'':claimedRole;
+  const role=isLocalDeveloper(credential.user.email||email)?'developer':claimedRole;
   if(!allowedRoles.includes(role)){
     await runtime.signOut(runtime.auth);
     throw new Error('Usuário autenticado sem perfil administrativo autorizado.');
@@ -295,13 +306,22 @@ export async function restoreOperationalUser(allowedRoles=['admin','foreman','ow
   const runtime=await loadRuntime();
   const user=await new Promise(resolve=>{
     let settled=false;
-    const unsubscribe=runtime.onAuthStateChanged(runtime.auth,current=>{if(settled)return;settled=true;unsubscribe?.();resolve(current||null);});
-    setTimeout(()=>{if(settled)return;settled=true;unsubscribe?.();resolve(runtime.auth.currentUser||null);},3500);
+    // Alguns builds do SDK podem entregar o primeiro estado durante o registro
+    // do listener. O `let` evita acessar a inscrição antes da atribuição.
+    let unsubscribe=()=>{};
+    const settle=current=>{
+      if(settled)return;
+      settled=true;
+      unsubscribe?.();
+      resolve(current||null);
+    };
+    unsubscribe=runtime.onAuthStateChanged(runtime.auth,settle);
+    setTimeout(()=>settle(runtime.auth.currentUser||null),3500);
   });
   if(!user)return null;
   const tokenResult=await user.getIdTokenResult();
   const claimedRole=normalizeAuthRole(tokenResult.claims?.role||tokenResult.claims?.userRole||tokenResult.claims?.['https://belavista/role']);
-  const role=isLocalDeveloper(user.email)?'developer':claimedRole==='developer'?'':claimedRole;
+  const role=isLocalDeveloper(user.email)?'developer':claimedRole;
   if(!allowedRoles.includes(role))return null;
   return {user,role,token:await user.getIdToken(),claims:tokenResult.claims||{}};
 }
@@ -313,6 +333,10 @@ export async function signOutOperationalUser(){
 // BELAVISTA_TWA_COMMERCIAL_NOTIFICATIONS_V5342
 export async function subscribeOperationalNotifications(actor={},onChange=()=>{}){
   const runtime=await loadRuntime();
+  if(!runtime?.db||typeof runtime.ref!=='function'||typeof runtime.onValue!=='function'){
+    console.info('Firebase Realtime Database indisponível; notificações em tempo real desativadas.');
+    return ()=>{};
+  }
   const settings=readIntegrationSettings();
   const channel={...readOperationalChannel(actor),uid:resolveChannelUid(actor,settings,ensureInstallationId()),role:text(actor.role||localStorage.getItem(DEVICE_CHANNEL_ROLE_KEY)||'owner',40)};
   rememberOperationalChannel(channel);

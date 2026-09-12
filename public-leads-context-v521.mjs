@@ -11,6 +11,10 @@ import {runtimeUrlV1} from './runtime-url-v1.mjs?v=ngrok-route-v1';
 const BRAND_MARK=runtimeUrlV1('/assets/public/alianca-park-logo-mark-transparent-v551.png');
 const PUBLIC_MAP_SELECTOR='map-scene[data-public-map],map-scene[data-public-presentation]';
 const HERO_SELECTOR='[data-hero-letter],.public-hero-letter,.public-map-copy';
+// Nível que corresponde à escala física inferida para o footprint do DWG.
+// Ele preserva as vias e árvores reais da imagem, sem aproximar artificialmente
+// a foto nem usar a prévia sintética como cartografia.
+const PUBLIC_SATELLITE_DWG_ZOOM=18;
 const VERSION='v5.3.30';
 const SUNNY_SCENE_VERSION='v5.4.8';
 
@@ -45,16 +49,19 @@ function installStyles(){
       visibility:hidden!important;
     }
     body.public-leads-page .public-map-static-bg{
-      background-image:radial-gradient(ellipse at 52% 42%,rgba(93,130,156,.16) 0%,transparent 58%),linear-gradient(180deg,#0b1720 0%,#18232a 100%)!important;
+      background-image:linear-gradient(90deg,rgba(3,17,12,.24),rgba(3,17,12,.02) 64%),url('/assets/public/dwg-satellite-treated-v5411.png')!important;
+      background-size:cover,cover!important;
+      background-position:center,center!important;
+      background-repeat:no-repeat!important;
       filter:none!important;
     }
     body.public-leads-page map-scene[data-public-satellite-base] .map-tint{
-      opacity:.08!important;
-      background:linear-gradient(180deg,rgba(255,241,205,.34),rgba(196,215,181,.18))!important;
+      opacity:.035!important;
+      background:linear-gradient(165deg,rgba(13,38,48,.18),rgba(255,255,255,.035))!important;
       mix-blend-mode:soft-light!important;
     }
     body.public-leads-page map-scene[data-public-satellite-base] .three-overlay{
-      filter:saturate(1.08) contrast(1.04) brightness(1.08)!important;
+      filter:saturate(1.025) contrast(1.075) brightness(1.025)!important;
     }
     [data-selected-lot].public-lot-info-v5318{
       display:block;
@@ -414,8 +421,10 @@ function ensureStaticFallback(){
     bg=document.createElement('div');
     bg.className='public-map-static-bg';
     bg.setAttribute('aria-hidden','true');
-    bg.style.backgroundImage='radial-gradient(ellipse at 52% 42%,rgba(93,130,156,.16) 0%,transparent 58%),linear-gradient(180deg,#0b1720 0%,#18232a 100%)';
-    bg.dataset.publicFallback='neutral context · awaiting satellite texture';
+    bg.style.backgroundImage="linear-gradient(90deg,rgba(3,17,12,.24),rgba(3,17,12,.02) 64%),url('/assets/public/dwg-satellite-treated-v5411.png')";
+    bg.style.backgroundSize='cover,cover';
+    bg.style.backgroundPosition='center,center';
+    bg.dataset.publicFallback='DWG-centred treated satellite raster';
     sticky.prepend(bg);
   }
   const leaflet=map.querySelector('.map-host');
@@ -518,15 +527,29 @@ async function applyDwgSatelliteFrame(map,attempt=0){
     const geo=await response.json();
     const center=(geo.controlPoints||[]).find(point=>point.id==='site-center')||geo.controlPoints?.[0];
     if(!Number.isFinite(Number(center?.lat))||!Number.isFinite(Number(center?.lng)))throw new Error('Centro GPS ausente no DWG');
-    const theme={center:[Number(center.lat),Number(center.lng)],zoom:17};
+    // A captura local é a única base visual do atendimento público. Não
+    // consulte tiles, Leaflet, Google Maps ou Esri: a imagem foi capturada e
+    // tratada no projeto e é enquadrada pelo mesmo centro/bounds do DWG.
+    const mapMode='generated';
+    const theme={center:[Number(center.lat),Number(center.lng)],zoom:PUBLIC_SATELLITE_DWG_ZOOM};
     map.dwgGeo=geo;
     map._publicGeoTheme=theme;
+    map._publicDwgGeoBounds=geo.drawingBounds?.gps||null;
+    map.dataset.publicDwgControlPoints=String((geo.controlPoints||[]).filter(point=>Number.isFinite(Number(point?.lat))&&Number.isFinite(Number(point?.lng))).length);
+    const gpsBounds=geo.drawingBounds?.gps;
+    if(gpsBounds&&['south','west','north','east'].every(key=>Number.isFinite(Number(gpsBounds[key])))){
+      map.dataset.publicDwgBounds=`${Number(gpsBounds.south).toFixed(7)},${Number(gpsBounds.west).toFixed(7)}|${Number(gpsBounds.north).toFixed(7)},${Number(gpsBounds.east).toFixed(7)}`;
+    }
+    // A base aérea não depende da URL nem de preferência persistida do shell.
+    // Mantê-la fixa evita que uma navegação reative uma fonte cartográfica
+    // externa ou substitua a captura local.
+    map._publicRequestedMapTileMode=mapMode;
     map.mapSurface.visible=true;
-    map.setMapTileMode?.('satellite',false);
+    map.setMapTileMode?.(mapMode,false);
     map.refreshMapSurface?.(theme,window.innerWidth,window.innerHeight);
     map.dataset.publicDwgCenter=`${theme.center[0].toFixed(8)},${theme.center[1].toFixed(8)}`;
     map.dataset.publicDwgCrs=`EPSG:${geo.crs?.epsg||'31984'}`;
-    map.dataset.publicMapTexture='satellite tile mosaic aligned to DWG centre';
+    map.dataset.publicMapTexture='local captured satellite image · DWG-centred source · no Maps';
   }catch(error){
     map.dataset.publicMapTexture='satellite unavailable · neutral base retained';
     console.warn('[Belavista public] base satélite do DWG indisponível.',error);
@@ -809,10 +832,10 @@ function publicPavingProgress(map){
 function installPublicPavingControl(map){
   const sticky=document.querySelector('.public-map-sticky');
   if(!map)return;
-  // A implantação pública não representa asfalto: todas as vias recebem a
-  // materialidade de paralelepípedo, sem alternância comercial de superfície.
+  // A implantação pública não redesenha as vias. A fotografia aérea
+  // georreferenciada pelo DWG é a superfície canônica da rua.
   sticky?.querySelector('[data-public-paving-control]')?.remove();
-  map.setPublicPavingView?.('cobble',100);
+  map.setPublicPavingView?.('satellite',0);
 }
 
 const PUBLIC_STATUS_COLORS={
@@ -1212,6 +1235,9 @@ function installCommercialMarkers(map,statuses=new Map()){
   group.userData.sharedMaterials=[...paddleMaterials.values(),borderMaterial];
   map.sceneStage.add(group);
   map.__publicCommercialMarkersV5330=group;
+  // Preserve the resolved status map so a scene reset can remount the
+  // markers without reloading the catalog or losing their commercial state.
+  map.__publicCommercialMarkerStatusMapV5330=new Map(statuses);
   map.dataset.publicCommercialMarkers=String(group.children.length);
   map.dataset.publicCommercialMarkersVisible='true';
   map.dataset.publicCommercialMarkerStyle='plastic-teardrop-pin-3d · white edge · lot-polygon-centroid · camera billboard · floating · fixed-screen-size';
@@ -1251,7 +1277,9 @@ function installCommercialMarkers(map,statuses=new Map()){
     map.renderer?.render?.(map.scene,map.camera);
   };
   map.updatePublicCommercialMarkerStatuses=updateMarkerStatuses;
-  map.addEventListener('public-commercial-marker-statuses',event=>updateMarkerStatuses(event.detail?.entries||[]));
+  const statusListener=event=>updateMarkerStatuses(event.detail?.entries||[]);
+  map.__publicCommercialMarkerStatusListenerV5330=statusListener;
+  map.addEventListener('public-commercial-marker-statuses',statusListener);
   map.updatePublicCommercialMarkers=()=>{
     if(!map.camera||!group.parent)return;
     map.camera.updateMatrixWorld?.(true);
@@ -1310,7 +1338,12 @@ function installCommercialMarkers(map,statuses=new Map()){
   map.updatePublicCommercialMarkers();
   if(map.__publicCommercialMarkerAnimationFrame)cancelAnimationFrame(map.__publicCommercialMarkerAnimationFrame);
   const animateMarkers=now=>{
-    if(map.__publicCommercialMarkersV5330!==group||!group.parent)return;
+    if(map.__publicCommercialMarkersV5330!==group)return;
+    if(group.parent!==map.sceneStage){
+      ensurePublicCommercialMarkers(map);
+      if(map.__publicCommercialMarkersV5330?.parent!==map.sceneStage) scheduleCommercialMapState(map);
+      return;
+    }
     group.children.forEach(marker=>{marker.position.z=(marker.userData.baseZ||marker.position.z)+Math.sin(now*.0015+(marker.userData.phase||0))*.13;});
     map.updatePublicCommercialMarkers();
     map.renderer?.render?.(map.scene,map.camera);
@@ -1331,8 +1364,34 @@ function clearCommercialMarkers(map){
   for(const material of group.userData?.sharedMaterials||[])material?.dispose?.();
   for(const geometry of group.userData?.sharedGeometries||[])geometry?.dispose?.();
   group.removeFromParent?.();
+  if(map.__publicCommercialMarkerStatusListenerV5330){
+    map.removeEventListener('public-commercial-marker-statuses',map.__publicCommercialMarkerStatusListenerV5330);
+    delete map.__publicCommercialMarkerStatusListenerV5330;
+  }
   delete map.__publicCommercialMarkersV5330;
   delete map.updatePublicCommercialMarkerStatuses;
+}
+
+function ensurePublicCommercialMarkers(map){
+  if(!map?.THREE||!map?.sceneStage||!map.modelReady||!map.modelParts?.lots?.length)return false;
+  const expected=publicLotParts(map).length;
+  const group=map.__publicCommercialMarkersV5330;
+  const mounted=Boolean(group&&group.parent===map.sceneStage&&group.children?.length===expected);
+  if(mounted){
+    group.visible=true;
+    applyCommercialMarkerFilter(map);
+    map.dataset.publicCommercialMarkerState='ready';
+    return true;
+  }
+  const cachedStatuses=map.__publicCommercialMarkerStatusMapV5330;
+  if(cachedStatuses instanceof Map){
+    installCommercialMarkers(map,cachedStatuses);
+    map.__publicCommercialStateReadyV5330=true;
+    map.dataset.publicCommercialMarkerState='recovered-after-scene-reset';
+    return Boolean(map.__publicCommercialMarkersV5330?.parent);
+  }
+  map.__publicCommercialStateReadyV5330=false;
+  return false;
 }
 
 function applyCommercialMarkerFilter(map){
@@ -1392,6 +1451,7 @@ async function installCommercialMapState(map){
       }
     }
     map.__publicCommercialCountsV5330=counts;
+    map.__publicCommercialMarkerStatusMapV5330=new Map(statuses);
     map.setPublicLotStatuses?.([...statuses].map(([lot,deal])=>({partId:lot.userData?.partId||lot.name,status:deal.status,lot:deal.lot})));
     installCommercialMarkers(map,statuses);
     map.dataset.publicCommercialMarkerState='ready';
@@ -1403,9 +1463,15 @@ async function installCommercialMapState(map){
 }
 
 function scheduleCommercialMapState(map,attempt=0){
-  if(!map||map.__publicCommercialStateReadyV5330)return;
+  if(!map)return;
+  const current=map.__publicCommercialMarkersV5330;
+  const expected=map.modelParts?.lots?.length?publicLotParts(map).length:0;
+  if(map.__publicCommercialStateReadyV5330&&current?.parent===map.sceneStage&&current.children?.length===expected)return;
+  if(map.__publicCommercialStateLoadingV5330)return;
+  if(map.__publicCommercialStateReadyV5330)map.__publicCommercialStateReadyV5330=false;
   const modelReady=Boolean(map.modelReady||map.dataset?.modelReady==='true');
   if(modelReady&&map.THREE&&map.modelParts?.lots?.length){
+    if(ensurePublicCommercialMarkers(map))return;
     installCommercialMapState(map).then(ok=>{
       if(ok)map.__publicCommercialStateReadyV5330=true;
     });
@@ -2050,6 +2116,7 @@ function setScrollSection(section){
   if(map){
     syncPublicMapControls(map,normalized==='map');
     map.fitPublicGapView?.();
+    if(!ensurePublicCommercialMarkers(map))scheduleCommercialMapState(map);
   }
   scheduleSelectionGate();
 }
@@ -2436,7 +2503,10 @@ function installMap(){
 function reinforcePublicVisualComposition(map,attempt=0){
   if(!map)return;
   applySunnyPublicScene(map);
-  if(map.modelReady&&map.dataset.publicRoadTexture==='ready'){
+  if(map.modelReady&&(
+    map.dataset.publicRoadTexture==='ready'||
+    map.dataset.publicRoadPolicy==='satellite-only'
+  )){
     map.reassertPublicPresentationStyle?.();
     return;
   }

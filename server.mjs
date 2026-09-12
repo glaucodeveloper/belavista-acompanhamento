@@ -12,15 +12,17 @@ const publicOrigin = String(process.env.PUBLIC_ORIGIN || '').replace(/\/$/,'');
 const belavistaApiBase = String(process.env.BELAVISTA_API_BASE || '').replace(/\/$/,'');
 const aiProvider=String(process.env.AI_PROVIDER||'gemini').trim().toLowerCase();
 const geminiModel = process.env.GEMINI_MODEL || 'gemini-3.7-flash';
-const nvidiaModel = process.env.NVIDIA_MODEL || 'meta/llama-3.2-3b-instruct';
+const nvidiaModel = process.env.NVIDIA_MODEL || 'meta/llama-3.2-11b-vision-instruct';
 const nvidiaApiUrl = process.env.NVIDIA_API_URL || 'https://integrate.api.nvidia.com/v1/chat/completions';
-const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.webmanifest':'application/manifest+json','.pdf':'application/pdf','.xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'};
-const {health,entitySummary,listRecords,createRecord,createFieldConfirmation,updateRecord,deleteRecord,listPurchaseReceipts,purchaseReceiptSummary,createPurchaseReceipt,getPurchaseReceiptFile,deletePurchaseReceipt,listCommercialSales,createCommercialSale,updateCommercialSale,getCommercialSaleFile,deleteCommercialSale,listCashFlowEntries,createCashFlowEntry,cashFlowSummary,listCommissionReasons,updateCommissionReason,listOutsourcingReceipts,createOutsourcingReceipt,getOutsourcingReceiptFile,listLeadMessages,createLeadMessage,listStagesAdmin,getStageAdmin,updateStageAdmin,saveStageAiConfig,getStageReport,getStageWorkbenchState,saveStageWorkbenchState,listWorkbenchActivityLocations,listWorkbenchDiary,createWorkbenchDiary,listWorkbenchAttachments,createWorkbenchAttachment,getWorkbenchAttachmentFile,deleteWorkbenchAttachment}=await import('./persistence.mjs');
+const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.glb':'model/gltf-binary','.pdf':'application/pdf','.xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'};
+const {health,entitySummary,listRecords,createRecord,createFieldConfirmation,updateRecord,deleteRecord,listPurchaseReceipts,purchaseReceiptSummary,createPurchaseReceipt,getPurchaseReceiptFile,deletePurchaseReceipt,listCommercialSales,createCommercialSale,updateCommercialSale,getCommercialSaleFile,deleteCommercialSale,listCashFlowEntries,createCashFlowEntry,cashFlowSummary,listCommissionReasons,updateCommissionReason,listOutsourcingReceipts,createOutsourcingReceipt,getOutsourcingReceiptFile,listLeadMessages,createLeadMessage,getDesktopSetup,saveDesktopSetup,ingestInstagramDirect,listInstagramLeadReports,getInstagramLeadReport,listStagesAdmin,getStageAdmin,updateStageAdmin,saveStageAiConfig,getStageReport,getStageWorkbenchState,saveStageWorkbenchState,listWorkbenchActivityLocations,listWorkbenchDiary,createWorkbenchDiary,listWorkbenchAttachments,createWorkbenchAttachment,getWorkbenchAttachmentFile,deleteWorkbenchAttachment}=await import('./persistence.mjs');
 const {agentTree,evaluateAgentTree}=await import('./agent-tree.js');
 const {requestActor,requireRoles,authStatus}=await import('./auth-service.mjs');
 const {getCalibration,updateCalibration,recordAgentEvent,recalculateOperationalState,latestOperationalState,listNotifications,acknowledgeNotification,registerDevice,buildAutomationPanorama,runAutomationPlanner,runOperationalLoop,buildWorkerMonitor,markEventProcessed}=await import('./operational-engine.mjs');
-const {getProductionBaseline}=await import('./production-planning.mjs');
+const {getProductionBaseline,getProductionPlan}=await import('./production-planning.mjs');
 const {publishBridgeEvent}=await import('./firebase-bridge.mjs');
+const {runOperationalAssistant}=await import('./worker/src/nvidia.js');
+const {getCamofoxBridgeStatus,openInstagramInbox,fallbackInstagramDraft}=await import('./desktop/instagram-bridge.mjs');
 
 // A mesma fonte legível pelo time fica incorporada ao prompt operacional. Isso
 // evita que a interface, o worker e o modelo mantenham ordens de execução
@@ -108,6 +110,81 @@ function inferredToolCalls(message){
 async function body(req,maxBytes=16_000_000){ let data='',size=0; for await (const chunk of req){size+=chunk.length;if(size>maxBytes){const error=new Error('Corpo da requisição excede o limite permitido.');error.statusCode=413;throw error;}data+=chunk;} return JSON.parse(data||'{}'); }
 async function rawBody(req,maxBytes=16_000_000){ const chunks=[]; let size=0; for await (const chunk of req){size+=chunk.length;if(size>maxBytes){const error=new Error('Corpo da requisição excede o limite permitido.');error.statusCode=413;throw error;}chunks.push(chunk);} return Buffer.concat(chunks); }
 const recordRoles=['owner','admin','foreman'];
+function inferenceTokens(value){return String(value||'').toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').split(/[^a-z0-9]+/).filter(token=>token.length>2);}
+const productionBasisLabels={volume:'Volume executado',area:'Área executada',comprimento:'Comprimento executado',contagem:'Itens ou unidades executados',registro:'Registro confirmado'};
+const productionBasisForUnit=unit=>/m³/i.test(unit)?'volume':/m²/i.test(unit)?'area':/^m$|\bm\b/i.test(unit)?'comprimento':/viagem|lote|ramal|cavalete|un|ponto|trecho|setor|ensaio|processo/i.test(unit)?'contagem':'registro';
+function stageInputProduction(payload={},activity={}){
+  const plan=getProductionPlan(String(payload.stage||''),{name:activity.title||payload.title||'Atividade',unit:activity.unit||payload.unit||'un'}),operational=activity.operational&&typeof activity.operational==='object'?activity.operational:payload.operational&&typeof payload.operational==='object'?payload.operational:{},operationalProduction=operational.production&&typeof operational.production==='object'?operational.production:{},unit=String(activity.unit||payload.unit||operationalProduction.unit||plan.unit||'registro').trim()||'registro',programming=payload.programming&&typeof payload.programming==='object'?payload.programming:{},basis=['volume','area','comprimento','contagem','registro'].includes(String(programming.productionBasis))?String(programming.productionBasis):productionBasisForUnit(unit),referenceRate=Number(plan.baseRate)||0,rateUnit=String(plan.rateUnit||`${unit}/dia`).trim()||`${unit}/dia`,unitLabel=unit==='m³'?'m³':unit==='m²'?'m²':unit;
+  const quantityFormula=`quantidade válida = soma das medições confirmadas em ${unitLabel}`;
+  const durationFormula=`duração (dias úteis) = teto(quantidade total ÷ ritmo ajustado de ${rateUnit})`;
+  return {basis,basisLabel:productionBasisLabels[basis]||productionBasisLabels.registro,unit,measureForm:String(operationalProduction.method||`Registrar produção em ${unitLabel}, por frente/local e por data, com confirmação do responsável.`),quantityFormula:String(operationalProduction.formula||quantityFormula),durationFormula,referenceRate,rateUnit,referenceDescription:String(operationalProduction.rate||`${referenceRate||'—'} ${rateUnit}`),totalQuantity:Number(plan.totalQuantity)||0,source:'DWG + plano de produção local',captureFields:['quantidade executada',`unidade (${unitLabel})`,'data do registro','frente/local','responsável','evidência'],validation:Array.isArray(operational.acceptance)&&operational.acceptance.length?operational.acceptance.join(' · '):'Somente registros confirmados entram na soma; a IA sugere e o perfil autorizado confirma.'};
+}
+function stageInputConditions(payload={},activity={},production=stageInputProduction(payload,activity)){
+  const operational=activity.operational&&typeof activity.operational==='object'?activity.operational:payload.operational&&typeof payload.operational==='object'?payload.operational:{},source=`${activity.title||payload.title||''} ${payload.text||''} ${activity.release||payload.release||''} ${(activity.materials||payload.materials||[]).join(' ')} ${(operational.entryConditions||[]).join(' ')} ${(operational.conditions||[]).join(' ')}`.toLocaleLowerCase('pt-BR'),release=String(activity.release||payload.release||'').trim(),materials=Array.isArray(activity.materials)?activity.materials.map(String).filter(Boolean):Array.isArray(payload.materials)?payload.materials.map(String).filter(Boolean):[];
+  const conditions=[{id:'yield-below-reference',kind:'rendimento',label:'Rendimento abaixo do ritmo',trigger:`disparar quando um registro confirmado ficar abaixo de ${production.referenceDescription||`${production.referenceRate||'—'} ${production.rateUnit||''}`} ou vier bloqueado`,notifyWhen:'production-below-reference',metric:{operator:'lt',value:production.referenceRate,unit:production.rateUnit},notifyRoles:['owner'],severity:'warning',message:'O rendimento confirmado ficou abaixo do ritmo de referência; revisar caixa, equipe, máquina e frente.'}];
+  const soilTerms=['solo','greide','cota','fundo','chuva','lama','umidade','terraplanagem'];
+  conditions.push({id:'soil-or-field',kind:'solo',label:'Condição de solo e campo',trigger:source.match(/solo|greide|cota|fundo|chuva|lama|umidade/)?'disparar quando o registro indicar solo, greide, cota ou condição de campo impedindo a execução':'confirmar solo, greide e cotas antes de liberar a produção',watchTerms:soilTerms,negativeTerms:['bloqueado','impedido','inadequado','atraso','chuva','lama','umidade','não','nao','pendente'],notifyWhen:'negative-match',notifyRoles:['owner','foreman'],severity:'warning',message:'Condição de solo/campo requer decisão antes de manter a atividade no cronograma.'});
+  if(release)conditions.push({id:'task-dependency',kind:'dependencia',label:'Dependência de outra atividade',trigger:`disparar se o requisito “${release}” estiver pendente, recusado ou bloqueando`,watchTerms:inferenceTokens(release),negativeTerms:['bloqueado','impedido','pendente','aguardando','recusado','não','nao','atraso'],notifyWhen:'negative-match',notifyRoles:['owner','foreman'],severity:'info',message:`A atividade depende do requisito de saída: ${release}.`});
+  if(materials.length)conditions.push({id:'material-readiness',kind:'material',label:'Material necessário',trigger:`disparar se faltar ou atrasar: ${materials.join(', ')}`,watchTerms:materials.flatMap(inferenceTokens),negativeTerms:['falta','faltando','sem','atrasado','atraso','indisponivel','indisponível','pendente'],notifyWhen:'negative-match',notifyRoles:['owner','foreman'],severity:'warning',message:`Material necessário para a atividade: ${materials.join(', ')}.`});
+  const configured=Array.isArray(operational.conditions)?operational.conditions.map((condition,index)=>({id:`operational-${index+1}`,kind:'operacional',label:'Condição operacional',trigger:String(condition),notifyWhen:'operational-match',notifyRoles:['owner','foreman'],severity:'info',message:String(condition)})):[];
+  return [...conditions,...configured].slice(0,8);
+}
+function stageInputStructured(payload={},activity={}){
+  const production=stageInputProduction(payload,activity),conditions=stageInputConditions(payload,activity,production);
+  const operational=activity.operational&&typeof activity.operational==='object'?activity.operational:payload.operational&&typeof payload.operational==='object'?payload.operational:{};
+  return {production,conditions,operational:{responsibility:operational.responsibility||{},entryConditions:operational.entryConditions||[],procedure:operational.procedure||[],evidence:operational.evidence||[],acceptance:operational.acceptance||[],outputs:operational.outputs||[]},notificationPolicy:{enabled:payload.automation?.notifyWorker!==false,mode:'pseudo-listener',trigger:'structured-condition-match',primaryRecipient:'owner',deduplicateBy:'stage/activity/condition/event',externalMessaging:'disabled'}};
+}
+function inferStageInput(payload={}){
+  if(Array.isArray(payload.properties)&&payload.properties.length){
+    const propertyContext=payload.properties.map(item=>`${item?.label||'propriedade'}: ${item?.value||''}`).join(' · ');
+    payload.text=`${String(payload.text||payload.message||'').trim()}\nPropriedades dinâmicas: ${propertyContext}`;
+  }
+  const source=String(payload.text||payload.message||'').trim(),currentId=String(payload.activityId||''),currentTitle=String(payload.title||'Atividade em análise').trim()||'Atividade em análise';
+  const activities=Array.isArray(payload.activities)?payload.activities.slice(0,40).map(item=>({id:String(item?.id||''),title:String(item?.title||''),unit:String(item?.unit||''),release:String(item?.release||''),materials:Array.isArray(item?.materials)?item.materials.map(String):[],operational:item?.operational&&typeof item.operational==='object'?item.operational:null})).filter(item=>item.id&&item.title):[];
+  const currentActivity=activities.find(item=>item.id===currentId)||{id:currentId,title:currentTitle,unit:String(payload.unit||''),release:String(payload.release||''),materials:Array.isArray(payload.materials)?payload.materials.map(String):[],operational:payload.operational&&typeof payload.operational==='object'?payload.operational:null};
+  const structured=stageInputStructured(payload,currentActivity);
+  const textTokens=new Set(inferenceTokens(`${currentTitle} ${source}`));
+  const explicit=activities.find(item=>item.id!==currentId&&source.toLocaleLowerCase('pt-BR').includes(item.title.toLocaleLowerCase('pt-BR')));
+  const scored=activities.filter(item=>item.id!==currentId).map(item=>{const vocabulary=[...inferenceTokens(`${item.title} ${item.release} ${item.materials.join(' ')}`)];const score=vocabulary.reduce((sum,token)=>sum+(textTokens.has(token)?1:0),0);return {...item,score};}).sort((a,b)=>b.score-a.score);
+  const related=explicit||scored.find(item=>item.score>0)||null;
+  const after=/\b(depois|apos|ap[oó]s|somente depois|aguarda|depende|liberac[aã]o de)\b/i.test(source);
+  const before=/\b(antes|prepara|preparar|libera|liberac[aã]o para|requisito para)\b/i.test(source);
+  let relation=null;
+  if(related){
+    const fromActivityId=after?related.id:currentId,toActivityId=after?currentId:related.id;
+    const label=after?`depende de ${related.title}`:before?`libera antes de ${related.title}`:`relacionada a ${related.title}`;
+    relation={fromActivityId,toActivityId,label,relatedActivityId:related.id,relatedActivityTitle:related.title,confidence:explicit?.id===related.id ? .92 : Math.min(.88,.45+related.score*.1)};
+  }
+  return {
+    summary:relation?`A entrada foi compreendida como ${currentTitle} ${relation.label}. O vínculo será refletido no cronograma.`:`A entrada foi registrada para ${currentTitle}. Nenhuma dependência segura foi identificada; revise ou mencione outra atividade.`,
+    relation,
+    relatedActivityId:relation?.relatedActivityId||null,
+    relationLabel:relation?.label||'',
+    confidence:relation?.confidence||.35,
+    provider:'local-ai-rules',
+    sourceText:source.slice(0,1200),
+    production:structured.production,
+    conditions:structured.conditions,
+    operational:structured.operational,
+    notificationPolicy:structured.notificationPolicy
+  };
+}
+async function workbenchInferenceApi(req,res){
+  const payload=await body(req,120_000),base=inferStageInput(payload);
+  let model=null;
+  if(process.env.NVIDIA_API_KEY){
+    try{
+      const modelEnv={...process.env,NVIDIA_TIMEOUT_MS:'1800'};
+      model=await runOperationalAssistant(modelEnv,{view:'stage-input-inference',message:`Classifique esta entrada de atividade de obra. Preserve a relação determinística fornecida e, se houver evidência textual mais forte, proponha relatedActivityId e relationLabel. Responda em JSON curto com text, relatedActivityId, relationLabel e confidence. Não remova nem invente production, conditions, operational ou notificationPolicy: esses blocos são estruturados pelo motor local. Entrada: ${base.sourceText}. Atividade atual: ${payload.title||payload.activityId}. Atividades candidatas: ${JSON.stringify(payload.activities||[])}. Relação determinística: ${JSON.stringify(base.relation||null)}. Produção estruturada: ${JSON.stringify(base.production)}. Operação, responsabilidades e aceite: ${JSON.stringify(base.operational)}. Condições estruturadas: ${JSON.stringify(base.conditions)}`,context:{stage:payload.stage||'',currentActivityId:payload.activityId||'',deterministic:base}});
+    }catch(error){model={error:error.message};}
+  }
+  const allowed=new Set((payload.activities||[]).map(item=>String(item?.id||'')));
+  const modelRelationId=allowed.has(String(model?.relatedActivityId||''))?String(model.relatedActivityId):base.relatedActivityId;
+  const modelLabel=String(model?.relationLabel||'').trim();
+  const result={...base,modelText:String(model?.text||'').trim()||null,provider:model?.provider==='nvidia-api'?'nvidia-api':base.provider};
+  if(modelRelationId&&result.relation){result.relation={...result.relation,relatedActivityId:modelRelationId,label:modelLabel||result.relation.label};result.relatedActivityId=modelRelationId;result.relationLabel=result.relation.label;}
+  return send(res,200,result);
+}
 function operationalPrompt(message,view,mapContext,context={}){
   const available=clientTools.map(tool=>`${tool.name}(${Object.keys(tool.args).join(', ')})`).join('; ');
   const dwgSnapshot=JSON.stringify({source:aiProductionBaseline.source,site:aiProductionBaseline.site,derived:aiProductionBaseline.derived,assumptions:aiProductionBaseline.assumptions});
@@ -164,6 +241,7 @@ function requestOrigin(req){
 function pageForPath(pathname){
   if(pathname==='/leads'||pathname==='/leads/')return 'public-leads.html';
   if(pathname==='/admin'||pathname==='/admin/')return 'index.html';
+  if(pathname==='/desktop/setup'||pathname==='/desktop/setup/')return 'desktop-setup.html';
   if(pathname==='/admin/workers'||pathname==='/admin/workers/'||pathname==='/admin/workers/stage'||pathname==='/admin/workers/stage/'||pathname==='/admin/workers/activity'||pathname==='/admin/workers/activity/')return 'admin-workers.html';
   return pathname==='/'?'index.html':pathname;
 }
@@ -313,6 +391,78 @@ async function leadMessagesApi(req,res,pathname){
   if(req.method==='GET')return send(res,200,{messages:listLeadMessages(leadId)});
   if(req.method==='POST'){const message=createLeadMessage({...await body(req),leadId});return message?send(res,201,{message,messages:listLeadMessages(leadId)}):send(res,404,{error:'Lead não encontrado ou mensagem vazia.'});}
   return send(res,405,{error:'Método não permitido.'});
+}
+function isLoopbackRequest(req){
+  const address=String(req.socket?.remoteAddress||'').replace(/^::ffff:/,'');
+  return address==='127.0.0.1'||address==='::1';
+}
+async function desktopActor(req,roles=['owner','admin']){
+  return isLoopbackRequest(req)?{uid:'desktop-local',name:'Estação local',role:'owner',mode:'desktop'}:await requireRoles(req,roles);
+}
+function bridgeAuthorized(req){
+  if(isLoopbackRequest(req))return true;
+  const expected=String(process.env.INSTAGRAM_BRIDGE_TOKEN||'').trim();
+  return Boolean(expected&&String(req.headers.authorization||'')===`Bearer ${expected}`);
+}
+async function createInstagramDraft(report,instructions=''){
+  const fallback=fallbackInstagramDraft(report);
+  const lastInbound=[...(report?.messages||[])].reverse().find(item=>item.direction==='inbound');
+  try{
+    const aiReply=await runOperationalAssistant({...process.env,NVIDIA_TIMEOUT_MS:'3500',NVIDIA_MAX_TOKENS:'220'},{
+      view:'instagram-direct',
+      context:{lead:report?.lead||{},lastInbound:lastInbound?.body||'',conversationSummary:report?.summary||{}},
+      message:`Produza um rascunho breve em português para responder a um lead do Instagram. Seja acolhedor, peça só a informação necessária para indicar lotes e condições. Não prometa preço, reserva, documento, pagamento ou aprovação. ${String(instructions||'').slice(0,500)}`
+    });
+    const body=String(aiReply?.text||'').trim().replace(/^["']|["']$/g,'').slice(0,900);
+    if(body&&body.length>12)return {body,provider:aiReply.provider||'ai',requiresApproval:true,delivery:'draft-only'};
+  }catch(error){console.warn('[instagram draft]',error.message);}
+  return {body:fallback,provider:'deterministic',requiresApproval:true,delivery:'draft-only'};
+}
+async function instagramDesktopApi(req,res,pathname){
+  if(pathname==='/api/desktop/setup'){
+    if(req.method==='GET')return send(res,200,{setup:getDesktopSetup()});
+    if(req.method==='POST'){await desktopActor(req);return send(res,200,{setup:saveDesktopSetup(await body(req))});}
+    return send(res,405,{error:'Método não permitido.'});
+  }
+  if(pathname==='/api/instagram/bridge/status'&&req.method==='GET'){
+    await desktopActor(req);return send(res,200,{bridge:await getCamofoxBridgeStatus()});
+  }
+  if(pathname==='/api/instagram/bridge/open-inbox'&&req.method==='POST'){
+    await desktopActor(req);const setup=getDesktopSetup();if(!setup.complete)return send(res,409,{error:'Conclua a configuração da estação antes de abrir o Direct.'});
+    const result=await openInstagramInbox(setup);return send(res,200,{...result,message:'Sessão local aberta. Faça login manualmente no Instagram; a senha não é armazenada pelo Aliança Park.'});
+  }
+  if(pathname==='/api/instagram/directs/inbound'&&req.method==='POST'){
+    if(!bridgeAuthorized(req))return send(res,401,{error:'Ponte do Instagram não autorizada.'});
+    const ingestion=ingestInstagramDirect(await body(req));
+    const report=getInstagramLeadReport(ingestion.lead.id);
+    if(!ingestion.deduplicated){
+      bridgeAgentEvent({type:'lead.instagram.received',entity:'leads',entityId:ingestion.lead.id,actor:{name:'Ponte Instagram',role:'integration'},payload:{leadId:ingestion.lead.id,messageId:ingestion.message.id,channel:'instagram-direct'}});
+      recalculateOperationalState({trigger:'instagram-direct'});
+    }
+    return send(res,ingestion.deduplicated?200:201,{ingestion,draft:await createInstagramDraft(report),report});
+  }
+  if(pathname==='/api/instagram/leads'&&req.method==='GET'){
+    await desktopActor(req);return send(res,200,{reports:listInstagramLeadReports()});
+  }
+  const reportMatch=pathname.match(/^\/api\/instagram\/leads\/([^/]+)\/report$/);
+  if(reportMatch&&req.method==='GET'){
+    await desktopActor(req);const report=getInstagramLeadReport(decodeURIComponent(reportMatch[1]));return report?send(res,200,{report}):send(res,404,{error:'Lead do Instagram não encontrado.'});
+  }
+  const draftMatch=pathname.match(/^\/api\/instagram\/leads\/([^/]+)\/draft$/);
+  if(draftMatch&&req.method==='POST'){
+    await desktopActor(req);const report=getInstagramLeadReport(decodeURIComponent(draftMatch[1]));return report?send(res,200,{draft:await createInstagramDraft(report,(await body(req)).instructions),report}):send(res,404,{error:'Lead do Instagram não encontrado.'});
+  }
+  const approvalMatch=pathname.match(/^\/api\/instagram\/leads\/([^/]+)\/approve-reply$/);
+  if(approvalMatch&&req.method==='POST'){
+    const actor=await desktopActor(req);const leadId=decodeURIComponent(approvalMatch[1]),input=await body(req),report=getInstagramLeadReport(leadId);
+    if(!report)return send(res,404,{error:'Lead do Instagram não encontrado.'});
+    const draft=input.body?{body:String(input.body).trim().slice(0,900)}:await createInstagramDraft(report,input.instructions);
+    if(!draft.body)return send(res,422,{error:'O rascunho de resposta está vazio.'});
+    const message=createLeadMessage({leadId,direction:'outbound',channel:'instagram-direct-outbox',body:draft.body,author:actor.name});
+    bridgeAgentEvent({type:'lead.instagram.reply.approved',entity:'leads',entityId:leadId,actor,payload:{leadId,messageId:message?.id,delivery:'awaiting-operator-send'}});
+    return send(res,201,{message,delivery:'awaiting-operator-send',notice:'Rascunho aprovado e auditado. O envio no Instagram deve ser confirmado manualmente pelo operador.'});
+  }
+  return send(res,404,{error:'Rota de integração do Instagram não encontrada.'});
 }
 async function commissionReasonsApi(req,res,pathname){
   if(req.method==='GET'&&pathname==='/api/commission-reasons')return send(res,200,{reasons:listCommissionReasons()});
@@ -532,5 +682,5 @@ async function brokerReportsApi(req,res){
 }
 
 createServer(async (req,res)=>{
-  try { const pathname=new URL(req.url,'http://localhost').pathname; if(shouldProxyApi(pathname))return await proxyApi(req,res,pathname); if(publicCatalogApi(req,res,pathname))return; if(pathname==='/api/health'&&req.method==='GET')return send(res,200,{...health(),ai:aiStatus(),auth:authStatus(),origin:requestOrigin(req),forwarded:Boolean(req.headers['x-forwarded-host']),belavistaApiBase}); if(pathname==='/api/runtime'&&req.method==='GET')return send(res,200,{origin:requestOrigin(req),host,port,forwardedHost:req.headers['x-forwarded-host']||null,forwardedProto:req.headers['x-forwarded-proto']||null,firebaseMessagingVapidKey:process.env.FIREBASE_MESSAGING_VAPID_KEY||'',belavistaApiBase}); if(pathname==='/api/ai/status'&&req.method==='GET')return send(res,200,aiStatus()); if(pathname==='/api/ai/tools'&&req.method==='GET')return send(res,200,{protocol:'belavista-client-tools/v1',tools:clientTools}); if(pathname==='/api/agent/tree'||pathname==='/api/agent/evaluate')return await agentTreeApi(req,res,pathname); if(pathname==='/api/operational-loop'||pathname==='/api/operational-state'||pathname==='/api/calibrations'||pathname==='/api/automation/panorama'||pathname==='/api/automation/run'||pathname==='/api/devices'||pathname==='/api/notifications'||pathname.startsWith('/api/notifications/'))return await operationalApi(req,res,pathname); if(pathname==='/api/stages-admin'||pathname.startsWith('/api/stages-admin/'))return await stagesAdminApi(req,res,pathname); if(pathname==='/api/workbench/state'||pathname==='/api/workbench/diary')return await workbenchApi(req,res,pathname); if(pathname==='/api/entities'&&req.method==='GET')return send(res,200,{entities:entitySummary()}); if(pathname==='/api/broker-reports')return await brokerReportsApi(req,res); if(pathname==='/api/field-confirmations')return await fieldConfirmationsApi(req,res); if(pathname==='/api/records'||pathname.startsWith('/api/records/'))return await recordsApi(req,res,pathname); if(pathname==='/api/cash-flow'||pathname.startsWith('/api/cash-flow/'))return await cashFlowApi(req,res,pathname); if(pathname==='/api/commission-reasons'||pathname.startsWith('/api/commission-reasons/'))return await commissionReasonsApi(req,res,pathname); if(pathname==='/api/outsourcing-receipts'||pathname.startsWith('/api/outsourcing-receipts/'))return await outsourcingReceiptsApi(req,res,pathname); if(pathname==='/api/purchase-receipts'||pathname.startsWith('/api/purchase-receipts/'))return await purchaseReceiptsApi(req,res,pathname); if(pathname==='/api/commercial-sales'||pathname.startsWith('/api/commercial-sales/'))return await commercialSalesApi(req,res,pathname); if(req.method==='POST'&&(pathname==='/api/gemini'||pathname==='/api/ai')) return await ai(req,res); if(req.method!=='GET') return send(res,405,{error:'Método não permitido.'}); const requested=normalize(pageForPath(pathname)).replace(/^[/\\]+/,''); const file=join(root,requested); if(!file.startsWith(root)) return send(res,403,{error:'Acesso negado.'}); const data=await readFile(file); res.writeHead(200,{'Content-Type':types[extname(file)]||'application/octet-stream','Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto'}); res.end(data); } catch (error) { if(String(req.url||'').startsWith('/api/')) return send(res,error?.statusCode||500,{error:error?.message||'Falha no serviço local.'}); const data=await readFile(join(root,'index.html')); res.writeHead(200,{'Content-Type':types['.html'],'Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto'}); res.end(data); }
+  try { const pathname=new URL(req.url,'http://localhost').pathname; if(shouldProxyApi(pathname))return await proxyApi(req,res,pathname); if(publicCatalogApi(req,res,pathname))return; if(pathname==='/api/health'&&req.method==='GET')return send(res,200,{...health(),ai:aiStatus(),auth:authStatus(),origin:requestOrigin(req),forwarded:Boolean(req.headers['x-forwarded-host']),belavistaApiBase}); if(pathname==='/api/runtime'&&req.method==='GET')return send(res,200,{origin:requestOrigin(req),host,port,forwardedHost:req.headers['x-forwarded-host']||null,forwardedProto:req.headers['x-forwarded-proto']||null,firebaseMessagingVapidKey:process.env.FIREBASE_MESSAGING_VAPID_KEY||'',belavistaApiBase}); if(pathname==='/api/ai/status'&&req.method==='GET')return send(res,200,aiStatus()); if(pathname==='/api/ai/tools'&&req.method==='GET')return send(res,200,{protocol:'belavista-client-tools/v1',tools:clientTools}); if(pathname==='/api/agent/tree'||pathname==='/api/agent/evaluate')return await agentTreeApi(req,res,pathname); if(pathname==='/api/operational-loop'||pathname==='/api/operational-state'||pathname==='/api/calibrations'||pathname==='/api/automation/panorama'||pathname==='/api/automation/run'||pathname==='/api/devices'||pathname==='/api/notifications'||pathname.startsWith('/api/notifications/'))return await operationalApi(req,res,pathname); if(pathname==='/api/stages-admin'||pathname.startsWith('/api/stages-admin/'))return await stagesAdminApi(req,res,pathname); if(pathname==='/api/workbench/infer'&&req.method==='POST')return await workbenchInferenceApi(req,res); if(pathname==='/api/workbench/state'||pathname==='/api/workbench/diary')return await workbenchApi(req,res,pathname); if(pathname==='/api/desktop/setup'||pathname.startsWith('/api/instagram/'))return await instagramDesktopApi(req,res,pathname); if(pathname.startsWith('/api/leads/'))return await leadMessagesApi(req,res,pathname); if(pathname==='/api/entities'&&req.method==='GET')return send(res,200,{entities:entitySummary()}); if(pathname==='/api/broker-reports')return await brokerReportsApi(req,res); if(pathname==='/api/field-confirmations')return await fieldConfirmationsApi(req,res); if(pathname==='/api/records'||pathname.startsWith('/api/records/'))return await recordsApi(req,res,pathname); if(pathname==='/api/cash-flow'||pathname.startsWith('/api/cash-flow/'))return await cashFlowApi(req,res,pathname); if(pathname==='/api/commission-reasons'||pathname.startsWith('/api/commission-reasons/'))return await commissionReasonsApi(req,res,pathname); if(pathname==='/api/outsourcing-receipts'||pathname.startsWith('/api/outsourcing-receipts/'))return await outsourcingReceiptsApi(req,res,pathname); if(pathname==='/api/purchase-receipts'||pathname.startsWith('/api/purchase-receipts/'))return await purchaseReceiptsApi(req,res,pathname); if(pathname==='/api/commercial-sales'||pathname.startsWith('/api/commercial-sales/'))return await commercialSalesApi(req,res,pathname); if(req.method==='POST'&&(pathname==='/api/gemini'||pathname==='/api/ai')) return await ai(req,res); if(req.method!=='GET') return send(res,405,{error:'Método não permitido.'}); const requested=normalize(pageForPath(pathname)).replace(/^[/\\]+/,''); const file=join(root,requested); if(!file.startsWith(root)) return send(res,403,{error:'Acesso negado.'}); const data=await readFile(file); res.writeHead(200,{'Content-Type':types[extname(file)]||'application/octet-stream','Content-Length':data.length,'Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto'}); res.end(data); } catch (error) { if(String(req.url||'').startsWith('/api/')) return send(res,error?.statusCode||500,{error:error?.message||'Falha no serviço local.'}); const data=await readFile(join(root,'index.html')); res.writeHead(200,{'Content-Type':types['.html'],'Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto'}); res.end(data); }
 }).listen(port,host,()=>console.log(`Aliança Park local: http://localhost:${port} · rede: http://10.75.216.173:${port} · bind: ${host}`));

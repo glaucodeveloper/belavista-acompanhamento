@@ -1,7 +1,7 @@
 // BELAVISTA_ADMIN_PUBLIC_MAP_SURFACE_V5352
 // v5.3.51 deferred after shell: import './admin-runtime-v11.js?v=admin-runtime-v11';
 // v5.3.51 deferred after shell: import './admin-lots-canvas-v1.js?v=admin-lots-canvas-v1';
-import './components.js?v=solar-clock-hover-v5384&route=ngrok-route-v1';
+import './components.js?v=dwg-satellite-fit-v5410&route=ngrok-route-v1';
 import {appStore, persistUiState, restoreUiState, viewThemes} from './state.js?v=solar-clock-hover-v5384';
 // v5.3.51 deferred after shell: import './stage-admin-v10.js?v=stage-admin-v10-primary';
 // BELAVISTA_ORIGINAL_ADMIN_BOOT_RESCUE_V5351
@@ -144,7 +144,7 @@ class BelavistaApp extends HTMLElement {
   connectedCallback(){ this.mountShell(); if(!this._bound){this._bound=true;this.bind();} }
   mountShell(){
     if(this.querySelector('.app-shell'))return;
-    this.innerHTML=`<div class="app-shell ${appStore.get().sidebarCollapsed?'sidebar-collapsed':''}"><app-sidebar></app-sidebar><div class="app-main"><app-topbar></app-topbar><main class="scene"><map-scene data-persistent-map="true" data-public-map="" data-public-presentation="true" data-base-map="" data-stage="Aliança Park · comercial" data-overlay="urbanizacao" data-admin-shared-public-map="v5352" data-map-context="admin" aria-label="Mapa operacional do Aliança Park"></map-scene><view-layer></view-layer><ai-chat></ai-chat></main></div></div>`;
+    this.innerHTML=`<div class="app-shell ${appStore.get().sidebarCollapsed?'sidebar-collapsed':''}"><app-sidebar></app-sidebar><div class="app-main"><app-topbar></app-topbar><main class="scene"><map-scene data-persistent-map="true" data-public-map="" data-public-presentation="true" data-base-map="" data-stage="Aliança Park · comercial" data-overlay="urbanizacao" data-admin-shared-public-map="v5352" data-dashboard-progress-map="true" data-admin-record-selection="true" data-map-context="admin" aria-label="Mapa operacional do Aliança Park"></map-scene><view-layer></view-layer><ai-chat></ai-chat></main></div></div>`;
     window.lucide?.createIcons();
   }
   bind(){
@@ -216,5 +216,11 @@ async function startApp(config){
   if('serviceWorker' in navigator && location.protocol!=='file:') navigator.serviceWorker.register('./sw.js').catch(console.warn);
 }
 
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();appStore.set({installPrompt:e});document.querySelector('install-screen')?.updateInstallButton?.();});
+window.addEventListener('beforeinstallprompt',e=>{
+  const screen=document.querySelector('install-screen');
+  if(!screen){ return; }
+  e.preventDefault();
+  appStore.set({installPrompt:e});
+  screen.updateInstallButton?.();
+});
 window.addEventListener('appinstalled',()=>appStore.set({installPrompt:null}));

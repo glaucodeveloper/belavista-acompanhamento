@@ -62,6 +62,19 @@ test('atividade usa pintura persistente somente nos polígonos do modelo 3D',asy
   assert.match(persistence,/activity_locations_json/);
 });
 
+test('atividades oferece destino Nova atividade preservando a etapa',async()=>{
+  const [components,client]=await Promise.all([
+    readFile(new URL('../../components.js',import.meta.url),'utf8'),
+    readFile(new URL('../../stage-workbench.mjs',import.meta.url),'utf8')
+  ]);
+  assert.match(components,/data-activity-new/);
+  assert.match(components,/workers\/activity/);
+  assert.match(components,/stageKey/);
+  assert.match(components,/activity=new/);
+  assert.match(client,/activityId==='new'/);
+  assert.match(client,/title:'Nova atividade'/);
+});
+
 test('admin abre a base leve e inicia o modelo 3D após a primeira pintura',async()=>{
   const [components,styles]=await Promise.all([
     readFile(new URL('../../components.js',import.meta.url),'utf8'),

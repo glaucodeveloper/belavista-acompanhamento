@@ -1,9 +1,19 @@
 {
-  "name": "belavista-ai-monitor",
+  "name": "alianca-park-desktop",
+  "version": "1.0.0",
+  "description": "Estação operacional e atendimento assistido do Aliança Park.",
+  "author": "Aliança Park",
   "private": true,
   "type": "module",
+  "main": "electron/main.mjs",
+  "desktopName": "alianca-park-desktop",
   "scripts": {
     "start": "node server.mjs",
+    "desktop:start": "electron .",
+    "desktop:check": "node --check electron/main.mjs && node --check electron/preload.mjs && node --check desktop/instagram-bridge.mjs",
+    "desktop:package": "electron-builder --linux AppImage",
+    "test:desktop": "node --test --test-concurrency=1 tests/desktop/*.test.mjs",
+    "instagram:bridge": "npx @askjo/camofox-browser",
     "build:public": "node scripts/build-public-pages.mjs",
     "twa:admin:init": "npx --yes @bubblewrap/cli init --manifest=https://belavista-3f887.web.app/admin-twa-manifest.webmanifest --directory=mobile/twa/android-admin",
     "twa:admin:build": "cd mobile/twa/android-admin && npx --yes @bubblewrap/cli build",
@@ -16,6 +26,10 @@
     "test:online": "node worker/test/online-infrastructure.mjs",
     "library:check": "node --check belavista-ui/src/system.js && node --check belavista-ui/src/components.js && node --check belavista-ui/catalog.js",
     "test:screen": "playwright test",
+    "test:chat": "node --test tests/admin/worker-context-chat-v5407.test.mjs",
+    "test:public-map": "node --test tests/public-leads/satellite-ground-only-v5408.test.mjs tests/public-leads/native-road-pavers-v5378.test.mjs tests/public-leads/generated-aerial-trees-v5388.test.mjs tests/public-leads/satellite-mosaic-fallback-v5386.test.mjs tests/public-leads/static-capture-no-maps-v5561.test.mjs",
+    "video:check": "cd video/product-intro && npm run check",
+    "video:render": "cd video/product-intro && npm run render -- --quality high --output output/product-intro.mp4",
     "test:screen:ui": "playwright test --ui",
     "build:demo": "node scripts/build-demo.mjs",
     "check:demo": "node --check worker/src/operational-loop.js && node --check worker/src/github-store.js && node --check worker/src/live-test-session.js && node --check worker/src/firebase-auth.js && node --check worker/src/routes.js",
@@ -37,8 +51,20 @@
     "test:inference:dry": "npm run test:inference:source",
     "test:inference:full": "npm run test:inference:source && npm run test:inference:real && npm run test:inference:write"
   },
+  "build": {
+    "appId": "br.com.aliancapark.desktop",
+    "productName": "Aliança Park Desktop",
+    "icon": "assets/public/alianca-park-logo-full-transparent-v551.png",
+    "asar": true,
+    "files": ["**/*", "!data/**/*", "!output/**/*", "!test-results/**/*"],
+    "linux": {"target": ["AppImage"], "category": "Office", "synopsis": "Estação operacional Aliança Park"},
+    "artifactName": "${productName}-${version}-${arch}.${ext}"
+  },
   "devDependencies": {
-    "@playwright/test": "^1.62.1"
+    "@playwright/test": "^1.62.1",
+    "electron": "^44.2.0",
+    "electron-builder": "^26.15.3",
+    "hyperframes": "^0.8.31"
   },
   "dependencies": {
     "firebase-admin": "^14.3.0"

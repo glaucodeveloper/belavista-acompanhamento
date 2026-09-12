@@ -9,6 +9,7 @@ if(host&&!host.dataset.editorMounted){
   const api=async(path,options={})=>{const response=await fetch(path,{cache:'no-store',...options,headers:{...(await actorHeaders()),...(options.headers||{})}});const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||`HTTP ${response.status}`);return payload;};
   await import('./components.js?v=ngrok-route-v1');
   await import('./public-leads-context-v521.mjs?v=activity-location-v3');
+  await import('./activity-map-layer.mjs?v=activity-map-layer-v2');
   host.innerHTML=`<header class="activity-map-editor-head"><div><span class="eyebrow">LOCAL FÍSICO · LEITURA URBANA</span><h2>Onde esta atividade acontece</h2><p>Segure e arraste sobre o modelo para pintar lote por lote ou trecho por trecho.</p></div><span class="activity-map-source" data-map-source>aguardando mapa</span></header><div class="activity-map-understanding" data-map-understanding><span>Entrada</span><span>Avenida principal</span><span>Avenida lateral</span><span>Quadras numeradas</span><span>Área social</span></div><div class="activity-map-layout"><div class="activity-map-canvas"><map-scene data-public-map data-admin-shared-public-map="activity-editor" data-activity-location-editor data-base-map aria-label="Mapa 3D para marcar o local da atividade"></map-scene><div class="activity-map-wait" data-map-wait><i></i><b>Carregando geometria do loteamento</b><span>A marcação será liberada quando os polígonos estiverem prontos.</span></div></div><aside class="activity-map-tools"><label>Localidade compreendida<select data-map-zone><option value="custom">Seleção manual</option></select></label><label>Estado no mapa<select data-map-status>${Object.entries(ACTIVITY_MAP_STATUSES).map(([key,value])=>`<option value="${key}">${esc(value.label)}</option>`).join('')}</select></label><div class="activity-map-actions"><button type="button" class="button button-primary" data-map-paint>Ativar pintura</button><button type="button" class="button" data-map-infer>Sugerir pela IA</button><button type="button" class="button" data-map-clear>Limpar seleção</button></div><div class="activity-map-selection"><small>POLÍGONOS MARCADOS</small><strong data-map-selected>0</strong><span data-map-selected-copy>Nenhuma área vinculada.</span></div><label>Descrição do local<textarea rows="3" data-map-location-note placeholder="Ex.: trecho da avenida principal entre as quadras 2 e 3"></textarea></label><button type="button" class="button button-primary activity-map-save" data-map-save>Salvar marcação física</button><p class="activity-map-feedback" data-map-feedback>A marcação salva será refletida no mapa público e no dashboard.</p></aside></div>`;
 
   const map=host.querySelector('map-scene'),wait=host.querySelector('[data-map-wait]'),zoneSelect=host.querySelector('[data-map-zone]'),statusSelect=host.querySelector('[data-map-status]'),selectedCount=host.querySelector('[data-map-selected]'),selectedCopy=host.querySelector('[data-map-selected-copy]'),feedback=host.querySelector('[data-map-feedback]'),source=host.querySelector('[data-map-source]'),note=host.querySelector('[data-map-location-note]');
@@ -18,10 +19,19 @@ if(host&&!host.dataset.editorMounted){
   const setSelection=(ids=[],origin='human')=>{selected=new Set(ids.map(String));currentSource=origin;source.textContent=origin==='ai'?'sugestão da IA':'marcação do usuário';update();};
 
   await customElements.whenDefined('map-scene');
-  const ready=await new Promise(resolve=>{const started=Date.now();const timer=setInterval(()=>{const modelReady=map.modelReady||map.dataset.modelReady==='true';const hasLotPolygons=Boolean(map.modelParts?.lots?.length)||/^lotes:\d+/.test(map.dataset.modelParts||'');if(modelReady&&hasLotPolygons){clearInterval(timer);resolve(true);}else if(Date.now()-started>120000){clearInterval(timer);resolve(false);}},180);});
+  const ready=await new Promise(resolve=>{const started=Date.now();const timer=setInterval(()=>{const modelReady=map.modelReady||map.dataset.modelReady==='true';const hasLotPolygons=Boolean(map.modelParts?.lots?.length)||Boolean(map.activityMapStandaloneParts?.some(part=>part?.userData?.partKind==='lots'))||/^lotes:\d+/.test(map.dataset.modelParts||'')||/^meshes:\d+/.test(map.dataset.modelParts||'');if(modelReady&&hasLotPolygons){clearInterval(timer);resolve(true);}else if(Date.now()-started>120000){clearInterval(timer);resolve(false);}},180);});
   if(!ready){wait.innerHTML='<b>O modelo ainda não ficou disponível.</b><span>Recarregue esta atividade ou tente novamente após abrir o mapa principal.</span>';source.textContent='mapa indisponível';}
   else{
     wait.hidden=true;catalog=physicalMapCatalog(map);source.textContent='mapa compreendido';
+    // A cena é montada dentro deste painel depois do shell da atividade. O
+    // enquadramento inicial calculado durante o boot pode ter usado o
+    // viewport anterior (ou 0x0), deixando apenas um fragmento do GLB no
+    // centro. Recalcule após o painel estar visível, usando o mesmo fit da
+    // cena administrativa compartilhada.
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      map.fitSceneView?.(false);
+      map.syncThree?.();
+    }));
     for(const zone of catalog.zones){const option=document.createElement('option');option.value=zone.key;option.textContent=`${zone.label} · ${zone.partIds.length}`;zoneSelect.appendChild(option);}
     storedState=(await api(`/api/workbench/state?stage=${encodeURIComponent(stageKey)}`)).state||{};
     const saved=storedState.activityLocations?.[activityId];

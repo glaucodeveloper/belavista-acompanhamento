@@ -68,7 +68,7 @@ const watchdog=setTimeout(()=>{
 
 try{
   globalThis.__BELAVISTA_BOOT_V5351.phase='import-app';
-  await import('./app.js?v=satellite-ground-v5381');
+  await import('./app.js?v=ctrl-wheel-zoom-v5389');
   globalThis.__BELAVISTA_BOOT_V5351.phase='app-imported';
   globalThis.__BELAVISTA_BOOT_V5351.importedAt=performance.now();
   clearTimeout(watchdog);

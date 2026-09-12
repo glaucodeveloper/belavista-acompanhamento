@@ -1,0 +1,5 @@
+.tokensave
+.env
+mobile/twa/keys/
+mobile/twa/app-release.aab
+mobile/twa/app-release.apk

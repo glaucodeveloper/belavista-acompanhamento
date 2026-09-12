@@ -172,6 +172,31 @@ db.exec(`
     FOREIGN KEY(lead_id) REFERENCES leads(id) ON DELETE CASCADE
   );
   CREATE INDEX IF NOT EXISTS idx_lead_messages_lead ON lead_messages(lead_id,created_at);
+  CREATE TABLE IF NOT EXISTS desktop_settings (
+    key TEXT PRIMARY KEY,
+    value_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS instagram_contacts (
+    instagram_user_id TEXT PRIMARY KEY,
+    username TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL DEFAULT '',
+    lead_id TEXT NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+    thread_id TEXT NOT NULL DEFAULT '',
+    first_seen_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_instagram_contacts_lead ON instagram_contacts(lead_id);
+  CREATE TABLE IF NOT EXISTS instagram_message_receipts (
+    external_message_id TEXT PRIMARY KEY,
+    instagram_user_id TEXT NOT NULL REFERENCES instagram_contacts(instagram_user_id) ON DELETE CASCADE,
+    lead_id TEXT NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+    lead_message_id TEXT NOT NULL REFERENCES lead_messages(id) ON DELETE CASCADE,
+    direction TEXT NOT NULL CHECK(direction IN ('inbound','outbound')),
+    received_at TEXT NOT NULL,
+    raw_json TEXT NOT NULL DEFAULT '{}'
+  );
+  CREATE INDEX IF NOT EXISTS idx_instagram_receipts_lead ON instagram_message_receipts(lead_id,received_at);
   CREATE TABLE IF NOT EXISTS records (
     id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
@@ -234,6 +259,8 @@ db.exec(`
     layout_json TEXT NOT NULL DEFAULT '{}',
     links_json TEXT NOT NULL DEFAULT '[]',
     activity_locations_json TEXT NOT NULL DEFAULT '{}',
+    input_sessions_json TEXT NOT NULL DEFAULT '[]',
+    calendar_date TEXT,
     updated_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS workbench_diary (
@@ -270,6 +297,8 @@ db.exec(`
 
 try { db.exec(`ALTER TABLE records ADD COLUMN map_area TEXT`); } catch {}
 try { db.exec(`ALTER TABLE stage_workbench_state ADD COLUMN activity_locations_json TEXT NOT NULL DEFAULT '{}'`); } catch {}
+try { db.exec(`ALTER TABLE stage_workbench_state ADD COLUMN input_sessions_json TEXT NOT NULL DEFAULT '[]'`); } catch {}
+try { db.exec(`ALTER TABLE stage_workbench_state ADD COLUMN calendar_date TEXT`); } catch {}
 
 const now=()=>new Date().toISOString();
 const commissionReasonSeed=[
@@ -561,6 +590,54 @@ export function createLeadMessage(input={}){
   audit.run('lead_messages',id,'created',JSON.stringify({leadId,direction,channel:asText(input.channel,'internal')}),timestamp);
   return db.prepare(`SELECT id,lead_id AS leadId,direction,channel,body,author,created_at AS createdAt FROM lead_messages WHERE id=?`).get(id);
 }
+const parseStoredObject=(value,fallback={})=>{try{const parsed=JSON.parse(String(value||''));return parsed&&typeof parsed==='object'?parsed:fallback;}catch{return fallback;}};
+const cleanInstagramHandle=(value)=>asText(value).replace(/^@/,'').replace(/[^A-Za-z0-9._]/g,'').slice(0,80);
+const selectInstagramLead=`SELECT l.id,l.name,l.lot,l.objective,l.budget,l.status,l.phone,l.email,l.created_at AS createdAt,c.instagram_user_id AS instagramUserId,c.username AS instagramUsername,c.thread_id AS threadId,c.first_seen_at AS firstSeenAt,c.last_seen_at AS lastSeenAt FROM leads l LEFT JOIN instagram_contacts c ON c.lead_id=l.id WHERE l.id=?`;
+export function getDesktopSetup(){
+  const row=db.prepare(`SELECT value_json AS valueJson,updated_at AS updatedAt FROM desktop_settings WHERE key='desktop.onboarding'`).get();
+  if(!row)return {complete:false,owner:{name:'',email:'',role:'owner'},enterprise:{name:'Aliança Park'},instagram:{handle:'',consent:false,integration:'camofox-local',replyMode:'draft-approval'},updatedAt:null};
+  return {...parseStoredObject(row.valueJson),updatedAt:row.updatedAt};
+}
+export function saveDesktopSetup(input={}){
+  const ownerName=asText(input.ownerName).slice(0,120),ownerEmail=asText(input.ownerEmail).toLowerCase().slice(0,180),enterpriseName=asText(input.enterpriseName,'Aliança Park').slice(0,120),handle=cleanInstagramHandle(input.instagramHandle);
+  if(ownerName.length<2)throw new Error('Informe o nome do responsável inicial.');
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(ownerEmail))throw new Error('Informe um e-mail administrativo válido.');
+  if(handle.length<2)throw new Error('Informe o @ do Instagram do empreendimento.');
+  if(input.instagramConsent!==true)throw new Error('Confirme a autenticação manual da conta do Instagram.');
+  const timestamp=now(),setup={complete:true,owner:{name:ownerName,email:ownerEmail,role:'owner'},enterprise:{name:enterpriseName},instagram:{handle,consent:true,integration:'camofox-local',replyMode:'draft-approval'},configuredAt:timestamp};
+  db.prepare(`INSERT INTO desktop_settings(key,value_json,updated_at) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,updated_at=excluded.updated_at`).run('desktop.onboarding',JSON.stringify(setup),timestamp);
+  audit.run('desktop_settings','desktop.onboarding','onboarding.saved',JSON.stringify({ownerEmail,handle}),timestamp);
+  return {...setup,updatedAt:timestamp};
+}
+export function ingestInstagramDirect(input={}){
+  const externalMessageId=asText(input.messageId||input.id).slice(0,180),instagramUserId=asText(input.senderId||input.instagramUserId).slice(0,180),body=asText(input.body).slice(0,4000),username=cleanInstagramHandle(input.username),name=asText(input.name||input.displayName).slice(0,160),threadId=asText(input.threadId).slice(0,180),direction=asText(input.direction,'inbound')==='outbound'?'outbound':'inbound';
+  if(!externalMessageId||!instagramUserId||!body)throw new Error('Direct inválido: messageId, senderId e body são obrigatórios.');
+  const existing=db.prepare(`SELECT lead_id AS leadId,lead_message_id AS messageId FROM instagram_message_receipts WHERE external_message_id=?`).get(externalMessageId);
+  if(existing)return {deduplicated:true,lead:db.prepare(selectInstagramLead).get(existing.leadId),message:db.prepare(`SELECT id,lead_id AS leadId,direction,channel,body,author,created_at AS createdAt FROM lead_messages WHERE id=?`).get(existing.messageId)};
+  const timestamp=now(),contact=db.prepare(`SELECT lead_id AS leadId FROM instagram_contacts WHERE instagram_user_id=?`).get(instagramUserId);
+  let leadId=contact?.leadId;
+  if(!leadId){
+    leadId=`LEAD-IG-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+    const leadName=name||username||'Novo contato do Instagram';
+    db.prepare(`INSERT INTO leads(id,name,lot,objective,budget,status,phone,email,created_at) VALUES(?,?,?,?,?,?,?,?,?)`).run(leadId,leadName,'','Interesse via Instagram Direct','','Novo','','',timestamp);
+    db.prepare(`INSERT INTO instagram_contacts(instagram_user_id,username,name,lead_id,thread_id,first_seen_at,last_seen_at) VALUES(?,?,?,?,?,?,?)`).run(instagramUserId,username,name,leadId,threadId,timestamp,timestamp);
+  }else{
+    db.prepare(`UPDATE instagram_contacts SET username=?,name=?,thread_id=?,last_seen_at=? WHERE instagram_user_id=?`).run(username,name,threadId,timestamp,instagramUserId);
+  }
+  const message=createLeadMessage({id:`LM-IG-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`,leadId,direction,channel:'instagram-direct',body,author:username?`@${username}`:'Instagram'});
+  db.prepare(`INSERT INTO instagram_message_receipts(external_message_id,instagram_user_id,lead_id,lead_message_id,direction,received_at,raw_json) VALUES(?,?,?,?,?,?,?)`).run(externalMessageId,instagramUserId,leadId,message.id,direction,timestamp,JSON.stringify({threadId,username,name,body}).slice(0,10000));
+  audit.run('instagram_directs',externalMessageId,'ingested',JSON.stringify({leadId,direction,instagramUserId}),timestamp);
+  return {deduplicated:false,lead:db.prepare(selectInstagramLead).get(leadId),message};
+}
+export function getInstagramLeadReport(leadId){
+  const lead=db.prepare(selectInstagramLead).get(asText(leadId));if(!lead)return null;
+  const messages=listLeadMessages(lead.id),inbound=messages.filter(message=>message.direction==='inbound'),outbound=messages.filter(message=>message.direction==='outbound'),last=messages[messages.length-1]||null;
+  return {lead,messages,summary:{channel:'instagram-direct',messageCount:messages.length,inboundCount:inbound.length,outboundCount:outbound.length,lastInteractionAt:last?.createdAt||lead.createdAt,status:lead.status||'Novo',requiresHumanApproval:true}};
+}
+export function listInstagramLeadReports(limit=50){
+  const ids=db.prepare(`SELECT lead_id AS leadId,MAX(received_at) AS lastSeenAt FROM instagram_message_receipts GROUP BY lead_id ORDER BY lastSeenAt DESC LIMIT ?`).all(Math.max(1,Math.min(200,Number(limit)||50)));
+  return ids.map(row=>getInstagramLeadReport(row.leadId)).filter(Boolean);
+}
 export function createCashFlowEntry(input={}){
   const id=asText(input.id)||`CX-${Date.now().toString(36).toUpperCase()}`,timestamp=now(),kind=asText(input.kind,'saida')==='entrada'?'entrada':'saida';
   const amountCents=Math.max(0,Math.round(Number(input.amountCents)||0));
@@ -653,15 +730,15 @@ export function health(){return {ok:true,database:'sqlite',path:dbPath,schemaVer
 
 export function getStageWorkbenchState(stageKey){
   const key=String(stageKey||'').trim().toLowerCase();
-  const row=db.prepare(`SELECT stage_key AS stageKey,layout_json AS layoutJson,links_json AS linksJson,activity_locations_json AS activityLocationsJson,updated_at AS updatedAt FROM stage_workbench_state WHERE stage_key=?`).get(key);
-  return row?{stageKey:key,layout:safeJson(row.layoutJson,{}),links:safeJson(row.linksJson,[]),activityLocations:safeJson(row.activityLocationsJson,{}),updatedAt:row.updatedAt}:{stageKey:key,layout:{},links:[],activityLocations:{},updatedAt:null};
+  const row=db.prepare(`SELECT stage_key AS stageKey,layout_json AS layoutJson,links_json AS linksJson,activity_locations_json AS activityLocationsJson,input_sessions_json AS inputSessionsJson,calendar_date AS calendarDate,updated_at AS updatedAt FROM stage_workbench_state WHERE stage_key=?`).get(key);
+  return row?{stageKey:key,layout:safeJson(row.layoutJson,{}),links:safeJson(row.linksJson,[]),activityLocations:safeJson(row.activityLocationsJson,{}),inputSessions:safeJson(row.inputSessionsJson,[]),calendarDate:row.calendarDate||null,updatedAt:row.updatedAt}:{stageKey:key,layout:{},links:[],activityLocations:{},inputSessions:[],calendarDate:null,updatedAt:null};
 }
 
 export function saveStageWorkbenchState(stageKey,input={}){
   const key=String(stageKey||'').trim().toLowerCase();if(!key)throw Object.assign(new Error('Etapa inválida.'),{statusCode:400});
-  const current=getStageWorkbenchState(key),layout=input.layout&&typeof input.layout==='object'?input.layout:current.layout,links=Array.isArray(input.links)?input.links:current.links,activityLocations=input.activityLocations&&typeof input.activityLocations==='object'?input.activityLocations:current.activityLocations,timestamp=now();
-  db.prepare(`INSERT INTO stage_workbench_state(stage_key,layout_json,links_json,activity_locations_json,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(stage_key) DO UPDATE SET layout_json=excluded.layout_json,links_json=excluded.links_json,activity_locations_json=excluded.activity_locations_json,updated_at=excluded.updated_at`).run(key,JSON.stringify(layout),JSON.stringify(links),JSON.stringify(activityLocations),timestamp);
-  audit.run('stage_workbench',key,'updated',JSON.stringify({layoutNodes:Object.keys(layout).length,links:links.length,locatedActivities:Object.keys(activityLocations).length}),timestamp);
+  const current=getStageWorkbenchState(key),layout=input.layout&&typeof input.layout==='object'?input.layout:current.layout,links=Array.isArray(input.links)?input.links:current.links,activityLocations=input.activityLocations&&typeof input.activityLocations==='object'?input.activityLocations:current.activityLocations,inputSessions=Array.isArray(input.inputSessions)?input.inputSessions:current.inputSessions,calendarDate=typeof input.calendarDate==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(input.calendarDate)?input.calendarDate:current.calendarDate,timestamp=now();
+  db.prepare(`INSERT INTO stage_workbench_state(stage_key,layout_json,links_json,activity_locations_json,input_sessions_json,calendar_date,updated_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(stage_key) DO UPDATE SET layout_json=excluded.layout_json,links_json=excluded.links_json,activity_locations_json=excluded.activity_locations_json,input_sessions_json=excluded.input_sessions_json,calendar_date=excluded.calendar_date,updated_at=excluded.updated_at`).run(key,JSON.stringify(layout),JSON.stringify(links),JSON.stringify(activityLocations),JSON.stringify(inputSessions),calendarDate,timestamp);
+  audit.run('stage_workbench',key,'updated',JSON.stringify({layoutNodes:Object.keys(layout).length,links:links.length,locatedActivities:Object.keys(activityLocations).length,inputSessions:inputSessions.length,calendarDate}),timestamp);
   return getStageWorkbenchState(key);
 }
 

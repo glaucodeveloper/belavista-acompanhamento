@@ -84,6 +84,14 @@ test('dependência bloqueia a atividade mesmo com material disponível',()=>{
   assert.deepEqual(decision.dependency.blockedBy,['agua']);
 });
 
+test('pendência operacional entra na ordem da IA e bloqueia a atividade relacionada',()=>{
+  const plan=buildMaterialPlan({...planningData,inventoryMovements:[{projectId:'alianca',materialName:'Tubo PEAD',unit:'m',kind:'entrada',quantity:10}],pending:[{id:'P-1',activityId:'agua',title:'Liberar licença de travessia',status:'pending'}]},{today:'2026-09-01'});
+  const decision=plan.decisions.find(item=>item.requirement.activityId==='agua');
+  assert.equal(decision.action,'blocked_pending');
+  assert.equal(decision.pending.items[0].title,'Liberar licença de travessia');
+  assert.equal(plan.pendingCount,1);
+});
+
 test('gatilho publica snapshot e notificações por canal no Firebase Realtime Database',async()=>{
   const previousFetch=globalThis.fetch;
   let request=null;

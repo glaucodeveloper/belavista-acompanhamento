@@ -201,15 +201,57 @@ function renderRecordHistory(records, stage, activity) {
   </section>`;
 }
 
+function recordMapContext(state) {
+  const context = state.recordContext && typeof state.recordContext === 'object'
+    ? state.recordContext
+    : null;
+  const ids = Array.isArray(context?.partIds)
+    ? context.partIds
+    : context?.partId
+      ? [context.partId]
+      : [];
+  const labels = Array.isArray(context?.labels)
+    ? context.labels
+    : context?.label
+      ? [context.label]
+      : [];
+  return {
+    context,
+    count: ids.length || labels.length,
+    label: context?.label || labels.join(' · ') || 'Nenhuma área vinculada',
+    ids,
+    labels
+  };
+}
+
+function renderRecordMapPanel(state, selectedStage, selectedActivity) {
+  const map = recordMapContext(state);
+  const selectedText = map.count
+    ? `${map.count} polígono${map.count === 1 ? '' : 's'} vinculado${map.count === 1 ? '' : 's'}`
+    : 'Aguardando marcação';
+  return `<section class="records-drill-map-panel-v5377" aria-labelledby="records-map-title-v5377">
+    <header class="records-drill-panel-head-v5377"><div><span>05 · LOCALIZAÇÃO NO MAPA 3D</span><h2 id="records-map-title-v5377">Onde esta atividade acontece</h2><p>O mapa compartilhado fica ao lado desta área. Pinte lote por lote, trecho por trecho ou estrutura por estrutura para vincular a evidência física.</p></div><b data-record-map-live>${esc(selectedText)}</b></header>
+    <div class="records-drill-map-controls-v5377">
+      <div class="records-drill-map-selection-v5377"><strong data-record-map-selection-count>${map.count || 0}</strong><div><b data-record-map-selection-label>${esc(map.label)}</b><small>Seleção usada no registro de <em>${esc(selectedActivity.name)}</em> · ${esc(selectedStage.stage)}</small></div></div>
+      <div class="records-drill-map-actions-v5377"><button type="button" data-record-drill-paint>${ico('paintbrush')} Pintar no mapa</button><button type="button" data-record-drill-fit>${ico('scan-search')} Enquadrar</button><button type="button" data-record-drill-clear>${ico('eraser')} Limpar seleção</button></div>
+      <p class="records-drill-map-hint-v5377"><span>${ico('mouse-pointer-2')}</span> Segure e arraste sobre a cena para selecionar uma área. A marcação será enviada junto com o apontamento.</p>
+    </div>
+  </section>`;
+}
+
 function renderActivityForm(selectedStage, selectedActivity) {
   const state = appStore.get();
   const stageOwner = liveStage(selectedStage).owner || '';
+  const mapArea = state.recordContext && typeof state.recordContext === 'object'
+    ? JSON.stringify(state.recordContext)
+    : '';
   return `<section class="records-drill-form-panel-v5377" aria-labelledby="records-form-title-v5377">
-    <header class="records-drill-panel-head-v5377"><div><span>04 · NOVO REGISTRO</span><h2 id="records-form-title-v5377">Registrar produção da atividade</h2><p>Informe a medição de campo e o fato observado. Materiais e recibos financeiros são lançados na central de caixa.</p></div><span class="records-drill-form-badge-v5377">${ico('clipboard-pen-line')} atividade</span></header>
+    <header class="records-drill-panel-head-v5377"><div><span>04 · NOVO REGISTRO</span><h2 id="records-form-title-v5377">Registrar produção da atividade</h2><p>Informe a medição de campo e o fato observado. A localização é vinculada no mapa ao lado; materiais e recibos ficam na central de caixa.</p></div><span class="records-drill-form-badge-v5377">${ico('clipboard-pen-line')} atividade</span></header>
     <form class="activity-record-form-v5377" data-activity-record-form>
       <input type="hidden" name="obra" value="Aliança Park">
       <input type="hidden" name="etapa" value="${esc(selectedStage.stage)}">
       <input type="hidden" name="atividade" value="${esc(selectedActivity.name)}">
+      <input type="hidden" name="mapArea" value="${esc(mapArea)}">
       <div class="records-drill-form-context-v5377"><span>ETAPA</span><strong>${esc(selectedStage.stage)}</strong><small>ATIVIDADE · ${esc(selectedActivity.name)}</small></div>
       <label>Data<input required type="date" name="data" value="${today()}"></label>
       <label>Hora<input required type="time" name="hora" value="${timeNow()}"></label>
@@ -231,9 +273,12 @@ function renderRecordsPage(root) {
     ? state.selectedRecordsStageV5377
     : activityRegistry[0].key;
   const selectedStage = stageFromKey(selectedStageKey);
+  const requestedActivity = state.recordsRegistrationRequestedV5377 === true
+    ? selectedStage.activities[0]?.[0]
+    : '';
   const selectedActivityName = selectedStage.activities.some(([name]) => name === state.selectedRecordsActivityV5377)
     ? state.selectedRecordsActivityV5377
-    : '';
+    : requestedActivity;
   const selectedActivity = selectedActivityName
     ? {name: selectedActivityName, unit: selectedStage.activities.find(([name]) => name === selectedActivityName)?.[1] || selectedStage.unit}
     : null;
@@ -248,11 +293,13 @@ function renderRecordsPage(root) {
     <header class="records-drill-head-v5377"><div><span>REGISTROS OPERACIONAIS · DRILL-IN</span><h1>Registros de atividade</h1><p>Explore as etapas em listas, abra a atividade e registre a produção no contexto correto da obra.</p></div><div class="records-drill-head-actions-v5377">${button(`${ico('wallet-cards')} Caixa e materiais`, 'data-view="control"', 'records-drill-cash-button-v5377')}${button(`${ico('plus')} Primeiro apontamento`, 'data-record-new-activity', 'records-drill-new-button-v5377')}</div></header>
     ${renderBreadcrumb(selectedStage, selectedActivity)}
     <section class="records-drill-summary-v5377" aria-label="Resumo dos registros"><article><small>ETAPAS</small><b>${totals.stages}</b><span>frentes navegáveis</span></article><article><small>ATIVIDADES</small><b>${totals.activities}</b><span>unidades de produção</span></article><article><small>HISTÓRICO</small><b>${totals.records}</b><span>registros preservados</span></article><article><small>CONCLUÍDOS</small><b>${totals.completed}</b><span>fatos confirmados</span></article></section>
-    <div class="records-drill-columns-v5377">
-      ${renderStageList(records, selectedStage.key)}
-      ${renderActivityList(records, selectedStage, selectedActivityName)}
+    <div class="records-drill-layout-v5377">
+      <aside class="records-drill-sidebar-v5377">${renderStageList(records, selectedStage.key)}</aside>
+      <main class="records-drill-workspace-v5377">
+        ${renderActivityList(records, selectedStage, selectedActivityName)}
+        ${selectedActivity ? `<div class="records-drill-registration-v5377"><div class="records-drill-registration-main-v5377">${renderActivityForm(selectedStage, selectedActivity)}</div><div class="records-drill-registration-side-v5377">${renderRecordMapPanel(state, selectedStage, selectedActivity)}${renderRecordHistory(records, selectedStage, selectedActivity)}</div></div>` : `<section class="records-drill-empty-detail-v5377"><div>${ico('mouse-pointer-click')}<div><span>PRÓXIMO NÍVEL</span><h2>Selecione uma atividade para registrar</h2><p>Escolha uma linha na lista de atividades. O formulário de produção, o mapa e o histórico aparecerão nesta superfície.</p></div></div></section>`}
+      </main>
     </div>
-    ${selectedActivity ? `<div class="records-drill-detail-v5377">${renderActivityForm(selectedStage, selectedActivity)}${renderRecordHistory(records, selectedStage, selectedActivity)}</div>` : `<section class="records-drill-empty-detail-v5377"><div>${ico('mouse-pointer-click')}<div><span>PRÓXIMO NÍVEL</span><h2>Selecione uma atividade para registrar</h2><p>Escolha uma linha na lista de atividades. O formulário de produção, os detalhes e o histórico aparecerão nesta superfície.</p></div></div></section>`}
     <aside class="records-drill-material-bridge-v5377"><div>${ico('wallet-cards')}<span><b>Materiais ficam junto do caixa</b><small>O caixa é a fonte geral. Abra a central para registrar entrada/saída, material consumido, recibo e assinatura virtual no mesmo lançamento financeiro.</small></span></div>${button('Abrir central de caixa e materiais', 'data-view="control"', 'records-drill-bridge-button-v5377')}</aside>
   </section>`;
 }
@@ -264,22 +311,71 @@ function setRecordStatus(root, text, tone = '') {
   status.dataset.tone = tone;
 }
 
+function bindGlobalRecordsEntryV5377() {
+  if (document.documentElement.dataset.recordsDrillCaptureBound === 'true') return;
+  document.documentElement.dataset.recordsDrillCaptureBound = 'true';
+  document.addEventListener('click', event => {
+    const trigger = event.target.closest?.('[data-records-open-new], [data-record-new-activity], [data-records-drill-activity]');
+    if (!trigger) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const stage = stageFromKey(appStore.get().selectedRecordsStageV5377 || activityRegistry[0].key);
+    const activity = trigger.dataset.recordsDrillActivity || stage.activities[0][0];
+    appStore.set({
+      view: 'records',
+      selectedRecordsStageV5377: stage.key,
+      selectedRecordsActivityV5377: activity,
+      recordsRegistrationRequestedV5377: true,
+      editingRecord: null,
+      recordContext: null,
+      lastAction: `Preparou registro de ${activity}`
+    });
+  }, true);
+}
+
 function bindRecordsDrill(root) {
   root.querySelectorAll('[data-records-drill-stage]').forEach(buttonEl => {
     buttonEl.addEventListener('click', () => appStore.set({
       selectedRecordsStageV5377: buttonEl.dataset.recordsDrillStage,
       selectedRecordsActivityV5377: null,
+      recordsRegistrationRequestedV5377: false,
       lastAction: `Abriu a etapa ${buttonEl.textContent.replace(/\s+/g, ' ').trim()}`
     }));
   });
-  root.querySelector('[data-records-drill-root]')?.addEventListener('click', () => appStore.set({selectedRecordsStageV5377: activityRegistry[0].key, selectedRecordsActivityV5377: null, lastAction: 'Voltou à lista de registros'}));
-  root.querySelector('[data-records-drill-stage-back]')?.addEventListener('click', () => appStore.set({selectedRecordsActivityV5377: null, lastAction: 'Voltou à lista de atividades'}));
+  root.querySelector('[data-records-drill-root]')?.addEventListener('click', () => appStore.set({selectedRecordsStageV5377: activityRegistry[0].key, selectedRecordsActivityV5377: null, recordsRegistrationRequestedV5377: false, lastAction: 'Voltou à lista de registros'}));
+  root.querySelector('[data-records-drill-stage-back]')?.addEventListener('click', () => appStore.set({selectedRecordsActivityV5377: null, recordsRegistrationRequestedV5377: false, lastAction: 'Voltou à lista de atividades'}));
   root.querySelectorAll('[data-records-drill-activity]').forEach(buttonEl => {
-    buttonEl.addEventListener('click', () => appStore.set({selectedRecordsActivityV5377: buttonEl.dataset.recordsDrillActivity, lastAction: `Abriu atividade ${buttonEl.dataset.recordsDrillActivity}`}));
+    buttonEl.addEventListener('click', () => appStore.set({selectedRecordsActivityV5377: buttonEl.dataset.recordsDrillActivity, recordsRegistrationRequestedV5377: true, lastAction: `Abriu atividade ${buttonEl.dataset.recordsDrillActivity}`}));
   });
   root.querySelector('[data-record-new-activity]')?.addEventListener('click', () => {
     const stage = stageFromKey(appStore.get().selectedRecordsStageV5377 || activityRegistry[0].key);
-    appStore.set({selectedRecordsStageV5377: stage.key, selectedRecordsActivityV5377: stage.activities[0][0], lastAction: `Preparou registro de ${stage.activities[0][0]}`});
+    appStore.set({selectedRecordsStageV5377: stage.key, selectedRecordsActivityV5377: stage.activities[0][0], recordsRegistrationRequestedV5377: true, lastAction: `Preparou registro de ${stage.activities[0][0]}`});
+  });
+  const map = document.querySelector('map-scene[data-persistent-map="true"], map-scene');
+  const scrollMapIntoView = () => map?.scrollIntoView?.({behavior: 'smooth', block: 'center'});
+  root.querySelector('[data-record-drill-paint]')?.addEventListener('click', () => {
+    if (!map?.setRecordPaintMode) {
+      setRecordStatus(root, 'Mapa operacional ainda está carregando. Tente novamente em instantes.', 'error');
+      return;
+    }
+    map.setRecordPaintMode(true, area => {
+      appStore.set({recordContext: area, lastAction: `Selecionou ${area.label} para ${area.nature || 'a atividade'}`});
+      setRecordStatus(root, `${area.label} vinculada ao apontamento.`, 'success');
+    });
+    scrollMapIntoView();
+  });
+  root.querySelector('[data-record-drill-fit]')?.addEventListener('click', () => {
+    map?.fitSceneView?.(true);
+    scrollMapIntoView();
+    appStore.set({lastAction: 'Enquadrou o mapa para marcar o registro'});
+  });
+  root.querySelector('[data-record-drill-clear]')?.addEventListener('click', () => {
+    map?.setRecordPaintMode?.(false);
+    if (map) {
+      map.lastRecordMapArea = null;
+      delete map.dataset.recordPaintArea;
+    }
+    appStore.set({recordContext: null, lastAction: 'Limpou a área do novo registro'});
   });
   root.querySelectorAll('[data-view="control"]').forEach(buttonEl => buttonEl.addEventListener('click', () => appStore.set({view: 'control', activityDedicated: false, lastAction: 'Abriu caixa e materiais'})));
   root.querySelector('[data-activity-record-form]')?.addEventListener('submit', async event => {
@@ -337,6 +433,7 @@ const installRecordsActivityDrillInV5377 = () => {
 };
 
 globalThis.installBelavistaRecordsActivityDrillInV5377 = installRecordsActivityDrillInV5377;
+bindGlobalRecordsEntryV5377();
 installRecordsActivityDrillInV5377();
 
 globalThis.__BELAVISTA_RECORDS_ACTIVITY_DRILL_IN_V5377 = {

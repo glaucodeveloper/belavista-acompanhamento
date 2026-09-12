@@ -1,5 +1,7 @@
+import {operationalDetailsFor} from './activity-operational-details.mjs';
+
 const activity=(id,title,unit,materials,release,weight=1)=>({id,title,unit,materials,release,weight});
-const stage=(key,title,aliases,activities)=>({key,title,aliases,activities});
+const stage=(key,title,aliases,activities)=>({key,title,aliases,activities:activities.map(item=>({...item,operational:operationalDetailsFor(item,key)}))});
 
 export const STAGE_WORKBENCH=[
   stage('project','Preparação e projeto',['design-approvals'],[

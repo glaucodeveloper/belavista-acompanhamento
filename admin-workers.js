@@ -3,7 +3,11 @@ import {registerOperationalDevice,subscribeOperationalNotifications,subscribeOpe
 
 const dedicatedWorkbench=/\/admin\/workers\/(stage|activity)\/?$/.test(location.pathname);
 if(dedicatedWorkbench){
-  await import('./stage-workbench.mjs?v=ngrok-route-v1');
+  // A superfície dedicada só deve importar o workbench depois de a sessão
+  // estar pronta. Isso mantém o gate de login leve e evita inicializar
+  // Three.js enquanto o Firebase ainda restaura a sessão.
+  await (globalThis.BELAVISTA_ADMIN_AUTH_READY||Promise.resolve(true));
+  await import('./stage-workbench.mjs?v=stage-input-sessions-v5381');
 }else{
 
 const root=document.querySelector('[data-worker-app]');
@@ -280,8 +284,19 @@ document.querySelectorAll('[data-communication-tab]').forEach(button=>button.add
 qs('[data-contact-search]')?.addEventListener('input',renderContacts);
 qs('[data-enable-push]')?.addEventListener('click',enablePush);
 qs('[data-message-form]')?.addEventListener('submit',async event=>{event.preventDefault();const field=event.currentTarget.elements.message,button=event.currentTarget.querySelector('button'),message=field.value.trim();if(!message||!communications.selected)return;button.disabled=true;try{await sendOperationalMessage(communications.actor,communications.selected,message);field.value='';}catch(error){field.setCustomValidity(error.message);field.reportValidity();setTimeout(()=>field.setCustomValidity(''),1200);}finally{button.disabled=false;}});
-initializeRequirementsCatalog();
-initializeCommunications().catch(error=>{const status=qs('[data-push-status]');if(status)status.textContent=`Canal indisponível: ${error.message}`;});
-refresh();
-if(!location.pathname.endsWith('/stage')&&!location.pathname.endsWith('/stage/'))window.setInterval(refresh,8000);
+// Os módulos ES são avaliados em paralelo com admin-auth.mjs. Não iniciar
+// chamadas protegidas antes de a sessão persistida estar validada: além de
+// evitar o primeiro request com identidade local, isso impede a página de
+// workers de entrar em estado parcialmente renderizado após uma navegação.
+const initializeWorkerSurface=async()=>{
+  await (globalThis.BELAVISTA_ADMIN_AUTH_READY||Promise.resolve(true));
+  initializeRequirementsCatalog();
+  await initializeCommunications().catch(error=>{
+    const status=qs('[data-push-status]');
+    if(status)status.textContent=`Canal indisponível: ${error.message}`;
+  });
+  await refresh();
+  if(!location.pathname.endsWith('/stage')&&!location.pathname.endsWith('/stage/'))window.setInterval(refresh,8000);
+};
+void initializeWorkerSurface();
 }

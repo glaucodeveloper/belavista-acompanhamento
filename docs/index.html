@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Documentação pública do Aliança Park">
+  <title>Documentação · Aliança Park</title>
+  <style>
+    :root{color-scheme:dark;--bg:#07130f;--panel:#10221b;--line:#2c5744;--text:#f1f5ee;--muted:#aab9ae;--accent:#d6a938;--link:#b8e4bc}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% 0,#183b2a 0,transparent 34rem),var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    main{width:min(1080px,calc(100% - 36px));margin:0 auto;padding:58px 0 72px}.brand{display:flex;align-items:center;gap:14px;margin-bottom:52px}.mark{width:42px;height:42px;display:grid;place-items:center;border:1px solid var(--accent);border-radius:12px;color:var(--accent);font-size:22px}.eyebrow{color:var(--accent);font-size:11px;letter-spacing:.18em;text-transform:uppercase}.brand strong{display:block;font:600 20px Georgia,serif}.brand small{color:var(--muted);letter-spacing:.18em;font-size:10px}
+    h1{max-width:720px;margin:0 0 14px;font:500 clamp(38px,7vw,72px)/1.02 Georgia,serif}p.lede{max-width:680px;color:var(--muted);margin:0 0 44px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}.card{display:flex;flex-direction:column;min-height:154px;padding:22px;background:linear-gradient(145deg,rgba(24,53,40,.94),rgba(11,28,21,.94));border:1px solid var(--line);border-radius:14px;transition:border-color .18s,transform .18s}.card:hover{border-color:var(--accent);transform:translateY(-2px)}.card h2{margin:8px 0;font:500 22px Georgia,serif}.card p{margin:0;color:var(--muted);font-size:14px}.card a{margin-top:auto;padding-top:18px;color:var(--link);text-decoration:none;font-weight:600}.card a:hover{text-decoration:underline}.back{display:inline-block;margin-top:42px;color:var(--muted);text-decoration:none}.back:hover{color:var(--text)}footer{margin-top:62px;padding-top:18px;border-top:1px solid rgba(172,207,183,.2);color:var(--muted);font-size:13px}@media(max-width:560px){main{padding-top:32px}.brand{margin-bottom:36px}.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="brand"><div class="mark">◢</div><div><strong>Aliança Park</strong><small>LOTEAMENTO · DOCUMENTAÇÃO</small></div></div>
+    <span class="eyebrow">Base pública de conhecimento</span>
+    <h1>Documentação operacional</h1>
+    <p class="lede">Referências de arquitetura, planejamento, dimensionamento e operação do sistema Aliança Park. Os documentos são publicados para consulta e a execução continua condicionada às autorizações e confirmações responsáveis.</p>
+    <section class="grid" aria-label="Documentos">
+      <article class="card"><span class="eyebrow">Arquitetura</span><h2>Arquitetura Cloudflare e NVIDIA</h2><p>Visão das integrações e limites do atendimento inteligente.</p><a href="./CLOUDFLARE-NVIDIA-ARCHITECTURE.md">Abrir documento →</a></article>
+      <article class="card"><span class="eyebrow">Agente</span><h2>Arquitetura operacional do agente</h2><p>Relações, entradas, saídas e trabalhadores do sistema.</p><a href="./agent-operational-architecture.md">Abrir documento →</a></article>
+      <article class="card"><span class="eyebrow">Construção</span><h2>Playbook de construção assistida</h2><p>Diretrizes para etapas, materiais, equipe e agenda.</p><a href="./ai-construction-operational-playbook.md">Abrir documento →</a></article>
+      <article class="card"><span class="eyebrow">Autonomia</span><h2>Estudo de gatilhos do caixa</h2><p>Como o caixa orienta prioridades, alertas e propagação.</p><a href="./autonomy-cash-trigger-study.md">Abrir documento →</a></article>
+      <article class="card"><span class="eyebrow">Manual técnico</span><h2>Planejamento de construção</h2><p>Critérios técnicos e sequência de execução do loteamento.</p><a href="./construction-planning-technical-manual.md">Abrir documento →</a></article>
+      <article class="card"><span class="eyebrow">Início</span><h2>Planejamento inicial</h2><p>Premissas e organização das frentes de trabalho.</p><a href="./initial-construction-planning.md">Abrir documento →</a></article>
+      <article class="card"><span class="eyebrow">Operação</span><h2>Manual do planejamento inteligente</h2><p>Orientações de uso do painel e dos registros.</p><a href="/assets/docs/manual-usuario-planejamento-inteligente.html">Abrir manual →</a></article>
+      <article class="card"><span class="eyebrow">DWG</span><h2>Compreensão operacional</h2><p>Leitura do mapa, atividades e referências geográficas.</p><a href="./rfc-compreensao-operacional-dwg.md">Abrir especificação →</a></article>
+      <article class="card"><span class="eyebrow">DWG</span><h2>Dimensionamento físico</h2><p>Áreas, volumes, produção e composição de recursos.</p><a href="/assets/docs/rfc-dimensionamento-fisico-dwg.html">Abrir especificação →</a></article>
+    </section>
+    <a class="back" href="/leads">← Ir para a página pública de lotes</a>
+    <footer>Aliança Park · Documentação pública de referência · Acesso somente para consulta</footer>
+  </main>
+</body>
+</html>

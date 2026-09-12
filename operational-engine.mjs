@@ -208,6 +208,10 @@ function resolveExecutionStages(stageProfiles={}){
 
 function buildStagePlanningContext(stage, live, readiness, computed){
   const profile=stageProfile(stage);
+  const sourceMaterials=Array.isArray(profile.materialsTable)&&profile.materialsTable.length
+    ? profile.materialsTable
+    : (Array.isArray(profile.materials)&&profile.materials.length?profile.materials:(Array.isArray(stage.materials)?stage.materials:[]));
+  const configuredMaterials=sourceMaterials.map((item,index)=>typeof item==='string'?{id:`material-${index+1}`,name:item,description:'Material base da etapa',quantity:'',unit:'un',status:'Planejado'}:item);
   return {
     stageKey:stage.key,
     stageName:stage.name,
@@ -223,14 +227,14 @@ function buildStagePlanningContext(stage, live, readiness, computed){
     requestHints:Array.isArray(profile.requestHints)?profile.requestHints.map(item=>text(item,240)).filter(Boolean).slice(0,8):[],
     evidenceFocus:Array.isArray(profile.evidenceFocus)?profile.evidenceFocus.map(item=>text(item,180)).filter(Boolean).slice(0,8):[],
     procurementFocus:Array.isArray(profile.procurementFocus)?profile.procurementFocus.map(item=>text(item,180)).filter(Boolean).slice(0,8):[],
-    materialsTable:Array.isArray(profile.materialsTable)?profile.materialsTable.map(item=>({
+    materialsTable:configuredMaterials.map(item=>({
       id:text(item?.id,80),
       name:text(item?.name,180),
       description:text(item?.description,280),
       quantity:text(item?.quantity,80),
       unit:text(item?.unit,40),
       status:text(item?.status,80)
-    })).filter(item=>item.name||item.description||item.quantity).slice(0,24):[],
+    })).filter(item=>item.name||item.description||item.quantity).slice(0,24),
     notificationTargets:profile.notificationTargets&&typeof profile.notificationTargets==='object'?structuredClone(profile.notificationTargets):{}
   };
 }
@@ -516,7 +520,7 @@ function plannedActivitiesForStage(stage, automation, live){
 
 function saveJobRun(name, payload, periodKey=today()){
   const id=`JOB-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
-  db.prepare(`INSERT INTO job_runs(id,job_name,period_key,status,fingerprint,result_json,started_at,finished_at) VALUES(?,?,?,?,?,?,?,?)`).run(id,name,periodKey,'ok',`${name}:${periodKey}:${Date.now()}`,JSON.stringify(payload),now(),now());
+  db.prepare(`INSERT INTO job_runs(id,job_name,period_key,status,fingerprint,result_json,started_at,finished_at) VALUES(?,?,?,?,?,?,?,?)`).run(id,name,periodKey,'ok',`${name}:${periodKey}:${Date.now()}:${Math.random().toString(36).slice(2,8)}`,JSON.stringify(payload),now(),now());
   return id;
 }
 
@@ -796,6 +800,63 @@ function enqueueNotification({role,type,severity,title,message,entity='',entityI
   db.prepare(`INSERT INTO notification_outbox(id,notification_id,status,attempts,next_attempt_at,created_at) VALUES(?,?,'pending',0,?,?)`).run(outboxId,id,timestamp,timestamp);
   return id;
 }
+
+const normalizeConditionValue=value=>normalizeKeyword(value).replace(/\s+/g,' ').trim();
+const conditionPayload=event=>{try{return JSON.parse(event?.payload_json||'{}');}catch{return {};}};
+const eventStatusText=(event,payload)=>normalizeConditionValue(`${event?.event_type||''} ${event?.source||''} ${payload?.status||''} ${payload?.conditionStatus||''} ${payload?.condition_status||''} ${payload?.notes||''} ${payload?.observations||''} ${payload?.message||''} ${payload?.description||''} ${payload?.missing||''} ${payload?.reason||''} ${payload?.condition||''} ${payload?.details||''}`);
+function linkedConditionEvents(stageKey,activityId,sessionId){
+  const rows=db.prepare(`SELECT id,event_type,entity,entity_id,source,payload_json,created_at FROM agent_events WHERE (entity_id IN (?,?) OR entity='workbench_diary') AND created_at>=? ORDER BY created_at DESC LIMIT 400`).all(text(activityId),text(sessionId),new Date(Date.now()-1000*60*60*24*45).toISOString());
+  return rows.filter(event=>{if(event.entity!=='workbench_diary')return true;const payload=conditionPayload(event);return String(payload.activityId||payload.activity_id||'')===String(activityId);});
+}
+function conditionMatches(condition,{events=[],diaryRows=[]}={}){
+  const kind=normalizeConditionValue(condition?.kind),notifyWhen=normalizeConditionValue(condition?.notifyWhen);
+  if(notifyWhen==='production-below-reference'||kind==='rendimento'){
+    const threshold=Number(condition?.metric?.value);
+    const unit=normalizeConditionValue(String(condition?.metric?.unit||'').split('/')[0]);
+    const diaryMatch=diaryRows.find(row=>{const value=Number(row.production);const rowUnit=normalizeConditionValue(row.unit);const compatible=!unit||!rowUnit||rowUnit===unit||rowUnit.includes(unit)||unit.includes(rowUnit);return Number.isFinite(value)&&threshold>0&&compatible&&(value<threshold||normalizeConditionValue(row.status).includes('bloque'))&&new Date(row.createdAt||row.created_at||0).getTime()>=Date.now()-1000*60*60*24*45;});
+    if(diaryMatch)return {sourceId:diaryMatch.id,sourceText:`${diaryMatch.production} ${diaryMatch.unit||unit} · ${diaryMatch.status||'registrado'}`};
+    const eventMatch=events.find(event=>{const payload=conditionPayload(event),value=Number(payload.production??payload.quantity??payload.producedQuantity),eventUnit=normalizeConditionValue(String(payload.unit||'').split('/')[0]),compatible=!unit||!eventUnit||eventUnit===unit||eventUnit.includes(unit)||unit.includes(eventUnit),status=normalizeConditionValue(payload.status||payload.conditionStatus||'');return Number.isFinite(value)&&threshold>0&&compatible&&(value<threshold||status.includes('bloque'));});
+    return eventMatch?{sourceId:eventMatch.id,sourceText:eventStatusText(eventMatch,conditionPayload(eventMatch))}:{sourceId:'',sourceText:''};
+  }
+  const watchTerms=(Array.isArray(condition?.watchTerms)?condition.watchTerms:[]).map(normalizeConditionValue).filter(Boolean),negativeTerms=(Array.isArray(condition?.negativeTerms)?condition.negativeTerms:[]).map(normalizeConditionValue).filter(Boolean),blockedTerms=['bloqueado','impedido','pendente','aguardando','recusado','atraso','atrasado','falta','faltando','sem'];
+  const match=events.find(event=>{const payload=conditionPayload(event),haystack=eventStatusText(event,payload),explicitBlocked=blockedTerms.some(term=>haystack.includes(term))||['blocked','bloqueado','impedido'].includes(normalizeConditionValue(payload.conditionStatus||payload.status));const watchHit=!watchTerms.length||watchTerms.some(term=>haystack.includes(term));const negativeHit=!negativeTerms.length||negativeTerms.some(term=>haystack.includes(term));return explicitBlocked&&watchHit&&(negativeHit||!watchTerms.length);});
+  return match?{sourceId:match.id,sourceText:eventStatusText(match,conditionPayload(match))}:{sourceId:'',sourceText:''};
+}
+
+export function evaluateActivityConditionNotifications({referenceDate=today(),dryRun=false}={}){
+  const rows=db.prepare(`SELECT stage_key AS stageKey,input_sessions_json AS inputSessionsJson FROM stage_workbench_state WHERE input_sessions_json IS NOT NULL AND input_sessions_json<>'[]'`).all();
+  let sessionsChecked=0,conditionsChecked=0,matches=0,queued=0;
+  const notifications=[];
+  for(const row of rows){
+    const sessions=json(row.inputSessionsJson);
+    if(!Array.isArray(sessions))continue;
+    for(const session of sessions){
+      sessionsChecked++;
+      const activityId=text(session?.activityId||session?.id),conditions=Array.isArray(session?.inference?.conditions)&&session.inference.conditions.length?session.inference.conditions:[];
+      if(!activityId||!conditions.length||session?.automation?.notifyWorker===false)continue;
+      const events=linkedConditionEvents(row.stageKey,activityId,session.id),diaryRows=db.prepare(`SELECT id,production,unit,status,notes,created_at AS createdAt FROM workbench_diary WHERE stage_key=? AND activity_id=? AND created_at>=? ORDER BY created_at DESC LIMIT 100`).all(row.stageKey,activityId,new Date(Date.now()-1000*60*60*24*45).toISOString());
+      for(const condition of conditions){
+        conditionsChecked++;
+        const match=conditionMatches(condition,{events,diaryRows});
+        if(!match.sourceId)continue;
+        matches++;
+        const roles=Array.isArray(condition.notifyRoles)&&condition.notifyRoles.length?condition.notifyRoles:['owner'],label=text(condition.label||condition.kind||'Condição operacional'),message=text(condition.message||condition.trigger||'Condição operacional identificada; revisar a frente e o cronograma.');
+        for(const role of roles){
+          const notification={role:text(role)||'owner',type:`activity.condition.${text(condition.kind||'operational')||'operational'}`,severity:text(condition.severity||'warning')||'warning',title:`${text(session.title||'Atividade')}: ${label}`,message:`${message} Registro: ${match.sourceText||'condição confirmada'}.`,entity:'activity_condition',entityId:activityId,actionUrl:`/admin/workers/activity?stage=${encodeURIComponent(row.stageKey)}&activity=${encodeURIComponent(activityId)}`,fingerprint:`activity-condition:${row.stageKey}:${activityId}:${text(condition.id||label)}:${match.sourceId}:${notificationRoleKey(role)}`};
+          notifications.push(notification);
+          if(!dryRun){
+            const alreadyQueued=db.prepare(`SELECT id FROM operational_notifications WHERE fingerprint=?`).get(notification.fingerprint);
+            if(!alreadyQueued){const id=enqueueNotification(notification);if(id)queued++;}
+          }
+        }
+      }
+    }
+  }
+  const jobId=dryRun?null:saveJobRun('activity-condition-notifications',{referenceDate,sessionsChecked,conditionsChecked,matches,queued});
+  return {jobId,referenceDate,dryRun,sessionsChecked,conditionsChecked,matches,queued,notifications};
+}
+
+function notificationRoleKey(role){return text(role||'owner').replace(/[^a-z0-9_-]/gi,'-').toLowerCase()||'owner';}
 
 export function recalculateOperationalState(reason='manual'){
   const calibration=getCalibration(),config=calibration.config,cash=cashSummary(),available=Math.max(0,cash.balanceCents-Number(config.reserveCents||0));

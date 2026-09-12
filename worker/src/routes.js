@@ -430,7 +430,7 @@ export async function routeRequest(request,env,ctx){
 
   if(pathname==='/api/material-planning/run'&&request.method==='POST'){
     const payload=await body(request);
-    const result=await runPlanningCycle(env,{trigger:payload.trigger||'api',horizonDays:payload.horizonDays||45,dryRun:Boolean(payload.dryRun)});
+    const result=await runPlanningCycle(env,{trigger:payload.trigger||'api',horizonDays:payload.horizonDays||45,dryRun:Boolean(payload.dryRun),pending:payload.pending||[],blockers:payload.blockers||[],raidItems:payload.raidItems||[]});
     return json(result,payload.dryRun?200:201);
   }
 

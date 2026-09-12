@@ -9,6 +9,18 @@ const SELECTOR='map-scene[data-public-presentation],map-scene[data-public-map]';
 const LOADER_SHARE=80;
 const clamp=(v,min=0,max=100)=>Math.max(min,Math.min(max,Number(v)||0));
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const PHRASE_INTERVAL_MS=2600;
+const LOADING_PHRASES={
+  boot:['Abrindo os caminhos do Aliança Park.','Seu lugar em Amargosa começa a ganhar forma.'],
+  runtime:['Cuidando dos primeiros detalhes.','Trazendo a paisagem para perto.'],
+  transfer:['Apresentando cada espaço.','Desenhando caminhos, lotes e possibilidades.','Preparando uma vista para chamar de sua.'],
+  satellite:['Situando você na paisagem de Amargosa.','Conectando o loteamento ao seu entorno.'],
+  vegetation:['Deixando a natureza fazer parte da visita.','Áreas verdes ganhando vida.'],
+  'road-texture':['Finalizando os caminhos do empreendimento.','Quase tudo pronto para você explorar.'],
+  processing:['Organizando os últimos detalhes da visita.','Um novo capítulo está quase pronto para começar.'],
+  ready:['Sua visita está pronta.','Bem-vindo ao Aliança Park.'],
+  error:['Abrindo uma experiência mais leve.']
+};
 
 function markup(){
   const el=document.createElement('div');
@@ -32,7 +44,7 @@ function markup(){
           <span class="public-model-loading__eyebrow">UM NOVO JEITO DE VIVER BEM</span>
           <h1>Seu lugar para<br><em>crescer e florescer.</em></h1>
           <p class="public-model-loading__lead">Natureza, tranquilidade e espaço para construir novos capítulos em Amargosa.</p>
-          <p class="public-model-loading__phase" data-loader-phase>Preparando sua visita ao empreendimento.</p>
+          <p class="public-model-loading__phase" data-loader-phase aria-live="polite" aria-atomic="true"><span data-loader-phase-current>Preparando sua visita ao empreendimento.</span></p>
         </div>
         <figure class="public-model-loading__portrait" aria-hidden="true">
           <img src="./assets/public/alianca-park-masterplan-static-v534.webp" alt="">
@@ -54,6 +66,27 @@ function markup(){
       </footer>
     </div>`;
   return el;
+}
+
+function rollingPhrase(state,elapsed){
+  const phrases=LOADING_PHRASES[state]||LOADING_PHRASES.processing;
+  return phrases[Math.floor(elapsed/PHRASE_INTERVAL_MS)%phrases.length];
+}
+
+function setRollingPhrase(container,text){
+  const current=container?.querySelector?.('[data-loader-phase-current]');
+  if(!container || current?.textContent===text)return;
+  const next=document.createElement('span');
+  next.dataset.loaderPhaseCurrent='';
+  next.className='is-entering';
+  next.textContent=text;
+  if(current){
+    delete current.dataset.loaderPhaseCurrent;
+    current.classList.add('is-leaving');
+  }
+  container.appendChild(next);
+  requestAnimationFrame(()=>next.classList.remove('is-entering'));
+  if(current)setTimeout(()=>current.remove(),440);
 }
 
 function isModelReady(map){
@@ -121,8 +154,11 @@ function isVegetationReady(map){
 
 function isRoadTextureReady(map){
   if(!map?.hasAttribute?.('data-public-presentation')) return true;
-  // "fallback" continua a liberar a página se o CDN/local asset falhar,
-  // mas a tela contabiliza a tentativa de importar a textura antes disso.
+  // No modo público, a foto aérea canônica já é a própria superfície da rua.
+  // Nesse caso a textura de paralelepípedo é desativada de propósito e não
+  // pode bloquear o spinner final em 93%.
+  // "fallback" continua a liberar a página se o asset opcional falhar.
+  if(map?.dataset?.publicRoadTextureRequired==='false')return true;
   return ['ready','fallback'].includes(map?.dataset?.publicRoadTexture||'');
 }
 
@@ -283,7 +319,7 @@ async function attach(){
     loader.style.setProperty('--model-loading-progress',`${shown.toFixed(2)}%`);
     barEl.style.width=`${shown.toFixed(2)}%`;
     pctEl.textContent=info.state==='error'?'—':`${Math.round(shown)}%`;
-    phaseEl.textContent=info.label;
+    setRollingPhrase(phaseEl,rollingPhrase(info.state,elapsed));
     detailEl.textContent=info.detail;
     loader.dataset.phase=info.state;
 

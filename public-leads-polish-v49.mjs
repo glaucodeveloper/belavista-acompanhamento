@@ -81,22 +81,33 @@ function grassMaterial(map,material,name,index){
 }
 
 function roadMaterial(map,material){
-  const THREE=map.THREE;
   const fn=mat=>{
-    let clone=map.makeSiteSurfaceMaterial?.(THREE,mat,'cobble')||mat?.clone?.()||mat;
+    let clone=mat?.clone?.()||mat;
     if(!clone)return clone;
     clone.color?.setHex?.(PDF_PALETTE.road);
-    if('roughness' in clone)clone.roughness=.965;
+    if('map' in clone)clone.map=null;
+    if('roughness' in clone)clone.roughness=.98;
     if('metalness' in clone)clone.metalness=0;
     clone.transparent=false;clone.opacity=1;clone.depthWrite=true;clone.needsUpdate=true;
-    clone.userData={...(clone.userData||{}),belavistaSurface:'pdf-road-v49'};
+    clone.userData={...(clone.userData||{}),belavistaSurface:'satellite-road-disabled-v49'};
     return clone;
   };
   return eachMaterial(material,fn);
 }
 
 function tunePublicMaterials(map){
-  if(!map?.THREE||!map.modelReady||!map.masterplanModel||map.dataset.publicMaterialsV49==='true')return false;
+  if(!map?.THREE||!map.modelReady||!map.masterplanModel)return false;
+  const publicSatellite=map.dataset.publicRoadPolicy==='satellite-only'||map.matches?.('map-scene[data-public-presentation],map-scene[data-public-map]');
+  if(publicSatellite){
+    map.disablePublicCobbleTexture?.();
+    map.disablePublicSyntheticRoads?.();
+    map.dataset.publicPalette='white-lot-outlines + satellite-ground-only';
+    map.dataset.publicRoadTexture='disabled · satellite image is the road surface';
+    map.dataset.publicRoadTextureSource='none · synthetic cobble removed';
+    map.dataset.publicMaterialsV49='preserved-public-presentation-satellite-only';
+    return true;
+  }
+  if(map.dataset.publicMaterialsV49==='true')return false;
   map.dataset.publicMaterialsV49='true';
   const lots=map.modelParts?.lots||[];
   lots.forEach((node,index)=>{

@@ -1,10 +1,13 @@
 {
   "name": "Aliança Park · Administrativo",
   "short_name": "Aliança Park Admin",
+  "id": "./admin?twa=admin",
   "description": "TWA administrativo do Aliança Park para administradores e encarregados.",
   "start_url": "./admin?twa=admin",
   "scope": "./",
+  "lang": "pt-BR",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#161616",
   "theme_color": "#0f62fe",
   "orientation": "portrait-primary",

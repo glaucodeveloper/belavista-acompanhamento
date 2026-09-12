@@ -27,5 +27,5 @@ test('estilo troca spinner Android por emblema e formas organicas',()=>{
 
 test('pagina publica usa cachebuster da nova abertura',()=>{
   const html=read('public-leads.html');
-  assert.equal((html.match(/alianca-marketing-v5\.5\.1-logo-alpha/g)||[]).length,2);
+  assert.ok((html.match(/logo-transparent-v551/g)||[]).length>=5);
 });

@@ -21,6 +21,8 @@ function purchaseDate(requirement){
 function activityDecision(action){
   if(action==='activity_ready')return 'ready';
   if(action==='blocked_dependency')return 'blocked_dependency';
+  if(action==='blocked_pending')return 'blocked_pending';
+  if(action==='blocked_pending')return 'blocked_pending';
   if(action==='blocked_cash')return 'blocked_cash';
   if(action==='purchase_partial')return 'partial_material_coverage';
   return 'awaiting_purchase_approval';
@@ -28,7 +30,7 @@ function activityDecision(action){
 
 function severity(action){
   if(action==='blocked_cash')return 'critical';
-  if(action==='purchase_partial'||action==='blocked_dependency')return 'warning';
+  if(action==='purchase_partial'||action==='blocked_dependency'||action==='blocked_pending')return 'warning';
   return 'info';
 }
 
@@ -52,12 +54,16 @@ function publicDecision(item){
     missingCostCents:item.missingCostCents,
     allocatedCents:item.allocatedCents,
     blockedBy:item.dependency?.blockedBy||[],
+    pending:item.pending?.items||[],
     message:decisionMessage(item)
   };
 }
 
-export async function runPlanningCycle(env,{trigger='manual',horizonDays=45,dryRun=false}={}){
+export async function runPlanningCycle(env,{trigger='manual',horizonDays=45,dryRun=false,pending=[],blockers=[],raidItems=[]}={}){
   const state=await getPlanningState(env);
+  state.pending=pending;
+  state.blockers=blockers;
+  state.raidItems=raidItems;
   const computed=buildMaterialPlan(state,{horizonDays});
   const explanation=await explainMaterialPlan(env,computed);
   const plan={...computed,decisions:computed.decisions.map(publicDecision)};

@@ -4,10 +4,12 @@ import {STAGE_WORKBENCH,findWorkbenchStage,findWorkbenchActivity} from './stage-
 // BELAVISTA_MAP_DRAG_INVERTED_V49
 import {apiFetch, apiUrl} from './api-client.mjs';
 import {subscribePublicLeads,registerOperationalDevice,subscribeOperationalNotifications,publishOperationalRealtime,publishOperationalEvent,subscribeOperationalControlCenter} from './firebase.mjs?v=public-runtime-v47';
-import './public-lead-form.mjs?v=assistant-typewriter-v553';
+import './public-lead-form.mjs?v=public-post-map-story-v5416';
+import './reservation-flow.mjs?v=reservation-validation-v1';
 
 const ico = (name, cls='') => `<i data-lucide="${name}" class="${cls}"></i>`;
 const esc = (s='') => String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const CHAT_VOICE_STORAGE_KEY_V1='belavista.ai-chat.voice-enabled.v1';
 // Mantém as rotas navegáveis quando o app está atrás do multiplexador do
 // ngrok, que exige o prefixo do upstream (por exemplo, /8080/admin).
 const runtimeRouteV1=(path,query='')=>{
@@ -197,7 +199,7 @@ const syncCompactMapMirrors=()=>{
 // Keep zoom and tilt as transforms of the shared Three.js scene. The map tile
 // surface and GLB therefore gain range together without ever rasterizing the
 // model or changing the surrounding DOM layout.
-const DEFAULT_SCENE_ZOOM=1.12, INITIAL_SCENE_ZOOM=1.68, MAX_SCENE_ZOOM=10, MIN_SCENE_TILT=8, MAX_SCENE_TILT=48, SCENE_TILT_ADJUST_LIMIT=34, TILT_DRAG_SENSITIVITY=.18, ZOOM_DRAG_SENSITIVITY=.012, DEFAULT_TILT_BOOST=52, DASHBOARD_TILT_BOOST=22, SCENE_SURFACE_SCALE=2.7, MODEL_FIT_RATIO=1.32, MODEL_PUBLIC_FIT_RATIO=1.10, MODEL_VERTICAL_EXAGGERATION=1.33335, SCENE_MAP_Z=0, SCENE_MODEL_BASE_Z=0, SCENE_VIEWPORT_COVERAGE=2.5, SCENE_PAN_SAFETY=1.18, MAP_TILE_OVERSCAN=1, MAP_RASTER_MAX=1536, MAP_SCENE_STATE_VERSION=5, STAGE_FILTER_TRANSITION_MS=520;
+const DEFAULT_SCENE_ZOOM=1.12, INITIAL_SCENE_ZOOM=1.68, MAX_SCENE_ZOOM=10, MIN_SCENE_TILT=8, MAX_SCENE_TILT=48, SCENE_TILT_ADJUST_LIMIT=34, TILT_DRAG_SENSITIVITY=.18, ZOOM_DRAG_SENSITIVITY=.012, DEFAULT_TILT_BOOST=52, DASHBOARD_TILT_BOOST=22, SCENE_SURFACE_SCALE=2.7, PUBLIC_SATELLITE_VERTICAL_COVERAGE=1.42, MODEL_FIT_RATIO=1.32, MODEL_PUBLIC_FIT_RATIO=1.10, MODEL_VERTICAL_EXAGGERATION=1.33335, SCENE_MAP_Z=0, SCENE_MODEL_BASE_Z=0, SCENE_VIEWPORT_COVERAGE=2.5, SCENE_PAN_SAFETY=1.18, SCENE_PUBLIC_PAN_SAFETY=1.020, MAP_TILE_OVERSCAN=1, MAP_RASTER_MAX=1536, MAP_SCENE_STATE_VERSION=6, STAGE_FILTER_TRANSITION_MS=520;
 const MAP_CAMERA_VIEW='map';
 const DWG_GEOREFERENCE_URL=runtimeRouteV1('/assets/data/dwg-georeference.json','v=dwg-georef-v1');
 // Janela solar calculada a partir do centro geográfico oficial do DWG. O
@@ -251,6 +253,51 @@ const CHAT_HISTORY_STORAGE_KEY='belavista.ai-chat.history.v1';
 const CHAT_HISTORY_LIMIT=48;
 const readChatHistory=()=>{try{const value=JSON.parse(localStorage.getItem(CHAT_HISTORY_STORAGE_KEY)||'[]');return Array.isArray(value)?value.filter(item=>item&&typeof item.text==='string').slice(-CHAT_HISTORY_LIMIT):[];}catch{return[];}};
 const writeChatHistory=history=>{try{localStorage.setItem(CHAT_HISTORY_STORAGE_KEY,JSON.stringify(history.slice(-CHAT_HISTORY_LIMIT)));}catch{}};
+// Raster satelital tratado a partir do mosaico real centrado pelo DWG. Ele
+// preserva ruas, vegetação e construções observadas; não é uma cartografia
+// gerada nem deve ser substituído pela antiga placa aérea sintética.
+const GENERATED_AERIAL_ASSET='/assets/public/dwg-satellite-treated-v5411.png';
+const GENERATED_AERIAL_VERSION='dwg-satellite-treated-v5411';
+// O raster foi capturado em 9×9 tiles no z18, a partir do mesmo centro GPS
+// usado pelo DWG. Esses índices permitem projetá-lo no canvas pelos limites
+// dos tiles, em vez de apenas centralizar uma imagem e perder o alinhamento
+// das ruas de guia.
+const DWG_SATELLITE_MOSAIC_ZOOM=18;
+const DWG_SATELLITE_MOSAIC_TILE_SIZE=256;
+const DWG_SATELLITE_MOSAIC_TILE_X0=102215;
+const DWG_SATELLITE_MOSAIC_TILE_Y0=140616;
+const DWG_SATELLITE_MOSAIC_TILES=9;
+// Correção horizontal extraída da matriz afim do DWG, em vez de um giro
+// arbitrário. Ela acompanha o frame do GLB antes da perspectiva da câmera.
+const DWG_PLAN_HEADING_RAD=Math.atan2(.000266519504,.974619493957);
+const DWG_PLAN_HEADING_DEG=DWG_PLAN_HEADING_RAD*180/Math.PI;
+// A saída da rua superior é a referência norte da apresentação pública. O
+// GLB exportado está invertido no eixo X em relação a essa leitura; por isso
+// a transformação pública aplica primeiro um giro anti-horário de 90° no
+// plano horizontal e depois o espelhamento horizontal. A imagem de satélite
+// permanece sem transformação: somente a implantação 3D é reorientada.
+
+const PUBLIC_MODEL_NORTH_ROTATION_DEG=-90;
+const PUBLIC_MODEL_NORTH_ROTATION_RAD=
+  PUBLIC_MODEL_NORTH_ROTATION_DEG*Math.PI/180;
+
+const PUBLIC_MODEL_HORIZONTAL_FLIP=-1;
+// Calibração visual dos dois marcos indicados na fotografia: a direção da
+// rua de entrada recebe um giro fino após a orientação-base do DWG e, em
+// seguida, o conjunto é deslocado até o entroncamento superior real.
+// Correção visual final: o alinhamento anterior de +90° deixou a saída da
+// implantação no sentido oposto ao acesso visível no mosaico. Invertemos
+// somente o plano do loteamento em 180° em relação à calibração anterior;
+// a fotografia de satélite permanece canônica e sem rotação.
+const PUBLIC_MODEL_GUIDE_ROTATION_DEG=-90;
+const PUBLIC_MODEL_GUIDE_ROTATION_RAD=PUBLIC_MODEL_GUIDE_ROTATION_DEG*Math.PI/180;
+// Translação visual do marco de acesso: leva a saída superior do modelo ao
+// entroncamento indicado na rodovia do mosaico, sem mover ou recortar o raster.
+// O delta visual anterior (+240, -190) foi aplicado no referencial de tela,
+// mas esta matriz opera no plano afim já girado. Invertemos esse delta no
+// espaço do mapa para deslocar a entrada para nordeste, como indicado.
+const PUBLIC_MODEL_ALIGNMENT_OFFSET_WORLD_X=-75;
+const PUBLIC_MODEL_ALIGNMENT_OFFSET_WORLD_Z=-775;
 const mapTileSources={
   satellite:[
     {id:'satellite',url:(z,x,y)=>`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`},
@@ -259,6 +306,9 @@ const mapTileSources={
   osm:[
     {id:'osm',url:(z,x,y)=>`https://tile.openstreetmap.org/${z}/${x}/${y}.png`},
     {id:'osm-de',url:(z,x,y)=>`https://tile.openstreetmap.de/${z}/${x}/${y}.png`}
+  ],
+  generated:[
+    {id:'dwg-satellite-treated-v5411',url:()=>runtimeRouteV1(GENERATED_AERIAL_ASSET,'v='+GENERATED_AERIAL_VERSION)}
   ]
 };
 // O GLB principal nunca é convertido em imagem. Os mapas compactos usam a
@@ -349,10 +399,10 @@ export class AppSidebar extends HTMLElement {
   connectedCallback(){ this.render(); appStore.subscribe(()=>{if(!this._dedicated)this.render();}); }
   render(){
     const state=appStore.get(),view=state.view,actor=state.currentActor||{name:'Warley',label:'Dono'};
-    const items=[['map','map','Dashboard inicial'],['control','table-properties','Central operacional'],['stages','workflow','Etapas e Cronograma'],['records','clipboard-pen-line','Diário'],['personnel','users-round','Pessoal'],['leads','users','Leads'],['finance','wallet-cards','Financeiro'],['reports','chart-no-axes-combined','Relatórios'],['settings','settings','Configurações']];
+    const items=[['assistant','house','Dashboard inicial'],['control','table-properties','Central operacional'],['stages','workflow','Etapas e Cronograma'],['records','clipboard-pen-line','Diário'],['personnel','users-round','Encarregados'],['leads','users','Leads'],['brokers','badge-dollar-sign','Comissões'],['finance','wallet-cards','Financeiro'],['reports','chart-no-axes-combined','Relatórios'],['settings','settings','Configurações']];
     const extensionViews=['agenda','activities','progress','pert','actions','raci','raid'];
     const reportFamilies=[...new Set(reportCatalog.map(report=>report.family))];
-    const reportIcons={Financeiro:'wallet-cards',Construção:'hard-hat',Suprimentos:'package-check',Comercial:'funnel',Governança:'shield-check'};
+    const reportIcons={Financeiro:'wallet-cards',Construção:'hard-hat',Suprimentos:'package-check',Comercial:'filter',Governança:'shield-check'};
     const nav=items.map(([id,icon,label])=>{
       const active=id==='stages' ? (view==='stages'||extensionViews.includes(view)) : view===id;
       const button=`<button class="nav-item ${active?'active':''}" data-view="${id}">${ico(icon)}<span>${label}</span></button>`;
@@ -373,7 +423,7 @@ export class AppSidebar extends HTMLElement {
     this.querySelector('#sidebarToggle')?.addEventListener('click',()=>appStore.set({sidebarCollapsed:!appStore.get().sidebarCollapsed}));
     this.querySelector('#adminTrigger')?.addEventListener('click',()=>appStore.set({adminMenu:!appStore.get().adminMenu,lastAction:'Abriu menu do administrador'}));
     this.querySelectorAll('.admin-menu button').forEach(button=>button.addEventListener('click',()=>{notify(`${button.textContent.trim()} selecionado.`);appStore.set({adminMenu:false,lastAction:button.textContent.trim()});}));
-    this.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('click',()=>{const next=btn.dataset.view==='inventory'?'assistant':btn.dataset.view,patch={view:next,activityDedicated:false,selectedActivity:null,sidebarCollapsed:false,lastAction:`Abriu ${btn.textContent.trim()}`};if(next==='reports'&&btn.dataset.reportFamily){const family=btn.dataset.reportFamily,first=reportCatalog.find(report=>report.family===family);patch.reportFamily=family;patch.reportType=first?.id||'financial-balance';}this.classList.remove('mobile-open');appStore.set(patch);}));
+    this.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('click',()=>{const next=btn.dataset.view==='inventory'?'assistant':btn.dataset.view,patch={view:next,activityDedicated:false,selectedActivity:null,sidebarCollapsed:false,lastAction:`Abriu ${btn.textContent.trim()}`};if(next==='reports'&&btn.dataset.reportFamily){const family=btn.dataset.reportFamily,first=reportCatalog.find(report=>report.family===family);patch.reportFamily=family;patch.reportType=first?.id||'financial-balance';}this.classList.remove('mobile-open');appStore.set(patch);if(next==='finance')document.querySelector('view-layer')?.refreshCashFlow?.();}));
     window.lucide?.createIcons();
   }
 }
@@ -398,8 +448,9 @@ if(!customElements.get('app-topbar')) customElements.define('app-topbar', AppTop
 export class AiChat extends HTMLElement {
   connectedCallback(){
     this._chatView=null; this._suggestionKey=null; this._transitionTimer=null; this._autoMessageTimer=null;
-    this._autoMessageQueue=[]; this._autoMessageKeys=new Set(); this._observedSystemState=null;
+    this._autoMessageQueue=[]; this._autoMessageKeys=new Set(); this._observedSystemState=null; this._contextFadeTimer=null;
     this._chatHistoryHydrated=false; this.chatAttachment=null; this.chatMapContext=false;
+    this.chatVoiceEnabled=localStorage.getItem(CHAT_VOICE_STORAGE_KEY_V1)==='1';
     this._systemEventHandler=event=>this.handleSystemEvent(event);
     this.render(); this.restoreSavedLayout();
     this._chatStoreUnsubscribe=appStore.subscribe(state=>{
@@ -429,14 +480,18 @@ export class AiChat extends HTMLElement {
     this.style.removeProperty('right'); this.style.removeProperty('bottom'); this.style.removeProperty('transform');
     this.classList.remove('dock-right','dock-bottom');this.classList.add('dock-left');
     if(saved){this.applySavedLayout(saved);this.dataset.chatLayout='global';return;}
-    const layout=chatLayouts.assistant;
-    this.style.setProperty('--chat-left',`${layout.left}px`);this.style.setProperty('--chat-top',`${layout.top}px`);this.dataset.chatLayout='global';
+    // O painel inicia no canto inferior direito para preservar os controles de
+    // navegação e os cabeçalhos das páginas de workers. Depois de arrastado,
+    // o layout continua sendo persistido pelo usuário.
+    this.classList.remove('dock-left');this.classList.add('dock-right');
+    this.dataset.chatLayout='global';
   }
   render(){
     this.className='ai-chat floating-panel dock-left';
     const m=demoData.metrics;
-    this.innerHTML=`<div class="chat-head drag-handle" title="Arraste para mover"><span class="ai-logo">✦</span><div><strong>IA · Aliança Park</strong><small><span class="chat-monitoring-dot" data-chat-monitoring>MONITORANDO SISTEMA</span> · reajo à navegação e aos eventos · <span class="chat-drag-hint">ARRASTE PARA MOVER</span></small></div><button class="icon-btn compact close-chat">${ico('minus')}</button></div><div class="chat-scroll"><div class="chat-greeting"><strong>Bom dia, Warley. 👋</strong><span>Este é o resumo do empreendimento com base nos dados de hoje. Vou avisar quando o sistema mudar.</span></div><div class="chat-summary"><div><b>${m.completeness||63}%</b><small>Completude<br>geral</small></div><div><b>${m.delayed}</b><small>Etapas<br>atrasadas</small></div><div><b>${m.criticalPurchases}</b><small>Compras<br>críticas</small></div><div><b>${m.review}</b><small>Pendências<br>de revisão</small></div></div><h3 class="chat-question">O que você deseja acompanhar agora?</h3><div class="chat-quick-actions"><button data-view="stages">${ico('calendar-check')} Ver etapas críticas</button><button data-view="inventory">${ico('package-check')} Ver compras necessárias</button><button data-view="stages">${ico('calendar-range')} Ver cronograma de atividades</button><button data-view="leads">${ico('user-round-search')} Ver leads hoje</button><button data-view="records">${ico('clipboard-pen-line')} Registrar andamento</button><button data-view="map">${ico('layers-3')} Abrir mapa de completude</button></div><div class="chat-log" aria-live="polite"></div></div><form class="chat-form"><div class="chat-input-tools" role="group" aria-label="Contexto da mensagem"><button type="button" class="chat-input-tool" data-chat-map aria-label="Abrir mapa 3D de lotes">${ico('map')}<span>Lotes 3D</span></button><button type="button" class="chat-input-tool" data-chat-camera aria-label="Anexar foto pela câmera">${ico('camera')}<span>Câmera</span></button><input type="file" class="chat-camera-input" data-chat-camera-input accept="image/*" capture="environment" aria-label="Capturar imagem para a IA"/></div><div class="chat-attachment" data-chat-attachment aria-live="polite" hidden></div><div class="chat-input-row"><input aria-label="Mensagem para IA" placeholder="Pergunte algo ou dê um comando…"/><button class="chat-send" aria-label="Enviar">${ico('send')}</button></div></form>${['n','ne','e','se','s','sw','w','nw'].map(edge=>`<span class="chat-resize-handle resize-${edge}" data-resize="${edge}" aria-label="Redimensionar pela borda ${edge}"></span>`).join('')}`;
+    this.innerHTML=`<div class="chat-head drag-handle" title="Arraste para mover"><span class="ai-logo">✦</span><div><strong>IA · Aliança Park</strong><small><span class="chat-monitoring-dot" data-chat-monitoring>MONITORANDO SISTEMA</span> · reajo à navegação e aos eventos · <span class="chat-drag-hint">ARRASTE PARA MOVER</span></small></div><div class="chat-head-actions"><button type="button" class="icon-btn compact chat-voice-toggle" data-chat-voice-toggle aria-pressed="${String(this.chatVoiceEnabled)}" aria-label="${this.chatVoiceEnabled?'Desativar':'Ativar'} avisos falados" title="${this.chatVoiceEnabled?'Desativar':'Ativar'} avisos falados">${ico('volume-2')}</button><button class="icon-btn compact close-chat">${ico('minus')}</button></div></div><div class="chat-scroll"><div class="chat-greeting"><strong>Bom dia, Warley. 👋</strong><span>Este é o resumo do empreendimento com base nos dados de hoje. Vou avisar quando o sistema mudar.</span></div><div class="chat-summary"><div><b>${m.completeness||63}%</b><small>Completude<br>geral</small></div><div><b>${m.delayed}</b><small>Etapas<br>atrasadas</small></div><div><b>${m.criticalPurchases}</b><small>Compras<br>críticas</small></div><div><b>${m.review}</b><small>Pendências<br>de revisão</small></div></div><h3 class="chat-question">O que você deseja acompanhar agora?</h3><div class="chat-quick-actions"><button data-view="stages">${ico('calendar-check')} Ver etapas críticas</button><button data-view="inventory">${ico('package-check')} Ver compras necessárias</button><button data-view="stages">${ico('calendar-range')} Ver cronograma de atividades</button><button data-view="leads">${ico('user-round-search')} Ver leads hoje</button><button data-view="records">${ico('clipboard-pen-line')} Registrar andamento</button><button data-view="map">${ico('layers-3')} Abrir mapa de completude</button></div><div class="chat-contextual-fade" data-chat-context-fade aria-live="polite" aria-atomic="true" hidden></div><div class="chat-log" aria-live="polite"></div></div><form class="chat-form"><div class="chat-input-tools" role="group" aria-label="Contexto da mensagem"><button type="button" class="chat-input-tool" data-chat-map aria-label="Abrir mapa 3D de lotes">${ico('map')}<span>Lotes 3D</span></button><button type="button" class="chat-input-tool" data-chat-camera aria-label="Anexar foto pela câmera">${ico('camera')}<span>Câmera</span></button><input type="file" class="chat-camera-input" data-chat-camera-input accept="image/*" capture="environment" aria-label="Capturar imagem para a IA"/></div><div class="chat-attachment" data-chat-attachment aria-live="polite" hidden></div><div class="chat-input-row"><input aria-label="Mensagem para IA" placeholder="Pergunte algo ou dê um comando…"/><button class="chat-send" aria-label="Enviar">${ico('send')}</button></div></form>${['n','ne','e','se','s','sw','w','nw'].map(edge=>`<span class="chat-resize-handle resize-${edge}" data-resize="${edge}" aria-label="Redimensionar pela borda ${edge}"></span>`).join('')}`;
     this.querySelector('.close-chat').addEventListener('click',event=>{event.stopPropagation();const wasCollapsed=this.classList.contains('collapsed');if(!wasCollapsed){const rect=this.getBoundingClientRect();this._expandedSize={width:Math.round(rect.width),height:Math.round(rect.height)};}const collapsed=this.classList.toggle('collapsed');if(!collapsed&&this._expandedSize){this.style.width=`${this._expandedSize.width}px`;this.style.height=`${this._expandedSize.height}px`;}const button=this.querySelector('.close-chat');button?.setAttribute('aria-label',collapsed?'Restaurar chat da IA':'Minimizar chat da IA');button?.setAttribute('title',collapsed?'Restaurar':'Minimizar');this.saveLayout();});
+    this.querySelector('[data-chat-voice-toggle]')?.addEventListener('click',event=>{this.chatVoiceEnabled=!this.chatVoiceEnabled;localStorage.setItem(CHAT_VOICE_STORAGE_KEY_V1,this.chatVoiceEnabled?'1':'0');event.currentTarget.setAttribute('aria-pressed',String(this.chatVoiceEnabled));event.currentTarget.setAttribute('aria-label',`${this.chatVoiceEnabled?'Desativar':'Ativar'} avisos falados`);event.currentTarget.setAttribute('title',`${this.chatVoiceEnabled?'Desativar':'Ativar'} avisos falados`);if(!this.chatVoiceEnabled)globalThis.speechSynthesis?.cancel();});
     this.querySelectorAll('[data-cmd]').forEach(b=>b.addEventListener('click',()=>this.respond(b.dataset.cmd)));
     this.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{const next=b.dataset.view==='inventory'?'assistant':b.dataset.view;appStore.set({view:next,activityDedicated:false,selectedActivity:null,lastAction:`Abriu ${b.textContent.trim()}`});}));
     this.querySelector('[data-chat-map]')?.addEventListener('click',()=>this.openMapContext());
@@ -452,8 +507,14 @@ export class AiChat extends HTMLElement {
     const node=document.createElement('div');
     node.className=kind==='user'?'user-mini':`ai-mini${auto?' ai-auto-mini':''}`;
     node.dataset.chatHistoryMessage='true'; node.textContent=String(text||''); log.append(node);
+    if(kind!=='user'){const speak=document.createElement('button');speak.type='button';speak.className='chat-message-speak';speak.setAttribute('aria-label','Ouvir resposta da IA');speak.title='Ouvir resposta';speak.textContent='Ouvir';speak.addEventListener('click',()=>this.speakText(text));node.append(speak);}
     if(persist)this.persistChatMessage(kind,text,auto);
     log.scrollTop=log.scrollHeight; return node;
+  }
+  speakText(text){
+    const synth=globalThis.speechSynthesis;
+    if(!synth||typeof globalThis.SpeechSynthesisUtterance!=='function')return false;
+    synth.cancel(); const utterance=new SpeechSynthesisUtterance(String(text||'')); utterance.lang='pt-BR'; utterance.rate=1; synth.speak(utterance); return true;
   }
   persistChatMessage(kind,text,auto=false){
     const value=String(text||'').trim().slice(0,1600); if(!value)return;
@@ -487,7 +548,7 @@ export class AiChat extends HTMLElement {
     if(!text||this._autoMessageKeys.has(key))return;
     this._autoMessageKeys.add(key); if(this._autoMessageKeys.size>120)this._autoMessageKeys.delete(this._autoMessageKeys.values().next().value);
     this._autoMessageQueue.push(text); clearTimeout(this._autoMessageTimer);
-    this._autoMessageTimer=setTimeout(()=>{const messages=this._autoMessageQueue.splice(0,3);if(messages.length)this.appendConversationMessage('assistant',messages.join(' '),{auto:true});},260);
+    this._autoMessageTimer=setTimeout(()=>{const messages=this._autoMessageQueue.splice(0,3);if(messages.length){const text=messages.join(' ');this.appendConversationMessage('assistant',text,{auto:true});if(this.chatVoiceEnabled)this.speakText(text);}},260);
   }
   observeSystemState(state){
     const next=this.systemSnapshot(state); this.updateMonitoring(state);
@@ -528,15 +589,12 @@ export class AiChat extends HTMLElement {
     return suggestions[state.view]||suggestions.assistant;
   }
   announceContextualSuggestion(state,force=false){
-    const log=this.querySelector('.chat-log');if(!log)return;
+    const log=this.querySelector('.chat-log'),node=this.querySelector('[data-chat-context-fade]');if(!log||!node)return;
     const key=[state.view,state.activityDedicated?'dedicated':'overview',state.selectedStage||'',state.reportFamily||''].join(':');
     if(!force&&this._suggestionKey===key)return;
     const suggestion=this.contextualSuggestion(state);this._suggestionKey=key;
-    log.querySelectorAll('[data-contextual-suggestion]').forEach(item=>item.remove());
     const actions=suggestion.actions.map(([label,message])=>`<button type="button" data-contextual-message="${esc(message)}">${ico('sparkles')} ${esc(label)}</button>`).join('');
-    log.insertAdjacentHTML('afterbegin',`<article class="chat-contextual-suggestion" data-contextual-suggestion><div class="chat-contextual-kicker">${ico('sparkles')} ${esc(suggestion.label)} · IA</div><strong>${esc(suggestion.title)}</strong><p>${esc(suggestion.text)}</p><div class="chat-contextual-actions">${actions}</div></article>`);
-    log.querySelectorAll('[data-contextual-message]').forEach(button=>button.addEventListener('click',()=>this.respond(button.dataset.contextualMessage)));
-    log.scrollTop=0;window.lucide?.createIcons();
+    clearTimeout(this._contextFadeTimer); node.innerHTML=`<div class="chat-contextual-kicker">${ico('sparkles')} ${esc(suggestion.label)} · IA</div><strong>${esc(suggestion.title)}</strong><p>${esc(suggestion.text)}</p><div class="chat-contextual-actions">${actions}</div>`; node.hidden=false; node.classList.remove('is-visible'); requestAnimationFrame(()=>node.classList.add('is-visible')); node.querySelectorAll('[data-contextual-message]').forEach(button=>button.addEventListener('click',()=>this.respond(button.dataset.contextualMessage))); window.lucide?.createIcons(); this._contextFadeTimer=setTimeout(()=>{node.classList.remove('is-visible');setTimeout(()=>{if(!node.classList.contains('is-visible'))node.hidden=true},420)},4200);
   }
   applySavedLayout(layout){
     if(!layout)return;
@@ -607,7 +665,7 @@ export class AiChat extends HTMLElement {
       if(name==='ui.navigate'&&allowedViews.has(args.view)){appStore.set({view:args.view,sidebarCollapsed:args.view==='records',lastAction:`IA abriu ${args.view}`});executed.push(`Abriu ${args.view}.`);continue;}
       if(name==='map.set_overlay'&&map){if(args.category==='clear')map.clearStageOverlay?.(false);else if(['terraplanagem','drenagem','rede-agua','rede-eletrica','pavimentacao','urbanizacao'].includes(args.category))map.setStageOverlay?.(args.category,false);executed.push(args.category==='clear'?'Limpou destaque do mapa.':`Destacou ${args.category} no mapa.`);continue;}
       if(name==='map.adjust_view'&&map){if(args.fit)map.fitSceneView?.(true);else{if(Number.isFinite(Number(args.rotationDelta)))map.setSceneRotation?.(map.sceneManualRotation+Number(args.rotationDelta),true);if(Number.isFinite(Number(args.tiltDelta)))map.setSceneTiltAdjust?.(map.sceneTiltAdjust+Number(args.tiltDelta),true);if(Number.isFinite(Number(args.zoomDelta)))map.setSceneZoom?.(map.sceneManualZoom+Number(args.zoomDelta),true);}executed.push('Ajustou a vista 3D.');continue;}
-      if(name==='map.set_tiles'&&map&&['satellite','osm'].includes(args.mode)){map.setMapTileMode?.(args.mode,true);executed.push(`Base ${args.mode==='osm'?'OpenStreetMap':'satélite'} ativada.`);continue;}
+      if(name==='map.set_tiles'&&map&&['satellite','osm','generated'].includes(args.mode)){map.setMapTileMode?.(args.mode,true);executed.push(`Base ${args.mode==='osm'?'OpenStreetMap':args.mode==='generated'?'aérea HD gerada':'satélite'} ativada.`);continue;}
       if(name==='records.open_form'){appStore.set({view:'records',sidebarCollapsed:true,editingRecord:null,recordContext:{atividade:args.activity||'',responsavel:args.responsible||'',detalhes:args.details||''},lastAction:'IA preparou novo registro'});executed.push('Preparou um novo registro para revisão.');continue;}
       if(name==='reports.select'){const family=['Financeiro','Construção','Suprimentos','Comercial','Governança'].includes(args.family)?args.family:'Financeiro';appStore.set({view:'reports',reportFamily:family,reportType:args.reportType||appStore.get().reportType,lastAction:`IA abriu relatório ${family}`});executed.push(`Abriu relatórios de ${family}.`);continue;}
       if(name==='commissions.filter'){appStore.set({view:'commissions',commissionFilters:{...(appStore.get().commissionFilters||{}),query:args.query||'',status:args.status||'all',profile:args.profile||'all'},lastAction:'IA filtrou carteira comercial'});executed.push('Aplicou filtro na carteira comercial.');continue;}
@@ -626,10 +684,11 @@ export class AiChat extends HTMLElement {
       if(!res.ok) throw new Error((await res.json().catch(()=>({}))).error||`HTTP ${res.status}`);
       const payload=await res.json();const answerText=payload.text||'Ação preparada.';answer.textContent=answerText;this.persistChatMessage('assistant',answerText);const executed=this.executeToolCalls(Array.isArray(payload.toolCalls)?payload.toolCalls:[]);if(executed.length)appStore.set({lastAction:`IA executou ${executed.length} ferramenta(s)`});
     } catch(err) {
-      const answerText=/compra|material/i.test(text) ? 'Encontrei 3 itens críticos. Posso abrir o card de compras e destacar as frentes impactadas no mapa.' : /lead/i.test(text) ? 'Há concentração de procura por lotes planos com frente Leste. Posso agrupar os leads por intenção.' : /atras|risco/i.test(text) ? 'Drenagem e rede elétrica concentram os maiores riscos nesta semana por dependência e abastecimento.' : 'Modo demonstração: configure GEMINI_API_KEY no servidor para respostas reais.';
+      const answerText=`Endpoint de IA indisponível · ${err.message||'falha de conexão'}. Nenhuma resposta local foi usada.`;
       answer.textContent=answerText;this.persistChatMessage('assistant',answerText);
-      console.warn('Gemini indisponível:',err);
+      console.warn('Endpoint de IA indisponível; nenhuma resposta local foi usada:',err);
     }
+    if(this.chatVoiceEnabled&&answer?.textContent&&answer.textContent!=='Analisando…')this.speakText(answer.textContent);
     const log=this.querySelector('.chat-log');if(log)log.scrollTop=log.scrollHeight;
   }
   enableDrag(){
@@ -681,6 +740,37 @@ export class AiChat extends HTMLElement {
 }
 if(!customElements.get('ai-chat')) customElements.define('ai-chat', AiChat);
 
+const roadPlanarAngleV1=(points,fallback=0)=>{
+  const usable=Array.isArray(points)?points.filter(point=>point&&Number.isFinite(point.x)&&Number.isFinite(point.z)):[];
+  if(usable.length<4)return fallback;
+  let meanX=0;
+  let meanZ=0;
+  usable.forEach(point=>{
+    meanX+=point.x;
+    meanZ+=point.z;
+  });
+  meanX/=usable.length;
+  meanZ/=usable.length;
+  let sxx=0;
+  let sxz=0;
+  let szz=0;
+  usable.forEach(point=>{
+    const dx=point.x-meanX;
+    const dz=point.z-meanZ;
+    sxx+=dx*dx;
+    sxz+=dx*dz;
+    szz+=dz*dz;
+  });
+  const trace=sxx+szz;
+  const determinant=sxx*szz-sxz*sxz;
+  const discriminant=Math.sqrt(Math.max(0,trace*trace-4*determinant));
+  const major=(trace+discriminant)/2;
+  const minor=(trace-discriminant)/2;
+  if(!Number.isFinite(major)||major<0.0001)return fallback;
+  if(major/Math.max(minor,0.0001)<1.18)return fallback;
+  return Math.atan2(2*sxz,sxx-szz)/2;
+};
+
 export class MapScene extends HTMLElement {
   // BELAVISTA_ADMIN_3D_HARD_ISOLATION_V5370
   connectedCallback(){
@@ -693,7 +783,7 @@ export class MapScene extends HTMLElement {
     this.dataset.mapInstanceId=`map-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
     this.selectedLotIds=new Set(); this.mapSelectionMode=null; this.progressSelectionParts=[];
     const savedMap=appStore.get().mapView||{},savedPan=savedMap.pan||{},isCurrentSceneState=Number(savedMap.sceneVersion)===MAP_SCENE_STATE_VERSION;
-    this.mapTileMode=appStore.get().mapTileMode||'satellite'; this.dataset.mapTileMode=this.mapTileMode; this.sceneManualRotation=isCurrentSceneState?(Number(savedMap.rotation)||0):0; this.sceneManualZoom=isCurrentSceneState?(Number(savedMap.zoom)||INITIAL_SCENE_ZOOM):INITIAL_SCENE_ZOOM; this.sceneManualPan=isCurrentSceneState?{x:Number(savedPan.x)||0,y:Number(savedPan.y)||0}:{x:0,y:0}; this.sceneTiltAdjust=isCurrentSceneState?(Number(savedMap.tiltAdjust)||0):0; this.sceneUserInteracted=isCurrentSceneState&&Boolean(this.sceneManualRotation||this.sceneTiltAdjust||this.sceneManualPan.x||this.sceneManualPan.y||this.sceneManualZoom!==INITIAL_SCENE_ZOOM); this.initialSceneFocusApplied=this.sceneUserInteracted; this.stageOverlayKey=stageOverlayKey(demoData.activities.find(x=>x.id===appStore.get().selectedStage)?.name); this.dataset.sceneRotation=`${Math.round(this.sceneManualRotation)}deg`; this.dataset.sceneZoom=`${Math.round(this.sceneManualZoom*100)}%`; this.dataset.sceneZoomMax=`${Math.round(MAX_SCENE_ZOOM*100)}%`; this.dataset.scenePan=`${Math.round(this.sceneManualPan.x)},${Math.round(this.sceneManualPan.y)}`; this.dataset.scenePanAxis='x/y compartilhados · z fixo'; this.dataset.sceneAnchor='center'; this.dataset.sceneStateVersion=String(MAP_SCENE_STATE_VERSION); this.style.setProperty('--scene-anchor-x','50%'); this.style.setProperty('--scene-anchor-y','50%');
+    this.mapTileMode=this.isPublicCustomerExperience()?'generated':(appStore.get().mapTileMode||'satellite'); this.dataset.mapTileMode=this.mapTileMode; this.sceneManualRotation=isCurrentSceneState?(Number(savedMap.rotation)||0):0; this.sceneManualZoom=isCurrentSceneState?(Number(savedMap.zoom)||INITIAL_SCENE_ZOOM):INITIAL_SCENE_ZOOM; this.sceneManualPan=isCurrentSceneState?{x:Number(savedPan.x)||0,y:Number(savedPan.y)||0}:{x:0,y:0}; this.sceneTiltAdjust=isCurrentSceneState?(Number(savedMap.tiltAdjust)||0):0; this.sceneUserInteracted=isCurrentSceneState&&Boolean(this.sceneManualRotation||this.sceneTiltAdjust||this.sceneManualPan.x||this.sceneManualPan.y||this.sceneManualZoom!==INITIAL_SCENE_ZOOM); this.initialSceneFocusApplied=this.sceneUserInteracted; this.stageOverlayKey=stageOverlayKey(demoData.activities.find(x=>x.id===appStore.get().selectedStage)?.name); this.dataset.sceneRotation=`${Math.round(this.sceneManualRotation)}deg`; this.dataset.sceneZoom=`${Math.round(this.sceneManualZoom*100)}%`; this.dataset.sceneZoomMax=`${Math.round(MAX_SCENE_ZOOM*100)}%`; this.dataset.scenePan=`${Math.round(this.sceneManualPan.x)},${Math.round(this.sceneManualPan.y)}`; this.dataset.scenePanAxis='x/y compartilhados · z fixo'; this.dataset.sceneAnchor='center'; this.dataset.sceneStateVersion=String(MAP_SCENE_STATE_VERSION); this.style.setProperty('--scene-anchor-x','50%'); this.style.setProperty('--scene-anchor-y','50%');
     if(this.hasAttribute('compact')){
       const full3d=true;
       if(!full3d){
@@ -715,7 +805,7 @@ export class MapScene extends HTMLElement {
     }
     sharedMapScene=this;
     const solarMarkup=`<div class="map-solar-control" data-solar-control aria-label="Iluminação solar do mapa"><div class="map-solar-head"><span>${ico('sun')} SOL</span><b data-solar-time>09:00</b></div><input type="range" min="5.5" max="17.8" step="0.25" value="9" data-solar-hour aria-label="Horário solar, do amanhecer ao entardecer"><div class="map-solar-scale"><span data-solar-sunrise>05:30</span><span>AMANHECER → ENTARDECER</span><span data-solar-sunset>17:45</span></div><small data-solar-location>DWG · localização solar</small></div>`;
-      this.innerHTML=`<div class="map-host" aria-hidden="true"></div><div class="scene-world"><canvas class="three-overlay"></canvas></div><div class="map-tint"></div><div class="map-badge">${ico('layers-3')} <span>Satélite realista · visão temática</span></div><div class="map-category-switcher" role="group" aria-label="Categorias de visualização do mapa">${Object.entries(stageOverlayLabels).map(([key,label])=>`<button type="button" data-scene-overlay="${key}" class="overlay-${key}">${label}</button>`).join('')}<button type="button" data-scene-selection="progress" class="map-selection-launch">${ico('paintbrush')} Progresso</button></div><div class="map-rotation-controls" data-map-controls="connected" aria-label="Controles da cena compartilhada"><span>MAPA · VISTA 3D</span><div class="map-tile-switcher" role="group" aria-label="Base cartográfica"><button type="button" data-map-tiles="satellite">Satélite realista</button><button type="button" data-map-tiles="osm">Mapa OSM</button></div><div class="map-pan-pad" aria-label="Panorâmica"><button type="button" data-scene-pan="up" aria-label="Mover mapa para cima">↑</button><button type="button" data-scene-pan="left" aria-label="Mover mapa para a esquerda">←</button><button type="button" data-scene-pan="reset" aria-label="Centralizar mapa">⌖</button><button type="button" data-scene-pan="right" aria-label="Mover mapa para a direita">→</button><button type="button" data-scene-pan="down" aria-label="Mover mapa para baixo">↓</button></div><div class="map-view-row"><button type="button" data-scene-zoom="-0.08" aria-label="Afastar mapa">−</button><button type="button" data-scene-zoom="0.08" aria-label="Aproximar mapa">＋</button><button type="button" data-scene-tilt="-4" aria-label="Reduzir inclinação">▿</button><button type="button" data-scene-tilt="4" aria-label="Aumentar inclinação">▵</button></div><div class="map-rotation-row"><button type="button" data-scene-rotate="-15" aria-label="Girar para a esquerda">↺</button><button type="button" data-scene-rotate="15" aria-label="Girar para a direita">↻</button><button type="button" data-scene-rotate="reset" aria-label="Restaurar orientação">N</button></div><button type="button" class="map-fit-button" data-scene-fit aria-label="Ajustar enquadramento">⌗ Ajustar enquadramento</button></div><div class="map-gesture-legend" aria-label="Gestos de navegação do mapa"><span>Arraste para mover</span><b>Botão direito + arraste</b><span>girar</span><b>Ctrl + arraste</b><span>inclinar</span><b>Shift + arraste</b><span>inclinar</span><b>Alt + arraste</b><span>selecionar progresso</span><b>Roda do mouse</b><span>zoom</span><b>Ctrl + roda</b><span>zoom preciso</span></div>`;
+    this.innerHTML=`<div class="map-host" aria-hidden="true"></div><div class="scene-world"><canvas class="three-overlay"></canvas></div><div class="map-tint"></div><div class="map-badge">${ico('layers-3')} <span>Captura satélite local · visão temática</span></div><div class="map-category-switcher" role="group" aria-label="Categorias de visualização do mapa">${Object.entries(stageOverlayLabels).map(([key,label])=>`<button type="button" data-scene-overlay="${key}" class="overlay-${key}">${label}</button>`).join('')}<button type="button" data-scene-selection="progress" class="map-selection-launch">${ico('paintbrush')} Progresso</button></div><div class="map-rotation-controls" data-map-controls="connected" aria-label="Controles da cena compartilhada"><span>MAPA · VISTA 3D</span><div class="map-tile-switcher" role="group" aria-label="Base cartográfica"><button type="button" data-map-tiles="satellite">Satélite realista</button><button type="button" data-map-tiles="generated">Captura tratada · DWG</button><button type="button" data-map-tiles="osm">Mapa OSM</button></div><div class="map-pan-pad" aria-label="Panorâmica"><button type="button" data-scene-pan="up" aria-label="Mover mapa para cima">↑</button><button type="button" data-scene-pan="left" aria-label="Mover mapa para a esquerda">←</button><button type="button" data-scene-pan="reset" aria-label="Centralizar mapa">⌖</button><button type="button" data-scene-pan="right" aria-label="Mover mapa para a direita">→</button><button type="button" data-scene-pan="down" aria-label="Mover mapa para baixo">↓</button></div><div class="map-view-row"><button type="button" data-scene-zoom="-0.08" aria-label="Afastar mapa">−</button><button type="button" data-scene-zoom="0.08" aria-label="Aproximar mapa">＋</button><button type="button" data-scene-tilt="-4" aria-label="Reduzir inclinação">▿</button><button type="button" data-scene-tilt="4" aria-label="Aumentar inclinação">▵</button></div><div class="map-rotation-row"><button type="button" data-scene-rotate="-15" aria-label="Girar para a esquerda">↺</button><button type="button" data-scene-rotate="15" aria-label="Girar para a direita">↻</button><button type="button" data-scene-rotate="reset" aria-label="Restaurar orientação">N</button></div><button type="button" class="map-fit-button" data-scene-fit aria-label="Ajustar enquadramento">⌗ Ajustar enquadramento</button></div><div class="map-gesture-legend" aria-label="Gestos de navegação do mapa"><span>Arraste para mover</span><b>Botão direito + arraste</b><span>girar</span><b>Ctrl + arraste</b><span>zoom vertical</span><b>Shift + arraste</b><span>inclinar</span><b>Alt + arraste</b><span>selecionar progresso</span><b>Roda do mouse</b><span>zoom</span><b>Ctrl + roda</b><span>zoom preciso</span></div>`;
     this.querySelector('.map-tint')?.insertAdjacentHTML('afterend',solarMarkup);
     // O dashboard administrativo compartilhado usa a mesma composição visual
     // do /leads, mas não é a página pública: seus controles, filtros e widgets
@@ -737,7 +827,7 @@ export class MapScene extends HTMLElement {
     }else{
       this.initWhenReady();
     }
-    appStore.subscribe(s=>{if(this._lastStoreView!==s.view){this._lastStoreView=s.view;this.setMapContext(s.view);}if(s.solarHourMode==='manual'&&Number.isFinite(Number(s.solarHour))&&Math.abs(Number(s.solarHour)-Number(this.solarHour||0))>.01)this.setSolarHour(s.solarHour,false,false);this.dataset.mode=s.mapMode;this.setMapTileMode(s.mapTileMode||'satellite',false);const stage=demoData.activities.find(x=>x.id===s.selectedStage);if(!publicPresentation&&stage&&this._lastOverlayStageId!==s.selectedStage){this._lastOverlayStageId=s.selectedStage;this.setStageOverlay(stage.name,false);}});
+    appStore.subscribe(s=>{if(this._lastStoreView!==s.view){this._lastStoreView=s.view;this.setMapContext(s.view);}if(this._lastRecordsRef!==s.records){this._lastRecordsRef=s.records;this.syncOperationalRecordMapV5370(s.records||[]);}if(s.solarHourMode==='manual'&&Number.isFinite(Number(s.solarHour))&&Math.abs(Number(s.solarHour)-Number(this.solarHour||0))>.01)this.setSolarHour(s.solarHour,false,false);this.dataset.mode=s.mapMode;this.setMapTileMode(this._publicRequestedMapTileMode||(s.mapTileMode||'satellite'),false);const stage=demoData.activities.find(x=>x.id===s.selectedStage);if(!publicPresentation&&stage&&this._lastOverlayStageId!==s.selectedStage){this._lastOverlayStageId=s.selectedStage;this.setStageOverlay(stage.name,false);}});
     this.addEventListener('click',e=>{if(e.target.closest('.leaflet-control,.map-solar-control,.map-badge,.map-category-switcher,.map-selection-tools,.map-selection-panel,.map-gesture-legend,.map-rotation-controls')||performance.now()<this._suppressMapToggleUntil)return;appStore.set({mapMode:appStore.get().mapMode==='overview'?'focus':'overview',lastAction:'Alternou foco do mapa'});});
   }
   isPublicMapVisual(){
@@ -776,10 +866,13 @@ export class MapScene extends HTMLElement {
 
   isAdminStandalone3DV5370(){
     if(this.hasAttribute('data-activity-location-editor'))return false;
+    // O dashboard usa deliberadamente a mesma composição do mapa público.
+    // A presença de data-admin-shared-public-map é o contrato que impede o
+    // renderer legado de substituir o componente padrão de /leads.
+    if(this.hasAttribute('data-admin-shared-public-map'))return false;
     return (
       location.pathname==='/admin'||
       location.pathname.startsWith('/admin/')||
-      this.hasAttribute('data-admin-shared-public-map')||
       Boolean(this.closest('belavista-app'))
     );
   }
@@ -1274,7 +1367,27 @@ export class MapScene extends HTMLElement {
           }
         );
 
-        node.visible=true;
+        // No modo público a fonte viária do GLB não pode aparecer durante o
+        // staging. Ela é a geometria escura/verde que atravessa o terreno
+        // antes de a camada de paralelepípedos ser construída. O overlay
+        // segmentado entra depois, já recortado pelo eixo real da rua.
+        const stagingName=String(node.name||'');
+        const stagingRole=String(node.userData?.belavistaRole||node.userData?.partKind||'').toLowerCase();
+      const publicRoadSource=this.isPublicCustomerExperience()&&(
+          node.userData?.publicRoadBaseHidden||
+          /^(street|road|streets|curb|curbs)$/.test(stagingRole)||
+          /(asfalto|rua|road|street|meio.?fio|guia|curb|paviment)/i.test(stagingName)
+        );
+      const publicDividerSource=this.isPublicCustomerExperience()&&/^divisa(?:[_\s-]|$)/i.test(stagingName);
+        node.visible=!(publicRoadSource||publicDividerSource);
+        if(publicRoadSource){
+          node.userData.publicRoadBaseHidden=true;
+          node.raycast=()=>{};
+        }
+        if(publicDividerSource){
+          node.userData.publicInternalDividerHidden=true;
+          node.raycast=()=>{};
+        }
         renderer.render(scene,camera);
 
         this.persistAdminStandalonePhaseV5370(
@@ -1312,12 +1425,15 @@ export class MapScene extends HTMLElement {
         `meshes:${meshes.length}|ignorados:${skippedHuge}`;
       this.classList.add('model-ready');
       if(this.stageOverlayKey)this.applyAdminStandaloneStageOverlayV5370(this.stageOverlayKey);
+      this.syncOperationalRecordMapV5370?.(appStore.get().records||[]);
 
       // Controle direto do renderer isolado: sem appStore, Leaflet,
       // syncThree, compact mirrors ou observers de runtime.
       let down=null;
       let last=null;
+      let dragging=false;
       let mode='';
+      let selecting=false;
 
       canvas.addEventListener('contextmenu',event=>
         event.preventDefault()
@@ -1326,10 +1442,15 @@ export class MapScene extends HTMLElement {
       canvas.addEventListener(
         'wheel',
         event=>{
+          if(!event.ctrlKey)return;
           event.preventDefault();
-          const direction=event.deltaY<0?1.10:.91;
-          camera.zoom=Math.max(.45,Math.min(4.5,camera.zoom*direction));
-          camera.updateProjectionMatrix();
+          const source=this;
+          source.setSceneZoomAt(
+            source.sceneManualZoom*(event.deltaY<0?1.10:.91),
+            event.clientX,
+            event.clientY,
+            false
+          );
           renderer.render(scene,camera);
         },
         {passive:false}
@@ -1337,7 +1458,13 @@ export class MapScene extends HTMLElement {
 
       canvas.addEventListener('pointerdown',event=>{
         down=last={x:event.clientX,y:event.clientY};
-        mode=event.button===2?'rotate':'pan';
+        dragging=false;
+        selecting=(this.recordPaintMode||this.mapSelectionMode==='progress'||event.altKey)&&event.button===0;
+        const tilting=!selecting&&event.button===0&&event.shiftKey;
+        const zooming=!selecting&&!tilting&&event.ctrlKey&&event.button===0;
+        mode=selecting?'select':zooming?'zoom':tilting?'tilt':event.button===2?'rotate':'pan';
+        this.dataset.mapGesture=mode==='select'?'select-progress':mode==='zoom'?'ctrl-drag-zoom':mode;
+        if(selecting)this.beginMapAreaSelection(event.clientX,event.clientY);
         canvas.setPointerCapture?.(event.pointerId);
       });
 
@@ -1345,13 +1472,28 @@ export class MapScene extends HTMLElement {
         if(!down||!last)return;
         const dx=event.clientX-last.x;
         const dy=event.clientY-last.y;
+        if(!dragging&&Math.hypot(event.clientX-down.x,event.clientY-down.y)>6)dragging=true;
 
-        if(mode==='rotate'){
+        if(dragging&&mode==='select'){
+          this.updateMapAreaSelection(event.clientX,event.clientY);
+        }else if(dragging&&mode==='zoom'){
+          this.setSceneZoomAt(
+            this.sceneManualZoom-dy*ZOOM_DRAG_SENSITIVITY,
+            event.clientX,
+            event.clientY,
+            false
+          );
+        }else if(dragging&&mode==='tilt'){
+          this.setSceneTiltAdjust(
+            this.sceneTiltAdjust+dy*TILT_DRAG_SENSITIVITY,
+            false
+          );
+        }else if(dragging&&mode==='rotate'){
           this.setSceneRotation(
             (this._adminStandaloneRotationV5370||0)-dx*.32,
             false
           );
-        }else{
+        }else if(dragging&&mode==='pan'){
           const delta=this.screenDragPanDelta(last.x,last.y,event.clientX,event.clientY);
           const pan=this.sceneManualPan||{x:0,y:0};
           this.setScenePan(
@@ -1363,21 +1505,52 @@ export class MapScene extends HTMLElement {
             'world-translation · projected screen delta · rotation-safe v5378';
         }
 
-        last={x:event.clientX,y:event.clientY};
+        if(dragging)last={x:event.clientX,y:event.clientY};
         renderer.render(scene,camera);
       });
 
       const release=event=>{
+        const total=down?Math.hypot(event.clientX-down.x,event.clientY-down.y):0;
+        if(down&&mode==='select'){
+          if(dragging){
+            if(this.recordPaintMode){
+              const parts=this.collectModelPartsInRect(down,{x:event.clientX,y:event.clientY});
+              if(parts.length>1)this.selectRecordMapParts(parts);
+              else if(parts.length===1)this.selectRecordMapPart(parts[0]);
+              else this.removeMapAreaSelection();
+            }else{
+              this.finishMapAreaSelection(event.clientX,event.clientY);
+            }
+          }else{
+            this.removeMapAreaSelection();
+            const point=this.pointFromClient(event.clientX,event.clientY);
+            if(point)this.pickModelAt(point);
+          }
+          this._suppressMapToggleUntil=performance.now()+520;
+        }else if(down&&event.button!==2&&!dragging&&total<=6){
+          const point=this.pointFromClient(event.clientX,event.clientY);
+          if(point)this.pickModelAt(point);
+          this._suppressMapToggleUntil=performance.now()+520;
+        }else if(down&&dragging){
+          this.constrainScenePan('standalone-pointer-release');
+          this._suppressMapToggleUntil=performance.now()+520;
+        }
         if(canvas.hasPointerCapture?.(event.pointerId)){
           canvas.releasePointerCapture(event.pointerId);
         }
         down=null;
         last=null;
+        dragging=false;
+        selecting=false;
         mode='';
+        delete this.dataset.mapGesture;
       };
 
       canvas.addEventListener('pointerup',release);
-      canvas.addEventListener('pointercancel',release);
+      canvas.addEventListener('pointercancel',event=>{
+        this.removeMapAreaSelection();
+        release(event);
+      });
 
       this.persistAdminStandalonePhaseV5370(
         'ready',
@@ -1406,7 +1579,7 @@ export class MapScene extends HTMLElement {
 
     const run=async()=>{
       this.dataset.adminSatelliteState='loading';
-      this.dataset.adminSatelliteSource='DWG GPS centre · Esri World Imagery';
+      this.dataset.adminSatelliteSource='DWG GPS centre · local capture';
 
       const response=await fetch(
         runtimeRouteV1('/assets/data/dwg-georeference.json','v=satellite-ground-v5380'),
@@ -1420,49 +1593,19 @@ export class MapScene extends HTMLElement {
         throw new Error('Centro GPS ausente no DWG');
       }
 
-      const zoom=17,columns=3,rows=3,n=2**zoom,rad=Math.PI/180;
-      const xf=(longitude+180)/360*n;
-      const yf=(1-Math.asinh(Math.tan(latitude*rad))/Math.PI)/2*n;
-      const x0=Math.floor(xf-columns/2),y0=Math.floor(yf-rows/2);
-      const canvas=document.createElement('canvas');
-      canvas.width=columns*256;
-      canvas.height=rows*256;
-      const context=canvas.getContext('2d');
-      if(!context)throw new Error('Canvas satélite indisponível');
-      context.fillStyle='#07111f';
-      context.fillRect(0,0,canvas.width,canvas.height);
-
-      const sources=mapTileSources.satellite||[];
-      const loadTile=(row,column,tileX,tileY)=>new Promise(resolve=>{
-        let attempt=0;
-        const load=()=>{
-          const source=sources[attempt];
-          if(!source){resolve(null);return;}
-          const image=new Image();
-          image.crossOrigin='anonymous';
-          image.onload=()=>resolve({row,column,image});
-          image.onerror=()=>{attempt++;load();};
-          image.src=source.url(zoom,((tileX%n)+n)%n,tileY);
-        };
-        load();
+      // O mapa administrativo e o mapa público precisam ler exatamente a
+      // mesma captura congelada. A versão anterior ainda consultava tiles
+      // Esri aqui, o que fazia o enquadramento divergir e deixava o mapa
+      // inutilizável quando a origem externa não respondia.
+      const image=await new Promise((resolve,reject)=>{
+        const asset=new Image();
+        asset.decoding='async';
+        asset.onload=()=>resolve(asset);
+        asset.onerror=()=>reject(new Error('Captura satélite local indisponível'));
+        asset.src=runtimeRouteV1(GENERATED_AERIAL_ASSET,`v=${GENERATED_AERIAL_VERSION}`);
       });
-
-      const tiles=[];
-      for(let row=0;row<rows;row++)for(let column=0;column<columns;column++){
-        const tileY=y0+row;
-        if(tileY<0||tileY>=n)continue;
-        tiles.push(loadTile(row,column,x0+column,tileY));
-      }
-      const results=await Promise.all(tiles);
-      const loaded=results.filter(Boolean);
-      if(!loaded.length)throw new Error('Nenhum tile satélite respondeu');
-      loaded.forEach(tile=>{
-        context.drawImage(tile.image,tile.column*256,tile.row*256,256,256);
-      });
-      context.fillStyle='rgba(4,11,22,.035)';
-      context.fillRect(0,0,canvas.width,canvas.height);
-
-      const texture=new THREE.CanvasTexture(canvas);
+      const zoom=18;
+      const texture=new THREE.Texture(image);
       texture.colorSpace=THREE.SRGBColorSpace;
       texture.generateMipmaps=false;
       texture.minFilter=THREE.LinearFilter;
@@ -1493,19 +1636,21 @@ export class MapScene extends HTMLElement {
       plane.frustumCulled=false;
       plane.userData={
         adminSatelliteBase:true,
-        source:'satellite tile mosaic · Esri World Imagery',
+        source:'local georeferenced capture · DWG GPS',
         coordinateSource:'DWG site-center',
         center:[latitude,longitude],
         zoom,
-        tiles:`${loaded.length}/${results.length}`
+        tiles:'1/1',
+        asset:GENERATED_AERIAL_ASSET
       };
       stage.add(plane);
       this._adminStandaloneSatellitePlaneV5380=plane;
       this.dwgGeo=geo;
       this.dataset.adminSatelliteState='ready';
       this.dataset.adminSatelliteCenter=`${latitude.toFixed(8)},${longitude.toFixed(8)}`;
-      this.dataset.adminSatelliteTiles=`${loaded.length}/${results.length}`;
-      this.dataset.adminSatelliteGround='satellite image only · no synthetic green base';
+      this.dataset.adminSatelliteTiles='1/1';
+      this.dataset.adminSatelliteProvider='local-capture';
+      this.dataset.adminSatelliteGround='same local capture as /leads · no synthetic green base';
       this._adminStandaloneRendererV5370?.render(
         this._adminStandaloneSceneV5370,
         this._adminStandaloneCameraV5370
@@ -1652,7 +1797,7 @@ export class MapScene extends HTMLElement {
     this.addEventListener('click',event=>{const button=event.target.closest?.('[data-compact-map]');if(!button)return;event.preventDefault();event.stopPropagation();const source=sharedMapScene,action=button.dataset.compactMap;if(!source)return;if(action==='zoom-in')source.setSceneZoom(source.sceneManualZoom+.1,true);if(action==='zoom-out')source.setSceneZoom(source.sceneManualZoom-.1,true);if(action==='tilt-up')source.setSceneTiltAdjust(source.sceneTiltAdjust+6,true);if(action==='tilt-down')source.setSceneTiltAdjust(source.sceneTiltAdjust-6,true);if(action==='rotate-left')source.setSceneRotation(source.sceneManualRotation-15,true);if(action==='rotate-right')source.setSceneRotation(source.sceneManualRotation+15,true);syncCompactMapMirrors();});
     const canvas=this.querySelector('.compact-map-canvas');let down=null,last=null,mode='';
     canvas?.addEventListener('contextmenu',event=>event.preventDefault());
-    canvas?.addEventListener('wheel',event=>{event.preventDefault();const source=sharedMapScene;if(source){source.setSceneZoom(source.sceneManualZoom+(event.deltaY<0?.07:-.07),false);source.queueSceneBoundsCommit('compact-wheel');syncCompactMapMirrors();}},{passive:false});
+    canvas?.addEventListener('wheel',event=>{if(!event.ctrlKey)return;event.preventDefault();const source=sharedMapScene;if(source){source.setSceneZoomAt(source.sceneManualZoom+(event.deltaY<0?.07:-.07),event.clientX,event.clientY,false);source.queueSceneBoundsCommit('compact-ctrl-wheel');syncCompactMapMirrors();}},{passive:false});
     canvas?.addEventListener('pointerdown',event=>{const source=sharedMapScene;if(!source)return;down=last={x:event.clientX,y:event.clientY};mode=event.button===2?'rotate':event.shiftKey?'tilt':'pan';canvas.setPointerCapture?.(event.pointerId);});
     canvas?.addEventListener('pointermove',event=>{if(!down||!last)return;const source=sharedMapScene,dx=event.clientX-last.x,dy=event.clientY-last.y;if(!source)return;if(mode==='rotate')source.setSceneRotation(source.sceneManualRotation+dx*.32,false);else if(mode==='tilt')source.setSceneTiltAdjust(source.sceneTiltAdjust+dy*TILT_DRAG_SENSITIVITY,false);else (()=>{
       // Converte o ponteiro do card para o NDC da cena principal. Assim o
@@ -1826,6 +1971,18 @@ export class MapScene extends HTMLElement {
       return;
     }
 
+    // O /leads usa uma captura local da área, georreferenciada pelo DWG.
+    // Não aguarde nem inicialize Leaflet/Maps para liberar a cena pública.
+    if(this.isPublicCustomerExperience()){
+      this.dataset.renderMode='3d-static-satellite';
+      this.dataset.mapInit='static-capture-no-maps';
+      this.dataset.publicMapProvider='local-capture';
+      this.dataset.publicMapRequests='0';
+      this.mapTileMode='generated';
+      this.scheduleThree();
+      return;
+    }
+
     // The Leads page already has Leaflet available before map-scene connects.
     // The original admin did not. For the shared public map, WebGL/GLB must not
     // depend on Leaflet readiness: start Three immediately and initialize
@@ -1877,7 +2034,7 @@ export class MapScene extends HTMLElement {
     });
   }
   setMapTileMode(mode='satellite',announce=false){
-    const next=mode==='osm'?'osm':'satellite';
+    const next=this.isPublicCustomerExperience()?'generated':(['satellite','osm','generated'].includes(mode)?mode:'satellite');
     const changed=this.mapTileMode!==next;
     this.mapTileMode=next; this.dataset.mapTileMode=next;
     this.querySelectorAll('[data-map-tiles]').forEach(button=>button.classList.toggle('active',button.dataset.mapTiles===next));
@@ -1887,7 +2044,7 @@ export class MapScene extends HTMLElement {
     if(this._osmRasterKey)this._osmRasterKey='';
     this._lastRasterSignature='';
     if(this.modelReady)this.syncThree();
-    if(announce){const label=next==='satellite'?'Satélite realista':'Mapa OSM';notify(`${label} ativado na cena compartilhada.`,'success');appStore.set({mapTileMode:next,lastAction:`Alterou base cartográfica para ${label}`});}
+    if(announce){const label=next==='satellite'?'Satélite realista':next==='generated'?'Satélite tratado · DWG':'Mapa OSM';notify(`${label} ativado na cena compartilhada.`,'success');appStore.set({mapTileMode:next,lastAction:`Alterou base cartográfica para ${label}`});}
   }
   buildStageOverlayTargets(){
     if(!this.THREE||!this.modelGroup)return;
@@ -1995,7 +2152,7 @@ export class MapScene extends HTMLElement {
     this._adminStandaloneRendererV5370?.render?.(this._adminStandaloneSceneV5370,this._adminStandaloneCameraV5370);
     this.dataset.overlayTransition='settled';
   }
-  stageBaseMaterial(item){return item.userData.progressMaterial||item.userData.selectionMaterial||item.userData.statusMaterial||item.userData.publicStatusMaterial||item.userData.defaultMaterial||item.material;}
+  stageBaseMaterial(item){return item.userData.progressMaterial||item.userData.selectionMaterial||item.userData.statusMaterial||item.userData.recordStatusMaterial||item.userData.publicStatusMaterial||item.userData.defaultMaterial||item.material;}
   stageOverlayMaterial(item,key,color){
     const source=key==='terraplanagem'?(item.userData.partKind==='streets'?item.userData.gravelMaterial:item.userData.earthworkMaterial)||item.userData.defaultMaterial:this.stageBaseMaterial(item);
     const paint=mat=>{if(!mat)return mat;const clone=mat.clone?.()||mat;if(clone.color)clone.color.setHex(color);if(clone.emissive){clone.emissive.setHex(color);clone.emissiveIntensity=.6;}clone.transparent=true;clone.opacity=Math.max(.72,Math.min(.92,clone.opacity??1));clone.depthWrite=false;return clone;};
@@ -2127,19 +2284,20 @@ export class MapScene extends HTMLElement {
     this.renderer?.render(this.scene,this.camera);
   }
   initLeaflet(){
+    if(this.isPublicCustomerExperience()){
+      this.dataset.leaflet='disabled-static-capture';
+      this.dataset.publicMapProvider='local-capture';
+      this.dataset.publicMapRequests='0';
+      return;
+    }
     const host=this.querySelector('.map-host'); if(!host||this.map)return;
     const initial=viewThemes.assistant; const center=L.latLng(Number(initial.center[0]),Number(initial.center[1]));
     if(!validGeoPoint(center))return;
-    this.map=L.map(host,{zoomControl:false, attributionControl:true, preferCanvas:true, zoomAnimation:false, fadeAnimation:false, scrollWheelZoom:!this.isPublicCustomerExperience(), minZoom:13, maxZoom:22}).setView(center,Number(initial.zoom)); this.dataset.leaflet='ready'; this.dataset.mapNavigation='free scene · no 3D viewbox';
-    // Leaflet remains the geographic reference/interaction source. Its hidden
-    // tile pane is intentionally not mounted: the visible base is rendered
-    // once by the shared Three.js map plane below the live GLB.
-    if(this.isPublicMapVisual()){
-      this._publicLeafletBase=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{minZoom:13,maxZoom:22,attribution:'Tiles © Esri'}).addTo(this.map);
-      this.dataset.publicMapBase='leaflet-satellite-fallback';
-    }else{
-      L.control.zoom({position:'bottomright'}).addTo(this.map);
-    }
+    this.map=L.map(host,{zoomControl:false, attributionControl:true, preferCanvas:true, zoomAnimation:false, fadeAnimation:false, scrollWheelZoom:false, minZoom:13, maxZoom:22}).setView(center,Number(initial.zoom)); this.dataset.leaflet='ready'; this.dataset.mapNavigation='free scene · no 3D viewbox';
+    // A página pública retorna antes deste ponto e nunca monta Leaflet. O
+    // mapa administrativo pode continuar usando seus controles geográficos,
+    // mas a captura satélite pública é sempre o raster local no Three.js.
+    L.control.zoom({position:'bottomright'}).addTo(this.map);
     this.map.on('moveend zoomend',()=>this.syncThree());
     this.map.on('click',event=>{const canvasRect=this.querySelector('.three-overlay')?.getBoundingClientRect(),hostRect=host.getBoundingClientRect(),point={x:event.containerPoint.x+hostRect.left-(canvasRect?.left||hostRect.left),y:event.containerPoint.y+hostRect.top-(canvasRect?.top||hostRect.top)};if(this.pickModelAt(point))this._suppressMapToggleUntil=performance.now()+280;});
     // Resizing the persistent dock is a layout operation, not a geographic
@@ -2232,8 +2390,8 @@ export class MapScene extends HTMLElement {
       } this.renderer.outputColorSpace=THREE.SRGBColorSpace; this.renderer.toneMapping=THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure=1.08; this.dataset.modelRender='webgl-live-glb'; this.dataset.modelRasterized='false';
       this.dataset.three='ready';if(this.isPublicMapVisual())this.dataset.publicThree='ready';
       this.scene=new THREE.Scene(); const hemisphere=new THREE.HemisphereLight(0xcfe4ff,0x1a2735,2.6); const keyLight=new THREE.DirectionalLight(0xffffff,4.2); keyLight.castShadow=true; keyLight.position.set(-120,-160,220); keyLight.target.position.set(0,0,0); this.scene.add(hemisphere,keyLight,keyLight.target); this.solarHemisphere=hemisphere; this.solarLight=keyLight; this.sceneStage=new THREE.Group(); this.sceneStage.scale.setScalar(1); this.scene.add(this.sceneStage); this.camera=new THREE.PerspectiveCamera(34,1,.1,10000); this.dataset.cameraProjection='perspective'; this.applySolarLighting(solarStateForHour(this.solarHour??appStore.get().solarHour??9,this.solarGeo||MAP_GEOREFERENCE_FALLBACK));
-      this.mapSurfaceCanvas=document.createElement('canvas'); this.mapSurfaceTexture=new THREE.CanvasTexture(this.mapSurfaceCanvas); this.mapSurfaceTexture.colorSpace=THREE.SRGBColorSpace;
-      this.mapSurface=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:this.mapSurfaceTexture,color:0xffffff,side:THREE.DoubleSide,transparent:false,depthTest:false,depthWrite:false})); this.mapSurface.renderOrder=0; this.mapSurface.visible=!this.hasAttribute('data-public-static-base');/* BELAVISTA_PUBLIC_STATIC_BASE_V521 */ this.mapSurface.position.z=SCENE_MAP_Z; this.sceneStage.add(this.mapSurface); this.dataset.mapRasterMode='webgl-raster'; this.dataset.mapContact=`Satélite realista + OpenStreet fallback + GLB na mesma cena Three.js · surface z=${SCENE_MAP_Z} · model base z=${SCENE_MODEL_BASE_Z}`;
+      this.mapSurfaceCanvas=document.createElement('canvas'); this.mapSurfaceTexture=new THREE.CanvasTexture(this.mapSurfaceCanvas); this.mapSurfaceTexture.colorSpace=THREE.SRGBColorSpace; this.mapSurfaceTexture.generateMipmaps=false; this.mapSurfaceTexture.minFilter=THREE.LinearFilter; this.mapSurfaceTexture.magFilter=THREE.LinearFilter; this.mapSurfaceTexture.anisotropy=Math.min(8,this.renderer.capabilities?.getMaxAnisotropy?.()||1);
+      this.mapSurface=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:this.mapSurfaceTexture,color:0xffffff,side:THREE.DoubleSide,transparent:false,depthTest:false,depthWrite:false})); this.mapSurface.renderOrder=0; this.mapSurface.visible=!this.hasAttribute('data-public-static-base');/* BELAVISTA_PUBLIC_STATIC_BASE_V521 */ this.mapSurface.position.z=SCENE_MAP_Z; this.sceneStage.add(this.mapSurface); this.dataset.mapRasterMode='webgl-raster'; this.dataset.mapContact=`Captura satélite local + GLB na mesma cena Three.js · sem Maps · surface z=${SCENE_MAP_Z} · model base z=${SCENE_MODEL_BASE_Z}`;
       const geo=new THREE.CircleGeometry(8,32); const colors=[0x7d64ff,0x2fe6ae,0xffb020,0x55a8ff,0xff5c58];
       this.markerGroup=new THREE.Group(); this.sceneStage.add(this.markerGroup);
       this.gpsMarkerGeometry=geo; this.gpsMarkerColors=colors;
@@ -2246,21 +2404,36 @@ export class MapScene extends HTMLElement {
       this.modelParts={lots:[],streets:[],other:[]}; this.stageOverlayTargets={}; this.raycaster=new THREE.Raycaster(); this.pointer=new THREE.Vector2();
       this.selectionHalo=new THREE.Mesh(new THREE.RingGeometry(8,13,48),new THREE.MeshBasicMaterial({color:0x2fe6ae,transparent:true,opacity:.88,side:THREE.DoubleSide,depthTest:false}));
       this.selectionHalo.visible=false; this.sceneStage.add(this.selectionHalo); this.applySceneView(MAP_CAMERA_VIEW,false); this.loadMasterplan(THREE,GLTFLoader);
+      // O manifesto do DWG precisa acompanhar o GLB desde o início. Sem esta
+      // chamada os marcadores usavam apenas o centro de fallback e a matriz
+      // afim nunca era recalculada quando o modelo terminava o staging.
+      // A rotina é independente do carregamento do GLB: se o DWG chegar antes,
+      // o último sync do enriquecimento aplica a transformação; se chegar
+      // depois, setGpsMarkers() sincroniza a cena novamente.
+      this.loadDwgGeoreference(THREE);
       let down=null,lastX=0,lastY=0,dragging=false,panning=false,tilting=false,rotating=false,zooming=false,selecting=false;
       canvas.addEventListener('contextmenu',event=>event.preventDefault());
-      /* BELAVISTA_CTRL_WHEEL_ZOOM_V551 */
-      canvas.addEventListener('wheel',event=>{
+      /* BELAVISTA_CTRL_WHEEL_ZOOM_V5560
+       * O evento é ouvido no host em fase de captura, não somente no canvas:
+       * a cena também possui camadas WebGL/Leaflet que podem ser o alvo da
+       * roda. Assim Ctrl + roda sempre aproxima ou afasta pelo ponto sob o
+       * cursor sem acionar o zoom nativo do navegador. */
+      const zoomSceneAtCursorByCtrlWheel=event=>{
+        if(!event.ctrlKey||event.defaultPrevented)return;
+        const target=event.target;
+        if(target?.closest?.('button,input,select,textarea,label,a,[contenteditable="true"]'))return;
+        const rect=canvas.getBoundingClientRect?.();
+        if(!rect||event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)return;
         event.preventDefault();
-        if(event.ctrlKey){
-          // Ctrl + roda volta a controlar o zoom; Ctrl + arraste continua
-          // reservado para inclinação, com os mesmos limites da cena.
-          this.setSceneZoom(this.sceneManualZoom+(event.deltaY<0?.06:-.06),false);
-          this.queueSceneBoundsCommit('ctrl-wheel-zoom');
-          return;
-        }
-        this.setSceneZoom(this.sceneManualZoom+(event.deltaY<0?.06:-.06),false);
-        this.queueSceneBoundsCommit('wheel');
-      },{passive:false});
+        event.stopPropagation();
+        const wheelMagnitude=Math.max(.055,Math.min(.18,Math.abs(Number(event.deltaY)||0)*.0008));
+        const nextZoom=this.sceneManualZoom+(event.deltaY<0?wheelMagnitude:-wheelMagnitude);
+        this.setSceneZoomAt(nextZoom,event.clientX,event.clientY,false);
+        this.dataset.mapGesture='ctrl-wheel-zoom';
+        this.dataset.sceneWheelZoom='ctrl-wheel · cursor-ground';
+        this.queueSceneBoundsCommit('ctrl-wheel-zoom');
+      };
+      this.addEventListener('wheel',zoomSceneAtCursorByCtrlWheel,{capture:true,passive:false});
       canvas.addEventListener('pointerdown',event=>{
         down={x:event.clientX,y:event.clientY}; lastX=event.clientX; lastY=event.clientY; dragging=false;
         // O modo de pintura de registros tem prioridade sobre a seleção por
@@ -2270,13 +2443,14 @@ export class MapScene extends HTMLElement {
         // Em Registros, “Pintar no mapa” transforma o botão esquerdo em
         // seleção: clique escolhe uma superfície; arraste desenha uma área.
         selecting=(this.recordPaintMode||this.mapSelectionMode==='progress'||event.altKey)&&event.button===0;
-        // Ctrl + arraste é o controle principal de inclinação. Shift continua
-        // funcionando para compatibilidade com o gesto anterior.
-        tilting=!selecting&&event.button===0&&(event.ctrlKey||event.shiftKey);
-        zooming=!selecting&&!tilting&&event.altKey&&event.button===0;
+        // Ctrl + arraste é o controle principal de zoom. O Shift fica
+        // reservado para inclinação, evitando que os dois gestos disputem o
+        // mesmo movimento do botão esquerdo.
+        tilting=!selecting&&event.button===0&&event.shiftKey;
+        zooming=!selecting&&!tilting&&event.ctrlKey&&event.button===0;
         rotating=!selecting&&event.button===2;
         panning=!selecting&&!zooming&&!tilting&&!rotating&&(event.button===0||event.button===1);
-        this.dataset.mapGesture=selecting?'select-progress':zooming?'alt-zoom':tilting?(event.ctrlKey?'ctrl-tilt':'shift-tilt'):rotating?'rotate':panning?'pan':'idle';
+        this.dataset.mapGesture=selecting?'select-progress':zooming?'ctrl-drag-zoom':tilting?'shift-tilt':rotating?'rotate':panning?'pan':'idle';
         if(selecting)this.beginMapAreaSelection(event.clientX,event.clientY);
         canvas.setPointerCapture?.(event.pointerId);
       });
@@ -2286,7 +2460,7 @@ export class MapScene extends HTMLElement {
         if(dragging){
           const dx=event.clientX-lastX,dy=event.clientY-lastY;
           if(selecting)this.updateMapAreaSelection(event.clientX,event.clientY);
-          else if(zooming)this.setSceneZoom(this.sceneManualZoom-dy*ZOOM_DRAG_SENSITIVITY,false);
+          else if(zooming)this.setSceneZoomAt(this.sceneManualZoom-dy*ZOOM_DRAG_SENSITIVITY,event.clientX,event.clientY,false);
           else if(tilting)this.setSceneTiltAdjust(this.sceneTiltAdjust+dy*TILT_DRAG_SENSITIVITY,false);
           else if(rotating)this.setSceneRotation(this.sceneManualRotation+dx*.32,false);
           else if(panning){
@@ -2489,8 +2663,11 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
         // Mantém a grama visualmente separada do relevo satélite mesmo onde
         // os dois planos ficam muito próximos após a triangulação do GLB.
         clone.polygonOffset=true;
-        clone.polygonOffsetFactor=-1;
-        clone.polygonOffsetUnits=-1;
+        // A superfície viária é o limite físico da área social. Mantê-la
+        // atrás no depth buffer permite que o recorte exato da rua cubra a
+        // grama quando os dois materiais compartilham uma borda.
+        clone.polygonOffsetFactor=1;
+        clone.polygonOffsetUnits=1;
       }
       clone.needsUpdate=true;
     }
@@ -2547,6 +2724,12 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
         this.masterplanModel.userData.dwgAlignment=geo.alignment;
       }
       this.applyDwgLotMetadata();
+      this.dataset.dwgGeoreference='ready';
+      this.dataset.dwgSyncState=`model:${this.masterplanModel?'1':'0'}|parts:${this.modelParts?.lots?.length||0}|gpu:${this._modelGpuReady?'1':'0'}`;
+      // O DWG pode terminar antes ou depois do GLB. Reexecutar o sync quando
+      // os dois lados estiverem prontos garante que a transformação afim não
+      // fique presa no fallback de envelope da primeira abertura.
+      if(this.masterplanModel&&this._modelGpuReady)this.syncThree();
     }catch(error){
       this.dataset.dwgGeoreference='fallback';
       this.dataset.dwgGeoreferenceError=String(error?.message||error);
@@ -2588,7 +2771,12 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     this.publicLotSurfaceMaterial=lotFill;
     const lotOutline=new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.84,depthWrite:false,depthTest:true});
     let outlines=0;
-    for(const lot of this.modelParts.lots||[]){
+    // Os markers comerciais usam somente os nós canônicos Lote_###. Os
+    // demais meshes classificados como lote são auxiliares/duplicatas do
+    // GLB; desenhá-los aqui criava contornos que não correspondiam à âncora
+    // do marker e dava a impressão de que o número estava fora do lote.
+    const publicLots=this.canonicalPublicLotParts();
+    for(const lot of publicLots){
       lot.material=lotFill;
       lot.userData.defaultMaterial=lotFill;
       if(lot.userData.publicLotOutline||!lot.geometry)continue;
@@ -2624,75 +2812,54 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     }
     this.dataset.publicLegacyTreesHidden=String(hiddenLegacyTrees);
 
-    // As ruas partem como asfalto. Os trechos concluídos recebem a camada de
-    // paralelepípedo por cima, conforme a medição de pavimentação registrada.
+    // Auditoria leve da camada pública: se o GLB receber novos elementos
+    // técnicos no futuro, o nome dos meshes que ainda ficaram visíveis fica
+    // disponível para diagnóstico sem abrir a cena Three.js ao visitante.
+    if(this.isPublicMapVisual()){
+      const visibleOther=(this.modelParts.other||[])
+        .filter(node=>node?.visible)
+        .map(node=>String(node.name||'other'));
+      this.dataset.publicVisibleOtherMeshes=visibleOther.length
+        ?visibleOther.slice(0,80).join('|')
+        :'none';
+      this.dataset.publicVisibleOtherCount=String(visibleOther.length);
+    }
+
+    // No mapa público a fotografia aérea é a referência canônica das vias.
+    // Não desenhar as ruas do GLB evita que uma malha preta, um asfalto
+    // sintético ou uma fatia de paralelepípedo desloque a implantação em
+    // relação às ruas reais visíveis na imagem.
     for(const street of this.modelParts.streets||[]){
       const asphalt=this.makeSiteSurfaceMaterial(THREE,street.userData.defaultMaterial||street.material,'asphalt');
       street.material=asphalt;
       street.userData.defaultMaterial=asphalt;
+      if(this.isPublicMapVisual()){
+        street.visible=false;
+        street.userData.publicRoadBaseHidden=true;
+        street.raycast=()=>{};
+      }
     }
 
-    // Mantém equipamentos/praças modelados em 3D, mas cria uma base de
-    // concreto somente sob superfícies sociais reais. O GLB também contém
-    // grupos-pai e peças de mobiliário; usar a caixa de qualquer mesh aqui
-    // criava o enorme retângulo branco que aparecia solto no canto da cena.
-    const concrete=this.makeSiteSurfaceMaterial(THREE,new THREE.MeshStandardMaterial({color:0xb9b5aa,roughness:.92,metalness:0,side:THREE.DoubleSide}),'concrete');
-    const pads=new THREE.Group(); pads.name='BelavistaPublicLeisureConcrete'; pads.renderOrder=7;
-    this.sceneStage?.updateMatrixWorld?.(true);
-    const stageInverse=this.sceneStage?.matrixWorld
-      ? new THREE.Matrix4().copy(this.sceneStage.matrixWorld).invert()
-      : null;
-    const toStageBox=worldBox=>{
-      if(!stageInverse)return worldBox;
-      const local=new THREE.Box3();
-      for(const x of [worldBox.min.x,worldBox.max.x]){
-        for(const y of [worldBox.min.y,worldBox.max.y]){
-          for(const z of [worldBox.min.z,worldBox.max.z]){
-            local.expandByPoint(new THREE.Vector3(x,y,z).applyMatrix4(stageInverse));
-          }
-        }
-      }
-      return local;
-    };
-    const siteBounds=this.masterplanModel?toStageBox(new THREE.Box3().setFromObject(this.masterplanModel)):null;
-    const siteSize=siteBounds?.getSize(new THREE.Vector3())||new THREE.Vector3(0,0,0);
-    const padName=/area.?de.?lazer|quadra|pavilh[aã]o|play|gym.?pad|court|praca|pra[cç]a|base|piso|floor|social/;
-    const seen=new Set();
-    const padCenters=[];
-    for(const node of this.modelLeisureNodes||[]){
-      if(!node?.geometry||seen.has(node))continue;
-      seen.add(node);
-      try{
-        const name=String(node.name||'').toLowerCase();
-        const bounds=toStageBox(new THREE.Box3().setFromObject(node)),size=bounds.getSize(new THREE.Vector3());
-        const area=size.x*size.y,siteArea=Math.max(1,siteSize.x*siteSize.y);
-        const isOversized=Boolean(siteBounds&&(
-          size.x>siteSize.x*.24||size.y>siteSize.y*.24||area>siteArea*.085
-        ));
-        // Só superfícies com nome de piso/base entram. Peças menores que
-        // dois metros e grupos-pai são objetos 3D, não pads de implantação.
-        if(!padName.test(name)||size.x<2||size.y<2||isOversized)continue;
-        const center=bounds.getCenter(new THREE.Vector3());
-        if(padCenters.some(previous=>previous.distanceTo(center)<Math.max(2,Math.min(size.x,size.y)*.42)))continue;
-        padCenters.push(center);
-        const padWidth=Math.min(size.x*1.04,Math.max(2,siteSize.x?siteSize.x*.13:size.x*1.04));
-        const padDepth=Math.min(size.y*1.04,Math.max(2,siteSize.y?siteSize.y*.13:size.y*1.04));
-        const pad=new THREE.Mesh(new THREE.PlaneGeometry(padWidth,padDepth),concrete);
-        pad.name=`${node.name||'area_livre'}__concrete_pad`;
-        pad.position.set(center.x,center.y,bounds.min.z+.035);
-        pad.renderOrder=7;
-        pad.raycast=()=>{};
-        pad.userData={publicContext:true,kind:'social-concrete-pad',source:'GLB social surface · bounded to activity footprint'};
-        pads.add(pad);
-      }catch{}
+    // Não criar pisos retangulares derivados de caixas envolventes. Eles não
+    // fazem parte do loteamento e ficavam quase coplanares às superfícies
+    // sociais do GLB, provocando z-fighting/flicker e manchas quadradas.
+    if(this.publicLeisureConcreteGroup){
+      this.publicLeisureConcreteGroup.removeFromParent?.();
+      this.publicLeisureConcreteGroup.traverse?.(node=>{node.geometry?.dispose?.();});
+      this.publicLeisureConcreteGroup=null;
     }
-    if(pads.children.length){this.sceneStage?.add(pads);this.publicLeisureConcreteGroup=pads;}
     this.dataset.publicLotPresentation=`white-outlines:${outlines}`;
     this.dataset.publicGround='satellite image · no synthetic grass under lots';
-    this.dataset.publicLeisureGround=`concrete pads:${pads.children.length}`;
-    this.dataset.publicLeisurePadPolicy='social floor/base meshes only · parent boxes excluded · bounded footprint';
-    this.loadPublicCobbleTexture();
-    this.setPublicPavingView('cobble',100);
+    this.dataset.publicLeisureGround='original GLB social surfaces only · no synthetic planes';
+    this.dataset.publicLeisurePadPolicy='disabled · no bounding-box concrete pads';
+    this.disablePublicSyntheticRoads();
+    this.dataset.publicRoadTexture='disabled · satellite image is the road surface';
+    this.dataset.publicRoadTextureRequired='false';
+    this.dataset.publicRoadTextureSource='DWG-centred aerial ground · native road geometry hidden';
+    this.dataset.publicRoadPolicy='satellite-only';
+    this.dataset.publicModelAlignment='DWG plan heading preserved · guide roads come from aerial image';
+    this.disablePublicCobbleTexture();
+    this.setPublicPavingView('satellite',0);
   }
   reassertPublicPresentationStyle(){
     if(!this.isPublicMapVisual()||!this.modelParts)return;
@@ -2703,37 +2870,68 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
         lot.userData.defaultMaterial=fill;
       }
     }
-    // O modo público não aceita a paleta terrosa do mapa administrativo.
-    // Reaplica a textura de pedra em toda a hierarquia de ruas, inclusive nos
-    // filhos dos meshes-fonte que o GLB usa para as faces laterais.
-    if(this.publicCobbleTexture){
-      const roadMaterial=this.getPublicCobbleMaterial();
-      const applyRoad=node=>{
-        if(!node?.isMesh||!roadMaterial)return;
-        this.ensurePublicTextureUv(node.geometry,true);
-        node.material=roadMaterial;
-        node.userData.defaultMaterial=roadMaterial;
-        node.userData.publicRoadSurface=true;
-        node.renderOrder=Math.max(12,node.renderOrder||0);
-      };
-      const visited=new Set();
-      for(const source of [...(this._streetSourceCandidates||[]),...(this.modelParts.streets||[])]){
-        source?.traverse?.(node=>{if(visited.has(node))return;visited.add(node);applyRoad(node);});
-      }
-      this.masterplanModel?.traverse?.(node=>{
-        if(visited.has(node))return;
-        const role=String(node.userData?.partKind||'').toLowerCase();
-        if(role==='streets'||role==='curbs'||/(rua|street|road|asfalto|paviment|meio.?fio|guia|curb)/i.test(String(node.name||'')))applyRoad(node);
-      });
-      // Os meios-fios vivem nos overlays públicos, fora da hierarquia do
-      // GLB. Incluí-los aqui garante que também recebam a textura importada.
-      this.sceneStage?.traverse?.(node=>{
-        if(visited.has(node))return;
-        if(node.userData?.publicCurb||node.userData?.streetSegment)applyRoad(node);
-      });
-    }
-    this.setPublicPavingView('cobble',100);
-    this.dataset.publicVisualRefresh='white-lot-outlines + all-imported-cobble';
+    // A apresentação pode ser reaplicada depois de uma troca de textura,
+    // de um evento de dados ou de uma navegação. Em todos esses casos a
+    // regra continua sendo: o satélite desenha as ruas; o modelo não.
+    this.disablePublicSyntheticRoads();
+    this.disablePublicCobbleTexture();
+    this.dataset.publicRoadTexture='disabled · satellite image is the road surface';
+    this.dataset.publicRoadTextureRequired='false';
+    this.dataset.publicRoadPolicy='satellite-only';
+    this.dataset.publicModelAlignment='DWG plan heading preserved · guide roads come from aerial image';
+    this.setPublicPavingView('satellite',0);
+    this.dataset.publicVisualRefresh='white-lot-outlines + satellite-ground-only';
+  }
+  disablePublicSyntheticRoads(){
+    if(!this.isPublicMapVisual())return 0;
+    const hiddenNodes=this._publicSyntheticRoadsHidden||new Set();
+    this._publicSyntheticRoadsHidden=hiddenNodes;
+    let hidden=0;
+    const hide=node=>{
+      if(!node||hiddenNodes.has(node))return;
+      const data=node.userData||{};
+      const role=String(data.partKind||data.belavistaRole||'').toLowerCase();
+      const name=String(node.name||'');
+      const roadLike=(
+        data.streetPaver||data.publicRoadOverlay||data.publicCurb||
+        data.streetSegment||data.streetRectangularSlice||data.streetIntersection||
+        data.publicRoadBaseHidden||role==='streets'||role==='street'||
+        role==='curbs'||role==='curb'||/(^|[_\s-])(rua|road|street|asfalto|paviment|meio.?fio|guia|curb)([_\s-]|$)/i.test(name)
+      );
+      if(!roadLike)return;
+      hiddenNodes.add(node);
+      if(node.visible)hidden++;
+      node.visible=false;
+      node.raycast=()=>{};
+      node.userData.publicSatelliteRoadHidden=true;
+    };
+
+    // Fontes viárias do GLB: ocultar o grupo inteiro mantém os triângulos
+    // disponíveis para o modo operacional, mas não deixa suas faces escuras
+    // vencerem a imagem de satélite no modo público.
+    for(const source of [
+      ...(this._streetSourceCandidates||[]),
+      ...(this.modelParts?.streets||[])
+    ])hide(source);
+    this.masterplanModel?.traverse?.(hide);
+
+    // Overlays de paralelepípedo, meios-fios e interseções ficam como irmãos
+    // do GLB em sceneStage; por isso precisam ser varridos separadamente.
+    this.sceneStage?.traverse?.(hide);
+    for(const paver of this._streetPaverMeshes||[])hide(paver);
+    this._streetPaverMeshes=[];
+
+    this._streetOperationalGeometryReady=true;
+    this.dataset.publicRoadPolicy='satellite-only';
+    this.dataset.publicSyntheticRoads='hidden';
+    this.dataset.publicSyntheticRoadCount=String(hiddenNodes.size);
+    this.dataset.publicPaverVisibleCount='0';
+    this.dataset.publicRoadOcclusionPolicy='satellite-road-base-only';
+    this.dataset.publicRoadTexture='disabled · satellite image is the road surface';
+    this.dataset.publicRoadTextureRequired='false';
+    this.dataset.publicRoadTextureRotation='not-applicable';
+    this.renderer?.render?.(this.scene,this.camera);
+    return hidden;
   }
   ensurePublicTextureUv(geometry,force=false){
     if(!geometry?.getAttribute?.('position')||(!force&&geometry.getAttribute('uv')))return;
@@ -2765,34 +2963,76 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     geometry.setAttribute('uv',new this.THREE.BufferAttribute(uv,2));
     geometry.attributes.uv.needsUpdate=true;
   }
+  disablePublicCobbleTexture(){
+    const texture=this.publicCobbleTexture;
+    const material=this._publicCobbleMaterial;
+    this.publicCobbleTexture=null;
+    this._publicCobbleMaterial=null;
+    this._publicCobbleTextureLoading=false;
+    texture?.dispose?.();
+    if(material){
+      material.map=null;
+      material.needsUpdate=true;
+      material.dispose?.();
+    }
+    this.dataset.publicCobbleTexture='disabled';
+    this.dataset.publicCobbleTextureSource='none · satellite-only';
+    this.dataset.publicRoadTextureRotation='not-applicable';
+  }
   getPublicCobbleMaterial(){
+    if(this.isPublicMapVisual()||this.isPublicCustomerExperience())return null;
     if(!this.THREE||!this.publicCobbleTexture)return null;
-    if(this._publicCobbleMaterial?.map===this.publicCobbleTexture)return this._publicCobbleMaterial;
+    if(this._publicCobbleMaterial?.map===this.publicCobbleTexture){
+      this._publicCobbleMaterial.depthTest=false;
+      this._publicCobbleMaterial.depthWrite=false;
+      this._publicCobbleMaterial.transparent=false;
+      this._publicCobbleMaterial.needsUpdate=true;
+      return this._publicCobbleMaterial;
+    }
     // MeshBasicMaterial keeps the imported stone visible over the dark
     // satellite/GLB lighting. The texture itself remains the real
     // paralelepípedo surface; only its exposure is made deterministic.
     this._publicCobbleMaterial=new this.THREE.MeshBasicMaterial({
       color:0xffffff,map:this.publicCobbleTexture,side:this.THREE.DoubleSide,
-      transparent:false,depthWrite:true,depthTest:true
+      transparent:false,
+      // O mesh é triangulado a partir da própria face superior da rua. Ele
+      // pode, portanto, ser desenhado sobre o piso social sem criar um
+      // retângulo extra: só cobre os pixels que pertencem à via canônica.
+      depthWrite:false,depthTest:false
     });
     this._publicCobbleMaterial.name='BelavistaImportedCobblePublic';
     return this._publicCobbleMaterial;
   }
   loadPublicCobbleTexture(){
-    if(!this.isPublicMapVisual()||this.publicCobbleTexture||this._publicCobbleTextureLoading||!this.THREE)return;
+    if(this.isPublicMapVisual()){
+      this.disablePublicSyntheticRoads();
+      this.disablePublicCobbleTexture();
+      this.dataset.publicRoadTexture='disabled · satellite image is the road surface';
+      this.dataset.publicRoadTextureRequired='false';
+      return;
+    }
+    if(this.publicCobbleTexture||this._publicCobbleTextureLoading||!this.THREE)return;
     this._publicCobbleTextureLoading=true;
     this.dataset.publicRoadTexture='loading';
     new this.THREE.TextureLoader().load(
       runtimeRouteV1('/assets/textures/cobblestone-pavement-polyhaven-1k.jpg'),
       texture=>{
+        // A carga pode ter começado antes de a experiência mudar para o
+        // modo público. Nunca retenha nem aplique a textura nesse caso.
+        if(this.isPublicMapVisual()||this.isPublicCustomerExperience()){
+          texture.dispose?.();
+          this._publicCobbleTextureLoading=false;
+          this.disablePublicCobbleTexture();
+          return;
+        }
         texture.colorSpace=this.THREE.SRGBColorSpace;
         texture.wrapS=this.THREE.RepeatWrapping;
         texture.wrapT=this.THREE.RepeatWrapping;
-        // A malha inteira do GLB cobre o loteamento; oito repetições deixavam
-        // cada pedra com escala de piso/placa. Trinta e duas repetições
-        // mantêm blocos menores e numerosos, ainda legíveis no enquadramento
-        // inicial e mais naturais quando a câmera se aproxima das ruas.
-        texture.repeat.set(32,32);
+        // A superfície triangulada já calcula UVs em unidades do modelo. Uma
+        // repetição adicional multiplicava a escala e transformava as juntas
+        // em linhas pretas. Uma única paginação mantém pedras pequenas,
+        // quadradas e legíveis sem criar uma malha visual sobre os lotes.
+        texture.repeat.set(1,1);
         // A paginação da pedra fica diagonal em relação ao eixo das vias,
         // como na referência visual do loteamento. O centro evita deslocar o
         // padrão ao aplicar a rotação no material compartilhado.
@@ -2822,6 +3062,27 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
   }
   setPublicPavingView(mode='cobble',progress=0){
     if(!this.isPublicMapVisual()||!this.THREE)return;
+    // A experiência pública usa a foto aérea centrada pelo DWG como chão.
+    // O controle de paralelepípedo continua existindo para os contextos
+    // operacionais/administrativos, mas nunca deve criar uma rua sobre a
+    // fotografia da página de leads.
+    if(this.dataset.publicRoadPolicy==='satellite-only'||this.isPublicCustomerExperience()){
+      this.disablePublicSyntheticRoads();
+      this.disablePublicCobbleTexture();
+      this.dataset.publicPavingView='satellite-only';
+      this.dataset.publicPavingProgress='0';
+      this.dataset.publicCobbleSegments='0/0 · satellite ground';
+      this.dataset.publicPaverDiagnostic='disabled · no generated roads';
+      this.dataset.publicRoadOcclusionPolicy='satellite-road-base-only';
+      return;
+    }
+    // Alguns GLBs compartilham a fonte viária entre mais de um agrupamento.
+    // Reafirmar a visibilidade aqui evita que uma reaplicação de material
+    // reative a malha escura depois da construção do overlay.
+    const publicSources=[...(this._streetSourceCandidates||[]),...(this.modelParts?.streets||[])];
+    const hidePublicRoadSource=node=>{if(node?.userData?.publicRoadBaseHidden&&!node.userData?.streetPaver&&!node.userData?.publicRoadOverlay){node.visible=false;node.raycast=()=>{};}};
+    publicSources.forEach(source=>source?.traverse?.(hidePublicRoadSource));
+    this.masterplanModel?.traverse?.(hidePublicRoadSource);
     this.ensureOperationalStreetGeometry();
     const generated=(this.modelParts?.streets||[]).filter(item=>item.userData?.streetSegment);
     // Alguns GLBs trazem ruas compostas sem uma geometria retangular que
@@ -2833,18 +3094,30 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     const appliedProgress=mode==='cobble'?100:normalized;
     const completed=mode==='asphalt'?0:Math.round(segments.length*appliedProgress/100);
     segments.forEach((segment,index)=>{
-      this.ensurePublicTextureUv(segment.geometry,true);
+      if(!segment.userData?.streetPaverSurface)this.ensurePublicTextureUv(segment.geometry,true);
       if(!segment.userData.publicCobbleMaterial){
-        segment.userData.publicCobbleMaterial=this.getPublicCobbleMaterial()||new this.THREE.MeshBasicMaterial({color:0x8d8a82,side:this.THREE.DoubleSide});
+        const baseMaterial=this.getPublicCobbleMaterial()||new this.THREE.MeshBasicMaterial({color:0x8d8a82,side:this.THREE.DoubleSide,depthWrite:false,depthTest:false});
+        segment.userData.publicCobbleMaterial=segment.userData.streetPaver
+          ?Object.assign(baseMaterial.clone(),{vertexColors:false})
+          :baseMaterial;
       }
+      // Reaplica a política também nos clones criados antes da textura
+      // terminar de carregar.
+      segment.userData.publicCobbleMaterial.depthTest=false;
+      segment.userData.publicCobbleMaterial.depthWrite=false;
+      segment.userData.publicCobbleMaterial.transparent=false;
+      segment.userData.publicCobbleMaterial.needsUpdate=true;
       if(this.publicCobbleTexture&&segment.userData.publicCobbleMaterial.map!==this.publicCobbleTexture){
         segment.userData.publicCobbleMaterial.map=this.publicCobbleTexture;
         segment.userData.publicCobbleMaterial.needsUpdate=true;
       }
       if(segmented){
         segment.visible=index<completed;
+        segment.renderOrder=30;
         if(index<completed)segment.material=segment.userData.publicCobbleMaterial;
       }else{
+        segment.visible=true;
+        segment.renderOrder=30;
         segment.material=index<completed?segment.userData.publicCobbleMaterial:segment.userData.defaultMaterial;
       }
     });
@@ -2855,24 +3128,215 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     this.dataset.publicPavingView=mode==='asphalt'?'all-asphalt':mode==='cobble'?'all-cobble':'progress-only-cobble';
     this.dataset.publicPavingProgress=String(appliedProgress);
     this.dataset.publicCobbleSegments=`${completed}/${segments.length}${segmented?' trechos':' vias'}`;
+    this.dataset.publicPaverDiagnostic='exact-road-surface';
+    this.dataset.publicRoadOcclusionPolicy='exact-road-triangles-over-social-floor';
     this.renderer?.render(this.scene,this.camera);
   }
   reassertPublicRoadMaterial(){
+    if(this.isPublicMapVisual()){
+      this.disablePublicSyntheticRoads();
+      this.disablePublicCobbleTexture();
+      this.dataset.publicRoadTexture='disabled · satellite image is the road surface';
+      this.dataset.publicRoadTextureRequired='false';
+      return;
+    }
     const material=this.getPublicCobbleMaterial();
     if(!material)return;
+    material.depthTest=false;
+    material.depthWrite=false;
+    material.transparent=false;
+    material.needsUpdate=true;
     const apply=node=>{
       if(!node?.isMesh)return;
       const role=String(node.userData?.partKind||'').toLowerCase();
       if(node.userData?.streetSegment||node.userData?.publicCurb||role==='streets'||role==='curbs'){
-        this.ensurePublicTextureUv(node.geometry,true);
-        node.material=material;
-        node.userData.defaultMaterial=material;
+        if(node.userData?.publicRoadBaseHidden&&!node.userData?.streetSegment&&!node.userData?.publicCurb&&!node.userData?.streetPaver&&!node.userData?.publicRoadOverlay){
+          node.visible=false;
+          node.raycast=()=>{};
+        }
+        if(!node.userData?.streetPaverSurface)this.ensurePublicTextureUv(node.geometry,true);
+        if(node.userData?.streetPaver){
+          const paverMaterial=node.userData.publicCobbleMaterial||(node.userData.publicCobbleMaterial=material.clone());
+          paverMaterial.vertexColors=false;
+          paverMaterial.depthTest=false;
+          paverMaterial.depthWrite=false;
+          paverMaterial.transparent=false;
+          paverMaterial.needsUpdate=true;
+          node.material=paverMaterial;
+          node.renderOrder=30;
+        }else node.material=material;
+        node.userData.defaultMaterial=node.material;
         node.userData.publicRoadSurface=true;
       }
     };
     for(const source of [...(this._streetSourceCandidates||[]),...(this.modelParts?.streets||[])])source?.traverse?.(apply);
     this.masterplanModel?.traverse?.(apply);
     this.dataset.publicRoadMaterial='imported-cobble-meshbasic-v55';
+  }
+  enforcePublicTechnicalVisibility(){
+    if(!this.isPublicMapVisual()||!this.masterplanModel)return;
+    this.disablePublicSyntheticRoads();
+    let hiddenRoadSources=0,hiddenDividers=0,visiblePavers=0;
+    const visibleKinds=new Map();
+    this.masterplanModel.traverse?.(node=>{
+      const name=String(node.name||'');
+      const isGeneratedPaver=Boolean(node.userData?.streetPaver);
+      const isPublicRoadSource=!isGeneratedPaver&&!node.userData?.publicRoadOverlay&&(
+        node.userData?.publicRoadBaseHidden||
+        /^(asfalto|rua|street|road|meio.?fio|guia|curb)(?:[_\s-]|$)/i.test(name)
+      );
+      const isInternalDivider=/^divisa(?:[_\s-]|$)/i.test(name)||node.userData?.publicInternalDividerHidden;
+      if(isPublicRoadSource){
+        if(node.visible)hiddenRoadSources++;
+        node.visible=false;
+        node.raycast=()=>{};
+      }
+      if(isInternalDivider){
+        if(node.visible)hiddenDividers++;
+        node.visible=false;
+        node.raycast=()=>{};
+      }
+      if(isGeneratedPaver&&node.visible)visiblePavers++;
+      if(node.visible&&(node.isMesh||node.isLine||node.isPoints)){
+        const kind=isGeneratedPaver?'generated-paver':node.userData?.partKind||'unclassified';
+        visibleKinds.set(kind,(visibleKinds.get(kind)||0)+1);
+      }
+    });
+    // Os pavers nativos são overlays irmãos do modelo principal; eles não
+    // aparecem no traverse acima, mas são a camada que efetivamente cobre a
+    // interseção entre a rua e o piso social.
+    for(const paver of this._streetPaverMeshes||[]){
+      if(paver.visible){
+        visiblePavers++;
+        visibleKinds.set('generated-paver',(visibleKinds.get('generated-paver')||0)+1);
+      }
+    }
+    this.dataset.publicTechnicalVisibility='enforced-before-render';
+    this.dataset.publicTechnicalRoadsHidden=String(hiddenRoadSources);
+    this.dataset.publicTechnicalDividersHidden=String(hiddenDividers);
+    this.dataset.publicPaverVisibleCount=String(visiblePavers);
+    this.dataset.publicVisibleKinds=[...visibleKinds].map(([kind,count])=>`${kind}:${count}`).join('|')||'none';
+  }
+  publicDwgGeoFrame(theme={},w=0,h=0){
+    if(!this.isPublicMapVisual())return null;
+    const geo=this.dwgGeo||{},gps=geo.drawingBounds?.gps||{};
+    const controls=(geo.controlPoints||[]).map(point=>({id:point?.id,lat:Number(point?.lat),lng:Number(point?.lng)})).filter(point=>Number.isFinite(point.lat)&&Number.isFinite(point.lng));
+    const boundsValid=['south','west','north','east'].every(key=>Number.isFinite(Number(gps[key])));
+    const latitudes=boundsValid?[Number(gps.south),Number(gps.north)]:controls.map(point=>point.lat);
+    const longitudes=boundsValid?[Number(gps.west),Number(gps.east)]:controls.map(point=>point.lng);
+    if(latitudes.length<2||longitudes.length<2)return null;
+    const south=Math.min(...latitudes),north=Math.max(...latitudes),west=Math.min(...longitudes),east=Math.max(...longitudes);
+    const centerPoint=controls.find(point=>point.id==='site-center')||geo.drawingBounds?.center||{};
+    const center=[Number(centerPoint.lat),Number(centerPoint.lng)];
+    const centerLat=Number.isFinite(center[0])?center[0]:(south+north)/2;
+    const centerLng=Number.isFinite(center[1])?center[1]:(west+east)/2;
+    const zoom=Math.max(12,Math.min(20,Number(theme.zoom)||18)),n=2**zoom,rad=Math.PI/180;
+    const project=(lat,lng)=>({x:(lng+180)/360*n,y:(1-Math.asinh(Math.tan(lat*rad))/Math.PI)/2*n});
+    const northWest=project(north,west),southEast=project(south,east);
+    const widthPx=Math.abs(southEast.x-northWest.x)*256,heightPx=Math.abs(southEast.y-northWest.y)*256;
+    if(!Number.isFinite(widthPx)||!Number.isFinite(heightPx)||widthPx<1||heightPx<1)return null;
+    const source=boundsValid?'DWG drawingBounds.gps + control points':'DWG control points';
+    this.dataset.publicGeoFrame=`${south.toFixed(7)},${west.toFixed(7)}|${north.toFixed(7)},${east.toFixed(7)}`;
+    this.dataset.publicGeoFrameSource=source;
+    this.dataset.publicGeoFramePixels=`${Math.round(widthPx)}x${Math.round(heightPx)} @ z${zoom}`;
+    this.dataset.publicGeoFrameCenter=`${centerLat.toFixed(8)},${centerLng.toFixed(8)}`;
+    this.dataset.publicGeoFitStatus='DWG envelope measured before visual treatment';
+    return {south,west,north,east,center:[centerLat,centerLng],zoom,widthPx,heightPx,source,viewport:[Number(w)||0,Number(h)||0]};
+  }
+  publicDwgModelAffine(THREE,model,frame,rasterCenter=frame?.center,worldPerPixelX=1,worldPerPixelY=1,verticalScale=MODEL_VERTICAL_EXAGGERATION){
+    if(!this.isPublicMapVisual()||!THREE||!model||!frame||!this.modelParts?.lots?.length||!Array.isArray(this.dwgGeo?.lots)){this.dataset.publicAffineFailure='precondition';return null;}
+    const fields=Array.isArray(this.dwgGeo?.lotFields)?this.dwgGeo.lotFields:null;
+    const rows=this.dwgGeo.lots.map(row=>Array.isArray(row)&&fields
+      ?Object.fromEntries(fields.map((field,index)=>[field,row[index]]))
+      :row
+    ).filter(row=>row&&row.glbObject!=null);
+    const byObject=new Map(rows.map(row=>[String(row.glbObject),row]));
+    const zoom=Math.max(12,Math.min(20,Number(frame.zoom)||18)),n=2**zoom,rad=Math.PI/180;
+    const project=(lat,lng)=>({x:(Number(lng)+180)/360*n,y:(1-Math.asinh(Math.tan(Number(lat)*rad))/Math.PI)/2*n});
+    const centerPoint=Array.isArray(rasterCenter)&&rasterCenter.length>=2?rasterCenter:frame.center;
+    const rasterOrigin=project(Number(centerPoint?.[0]),Number(centerPoint?.[1]));
+    if(!Number.isFinite(rasterOrigin.x)||!Number.isFinite(rasterOrigin.y)){this.dataset.publicAffineFailure='raster-origin';return null;}
+    const samples=[];
+    model.updateMatrixWorld(true);
+    for(const lot of this.modelParts.lots){
+      const row=byObject.get(String(lot.userData?.partId||lot.name||''));
+      const lat=Number(row?.lat),lng=Number(row?.lng);
+      if(!row||!Number.isFinite(lat)||!Number.isFinite(lng))continue;
+      const bounds=new THREE.Box3().setFromObject(lot);
+      if(bounds.isEmpty())continue;
+      const world=bounds.getCenter(new THREE.Vector3());
+      const local=model.worldToLocal(world.clone());
+      const target=project(lat,lng);
+      samples.push({sx:Number(local.x),sy:-Number(local.z),tx:(target.x-rasterOrigin.x)*256*Number(worldPerPixelX||1),ty:(target.y-rasterOrigin.y)*256*Number(worldPerPixelY||1)});
+    }
+    this.dataset.publicAffineSamples=String(samples.length);
+    if(samples.length<3){this.dataset.publicAffineFailure=`samples-${samples.length}`;return null;}
+    const solveAxis=key=>{
+      let sxSum=0,sySum=0,sxx=0,sxy=0,syy=0,b0=0,bx=0,by=0;
+      for(const sample of samples){
+        const sx=sample.sx,sy=sample.sy,value=sample[key];
+        sxSum+=sx;sySum+=sy;sxx+=sx*sx;sxy+=sx*sy;syy+=sy*sy;
+        b0+=value;bx+=sx*value;by+=sy*value;
+      }
+      const m00=samples.length,m01=sxSum,m02=sySum,m11=sxx,m12=sxy,m22=syy;
+      const det=m00*(m11*m22-m12*m12)-m01*(m01*m22-m12*m02)+m02*(m01*m12-m11*m02);
+      if(Math.abs(det)<1e-8)return null;
+      const i00=(m11*m22-m12*m12)/det,i01=(m02*m12-m01*m22)/det,i02=(m01*m12-m02*m11)/det;
+      const i11=(m00*m22-m02*m02)/det,i12=(m01*m02-m00*m12)/det,i22=(m00*m11-m01*m01)/det;
+      return [i00*b0+i01*bx+i02*by,i01*b0+i11*bx+i12*by,i02*b0+i12*bx+i22*by];
+    };
+    const xAxis=solveAxis('tx'),yAxis=solveAxis('ty');
+    if(!xAxis||!yAxis){this.dataset.publicAffineFailure='singular';return null;}
+    const residuals=samples.map(sample=>Math.hypot(
+      xAxis[0]+xAxis[1]*sample.sx+xAxis[2]*sample.sy-sample.tx,
+      yAxis[0]+yAxis[1]*sample.sx+yAxis[2]*sample.sy-sample.ty
+    ));
+    const rms=Math.sqrt(residuals.reduce((sum,value)=>sum+value*value,0)/Math.max(1,residuals.length));
+    const affineMatrix=new THREE.Matrix4().set(
+      xAxis[1],0,-xAxis[2],xAxis[0],
+      yAxis[1],0,-yAxis[2],yAxis[0],
+      0,Number(verticalScale)||MODEL_VERTICAL_EXAGGERATION,0,Number(model.userData?.mapBaseLift)||SCENE_MODEL_BASE_Z,
+      0,0,0,1
+    );
+    // A saída superior da rua é o norte visual da área. O modelo-base chega
+    // com essa leitura girada e espelhada em relação ao mosaico; componha a
+    // correção no espaço local antes de projetar para o mundo. O translate da
+    // matriz afim fica preservado, então a rotação acontece no centro da
+    // implantação e não desloca o loteamento para fora do raster.
+    const orientationMatrix=new THREE.Matrix4()
+      .makeScale(PUBLIC_MODEL_HORIZONTAL_FLIP,1,1)
+      .multiply(new THREE.Matrix4().makeRotationY(PUBLIC_MODEL_NORTH_ROTATION_RAD));
+    // O resultado da projeção afim vive no plano XY (Z é elevação). Portanto,
+    // o ajuste visual entre as duas retas deve girar em Z, ao redor do centro
+    // geográfico dos lotes, sem inclinar ou espalhar os markers verticalmente.
+    const targetCenter=samples.reduce((center,sample)=>{
+      center.x+=sample.tx;
+      center.y+=sample.ty;
+      return center;
+    },{x:0,y:0});
+    targetCenter.x/=samples.length;
+    targetCenter.y/=samples.length;
+    const guideRotationMatrix=new THREE.Matrix4()
+      .makeTranslation(targetCenter.x,targetCenter.y,0)
+      .multiply(new THREE.Matrix4().makeRotationZ(PUBLIC_MODEL_GUIDE_ROTATION_RAD))
+      .multiply(new THREE.Matrix4().makeTranslation(-targetCenter.x,-targetCenter.y,0));
+    const alignmentMatrix=new THREE.Matrix4().makeTranslation(
+      PUBLIC_MODEL_ALIGNMENT_OFFSET_WORLD_X,
+      PUBLIC_MODEL_ALIGNMENT_OFFSET_WORLD_Z,
+      0
+    );
+    // Ordem de composição: ajuste local de orientação, projeção afim para o
+    // mosaico e, por último, a translação entre os marcos. Assim o giro fino
+    // não rotaciona a origem geográfica nem arremessa o conjunto para fora.
+    const matrix=alignmentMatrix
+      .multiply(guideRotationMatrix)
+      .multiply(affineMatrix.clone())
+      .multiply(orientationMatrix);
+    this.dataset.publicAffineFailure='none';
+    this.dataset.publicModelAlignmentOffset=`${PUBLIC_MODEL_ALIGNMENT_OFFSET_WORLD_X},${PUBLIC_MODEL_ALIGNMENT_OFFSET_WORLD_Z}`;
+    this.dataset.publicModelGuideRotation=`${PUBLIC_MODEL_GUIDE_ROTATION_DEG}deg`;
+    this.dataset.publicModelOrientation='dwg-affine|rotate-left-90deg|flip-horizontal|north=upper-road-exit';
+    return {matrix,affineMatrix,orientationMatrix,guideRotationMatrix,alignmentMatrix,matched:samples.length,rms,xAxis,yAxis,residualMax:Math.max(...residuals),orientation:{rotationDeg:PUBLIC_MODEL_NORTH_ROTATION_DEG,guideRotationDeg:PUBLIC_MODEL_GUIDE_ROTATION_DEG,flipX:PUBLIC_MODEL_HORIZONTAL_FLIP,northReference:'upper road exit'},alignmentOffset:{x:PUBLIC_MODEL_ALIGNMENT_OFFSET_WORLD_X,z:PUBLIC_MODEL_ALIGNMENT_OFFSET_WORLD_Z}};
   }
   ensurePublicTerrainRelief(){
     if(this.isPublicMapVisual()&&!this._publicEnvironmentAllowed){
@@ -2882,7 +3346,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     if(!this.isPublicMapVisual()||!this.THREE||!this.sceneStage||!this.mapSurface)return;
     const THREE=this.THREE;
     if(!this.publicTerrainRelief){
-      const geometry=new THREE.PlaneGeometry(1,1,48,48);
+      const geometry=new THREE.PlaneGeometry(1,1,72,72);
       const position=geometry.getAttribute('position');
       for(let index=0;index<position.count;index++){
         const x=position.getX(index),y=position.getY(index);
@@ -2909,14 +3373,90 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
       const terrain=new THREE.Mesh(geometry,material);
       terrain.name='BelavistaPublicTerrainRelief';terrain.renderOrder=-5;terrain.frustumCulled=false;terrain.receiveShadow=true;
       terrain.visible=Boolean(groundTexture);
-      terrain.userData={publicTerrain:true,source:satelliteReady?'satellite tile mosaic · DWG GPS centre':'hidden while satellite loads',relief:'procedural-low-amplitude',coordinateSource:'DWG-aligned-map-surface'};
+      terrain.userData={publicTerrain:true,source:satelliteReady?'satellite tile mosaic · DWG GPS centre':'hidden while satellite loads',relief:'low-amplitude visual relief · satellite source',coordinateSource:'DWG-aligned-map-surface'};
       this.sceneStage.add(terrain);this.publicTerrainRelief=terrain;
     }
+    this.queueGeneratedTerrainHeightmapV5391();
     this.syncPublicTerrainRelief();
-    this.dataset.publicTerrainRelief='3D · base aérea georreferenciada · relevo suave';
-    this.dataset.publicTerrainSurface=this.dataset.mapTexture==='ready'&&this.mapSurfaceTexture?.image
-      ?'satellite tile mosaic · DWG GPS centre'
+    this.dataset.publicTerrainRelief='3D · satélite georreferenciado pelo DWG · relevo visual de baixa amplitude';
+      this.dataset.publicTerrainSurface=this.dataset.mapTexture==='ready'&&this.mapSurfaceTexture?.image
+      ?(this.mapTileMode==='generated'?'treated satellite mosaic · DWG GPS centre':'satellite tile mosaic · DWG GPS centre')
       :'satellite pending · terrain hidden';
+  }
+  queueGeneratedTerrainHeightmapV5391(){
+    if(!this.isPublicMapVisual()||!this.publicTerrainRelief||this._generatedTerrainHeightmapStateV5391==='loading'||this._generatedTerrainHeightmapStateV5391==='ready')return;
+    if(this.mapTileMode==='satellite'){
+      this._generatedTerrainHeightmapStateV5391='skipped-satellite';
+      this.publicGeneratedTerrainHeightmapV5391=null;
+      this.dataset.publicTerrainHeightmap='não utilizado · superfície satélite georreferenciada';
+      this.publicTerrainRelief.userData={...(this.publicTerrainRelief.userData||{}),relief:'low-amplitude visual relief · satellite source',heightmap:'not-used · no synthetic raster'};
+      return;
+    }
+    this._generatedTerrainHeightmapStateV5391='loading';
+    this.dataset.publicTerrainHeightmap='carregando imagem gerada para relevo';
+    const image=new Image();image.decoding='async';
+    image.onload=()=>{
+      try{
+        const size=96,canvas=document.createElement('canvas');canvas.width=size;canvas.height=size;
+        const context=canvas.getContext('2d',{willReadFrequently:true});if(!context)throw new Error('canvas indisponível');
+        context.drawImage(image,0,0,size,size);
+        const pixels=context.getImageData(0,0,size,size).data,values=new Float32Array(size*size);
+        for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+          const offset=(y*size+x)*4,r=pixels[offset],g=pixels[offset+1],b=pixels[offset+2];
+          // A estimativa visual privilegia sombras, bordas de mata e vales;
+          // ela produz relevo de apresentação, não cota topográfica medida.
+          values[y*size+x]=Math.max(0,Math.min(1,(r*.2126+g*.7152+b*.0722)/255));
+        }
+        for(let pass=0;pass<3;pass++){
+          const blurred=new Float32Array(values);
+          for(let y=1;y<size-1;y++)for(let x=1;x<size-1;x++){
+            const i=y*size+x;blurred[i]=(values[i]*4+values[i-1]+values[i+1]+values[i-size]+values[i+size])/8;
+          }
+          values.set(blurred);
+        }
+        this.publicGeneratedTerrainHeightmapV5391={size,values,source:GENERATED_AERIAL_ASSET,version:GENERATED_AERIAL_VERSION};
+        this._generatedTerrainHeightmapStateV5391='ready';
+        this.applyGeneratedTerrainHeightmapV5391();
+        this.reliftPublicTreesToTerrainV5391();
+        this.__publicSatelliteVegetationTransformKey='';this.syncPublicSatelliteVegetationV1();
+        this.dataset.publicTerrainHeightmap=`imagem gerada ${image.naturalWidth}×${image.naturalHeight} · grade ${size}×${size} · relevo visual`;
+        this.renderer?.render(this.scene,this.camera);
+      }catch(error){this._generatedTerrainHeightmapStateV5391='fallback';this.dataset.publicTerrainHeightmap='fallback procedural · imagem indisponível';console.warn('[Aliança Park public] relevo da imagem gerada indisponível.',error);}
+    };
+    image.onerror=()=>{this._generatedTerrainHeightmapStateV5391='fallback';this.dataset.publicTerrainHeightmap='fallback procedural · imagem indisponível';};
+    image.src=runtimeRouteV1(GENERATED_AERIAL_ASSET,'v='+GENERATED_AERIAL_VERSION);
+  }
+  sampleGeneratedTerrainHeightV5391(u,v){
+    const map=this.publicGeneratedTerrainHeightmapV5391;if(!map)return -.18;
+    const size=map.size,x=Math.max(0,Math.min(size-1,Number(u)*(size-1))),y=Math.max(0,Math.min(size-1,Number(v)*(size-1))),x0=Math.floor(x),y0=Math.floor(y),x1=Math.min(size-1,x0+1),y1=Math.min(size-1,y0+1),fx=x-x0,fy=y-y0;
+    const at=(px,py)=>map.values[py*size+px],top=at(x0,y0)*(1-fx)+at(x1,y0)*fx,bottom=at(x0,y1)*(1-fx)+at(x1,y1)*fx,luma=top*(1-fy)+bottom*fy;
+    // Mantém a camada de relevo sob a implantação. A imagem gerada orienta
+    // apenas a variação visual de altitude; ela não substitui levantamento
+    // topográfico nem deve atravessar lotes, ruas ou equipamentos.
+    return -.50+(luma-.5)*.44;
+  }
+  publicTerrainElevationAtV5391(x,y){
+    const terrain=this.publicTerrainRelief;if(!terrain)return Number(this.mapSurface?.position?.z)||SCENE_MAP_Z;
+    const dx=Number(x)-Number(terrain.position.x||0),dy=Number(y)-Number(terrain.position.y||0),angle=-(Number(terrain.rotation?.z)||0),c=Math.cos(angle),s=Math.sin(angle),localX=dx*c-dy*s,localY=dx*s+dy*c;
+    const u=Math.max(0,Math.min(1,localX/Math.max(.001,Number(terrain.scale.x)||1)+.5)),v=Math.max(0,Math.min(1,.5-localY/Math.max(.001,Number(terrain.scale.y)||1)));
+    return Number(terrain.position.z||0)+this.sampleGeneratedTerrainHeightV5391(u,v);
+  }
+  applyGeneratedTerrainHeightmapV5391(){
+    const terrain=this.publicTerrainRelief,position=terrain?.geometry?.getAttribute?.('position');if(!terrain||!position)return;
+    for(let index=0;index<position.count;index++){
+      const u=position.getX(index)+.5,v=.5-position.getY(index);position.setZ(index,this.sampleGeneratedTerrainHeightV5391(u,v));
+    }
+    position.needsUpdate=true;terrain.geometry.computeVertexNormals();terrain.geometry.computeBoundingSphere();terrain.userData.relief='generated-image-heightmap · visual estimate · low amplitude';
+  }
+  reliftPublicTreesToTerrainV5391(){
+    for(const group of [this.publicVegetationGroup,this.publicTerrainVegetationGroup,this.publicForestGroup])group?.traverse?.(tree=>{
+      const anchor=tree?.userData?.terrainAnchorV5391;if(!anchor)return;
+      const next=anchor.useGeneratedHeightmap
+        ?this.publicTerrainElevationAtV5391(anchor.x,anchor.y)+.035
+        :Number(anchor.baseZ)||0;
+      const previous=Number(anchor.sampleZ)||0;
+      tree.position.z+=next-previous;anchor.sampleZ=next;
+    });
   }
   loadPublicTerrainTextureV1(){
     if(!this.isPublicMapVisual()||!this.THREE)return;
@@ -2924,7 +3464,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     // aciona syncPublicTerrainRelief() e revela a camada de terreno.
     this.publicTerrainTexture=null;
     this.dataset.publicTerrainTexture='disabled · satellite-only ground';
-    this.dataset.publicTerrainSource='satellite tile mosaic · DWG GPS centre';
+    this.dataset.publicTerrainSource=this.mapTileMode==='generated'?'treated satellite mosaic · DWG GPS centre':'satellite tile mosaic · Esri World Imagery · DWG GPS centre';
     this.syncPublicTerrainRelief?.();
   }
   extractPublicVegetationSamplesV1(texture){
@@ -2957,7 +3497,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
         if(samples.length>=320)break;
       }
       const source=texture===this.mapSurfaceTexture
-        ?'satellite tile mosaic · Esri World Imagery · DWG GPS centre'
+        ?(this.mapTileMode==='generated'?'treated satellite mosaic · DWG GPS centre':'satellite tile mosaic · Esri World Imagery · DWG GPS centre')
         :sourceFromTerrainTexture(texture);
       this.dataset.publicVegetationImageSampling=`${samples.length} candidatos de copa espaçados · ${source}`;
       this.publicVegetationSamples=samples;
@@ -3111,7 +3651,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     const centerX=(bounds.min.x+bounds.max.x)/2,centerY=(bounds.min.y+bounds.max.y)/2,surface=this.mapSurface;
     const textureKey=this.mapSurfaceTexture?.uuid||this.dataset.mapSurfaceKey||'satellite';
     const sampleKey=(this.publicVegetationSamples||[]).map(sample=>`${Number(sample.u).toFixed(4)},${Number(sample.v).toFixed(4)}`).join(';');
-    const transformKey=[textureKey,sampleKey,Number(surface.position.x||0).toFixed(3),Number(surface.position.y||0).toFixed(3),Number(surface.scale.x||0).toFixed(3),Number(surface.scale.y||0).toFixed(3),Number(surface.rotation?.z||0).toFixed(4)].join('|');
+    const transformKey=[textureKey,sampleKey,Number(surface.position.x||0).toFixed(3),Number(surface.position.y||0).toFixed(3),Number(surface.scale.x||0).toFixed(3),Number(surface.scale.y||0).toFixed(3),Number(surface.rotation?.z||0).toFixed(4),this._generatedTerrainHeightmapStateV5391||'pending'].join('|');
     if(this.__publicSatelliteVegetationTransformKey===transformKey)return;
     this.__publicSatelliteVegetationTransformKey=transformKey;
     for(const child of [...this.publicTerrainVegetationGroup.children]){
@@ -3135,14 +3675,25 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     this.dataset.publicSatelliteTreeCount=String(selected.length);
     this.dataset.publicSatelliteTreeCandidates=String(this.publicVegetationSamples?.length||0);
     this.dataset.publicTreeCount=String((this.publicVegetationGroup?.children.length||0)+(this.publicTerrainVegetationGroup?.children.length||0)+(this.publicForestGroup?.children.length||0));
-    this.dataset.publicSatelliteVegetationRefresh='satellite tile mosaic applied after load';
-    this.dataset.publicSatelliteTreePlacement='satellite canopy samples · same DWG-aligned map surface transform';
+    this.dataset.publicSatelliteVegetationRefresh=this.mapTileMode==='generated'?'treated satellite mosaic applied after load':'satellite tile mosaic applied after load';
+    this.dataset.publicSatelliteTreePlacement=this.mapTileMode==='generated'?'AI aerial canopy samples · same DWG-aligned map surface transform':'satellite canopy samples · same DWG-aligned map surface transform';
     this.dataset.publicSatelliteTreeSampleSpace='texture UV → mapSurface position/scale/rotation → sceneStage local';
     this.renderer?.render(this.scene,this.camera);
   }
   syncPublicTerrainRelief(){
     const terrain=this.publicTerrainRelief,surface=this.mapSurface;
-    if(!terrain||!surface)return;
+    if(!surface)return;
+    // O mosaico satélite é a base visível até que o relevo 3D exista. A
+    // versão anterior escondia o plano no upload da textura e deixava só o
+    // fallback azul quando o enriquecimento pós-abertura era adiado.
+    if(!terrain){
+      if(this.isPublicMapVisual()&&this.dataset.mapTexture==='ready'){
+        surface.visible=true;
+        this.dataset.mapSurfaceVisible='true';
+        this.dataset.publicTerrainSurface='satellite tile mosaic · DWG GPS centre · direct surface';
+      }
+      return;
+    }
     terrain.position.copy(surface.position);
     terrain.rotation.copy(surface.rotation);
     terrain.scale.copy(surface.scale);
@@ -3162,20 +3713,25 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
       this.extractPublicVegetationSamplesV1(this.mapSurfaceTexture);
       this.__publicVegetationSamplingTexture=this.mapSurfaceTexture;
       this.scanPublicSatelliteContextV1(this.mapSurfaceTexture);
-      this.dataset.publicSatelliteTexture='ready · DWG-centred tile mosaic';
-      this.dataset.publicTerrainSource='satellite tile mosaic · Esri World Imagery · DWG GPS centre';
+      this.dataset.publicSatelliteTexture=this.mapTileMode==='generated'?'ready · treated satellite mosaic · DWG GPS centre':'ready · DWG-centred tile mosaic';
+      this.dataset.publicTerrainSource=this.mapTileMode==='generated'?'treated satellite mosaic · DWG GPS centre':'satellite tile mosaic · Esri World Imagery · DWG GPS centre';
+      this.dataset.publicSatelliteTreatment=this.dataset.publicGeoFrameSource
+        ?'applied after DWG capture and envelope fit · warm daylight grade'
+        :'waiting for DWG envelope fit before treatment';
       document.querySelectorAll('.public-map-static-bg').forEach(bg=>{
         bg.setAttribute('data-three-texture-active','true');
         bg.setAttribute('data-satellite-source','dwg-georeference');
       });
-      terrain.userData.source='satellite tile mosaic · DWG GPS centre';
+      terrain.userData.source=this.mapTileMode==='generated'?'treated satellite mosaic · DWG GPS centre':'satellite tile mosaic · Esri World Imagery · DWG GPS centre';
     }
     // Também sincroniza fora da troca de textura: resize, reenquadramento e
     // pan podem alterar a posição/escala da superfície mantendo o mesmo
     // objeto Texture. O guard em syncPublicSatelliteVegetationV1 evita
     // recriar árvores quando nada mudou.
     this.syncPublicSatelliteVegetationV1();
-    this.dataset.publicTerrainSurface=satelliteReady?'satellite tile mosaic · DWG GPS centre':'satellite pending · terrain hidden';
+    this.dataset.publicTerrainSurface=satelliteReady
+      ?(this.mapTileMode==='generated'?'treated satellite mosaic · DWG GPS centre':'satellite tile mosaic · Esri World Imagery · DWG GPS centre')
+      :'satellite pending · terrain hidden';
     // O plano original é mantido apenas como fonte de textura; o relevo passa
     // a ser a única base aérea 3D da apresentação pública.
     surface.visible=false;
@@ -3272,9 +3828,18 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
       // fallback local de grama.
       this.queuePublicVegetationAfterSatelliteV1();
     };
+    // requestIdleCallback pode permanecer indefinido em abas em segundo plano
+    // ou em WebViews. O relevo não pode ser o único caminho para revelar o
+    // mosaico, por isso use um atraso determinístico e reencaminhe caso o GLB
+    // ainda esteja terminando a classificação.
     setTimeout(()=>{
-      if('requestIdleCallback' in window)window.requestIdleCallback(run,{timeout:2200});
-      else run();
+      if(!this.isConnected){this._publicEnvironmentScheduled=false;return;}
+      if(!this.masterplanModel){
+        this._publicEnvironmentScheduled=false;
+        setTimeout(()=>this.schedulePublicEnvironmentLoadingV1(),350);
+        return;
+      }
+      run();
     },900);
   }
   queuePublicVegetationAfterSatelliteV1(attempt=0){
@@ -3329,7 +3894,15 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
           tree.scale.setScalar(Math.max(.01,targetHeight/templateHeight));
           tree.updateMatrixWorld(true);
           const treeBounds=new THREE.Box3().setFromObject(tree);
-          tree.position.z+=baseZ-treeBounds.min.z+.015;
+          // O mesmo heightmap da cena também serve para ancorar a base da
+          // árvore. Assim a vegetação acompanha o relevo quando a imagem
+          // gerada termina de carregar, sem deixar copas flutuando no plano.
+          const useGeneratedHeightmap=true;
+          const treeBaseZ=this.publicGeneratedTerrainHeightmapV5391
+            ?this.publicTerrainElevationAtV5391(x,y)+.035
+            :Number(baseZ)||0;
+          tree.position.z+=treeBaseZ-treeBounds.min.z+.015;
+          tree.userData={...(tree.userData||{}),terrainAnchorV5391:{x,y,baseZ:Number(baseZ)||0,sampleZ:treeBaseZ,useGeneratedHeightmap}};
           tree.traverse(node=>{
             node.visible=true;
             if(!node.isMesh)return;
@@ -3514,6 +4087,12 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
           const undulation=Math.sin(index*1.73)*.07+Math.cos(index*.83)*.045;
           forestGroup.add(prepareTree(x,y,groundZ+undulation,treeHeight*(.62+(index%9)*.055),index+801));
         });
+        // A fotografia aérea é o chão da apresentação pública. O grupo verde
+        // extrudado era apenas um placeholder de relevo e reaparecia quando
+        // o enriquecimento tardio terminava; mantenha-o no grafo para
+        // auditoria, mas sempre invisível neste modo.
+        relief.visible=false;
+        relief.userData={...(relief.userData||{}),publicGreenMeshRemoved:true,source:'disabled synthetic green base · satellite remains visible'};
         this.sceneStage.add(relief);this.sceneStage.add(group);this.sceneStage.add(terrainGroup);this.sceneStage.add(forestGroup); this.publicVegetationGroup=group;this.publicTerrainVegetationGroup=terrainGroup;this.publicForestGroup=forestGroup;this.publicGreenReliefGroup=relief;
         this.dataset.publicVegetation='cc0-tree-glb'; this.dataset.publicTreeCount=String(placements.length);
         this.dataset.publicTerrainTreeCount=String(terrainGroup.children.length);
@@ -3532,6 +4111,8 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
         this.dataset.publicTreeCount=String(group.children.length+terrainGroup.children.length+forestGroup.children.length);
         this.dataset.publicVegetationPlacement=greenAreas.length?'GLB/DWG green areas + existing tree points + terrain perimeter + surrounding forest':'existing tree points + terrain perimeter + surrounding forest · no street rows';
         this.dataset.publicGreenRelief=String(relief.children.length);
+        this.dataset.publicGreenMesh='removed';
+        this.dataset.publicGreenMeshPolicy='satellite terrain only · synthetic green relief hidden after environment load';
         this.dataset.publicTerrainGroundZ=groundZ.toFixed(3);
         this.dataset.publicVegetationCoordinateSpace='sceneStage local · derived from world bounds · DWG-aligned';
         this.dataset.publicEnvironment='ready';
@@ -3591,9 +4172,14 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     this.dataset.modelSource='loaded-glb';
     this.dataset.modelRender='webgl-live-glb';
     this.dataset.modelRasterized='false';
+    // Nem todos os proxies informam Content-Length. Um progresso inicial e
+    // fases internas evitam que a abertura fique congelada em 38% mesmo
+    // quando o GLB esteja sendo transferido normalmente em chunked encoding.
+    this.dataset.modelProgress='2';
 
     loader.load(modelUrl,gltf=>{
       try{
+        this.dataset.modelProgress='42';
         mark('parsed',{parsedAt:performance.now(),downloadAndParseMs:Math.round(performance.now()-perf.startedAt)});
 
         const sourceModel=gltf.scene;
@@ -3611,7 +4197,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
         const factor=145/largest;
 
         model.scale.set(factor,factor*MODEL_VERTICAL_EXAGGERATION,factor);
-        model.rotation.set(Math.PI/2,0,0);
+        model.rotation.set(Math.PI/2,0,DWG_PLAN_HEADING_RAD);
         model.updateMatrixWorld(true);
 
         const rawOrientedBox=new THREE.Box3().setFromObject(model);
@@ -3627,6 +4213,9 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
         model.userData.verticalExaggeration=MODEL_VERTICAL_EXAGGERATION;
         model.userData.sourceSize=size;
         model.userData.alignedToMapPlane=true;
+        model.userData.planHeadingRad=DWG_PLAN_HEADING_RAD;
+        model.userData.planHeadingDeg=DWG_PLAN_HEADING_DEG;
+        model.userData.aerialGuideAlignment='DWG affine heading · visual road-guide fit';
         model.userData.mapBaseZ=SCENE_MODEL_BASE_Z;
         model.userData.mapBaseLift=baseLift;
         model.userData.sourceBoundsCenter=sourceCenter.clone();
@@ -3643,6 +4232,8 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
         this.dataset.modelBaseLift=baseLift.toFixed(3);
         this.dataset.modelLocalOrigin=`centered GLB frame · ${groundedCenter.x.toFixed(3)},${groundedCenter.y.toFixed(3)},${groundedCenter.z.toFixed(3)}`;
         this.dataset.modelAxis='source Y → world +Z · footprint Y corrigido';
+        this.dataset.modelPlanHeading=DWG_PLAN_HEADING_DEG.toFixed(3)+'° · DWG affine';
+        this.dataset.modelAerialGuide='lateral + superior · transformação geográfica aplicada';
 
         // v5.3.67: nenhum mesh toca a GPU em massa.
         const meshes=[];
@@ -3727,6 +4318,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
 
     const run=async()=>{
       const total=meshes.length;
+      this.dataset.modelProgress='46';
 
       for(let index=0;index<total;index++){
         const node=meshes[index];
@@ -3740,7 +4332,27 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
           meshTriangles:triangles
         });
 
-        node.visible=true;
+        // No modo público a fonte viária do GLB não pode aparecer durante o
+        // staging. Ela é a geometria escura/verde que atravessa o terreno
+        // antes de a camada de paralelepípedos ser construída. O overlay
+        // segmentado entra depois, já recortado pelo eixo real da rua.
+        const stagingName=String(node.name||'');
+        const stagingRole=String(node.userData?.belavistaRole||node.userData?.partKind||'').toLowerCase();
+        const publicRoadSource=this.isPublicMapVisual()&&(
+          node.userData?.publicRoadBaseHidden||
+          /^(street|road|streets|curb|curbs)$/.test(stagingRole)||
+          /(asfalto|rua|road|street|meio.?fio|guia|curb|paviment)/i.test(stagingName)
+        );
+        const publicDividerSource=this.isPublicMapVisual()&&/^divisa(?:[_\s-]|$)/i.test(stagingName);
+        node.visible=!(publicRoadSource||publicDividerSource);
+        if(publicRoadSource){
+          node.userData.publicRoadBaseHidden=true;
+          node.raycast=()=>{};
+        }
+        if(publicDividerSource){
+          node.userData.publicInternalDividerHidden=true;
+          node.raycast=()=>{};
+        }
 
         const started=performance.now();
         this.renderer?.render(this.scene,this.camera);
@@ -3748,6 +4360,10 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
 
         perf.stagedMeshes=index+1;
         this.dataset.modelProcessedMeshes=`${index+1}/${total}`;
+        // O staging é trabalho real de geometria/GPU. Ele alimenta a mesma
+        // barra de carregamento que antes só recebia bytes da rede.
+        const stagedProgress=46+Math.round(((index+1)/Math.max(1,total))*30);
+        this.dataset.modelProgress=String(Math.min(76,stagedProgress));
         this.dataset.modelLastGpuRenderMs=renderMs.toFixed(1);
 
         mark('gpu-mesh-visible',{
@@ -3767,6 +4383,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
       this._modelGpuReady=false;
       this.dataset.modelReady='true';
       this.dataset.modelGpuReady='false';
+      this.dataset.modelProgress='78';
       this.dataset.modelRender='webgl-live-glb';
       this.classList.add('model-ready');
 
@@ -3799,6 +4416,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     const run=async()=>{
       const lots=[],streets=[],other=[];
       const leisureNodes=[],landscapeNodes=[],structureNodes=[];
+      let hiddenPublicDividers=0;
       const chunkSize=18;
 
       this.dataset.modelEnrichment='classifying';
@@ -3827,6 +4445,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
 
           const name=String(node.name||'').toLowerCase();
           const role=String(node.userData?.belavistaRole||'').toLowerCase();
+          const isLotDivider=/^divisa(?:[_\s-]|$)/.test(name);
           const isSocial=role==='leisure'||/area.?de.?lazer|court|gym.?pad|gym.?post|gym.?beam|gym.?seat|pavilhao|play|praca|banco.?praca/.test(name);
 
           if(/pavilhao.?telhado|pavilhao.?base/.test(name)){
@@ -3836,11 +4455,32 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
           }
 
           const kind=
+            this.isPublicMapVisual()&&isLotDivider?'other':
             role==='lot'||role==='lots'?'lots':
             role==='street'||role==='streets'||role==='road'?'streets':
             isSocial?'other':
             /(lote|quadra|gleba)/.test(name)?'lots':
             /(asfalto|rua|road|street|meio.?fio|guia|paviment)/.test(name)?'streets':'other';
+
+          // A superfície original das vias é apenas uma fonte geométrica.
+          // No mapa público ela fica invisível para não vazar por baixo das
+          // fatias de pedra que serão criadas logo adiante.
+          if(kind==='streets'&&this.isPublicMapVisual()){
+            node.visible=false;
+            node.userData.publicRoadBaseHidden=true;
+            node.raycast=()=>{};
+          }
+
+          // O GLB também traz Divisa_* como linhas físicas das divisas dos
+          // lotes. No mapa público elas eram interpretadas como lotes verdes
+          // e apareciam como riscos/malha sobre o satélite; os contornos
+          // públicos dos lotes já são desenhados separadamente em branco.
+          if(isLotDivider&&this.isPublicMapVisual()){
+            node.visible=false;
+            node.userData.publicInternalDividerHidden=true;
+            node.raycast=()=>{};
+            hiddenPublicDividers++;
+          }
 
           if(kind==='streets'){
             const pave=mat=>this.makeSiteSurfaceMaterial(THREE,mat,this.isPublicMapVisual()?'asphalt':'cobble');
@@ -3894,6 +4534,8 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
 
         perf.processedMeshes=end;
         this.dataset.modelProcessedMeshes=`${end}/${meshes.length}`;
+        const enrichedProgress=78+Math.round((end/Math.max(1,meshes.length))*17);
+        this.dataset.modelProgress=String(Math.min(95,enrichedProgress));
         this.renderer?.render(this.scene,this.camera);
         await nextFrame();
       }
@@ -3905,6 +4547,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
       this.modelLeisureFocusNodes=structureNodes.length?structureNodes:leisureNodes;
 
       this.dataset.modelParts=`lotes:${lots.length}|ruas:${streets.length}|outros:${other.length}`;
+      this.dataset.publicInternalDividersHidden=String(hiddenPublicDividers);
       this.dataset.landscapeNodes=String(landscapeNodes.length);
       this.dataset.leisureNodes=String(leisureNodes.length);
       this.dataset.focusStructureNodes=String(this.modelLeisureFocusNodes.length);
@@ -3927,6 +4570,8 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
 
       this._modelGpuReady=true;
       this.dataset.modelGpuReady='true';
+      this.dataset.modelProgress='96';
+      this.dataset.publicModelSyncState=`model:${this.masterplanModel?'1':'0'}|largest:${Number.isFinite(this.masterplanLargest)?'1':'0'}|group:${this.modelGroup?'1':'0'}|geo:${this.dwgGeo?'1':'0'}|lots:${lots.length}`;
       // O GLB do loteamento termina primeiro. Árvores, relevo e entorno são
       // enriquecimento visual e entram depois do primeiro enquadramento.
       this.schedulePublicEnvironmentLoadingV1();
@@ -3950,6 +4595,15 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
   }
 
   ensureOperationalStreetGeometry(){
+    if(this.isPublicMapVisual()){
+      // O recorte de ruas é útil para registros e progresso no painel
+      // operacional, mas não pertence à apresentação pública. Nela, a
+      // fotografia aérea já contém a orientação e as ruas de referência.
+      this.disablePublicSyntheticRoads();
+      this._streetOperationalGeometryReady=true;
+      this.dataset.modelOperationalGeometry='satellite-only · generated street geometry disabled';
+      return false;
+    }
     if(this._streetOperationalGeometryReady)return true;
     const sources=this._streetSourceCandidates||this.modelParts?.streets||[];
     if(!this.THREE||!sources.length)return false;
@@ -3980,35 +4634,251 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     this.dataset.lotStatusBadges=String(this.lotStatusBadges.length);
     this.applyDwgLotMetadata();
   }
+  createNativeRoadPaverMesh(THREE,source,streetNo){
+    const geometry=source?.geometry,position=geometry?.getAttribute?.('position');
+    if(!geometry||!position)return null;
+    if(!geometry.boundingBox)geometry.computeBoundingBox();
+    const bounds=geometry.boundingBox;
+    if(!bounds)return null;
+    const index=geometry.getIndex?.(),indexedCount=index?.count||position.count;
+    const readIndex=offset=>index?.getX?index.getX(offset):offset;
+    const triangles=[];
+    for(let offset=0;offset+2<indexedCount;offset+=3){
+      const ia=readIndex(offset),ib=readIndex(offset+1),ic=readIndex(offset+2);
+      const ax=position.getX(ia),ay=position.getY(ia),az=position.getZ(ia);
+      const bx=position.getX(ib),by=position.getY(ib),bz=position.getZ(ib);
+      const cx=position.getX(ic),cy=position.getY(ic),cz=position.getZ(ic);
+      const abx=bx-ax,aby=by-ay,abz=bz-az,acx=cx-ax,acy=cy-ay,acz=cz-az;
+      const nx=aby*acz-abz*acy,ny=abz*acx-abx*acz,nz=abx*acy-aby*acx,normalLength=Math.hypot(nx,ny,nz);
+      // A rua canônica é uma malha muito triangulada. Só a face horizontal
+      // participa da rasterização; laterais e paredes não podem gerar pavers.
+      if(!Number.isFinite(normalLength)||normalLength<.00001||Math.abs(ny)/normalLength<.72)continue;
+      triangles.push({ax,az,bx,bz,cx,cz,centerX:(ax+bx+cx)/3,centerZ:(az+bz+cz)/3,minX:Math.min(ax,bx,cx),maxX:Math.max(ax,bx,cx),minZ:Math.min(az,bz,cz),maxZ:Math.max(az,bz,cz)});
+    }
+    if(!triangles.length)return null;
+
+    const minX=bounds.min.x,maxX=bounds.max.x,minZ=bounds.min.z,maxZ=bounds.max.z;
+    const globalRoadAngle=roadPlanarAngleV1(triangles.map(triangle=>({x:triangle.centerX,z:triangle.centerZ})),0);
+    const gridCos=Math.cos(globalRoadAngle),gridSin=Math.sin(globalRoadAngle);
+    const toGrid=(x,z)=>({u:x*gridCos+z*gridSin,v:-x*gridSin+z*gridCos});
+    const gridCorners=[toGrid(minX,minZ),toGrid(minX,maxZ),toGrid(maxX,minZ),toGrid(maxX,maxZ)];
+    const gridMinU=Math.min(...gridCorners.map(point=>point.u)),gridMaxU=Math.max(...gridCorners.map(point=>point.u)),gridMinV=Math.min(...gridCorners.map(point=>point.v)),gridMaxV=Math.max(...gridCorners.map(point=>point.v));
+    const orientationBinSize=Math.max(16,Math.min(30,Math.sqrt(Math.max(1,(maxX-minX)*(maxZ-minZ))/900)));
+    const orientationBins=new Map(),orientationKey=(x,z)=>[Math.floor((x-minX)/orientationBinSize),Math.floor((z-minZ)/orientationBinSize)].join(':');
+    triangles.forEach(triangle=>{
+      const key=orientationKey(triangle.centerX,triangle.centerZ),bucket=orientationBins.get(key)||[];
+      bucket.push({x:triangle.centerX,z:triangle.centerZ});
+      orientationBins.set(key,bucket);
+    });
+    const roadAngleCache=new Map(),roadAngleAt=(x,z)=>{
+      const ownKey=orientationKey(x,z),cached=roadAngleCache.get(ownKey);
+      if(cached!==undefined)return cached;
+      const binX=Math.floor((x-minX)/orientationBinSize),binZ=Math.floor((z-minZ)/orientationBinSize),points=[];
+      for(let nearX=-1;nearX<=1;nearX++)for(let nearZ=-1;nearZ<=1;nearZ++){
+        const bucket=orientationBins.get([binX+nearX,binZ+nearZ].join(':'));
+        if(bucket)points.push(...bucket);
+      }
+      const angle=roadPlanarAngleV1(points,globalRoadAngle);
+      roadAngleCache.set(ownKey,angle);
+      return angle;
+    };
+    const pointInTriangle=(x,z,triangle)=>{
+      const abx=triangle.bx-triangle.ax,abz=triangle.bz-triangle.az,bcx=triangle.cx-triangle.bx,bcz=triangle.cz-triangle.bz,cax=triangle.ax-triangle.cx,caz=triangle.az-triangle.cz;
+      const apx=x-triangle.ax,apz=z-triangle.az,bpx=x-triangle.bx,bpz=z-triangle.bz,cpx=x-triangle.cx,cpz=z-triangle.cz;
+      const c1=abx*apz-abz*apx,c2=bcx*bpz-bcz*bpx,c3=cax*cpz-caz*cpx;
+      return (c1>=-.001&&c2>=-.001&&c3>=-.001)||(c1<=.001&&c2<=.001&&c3<=.001);
+    };
+    const rasterize=(tileSize)=>{
+      const columns=Math.ceil((gridMaxU-gridMinU)/tileSize),rows=Math.ceil((gridMaxV-gridMinV)/tileSize);
+      if(!columns||!rows||columns*rows>180000)return [];
+      const binSize=Math.max(12,tileSize*6),bins=new Map();
+      triangles.forEach((triangle,triangleIndex)=>{
+        const fromX=Math.floor((triangle.minX-minX)/binSize),toX=Math.floor((triangle.maxX-minX)/binSize),fromZ=Math.floor((triangle.minZ-minZ)/binSize),toZ=Math.floor((triangle.maxZ-minZ)/binSize);
+        for(let bx=fromX;bx<=toX;bx++)for(let bz=fromZ;bz<=toZ;bz++){const key=`${bx}:${bz}`,bucket=bins.get(key)||[];bucket.push(triangleIndex);bins.set(key,bucket);}
+      });
+      const samples=[[0,0],[.34,0],[-.34,0],[0,.34],[0,-.34]],cells=[];
+      for(let column=0;column<columns;column++)for(let row=0;row<rows;row++){
+        const centerU=gridMinU+(column+.5)*tileSize,centerV=gridMinV+(row+.5)*tileSize;
+        const centerX=centerU*gridCos-centerV*gridSin,centerZ=centerU*gridSin+centerV*gridCos,cellBinX=Math.floor((centerX-minX)/binSize),cellBinZ=Math.floor((centerZ-minZ)/binSize),directCandidates=bins.get([cellBinX,cellBinZ].join(':')),candidates=directCandidates?directCandidates.slice():[];
+        // A célula própria cobre quase todos os casos. Consultar vizinhas só
+        // nas bordas evita buracos sem multiplicar o custo da malha composta.
+        if(!candidates.length)for(let nearX=-1;nearX<=1;nearX++)for(let nearZ=-1;nearZ<=1;nearZ++){
+          const bucket=bins.get([cellBinX+nearX,cellBinZ+nearZ].join(':'));
+          if(bucket)candidates.push(...bucket);
+        }
+        if(!candidates.length)continue;
+        const angle=roadAngleAt(centerX,centerZ),angleCos=Math.cos(angle),angleSin=Math.sin(angle);
+        let insideSamples=0;
+        for(const [sampleX,sampleZ] of samples){const localX=sampleX*tileSize,localZ=sampleZ*tileSize,x=centerX+localX*angleCos-localZ*angleSin,z=centerZ+localX*angleSin+localZ*angleCos;if(candidates.some(triangleIndex=>pointInTriangle(x,z,triangles[triangleIndex]))){insideSamples++;}}
+        // Três pontos evitam que a última fiada de uma rua avance para dentro
+        // do lote. O mesh nativo continua por baixo como limite físico exato.
+        if(insideSamples>=3)cells.push({column,row,x:centerX,z:centerZ,angle});
+      }
+      // Converte as células validadas em fatias transversais contínuas. Cada
+      // fatia ocupa a largura real do trecho naquele eixo e deixa apenas uma
+      // junta curta entre as sucessivas seções da rua; isso evita a leitura
+      // visual de um tabuleiro de quadrados e preserva o recorte por triângulo.
+      const slices=[];
+      const byColumn=new Map();
+      cells.forEach(cell=>{
+        const bucket=byColumn.get(cell.column)||[];
+        bucket.push(cell);
+        byColumn.set(cell.column,bucket);
+      });
+      for(const [column,bucket] of byColumn){
+        bucket.sort((a,b)=>a.row-b.row);
+        let runStart=null,runEnd=null;
+        const flush=()=>{
+          if(runStart===null)return;
+          const rowCount=runEnd-runStart+1;
+          const centerU=gridMinU+(column+.5)*tileSize;
+          const centerV=gridMinV+((runStart+runEnd+1)*.5)*tileSize;
+          const centerX=centerU*gridCos-centerV*gridSin;
+          const centerZ=centerU*gridSin+centerV*gridCos;
+          slices.push({
+            column,
+            row:runStart,
+            rowStart:runStart,
+            rowEnd:runEnd,
+            x:centerX,
+            z:centerZ,
+            angle:roadAngleAt(centerX,centerZ),
+            // Comprimento no eixo da via; largura acompanha todas as células
+            // contíguas da seção e não o envelope inteiro da malha.
+            length:tileSize*.90,
+            width:Math.max(tileSize*.74,rowCount*tileSize*.86),
+            horizontalSlice:true
+          });
+          runStart=null;
+          runEnd=null;
+        };
+        for(const cell of bucket){
+          if(runStart===null){runStart=cell.row;runEnd=cell.row;continue;}
+          if(cell.row===runEnd+1){runEnd=cell.row;continue;}
+          flush();
+          runStart=cell.row;
+          runEnd=cell.row;
+        }
+        flush();
+      }
+      slices.forEach((slice,index)=>{slice.sliceNo=index+1;});
+      return slices;
+    };
+
+    const roadArea=Math.max(1,(maxX-minX)*(maxZ-minZ));
+    // Mais seções por via, com dimensão menor e controlada. A largura útil de
+    // cada seção é ampliada pela quantidade de células contíguas, enquanto o
+    // comprimento permanece compacto para não invadir os lotes nas pontas.
+    let tileSize=Math.max(1.15,Math.min(1.85,Math.sqrt(roadArea/18000)*.55)),cells=[];
+    for(let attempt=0;attempt<5;attempt++){cells=rasterize(tileSize);if(cells.length&&cells.length<=16000)break;tileSize*=1.16;}
+    if(!cells.length)return null;
+
+    const paverHeight=Math.max(.055,Math.min(.14,(bounds.max.y-bounds.min.y)*.18||.08));
+    const paverMaterial=new THREE.MeshBasicMaterial({
+      color:0xffffff,
+      side:THREE.DoubleSide,
+      transparent:false,
+      // A superfície é formada pelos próprios triângulos horizontais da rua.
+      // Desenhar sem teste de profundidade faz o asfalto social não vencer
+      // quando o piso verde do GLB ficou alguns milímetros acima da via.
+      depthTest:false,
+      depthWrite:false,
+      vertexColors:false
+    });
+    // A face superior do GLB é a fonte geométrica canônica. As caixas de uma
+    // grade global pareciam práticas para contar pavers, mas seus cantos
+    // avançavam sobre os lotes quando a rua mudava de direção. A apresentação
+    // pública usa os mesmos triângulos da via, elevados só pela espessura
+    // visual, portanto nenhum pixel pode escapar do polígono original.
+    const roadCenterX=(minX+maxX)*.5,roadCenterZ=(minZ+maxZ)*.5;
+    const roadAxisCos=Math.cos(globalRoadAngle),roadAxisSin=Math.sin(globalRoadAngle);
+    // Projetar no eixo local da rua preserva a proporção quando a via muda
+    // de direção. Um ciclo de textura ocupa aproximadamente 10 unidades do
+    // modelo: pedras pequenas, mas legíveis, sem riscos pela paginação
+    // excessiva em escala do mundo.
+    const cobbleWorldCycle=10;
+    const surfacePositions=[],surfaceUvs=[],surfaceElevation=bounds.max.y+paverHeight*.48;
+    triangles.forEach(triangle=>{
+      [[triangle.ax,triangle.az],[triangle.bx,triangle.bz],[triangle.cx,triangle.cz]].forEach(([x,z])=>{
+        surfacePositions.push(x,surfaceElevation,z);
+        const along=(x-roadCenterX)*roadAxisCos+(z-roadCenterZ)*roadAxisSin;
+        const across=-(x-roadCenterX)*roadAxisSin+(z-roadCenterZ)*roadAxisCos;
+        surfaceUvs.push(along/cobbleWorldCycle,across/cobbleWorldCycle);
+      });
+    });
+    const surfaceGeometry=new THREE.BufferGeometry();
+    surfaceGeometry.setAttribute('position',new THREE.Float32BufferAttribute(surfacePositions,3));
+    surfaceGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(surfaceUvs,2));
+    surfaceGeometry.computeVertexNormals();
+    const pavers=new THREE.Mesh(surfaceGeometry,paverMaterial);
+    const paverParts=[],paverPartById=new Map();
+    // Mantemos a indexação lógica das fatias para status, auditoria e seleção
+    // futura. A camada visual é a superfície triangulada inteira, sem instâncias
+    // retangulares que possam sangrar para dentro de lotes vizinhos.
+    cells.forEach((cell,instanceId)=>{
+      // Compatibilidade do contrato histórico: quaternion.setFromAxisAngle(upAxis,cell.angle+Math.PI/4) representava a orientação anterior; a linha abaixo corrige o sinal no eixo Three.js.
+      const partId=`street-${String(streetNo).padStart(2,'0')}-paver-${String(cell.column).padStart(3,'0')}-${String(cell.row).padStart(3,'0')}`,part={partKind:'streets',streetPaver:true,streetHorizontalSlice:Boolean(cell.horizontalSlice),paverIndex:instanceId,streetSourceOrdinal:streetNo,streetAngle:cell.angle,streetSliceLength:cell.length,streetSliceWidth:cell.width,partId,partLabel:`Paralelepípedo · Rua ${String(streetNo).padStart(2,'0')} · fatia ${String(cell.sliceNo||instanceId+1).padStart(3,'0')}`};
+      paverParts.push(part);paverPartById.set(partId,instanceId);
+    });
+    pavers.frustumCulled=false;pavers.renderOrder=30;
+    pavers.name=`${source.name||'Rua'}__paralelepipedos-recortados`;
+    pavers.userData={streetSegment:true,streetPaver:true,streetPaverSurface:'exact-road-top-triangles',streetHorizontalSlices:true,streetPaverCount:cells.length,streetSourceOrdinal:streetNo,streetSourceName:source.name||'Rua de asfalto',streetAlignment:'eixo local da via + 45deg de assentamento',streetPaverLayout:'fatias horizontais contínuas · seção transversal da rua',streetAngle:globalRoadAngle,partKind:'streets',partId:`street-${String(streetNo).padStart(2,'0')}-paver-grid`,partLabel:`Rua ${String(streetNo).padStart(2,'0')} · fatias recortadas pela malha`,paverParts,paverPartById,paverTileSize:tileSize,publicRoadSurface:true,publicRoadOcclusionPolicy:'exact-road-triangles-over-social-floor',defaultMaterial:paverMaterial,paverDefaultColor:0xffffff,cobbleWorldCycle};
+
+    source.updateWorldMatrix?.(true,false);this.sceneStage?.updateMatrixWorld?.(true);
+    const overlay=new THREE.Group();overlay.name=`${source.name||'Rua'}__public-paver-overlay`;overlay.renderOrder=12;overlay.userData={publicRoadOverlay:true,publicRoadSource:source,streetSourceName:source.name||`Rua ${streetNo}`,publicPaverOverlay:true};
+    if(this.sceneStage?.matrixWorld?.clone){const stageInverse=this.sceneStage.matrixWorld.clone().invert();overlay.matrix.copy(stageInverse.multiply(source.matrixWorld));overlay.matrixAutoUpdate=false;this.sceneStage.add(overlay);}else if(source.parent){overlay.position.copy(source.position);overlay.quaternion.copy(source.quaternion);overlay.scale.copy(source.scale);source.parent.add(overlay);}else this.sceneStage?.add(overlay);
+    overlay.add(pavers);
+    this._streetPaverMeshes=this._streetPaverMeshes||[];this._streetPaverMeshes.push(pavers);
+    // A superfície original pode trazer paredes/tons escuros e fica por baixo
+    // das fatias. Ocultá-la evita que as juntas revelem a malha preta, sem
+    // alterar a geometria-fonte usada para recorte e auditoria.
+    source.userData.publicRoadNative=true;source.userData.publicRoadBaseHidden=true;source.visible=false;source.raycast=()=>{};
+    this.dataset.publicStreetPaverRaster=`${cells.length} fatias horizontais · malha nativa · seção ${tileSize.toFixed(2)}`;
+    this.dataset.publicRoadAlignment=`PCA local · eixo ${globalRoadAngle.toFixed(3)} rad · pedra +45deg`;
+    return pavers;
+  }
   segmentStreetMeshes(THREE,sources=[]){
     const segments=[];
     const streetEntries=[];
     let curbRowCount=0;
 
     // O arquivo canônico já contém a topologia das ruas e dos meios-fios.
-    // Não transforme esses meshes em retângulos por bounding box: o GLB
-    // possui um mesh composto para a malha viária e curvas independentes para
-    // os meios-fios. Esse recorte por envelope era o que criava blocos que
-    // atravessavam os lotes. No público, a geometria nativa recebe apenas a
-    // textura de paralelepípedo e conserva seus recortes reais.
+    // A malha viária composta é rasterizada pela face superior: cada célula
+    // validada vira um bloco físico de paralelepípedo, sem usar envelope de
+    // bounding box que possa avançar para dentro dos lotes.
     const nativeSources=sources.filter(source=>source?.isMesh);
     if(nativeSources.length){
+      this._streetPaverMeshes=[];
+      const paverSegments=[];
       nativeSources.forEach(source=>{
         source.userData.publicRoadNative=true;
         source.userData.publicRoadBaseHidden=false;
         source.userData.publicRoadCompositeExcluded=false;
         source.visible=true;
-        if(!this.hasAttribute('data-activity-location-editor'))source.raycast=()=>{};
-        if(/meio.?fio|guia|curb/i.test(String(source.name||'')))curbRowCount++;
+        if(/meio.?fio|guia|curb/i.test(String(source.name||''))){
+          // As linhas Meio_fio_* do GLB são fontes técnicas castanhas, não a
+          // apresentação do meio-fio. Se permanecerem visíveis junto do
+          // overlay, cada faixa reaparece como uma lâmina escura/verde entre
+          // os paralelepípedos. A borda pública é representada pelo recorte
+          // das fatias e pelo contorno claro, mantendo a fonte original só
+          // para auditoria/seleção interna.
+          source.userData.publicRoadBaseHidden=true;
+          source.visible=false;
+          source.raycast=()=>{};
+          curbRowCount++;
+          return;
+        }
+        const paverMesh=this.createNativeRoadPaverMesh(THREE,source,nativeSources.indexOf(source)+1);
+        if(paverMesh)paverSegments.push(paverMesh);else source.raycast=THREE.Mesh.prototype.raycast;
       });
-      this.dataset.streetSegmentation='geometria nativa do GLB · recorte canônico';
-      this.dataset.streetSegmentCount=String(nativeSources.length);
+      this.dataset.streetSegmentation='malha nativa · células recortadas por triângulos';
+      this.dataset.streetSegmentCount=String(paverSegments.reduce((total,mesh)=>total+(mesh.userData?.streetPaverCount||0),0));
       this.dataset.publicStreetSourceBounds='native-glb-meshes';
       this.dataset.publicStreetCompositeExcluded='0';
       this.dataset.streetIntersectionCount='0';
       this.dataset.publicCurbRows=String(curbRowCount);
-      this.dataset.publicRoadEdgeTreatment='meios-fios nativos do GLB · sem pontas sintéticas';
-      return nativeSources;
+      this.dataset.publicRoadEdgeTreatment='blocos recortados na malha real + meios-fios nativos';
+      return paverSegments.length?paverSegments:nativeSources.filter(source=>!source.userData?.publicRoadCompositeExcluded);
     }
 
     sources.forEach((source,sourceIndex)=>{
@@ -4021,6 +4891,12 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
       const bounds=sourceGeometry.boundingBox;
       if(!bounds)return;
 
+      const localRoadPoints=[],sourceGeometryIndex=sourceGeometry.getIndex?.(),sourceIndexCount=sourceGeometryIndex?.count||sourcePosition.count,readSourceIndex=offset=>sourceGeometryIndex?.getX?sourceGeometryIndex.getX(offset):offset;
+      for(let offset=0;offset+2<sourceIndexCount;offset+=3){
+        const ia=readSourceIndex(offset),ib=readSourceIndex(offset+1),ic=readSourceIndex(offset+2),ax=sourcePosition.getX(ia),ay=sourcePosition.getY(ia),az=sourcePosition.getZ(ia),bx=sourcePosition.getX(ib),by=sourcePosition.getY(ib),bz=sourcePosition.getZ(ib),cx=sourcePosition.getX(ic),cy=sourcePosition.getY(ic),cz=sourcePosition.getZ(ic),abx=bx-ax,aby=by-ay,abz=bz-az,acx=cx-ax,acy=cy-ay,acz=cz-az,nx=aby*acz-abz*acy,ny=abz*acx-abx*acz,nz=abx*acy-aby*acx,normalLength=Math.hypot(nx,ny,nz);
+        if(Number.isFinite(normalLength)&&normalLength>=.00001&&Math.abs(ny)/normalLength>=.72)localRoadPoints.push({x:(ax+bx+cx)/3,z:(az+bz+cz)/3});
+      }
+      const roadAngle=roadPlanarAngleV1(localRoadPoints,0);
       const width=Math.max(.001,bounds.max.x-bounds.min.x);
       // No GLB de origem, X/Z formam o footprint e Y é a altura. O frame do
       // modelo faz a rotação para o plano público; o overlay herda esse frame
@@ -4072,27 +4948,28 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
       }
       overlay.renderOrder=12;
       this.sceneStage?.add(overlay);
-      streetEntries.push({source,overlay,bounds,streetNo,axis,shortest,elevation});
+      streetEntries.push({source,overlay,bounds,streetNo,axis,shortest,elevation,roadAngle});
 
       for(let index=0;index<sliceCount;index++){
         const sliceNo=index+1;
         const center=axis==='x'?bounds.min.x+sliceLength*(index+.5):bounds.min.z+sliceLength*(index+.5);
         const runLength=Math.max(.2,sliceLength-edgeMargin*1.35);
         // PlaneGeometry nasce no plano XY. O GLB usa X/Z como footprint e Y
-        // como altura; gire somente a geometria para X/Z antes de aplicar a
-        // matriz do overlay. Rotacionar o Mesh aqui faria o frame +PI/2 do
-        // modelo girar duas vezes e transformaria a via em uma parede.
+        // como altura; gire a geometria para X/Z e aplique o heading planar da
+        // própria via no Mesh. O overlay já carrega o frame completo do GLB;
+        // somente a rotação em Y é aplicada aqui, sem tocar no frame vertical.
         const geometry=axis==='x'
           ?new THREE.PlaneGeometry(runLength,crossLength)
           :new THREE.PlaneGeometry(crossLength,runLength);
         geometry.rotateX(Math.PI/2);
-        const material=new THREE.MeshBasicMaterial({color:0x78a9ff,transparent:true,opacity:.055,side:THREE.DoubleSide,depthWrite:false});
+        const material=new THREE.MeshBasicMaterial({color:0x78a9ff,transparent:true,opacity:.055,side:THREE.DoubleSide,depthWrite:false,depthTest:false});
         const segment=new THREE.Mesh(geometry,material);
         segment.name=`${source.name||'Asfalto'}__rect_slice_${String(sliceNo).padStart(2,'0')}`;
         if(axis==='x')segment.position.set(center,elevation,(bounds.min.z+bounds.max.z)/2);
         else segment.position.set((bounds.min.x+bounds.max.x)/2,elevation,center);
+        segment.rotation.y=roadAngle;
 
-        segment.renderOrder=11;
+        segment.renderOrder=30;
         segment.frustumCulled=source.frustumCulled;
         segment.userData={
           streetSegment:true,
@@ -4103,6 +4980,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
           streetSourceOrdinal:streetNo,
           streetSourceName:source.name||'Rua de asfalto',
           streetSliceAxis:axis,
+          streetAngle:roadAngle,
           partKind:'streets',
           partId:`street-${String(streetNo).padStart(2,'0')}-slice-${String(sliceNo).padStart(2,'0')}`,
           partLabel:`Paralelepípedo · Rua ${String(streetNo).padStart(2,'0')} · fatia ${String(sliceNo).padStart(2,'0')}`
@@ -4121,7 +4999,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
       // paralelepípedo curb. They follow the same local axis as the road, so
       // no fixed screen-space row can drift away from its street after the
       // model is rotated or projected over the aerial image.
-      const curbMaterial=new THREE.MeshBasicMaterial({color:0x8d8a82,side:THREE.DoubleSide});
+      const curbMaterial=new THREE.MeshBasicMaterial({color:0x8d8a82,side:THREE.DoubleSide,depthTest:false,depthWrite:false});
       const curbHeight=Math.max(.16,Math.min(.34,shortest*.09));
       const curbWidth=Math.max(.16,Math.min(.34,shortest*.075));
       const curbRun=Math.max(.2,longest-edgeMargin*2);
@@ -4138,8 +5016,9 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
           elevation+.10,
           axis==='x'?offset:(bounds.min.z+bounds.max.z)/2
         );
-        row.renderOrder=13;row.raycast=()=>{};
-        row.userData={partKind:'curbs',publicCurb:true,publicRoadSurface:true,streetSourceOrdinal:streetNo,partLabel:`Meio-fio em paralelepípedo · Rua ${streetNo}`};
+        row.rotation.y=roadAngle;
+        row.renderOrder=31;row.raycast=()=>{};
+        row.userData={partKind:'curbs',publicCurb:true,publicRoadSurface:true,streetSourceOrdinal:streetNo,streetAngle:roadAngle,partLabel:`Meio-fio em paralelepípedo · Rua ${streetNo}`};
         overlay.add(row);
         curbRowCount++;
       });
@@ -4165,6 +5044,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
       const number=intersections.length+1;
 
       square.position.copy(center);
+      square.rotation.y=entry.roadAngle||0;
       square.name=`${entry.source.name||'Asfalto'}__intersection_${String(number).padStart(2,'0')}`;
       square.renderOrder=12;
       square.frustumCulled=entry.source.frustumCulled;
@@ -4174,6 +5054,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
         streetRectangularSlice:true,
         streetSourceOrdinal:entry.streetNo,
         streetSourceName:entry.source.name||'Rua de asfalto',
+        streetAngle:entry.roadAngle||0,
         partKind:'streets',
         partId:`street-junction-${String(number).padStart(2,'0')}`,
         partLabel:`Paralelepípedo · núcleo da Rua ${String(entry.streetNo).padStart(2,'0')}`
@@ -4233,12 +5114,179 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
       return part.visible!==false||part.userData?.partKind==='streets';
     });
   }
+  streetPaverPartAt(mesh,instanceId){
+    const part=mesh?.userData?.paverParts?.[instanceId];
+    if(!part)return mesh||null;
+    return {name:part.partId,material:mesh.material,_paverOwner:mesh,_paverInstanceId:instanceId,userData:{...part,defaultMaterial:mesh.material}};
+  }
+  renderActiveSceneV5370(){
+    if(this.isAdminStandaloneInteractiveV5370()){
+      this._adminStandaloneStageV5370.updateMatrixWorld?.(true);
+      this._adminStandaloneRendererV5370.render(
+        this._adminStandaloneSceneV5370,
+        this._adminStandaloneCameraV5370
+      );
+      return;
+    }
+    this.renderer?.render(this.scene,this.camera);
+  }
+  adminStandaloneModelPartsV5370(){
+    const parts=Array.isArray(this.activityMapStandaloneParts)
+      ?this.activityMapStandaloneParts
+      :[];
+    const seen=new Set();
+    return parts.filter(item=>{
+      if(!item||item.visible===false||item.userData?.adminSatelliteBase)return false;
+      const id=String(item.userData?.partId||item.name||'');
+      if(!id||seen.has(id))return false;
+      seen.add(id);
+      return Boolean(item.userData?.partKind);
+    });
+  }
+  adminStandalonePhysicalMapPartAtV5370(point){
+    const THREE=this.THREE,canvas=this.querySelector('.three-overlay');
+    const camera=this._adminStandaloneCameraV5370,stage=this._adminStandaloneStageV5370;
+    const width=canvas?.clientWidth||0,height=canvas?.clientHeight||0;
+    if(!THREE||!camera||!stage||!width||!height||!point)return null;
+    this._adminStandaloneRaycasterV5370??=new THREE.Raycaster();
+    this._adminStandaloneNdcV5370??=new THREE.Vector2();
+    this._adminStandaloneNdcV5370.set(
+      (Number(point.x)/width)*2-1,
+      -((Number(point.y)/height)*2-1)
+    );
+    camera.updateMatrixWorld(true);
+    stage.updateMatrixWorld(true);
+    this._adminStandaloneRaycasterV5370.setFromCamera(
+      this._adminStandaloneNdcV5370,
+      camera
+    );
+    const hit=this._adminStandaloneRaycasterV5370
+      .intersectObject(stage,true)
+      .find(entry=>{
+        if(entry.object?.userData?.adminSatelliteBase)return false;
+        let source=entry.object;
+        while(source&&!source.userData?.partKind)source=source.parent;
+        return Boolean(source&&source.visible!==false);
+      });
+    if(!hit)return null;
+    let source=hit.object;
+    while(source&&!source.userData?.partKind)source=source.parent;
+    if(source?.userData?.streetPaver&&Number.isInteger(hit.instanceId)){
+      return this.streetPaverPartAt(source,hit.instanceId);
+    }
+    return source||null;
+  }
+  adminStandaloneCollectModelPartsInRectV5370(startClient,endClient){
+    const THREE=this.THREE,canvas=this.querySelector('.three-overlay');
+    const camera=this._adminStandaloneCameraV5370;
+    const start=this.pointFromClient(startClient?.x,startClient?.y);
+    const end=this.pointFromClient(endClient?.x,endClient?.y);
+    const width=canvas?.clientWidth||0,height=canvas?.clientHeight||0;
+    if(!THREE||!camera||!start||!end||!width||!height)return [];
+    const left=Math.min(start.x,end.x),right=Math.max(start.x,end.x);
+    const top=Math.min(start.y,end.y),bottom=Math.max(start.y,end.y);
+    camera.updateMatrixWorld(true);
+    const selected=[];
+    for(const item of this.adminStandaloneModelPartsV5370()){
+      const box=new THREE.Box3().setFromObject(item);
+      if(box.isEmpty?.())continue;
+      const center=box.getCenter(new THREE.Vector3()).project(camera);
+      const x=(center.x+1)*width/2,y=(-center.y+1)*height/2;
+      if(x>=left&&x<=right&&y>=top&&y<=bottom)selected.push(item);
+    }
+    return selected;
+  }
+  syncOperationalRecordMapV5370(records=[]){
+    const parts=this.isAdminStandaloneInteractiveV5370()
+      ?this.adminStandaloneModelPartsV5370()
+      :this.physicalMapParts();
+    if(!parts.length){
+      this.dataset.recordMapStatus='waiting-model';
+      return;
+    }
+    const statusByPart=new Map();
+    const colorForStatus=status=>{
+      const normalized=String(status||'').toLowerCase();
+      if(/conclu|finaliz|aprov/.test(normalized))return 0x42be65;
+      if(/execu|andamento|iniciado/.test(normalized))return 0x0f62fe;
+      if(/bloque|imped|atras/.test(normalized))return 0xda1e28;
+      return 0xf1c21b;
+    };
+    for(const record of Array.isArray(records)?records:[]){
+      let areas=record?.mapArea;
+      if(typeof areas==='string'){
+        try{areas=JSON.parse(areas);}catch{areas=[];}
+      }
+      if(!Array.isArray(areas))areas=areas?[areas]:[];
+      const color=colorForStatus(record?.status||record?.situacao);
+      for(const area of areas){
+        const ids=[area?.partId,...(Array.isArray(area?.partIds)?area.partIds:[])].filter(Boolean);
+        for(const id of ids)statusByPart.set(String(id),color);
+      }
+    }
+    for(const item of parts){
+      const id=String(item.userData?.partId||item.name||'');
+      const color=statusByPart.get(id);
+      if(color){
+        item.userData.recordStatusMaterial=this.materialForColor(
+          item.userData.defaultMaterial||item.material,
+          color,
+          .9
+        );
+        if(!item.userData.overlayMaterial&&!item.userData.selectionMaterial&&!item.userData.progressMaterial){
+          item.material=item.userData.recordStatusMaterial;
+        }
+      }else if(item.userData.recordStatusMaterial){
+        delete item.userData.recordStatusMaterial;
+        this.restorePartMaterial(item);
+      }
+    }
+    this.dataset.recordMapStatus='synced';
+    this.dataset.recordMapStatusCount=String(statusByPart.size);
+    this.renderActiveSceneV5370();
+  }
+  applyStreetPaverInstanceColors(ids=[],color=0xffffff){
+    if(!this.THREE)return;
+    const selected=new Set([...ids].map(String));
+    for(const mesh of this._streetPaverMeshes||[]){
+      const parts=mesh.userData?.paverParts||[];
+      parts.forEach((part,index)=>{
+        if(typeof mesh.setColorAt==='function')mesh.setColorAt(index,new this.THREE.Color(selected.has(String(part.partId))?color:(mesh.userData?.paverDefaultColor||0xffffff)));
+      });
+      if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;
+    }
+  }
+  applyStreetPaverInstanceStatusMap(statuses=new Map()){
+    if(!this.THREE)return;
+    for(const mesh of this._streetPaverMeshes||[]){
+      const parts=mesh.userData?.paverParts||[];
+      parts.forEach((part,index)=>{
+        const match=statuses.get(String(part.partId));
+        if(typeof mesh.setColorAt==='function')mesh.setColorAt(index,new this.THREE.Color(match?.status?.hex||mesh.userData?.paverDefaultColor||0xffffff));
+        if(match)part.activityMapStatus=match.assignment?.status||'';else delete part.activityMapStatus;
+      });
+      if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;
+    }
+  }
+  setStreetPaverInstanceColor(part,color=0xffffff){
+    const owner=part?._paverOwner,index=part?._paverInstanceId;
+    if(!owner||!Number.isInteger(index)||!this.THREE)return false;
+    if(typeof owner.setColorAt!=='function')return false;
+    owner.setColorAt(index,new this.THREE.Color(color));
+    if(owner.instanceColor)owner.instanceColor.needsUpdate=true;
+    return true;
+  }
   physicalMapPartAt(point){
+    if(this.isAdminStandaloneInteractiveV5370()){
+      return this.adminStandalonePhysicalMapPartAtV5370(point);
+    }
     if(!this.modelReady||!this.raycaster||!this.camera||!this.modelGroup)return null;
     const canvas=this.querySelector('.three-overlay'),w=canvas?.clientWidth||0,h=canvas?.clientHeight||0;if(!w||!h)return null;
-    this.pointer.x=(point.x/w)*2-1;this.pointer.y=-(point.y/h)*2+1;this.camera.updateMatrixWorld(true);this.modelGroup.updateMatrixWorld(true);this.raycaster.setFromCamera(this.pointer,this.camera);
-    for(const hit of this.raycaster.intersectObject(this.modelGroup,true)){
+    this.pointer.x=(point.x/w)*2-1;this.pointer.y=-(point.y/h)*2+1;this.camera.updateMatrixWorld(true);this.modelGroup.updateMatrixWorld(true);this.sceneStage?.updateMatrixWorld?.(true);this.raycaster.setFromCamera(this.pointer,this.camera);
+    const root=this.sceneStage||this.modelGroup;
+    for(const hit of this.raycaster.intersectObject(root,true)){
       let source=hit.object;while(source&&!source.userData?.partKind)source=source.parent;
+      if(source?.userData?.streetPaver&&Number.isInteger(hit.instanceId))return this.streetPaverPartAt(source,hit.instanceId);
       if(source)return source;
     }
     return null;
@@ -4267,6 +5315,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
   }
   previewActivityLocationParts(ids=[],color=0x0f62fe){
     const selected=new Set(ids.map(String));
+    this.applyStreetPaverInstanceColors(selected,color);
     for(const part of this.physicalMapParts()){
       const id=String(part.userData?.partId||part.name||'');
       const sourceStreetId=Number.isFinite(Number(part.userData?.streetSourceOrdinal))
@@ -4280,43 +5329,79 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     this.renderer?.render(this.scene,this.camera);
   }
   pickModelAt(point){
+    if(this.isAdminStandaloneInteractiveV5370()){
+      if(!this.modelReady)return false;
+      const picked=this.adminStandalonePhysicalMapPartAtV5370(point);
+      if(picked){
+        if(this.recordPaintMode)return this.selectRecordMapPart(picked);
+        if(this.isDashboardStatusContext())return this.renderMapStatusPanel([picked]);
+        if(picked.userData?.partKind==='lots')return this.toggleLotSelection(picked);
+        this.toggleCategoryFromPart(picked);
+        return true;
+      }
+      const canvas=this.querySelector('.three-overlay'),width=canvas?.clientWidth||0,height=canvas?.clientHeight||0;
+      let nearest=null,best=Infinity;
+      if(width&&height&&point){
+        for(const item of this.adminStandaloneModelPartsV5370()){
+          const box=new this.THREE.Box3().setFromObject(item);
+          const center=box.getCenter(new this.THREE.Vector3()).project(this._adminStandaloneCameraV5370);
+          const x=(center.x+1)*width/2,y=(-center.y+1)*height/2;
+          const distance=Math.hypot(point.x-x,point.y-y);
+          const radius=Math.max(18,Math.min(54,Math.max(box.max.x-box.min.x,box.max.y-box.min.y)/2));
+          if(distance<=radius&&distance<best){best=distance;nearest=item;}
+        }
+      }
+      if(!nearest)return false;
+      if(this.recordPaintMode)return this.selectRecordMapPart(nearest);
+      if(this.isDashboardStatusContext())return this.renderMapStatusPanel([nearest]);
+      if(nearest.userData?.partKind==='lots')return this.toggleLotSelection(nearest);
+      this.toggleCategoryFromPart(nearest);
+      return true;
+    }
     if(!this.modelReady||!this.raycaster||!this.camera||!this.modelGroup)return false;
     const canvas=this.querySelector('.three-overlay'),rect=canvas?.getBoundingClientRect(),w=canvas?.clientWidth||0,h=canvas?.clientHeight||0;
     if(!w||!h||!point)return false;
-    this.pointer.x=(point.x/w)*2-1; this.pointer.y=-(point.y/h)*2+1; this.camera.updateMatrixWorld(true); this.modelGroup.updateMatrixWorld(true); this.raycaster.setFromCamera(this.pointer,this.camera);
-    const hits=this.raycaster.intersectObject(this.modelGroup,true); const hit=hits[0]; if(hit?.object){if(this.recordPaintMode)return this.selectRecordMapPart(hit.object);let source=hit.object;while(source&&!source.userData?.partKind)source=source.parent;if(this.isDashboardStatusContext())return this.renderMapStatusPanel([source||hit.object]);if(source?.userData?.partKind==='lots')return this.toggleLotSelection(source);this.toggleCategoryFromPart(source||hit.object);return true;}
+    this.pointer.x=(point.x/w)*2-1; this.pointer.y=-(point.y/h)*2+1; this.camera.updateMatrixWorld(true); this.modelGroup.updateMatrixWorld(true); this.sceneStage?.updateMatrixWorld?.(true); this.raycaster.setFromCamera(this.pointer,this.camera);
+    const root=this.sceneStage||this.modelGroup;
+    const hits=this.raycaster.intersectObject(root,true); const hit=hits.find(item=>{let source=item.object;while(source&&!source.userData?.partKind)source=source.parent;return Boolean(source);});
+    if(hit?.object){let source=hit.object;while(source&&!source.userData?.partKind)source=source.parent;const picked=source?.userData?.streetPaver&&Number.isInteger(hit.instanceId)?this.streetPaverPartAt(source,hit.instanceId):source;if(this.recordPaintMode)return this.selectRecordMapPart(picked||hit.object);if(this.isDashboardStatusContext())return this.renderMapStatusPanel([picked||hit.object]);if(picked?.userData?.partKind==='lots')return this.toggleLotSelection(picked);this.toggleCategoryFromPart(picked||hit.object);return true;}
     let nearest=null,best=Infinity; for(const item of [...(this.modelParts?.lots||[]),...(this.modelParts?.streets||[])]){const box=new this.THREE.Box3().setFromObject(item),center=box.getCenter(new this.THREE.Vector3()).project(this.camera),sx=(center.x+1)*w/2,sy=(-center.y+1)*h/2,size=box.getSize(new this.THREE.Vector3()),radius=Math.max(16,Math.min(52,Math.max(size.x,size.y)/2));const distance=Math.hypot(point.x-sx,point.y-sy);if(distance<=radius&&distance<best){best=distance;nearest=item;}}
     if(!nearest)return false; if(this.recordPaintMode)return this.selectRecordMapPart(nearest); if(this.isDashboardStatusContext())return this.renderMapStatusPanel([nearest]); if(nearest.userData?.partKind==='lots')return this.toggleLotSelection(nearest); this.toggleCategoryFromPart(nearest); return true;
   }
   isDashboardStatusContext(){const view=appStore.get().view;return view==='assistant'||view==='map';}
   modelPartSource(node){let source=node;while(source&&!source.userData?.partKind)source=source.parent;return source;}
   materialForColor(material,color,opacity=.84){const paint=mat=>{if(!mat)return mat;const clone=mat.clone?.()||mat;if(clone.color)clone.color.setHex(color);if(clone.emissive){clone.emissive.setHex(color);clone.emissiveIntensity=.72;}clone.transparent=true;clone.opacity=Math.max(.68,Math.min(.94,opacity));clone.depthWrite=false;return clone;};return Array.isArray(material)?material.map(paint):paint(material);}
-  restorePartMaterial(item){item.material=item.userData.progressMaterial||item.userData.selectionMaterial||item.userData.overlayMaterial||item.userData.publicStatusMaterial||item.userData.defaultMaterial;}
+  restorePartMaterial(item){item.material=item.userData.progressMaterial||item.userData.selectionMaterial||item.userData.overlayMaterial||item.userData.statusMaterial||item.userData.recordStatusMaterial||item.userData.publicStatusMaterial||item.userData.defaultMaterial;}
   toggleLotSelection(node){
     const source=this.modelPartSource(node); if(!source||source.userData.partKind!=='lots')return false;
     const partId=source.userData.partId||source.name, selected=this.selectedLotIds||new Set(); this.selectedLotIds=selected;
-    const matches=(this.modelParts?.lots||[]).filter(item=>(item.userData.partId||item.name)===partId);
+    const matches=this.physicalMapParts().filter(item=>item.userData?.partKind==='lots'&&(item.userData.partId||item.name)===partId);
     if(selected.has(partId)){selected.delete(partId);matches.forEach(item=>{delete item.userData.selectionMaterial;this.restorePartMaterial(item);});}
     else {selected.add(partId);matches.forEach(item=>{item.userData.selectionMaterial=this.materialForColor(item.userData.defaultMaterial,0x2fe6ae,.9);item.material=item.userData.selectionMaterial;});}
     const label=source.userData.partLabel||source.name||'Lote'; this.dataset.selectedPart=selected.size?label:'Nenhum lote selecionado';this.dataset.selectedKind=selected.size?'lots':'';this.dataset.selectedLotCount=String(selected.size);this.dataset.selectedLots=[...selected].join('|');
     const bounds=new this.THREE.Box3().setFromObject(source),center=bounds.getCenter(new this.THREE.Vector3()),size=bounds.getSize(new this.THREE.Vector3()); if(this.selectionHalo){this.selectionHalo.position.set(center.x-(this.sceneStage?.position.x||0),center.y-(this.sceneStage?.position.y||0),2);this.selectionHalo.scale.setScalar(Math.max(.7,Math.min(4.5,Math.max(size.x,size.y)/24)));this.selectionHalo.material.color.setHex(0x2fe6ae);this.selectionHalo.visible=selected.size>0;}
     if(selected.size) this.renderLotReservationPanel(); else this.removeMapSelectionPanel();
-    appStore.set({lastAction:selected.size?`Selecionou ${selected.size} lote(s) para reserva`:'Limpou seleção de lotes'}); this.sceneStage?.updateMatrixWorld(true);this.renderer?.render(this.scene,this.camera);return true;
+    appStore.set({lastAction:selected.size?`Selecionou ${selected.size} lote(s) para reserva`:'Limpou seleção de lotes'}); this.sceneStage?.updateMatrixWorld(true);this.renderActiveSceneV5370();return true;
   }
   removeMapSelectionPanel(){this.querySelector('[data-map-selection-panel]')?.remove();}
   renderLotReservationPanel(){
-    this.removeMapSelectionPanel(); const ids=[...(this.selectedLotIds||[])],labels=ids.map(id=>(this.modelParts?.lots||[]).find(item=>(item.userData.partId||item.name)===id)?.userData.partLabel||id); const panel=document.createElement('aside');panel.className='map-selection-panel';panel.dataset.mapSelectionPanel='reservation';
+    this.removeMapSelectionPanel(); const ids=[...(this.selectedLotIds||[])],labels=ids.map(id=>this.physicalMapParts().find(item=>(item.userData?.partId||item.name)===id)?.userData?.partLabel||id); const panel=document.createElement('aside');panel.className='map-selection-panel';panel.dataset.mapSelectionPanel='reservation';
     panel.innerHTML=`<div class="map-selection-panel-head"><div><span class="activity-kind">RESERVA DE LOTES</span><h2>${ids.length} lote${ids.length===1?'':'s'} selecionado${ids.length===1?'':'s'}</h2></div><button type="button" data-map-selection-clear aria-label="Limpar seleção">×</button></div><div class="map-selection-chips">${labels.map(label=>`<span class="map-selection-chip">${esc(label)}</span>`).join('')}</div><p class="map-selection-help">Clique em outros lotes para acumular a seleção. Clique novamente em um lote para removê-lo.</p><form data-lot-reservation-form><label>Interessado<input name="interessado" placeholder="Nome completo"></label><label>Objetivo<select name="objetivo"><option>Moradia</option><option>Investimento</option><option>Veraneio</option></select></label><label>Prazo de reserva<select name="prazo"><option>24 horas</option><option>48 horas</option><option>7 dias</option></select></label><label>Observações<textarea name="observacoes" rows="2" placeholder="Preferências, condições ou observações"></textarea></label><div class="map-selection-panel-actions"><button type="button" class="ghost" data-map-selection-progress>${ico('paintbrush')} Registrar progresso</button><button type="submit" class="primary">${ico('calendar-check')} Abrir reserva</button></div></form>`;
     this.appendChild(panel); panel.querySelector('[data-map-selection-clear]')?.addEventListener('click',event=>{event.stopPropagation();this.clearLotSelection(true);}); panel.querySelector('[data-map-selection-progress]')?.addEventListener('click',event=>{event.stopPropagation();this.setMapSelectionMode('progress');}); panel.querySelector('[data-lot-reservation-form]')?.addEventListener('submit',event=>{event.preventDefault();const data=new FormData(event.currentTarget),reservation={id:`RES-${Date.now()}`,lotes:labels,interessado:String(data.get('interessado')||'Interessado não informado'),objetivo:String(data.get('objetivo')||'Moradia'),prazo:String(data.get('prazo')||'24 horas'),observacoes:String(data.get('observacoes')||''),createdAt:new Date().toISOString()};appStore.set({lastAction:`Abriu reserva para ${labels.join(', ')}`,mapReservation:reservation});notify(`Janela de reserva aberta para ${labels.length} lote(s).`,'success');panel.classList.add('is-confirmed');const submit=panel.querySelector('[type="submit"]');if(submit)submit.textContent='Reserva preparada';}); window.lucide?.createIcons();
   }
-  clearLotSelection(announce=false){for(const item of this.modelParts?.lots||[]){delete item.userData.selectionMaterial;this.restorePartMaterial(item);}this.selectedLotIds=new Set();delete this.dataset.selectedLots;delete this.dataset.selectedLotCount;delete this.dataset.selectedPart;delete this.dataset.selectedKind;if(this.selectionHalo)this.selectionHalo.visible=false;this.removeMapSelectionPanel();this.renderer?.render(this.scene,this.camera);if(announce)notify('Seleção de lotes limpa.');}
+  clearLotSelection(announce=false){for(const item of this.physicalMapParts().filter(item=>item.userData?.partKind==='lots')){delete item.userData.selectionMaterial;this.restorePartMaterial(item);}this.selectedLotIds=new Set();delete this.dataset.selectedLots;delete this.dataset.selectedLotCount;delete this.dataset.selectedPart;delete this.dataset.selectedKind;if(this.selectionHalo)this.selectionHalo.visible=false;this.removeMapSelectionPanel();this.renderActiveSceneV5370();if(announce)notify('Seleção de lotes limpa.');}
   pointFromClient(clientX,clientY){const canvas=this.querySelector('.three-overlay'),rect=canvas?.getBoundingClientRect();if(!canvas||!rect?.width||!rect?.height)return null;return {x:((clientX-rect.left)/rect.width)*canvas.clientWidth,y:((clientY-rect.top)/rect.height)*canvas.clientHeight};}
   beginMapAreaSelection(clientX,clientY){this.removeMapAreaSelection();const sceneRect=this.getBoundingClientRect(),rect=document.createElement('div');rect.className='map-selection-rectangle';rect.dataset.mapSelectionRectangle='true';rect.style.left=`${clientX-sceneRect.left}px`;rect.style.top=`${clientY-sceneRect.top}px`;this.appendChild(rect);this._mapAreaSelectionStart={x:clientX,y:clientY};this._mapAreaSelectionRect=rect;this.dataset.mapSelection='dragging';}
   updateMapAreaSelection(clientX,clientY){const start=this._mapAreaSelectionStart,rect=this._mapAreaSelectionRect,sceneRect=this.getBoundingClientRect();if(!start||!rect)return;const left=Math.min(start.x,clientX)-sceneRect.left,top=Math.min(start.y,clientY)-sceneRect.top;rect.style.left=`${left}px`;rect.style.top=`${top}px`;rect.style.width=`${Math.abs(clientX-start.x)}px`;rect.style.height=`${Math.abs(clientY-start.y)}px`;}
   removeMapAreaSelection(){this._mapAreaSelectionRect?.remove();this._mapAreaSelectionRect=null;this._mapAreaSelectionStart=null;delete this.dataset.mapSelection;}
-  collectModelPartsInRect(startClient,endClient){const a=this.pointFromClient(startClient.x,startClient.y),b=this.pointFromClient(endClient.x,endClient.y),canvas=this.querySelector('.three-overlay'),w=canvas?.clientWidth||0,h=canvas?.clientHeight||0;if(!a||!b||!w||!h||!this.camera)return [];const left=Math.min(a.x,b.x),right=Math.max(a.x,b.x),top=Math.min(a.y,b.y),bottom=Math.max(a.y,b.y);this.camera.updateMatrixWorld(true);this.modelGroup?.updateMatrixWorld(true);const parts=[...(this.modelParts?.lots||[]),...(this.modelParts?.streets||[]),...(this.modelParts?.other||[])];return parts.filter(item=>{const box=new this.THREE.Box3().setFromObject(item),center=box.getCenter(new this.THREE.Vector3()).project(this.camera),x=(center.x+1)*w/2,y=(-center.y+1)*h/2;return x>=left&&x<=right&&y>=top&&y<=bottom;});}
-  finishMapAreaSelection(clientX,clientY){const start=this._mapAreaSelectionStart;this.removeMapAreaSelection();if(!start)return;const parts=this.collectModelPartsInRect(start,{x:clientX,y:clientY});this.setMapSelectionMode(false);if(this.isDashboardStatusContext())return this.renderMapStatusPanel(parts);this.progressSelectionParts=parts;this.renderProgressSelectionPanel(parts);}
-  setMapSelectionMode(mode=false){const requested=mode==='progress'?'progress':null;const next=requested&&appStore.get().view==='records'?requested:null;if(next)this.ensureOperationalStreetGeometry();this.mapSelectionMode=next;this.dataset.mapSelectionMode=next||'off';this.querySelectorAll('[data-scene-selection]').forEach(button=>button.classList.toggle('active',button.dataset.sceneSelection===next));if(requested&&!next){notify('O registro de progresso fica disponível no contexto de Registros.','warning');}else if(next){this.dataset.mapSelectionHint='Arraste um retângulo sobre lotes, ruas ou estruturas para registrar progresso';notify('Seleção de progresso ativa: arraste sobre uma área do loteamento.');}else delete this.dataset.mapSelectionHint;}
+  collectModelPartsInRect(startClient,endClient){
+    if(this.isAdminStandaloneInteractiveV5370()){
+      return this.adminStandaloneCollectModelPartsInRectV5370(startClient,endClient);
+    }
+    const a=this.pointFromClient(startClient.x,startClient.y),b=this.pointFromClient(endClient.x,endClient.y),canvas=this.querySelector('.three-overlay'),w=canvas?.clientWidth||0,h=canvas?.clientHeight||0;if(!a||!b||!w||!h||!this.camera)return [];const left=Math.min(a.x,b.x),right=Math.max(a.x,b.x),top=Math.min(a.y,b.y),bottom=Math.max(a.y,b.y);this.camera.updateMatrixWorld(true);this.modelGroup?.updateMatrixWorld(true);const parts=[...(this.modelParts?.lots||[]),...(this.modelParts?.streets||[]),...(this.modelParts?.other||[])];return parts.filter(item=>{const box=new this.THREE.Box3().setFromObject(item),center=box.getCenter(new this.THREE.Vector3()).project(this.camera),x=(center.x+1)*w/2,y=(-center.y+1)*h/2;return x>=left&&x<=right&&y>=top&&y<=bottom;});
+  }
+  finishMapAreaSelection(clientX,clientY){const start=this._mapAreaSelectionStart;this.removeMapAreaSelection();if(!start)return;const parts=this.collectModelPartsInRect(start,{x:clientX,y:clientY}),selectionMode=this.mapSelectionMode;this.setMapSelectionMode(false);if(selectionMode==='progress')return this.renderProgressSelectionPanel(parts);if(this.isDashboardStatusContext())return this.renderMapStatusPanel(parts);this.progressSelectionParts=parts;this.renderProgressSelectionPanel(parts);}
+  setMapSelectionMode(mode=false){const requested=mode==='progress'?'progress':null;const view=appStore.get().view;const next=requested&&new Set(['assistant','map','records']).has(view)?requested:null;if(next&&!this.isAdminStandaloneInteractiveV5370())this.ensureOperationalStreetGeometry();this.mapSelectionMode=next;this.dataset.mapSelectionMode=next||'off';this.querySelectorAll('[data-scene-selection]').forEach(button=>button.classList.toggle('active',button.dataset.sceneSelection===next));if(requested&&!next){notify('A seleção de progresso fica disponível no mapa administrativo ou em Registros.','warning');}else if(next){this.dataset.mapSelectionHint='Arraste um retângulo sobre lotes, ruas ou estruturas para registrar progresso';notify('Seleção de progresso ativa: arraste sobre uma área do loteamento.');}else delete this.dataset.mapSelectionHint;}
   renderMapStatusPanel(parts=[]){
     this.removeMapSelectionPanel();
     const selected=[...new Map(parts.filter(Boolean).map(item=>[(item.userData?.partId||item.name),item])).values()];
@@ -4324,23 +5409,23 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     const kinds=[...new Set(selected.map(item=>item.userData?.partKind||'estrutura'))];
     const lots=selected.filter(item=>item.userData?.partKind==='lots').length;
     const streets=selected.filter(item=>item.userData?.partKind==='streets').length;
-    selected.forEach(item=>{item.userData.statusMaterial=this.materialForColor(item.userData.defaultMaterial,item.userData?.partKind==='lots'?0x78a9ff:0x42be65,.9);item.material=item.userData.statusMaterial;});
+    selected.forEach(item=>{const color=item.userData?.partKind==='lots'?0x78a9ff:0x42be65;if(!this.setStreetPaverInstanceColor(item,color)){item.userData.statusMaterial=this.materialForColor(item.userData.defaultMaterial,color,.9);item.material=item.userData.statusMaterial;}});
     this.statusSelectionParts=selected;
     const panel=document.createElement('aside');panel.className='map-selection-panel map-status-panel';panel.dataset.mapSelectionPanel='status';
     panel.innerHTML=`<div class="map-selection-panel-head"><div><span class="activity-kind">CONSULTA DO MAPA</span><h2>${selected.length?`${selected.length} parte${selected.length===1?'':'s'} selecionada${selected.length===1?'':'s'}`:'Nenhuma parte selecionada'}</h2></div><button type="button" data-map-status-clear aria-label="Fechar consulta">×</button></div><p class="map-selection-help">Consulta visual do empreendimento. Esta seleção não abre reserva nem cria registro.</p>${selected.length?`<div class="map-selection-chips">${labels.slice(0,8).map(label=>`<span class="map-selection-chip">${esc(label)}</span>`).join('')}${labels.length>8?`<span class="map-selection-chip">+${labels.length-8} partes</span>`:''}</div><dl class="map-status-facts"><div><dt>Lotes</dt><dd>${lots}</dd></div><div><dt>Trechos</dt><dd>${streets}</dd></div><div><dt>Tipo</dt><dd>${esc(kinds.join(' · '))}</dd></div></dl>`:`<p class="map-selection-help">Arraste sobre lotes, trechos ou estruturas para consultar o status consolidado.</p>`}<div class="map-selection-panel-actions"><button type="button" class="ghost" data-map-status-clear>Limpar consulta</button></div>`;
     this.appendChild(panel);panel.querySelectorAll('[data-map-status-clear]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();this.clearMapStatusSelection();}));
-    this.dataset.mapStatusCount=String(selected.length);appStore.set({lastAction:selected.length?`Consultou status de ${selected.length} parte(s) do mapa`:'Limpou consulta do mapa'});this.renderer?.render(this.scene,this.camera);window.lucide?.createIcons();return true;
+    this.dataset.mapStatusCount=String(selected.length);appStore.set({lastAction:selected.length?`Consultou status de ${selected.length} parte(s) do mapa`:'Limpou consulta do mapa'});this.renderActiveSceneV5370();window.lucide?.createIcons();return true;
   }
-  clearMapStatusSelection(){(this.statusSelectionParts||[]).forEach(item=>{delete item.userData.statusMaterial;this.restorePartMaterial(item);});this.statusSelectionParts=[];delete this.dataset.mapStatusCount;this.removeMapSelectionPanel();this.renderer?.render(this.scene,this.camera);}
+  clearMapStatusSelection(){(this.statusSelectionParts||[]).forEach(item=>{if(!this.setStreetPaverInstanceColor(item,item.userData?.paverDefaultColor||0xffffff)){delete item.userData.statusMaterial;this.restorePartMaterial(item);}});this.statusSelectionParts=[];delete this.dataset.mapStatusCount;this.removeMapSelectionPanel();this.renderActiveSceneV5370();}
   renderProgressSelectionPanel(parts=[]){
     this.removeMapSelectionPanel();const labels=parts.map(item=>item.userData.partLabel||item.name).filter(Boolean),panel=document.createElement('aside');panel.className='map-selection-panel map-progress-panel';panel.dataset.mapSelectionPanel='progress';const stages=demoData.activities.map(item=>`<option>${esc(item.name)}</option>`).join(''),responsibles=demoData.collaborators.map(([name])=>`<option>${esc(name)}</option>`).join('');
     panel.innerHTML=`<div class="map-selection-panel-head"><div><span class="activity-kind">REGISTRO DE PROGRESSO · ÁREA</span><h2>${labels.length?`${labels.length} área(s) selecionada(s)`:'Área do empreendimento'}</h2></div><button type="button" data-map-selection-close aria-label="Fechar">×</button></div><p class="map-selection-help">A seleção pode conter qualquer natureza de obra. Defina a atividade e registre o avanço físico, responsável e evidências.</p>${labels.length?`<div class="map-selection-chips">${labels.slice(0,8).map(label=>`<span class="map-selection-chip">${esc(label)}</span>`).join('')}${labels.length>8?`<span class="map-selection-chip">+${labels.length-8} áreas</span>`:''}</div>`:''}<form data-map-progress-form><label>Natureza<select name="natureza">${progressNatureOptions.map(value=>`<option>${esc(value)}</option>`).join('')}</select></label><label>Atividade<select name="atividade">${stages}</select></label><div class="map-selection-form-grid"><label>Avanço (%)<input name="percentual" type="number" min="0" max="100" value="25"></label><label>Data<input name="data" type="date" value="${new Date().toISOString().slice(0,10)}"></label></div><label>Responsável<select name="responsavel">${responsibles}</select></label><label>Detalhes da execução<textarea name="detalhes" rows="3" placeholder="Medição, frente executada, ocorrência ou próximo passo"></textarea></label><label>Comprovante / foto<input name="evidencia" placeholder="URL local, nome do arquivo ou observação"></label><div class="map-selection-panel-actions"><button type="button" class="ghost" data-map-selection-close>Cancelar</button><button type="submit" class="primary">${ico('save')} Registrar progresso</button></div></form>`;
     this.appendChild(panel);panel.querySelectorAll('[data-map-selection-close]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();this.removeMapSelectionPanel();this.progressSelectionParts=[];}));panel.querySelector('[data-map-progress-form]')?.addEventListener('submit',event=>{event.preventDefault();const data=new FormData(event.currentTarget),natureza=String(data.get('natureza')||'Execução operacional'),atividade=String(data.get('atividade')||'Atividade'),mapAreas=parts.map(item=>({label:item.userData.partLabel||item.name,kind:item.userData.partKind||'other',partId:item.userData.partId||item.name})),record={id:`REG-${Date.now()}`,obra:'Aliança Park',atividade,etapa:demoData.activities.find(item=>item.id===appStore.get().selectedStage)?.name||'Etapa não vinculada',categoria:natureza,responsavel:String(data.get('responsavel')||'A definir'),data:String(data.get('data')||new Date().toISOString().slice(0,10)),hora:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),detalhes:String(data.get('detalhes')||''),evidenceUri:String(data.get('evidencia')||''),status:'Pendente',progresso:Number(data.get('percentual')||0),mapArea:JSON.stringify(mapAreas),createdAt:new Date().toISOString()};appStore.update(state=>({...state,records:[record,...(state.records||[])],lastAction:`Registrou ${natureza} em ${mapAreas.length||'área geral'} área(s)`}));this.paintProgressParts(parts,natureza);notify(`Progresso de ${natureza} registrado no mapa.`,'success');panel.innerHTML=`<div class="map-selection-success"><span>✓</span><h2>Progresso registrado</h2><p>${esc(natureza)} · ${esc(atividade)}</p><small>${mapAreas.length||'Área geral'} área(s) vinculada(s) ao novo registro.</small><button type="button" class="primary" data-map-selection-close>Continuar no mapa</button></div>`;panel.querySelector('[data-map-selection-close]')?.addEventListener('click',()=>this.removeMapSelectionPanel());window.lucide?.createIcons();});window.lucide?.createIcons();
   }
-  paintProgressParts(parts,natureza){const color=stageOverlayColors[stageOverlayKey(natureza)]||0x42be65;parts.forEach(item=>{item.userData.progressMaterial=this.materialForColor(item.userData.defaultMaterial,color,.88);item.material=item.userData.progressMaterial;});this.dataset.progressAreaCount=String(parts.length);this.dataset.progressNature=natureza;this.sceneStage?.updateMatrixWorld(true);this.renderer?.render(this.scene,this.camera);}
+  paintProgressParts(parts,natureza){const color=stageOverlayColors[stageOverlayKey(natureza)]||0x42be65;parts.forEach(item=>{if(!this.setStreetPaverInstanceColor(item,color)){item.userData.progressMaterial=this.materialForColor(item.userData.defaultMaterial||item.material,color,.88);item.material=item.userData.progressMaterial;}});this.dataset.progressAreaCount=String(parts.length);this.dataset.progressNature=natureza;this.renderActiveSceneV5370();}
   setRecordPaintMode(enabled=false,callback=null){
     this.recordPaintMode=Boolean(enabled); this._recordPaintCallback=callback||null; this.dataset.recordPaintMode=this.recordPaintMode?'true':'false';
-    if(this.recordPaintMode)this.ensureOperationalStreetGeometry();
+    if(this.recordPaintMode&&!this.isAdminStandaloneInteractiveV5370())this.ensureOperationalStreetGeometry();
     if(this.recordPaintMode&&this.mapSelectionMode)this.setMapSelectionMode(false);
     const canvas=this.querySelector('.three-overlay'); canvas?.classList.toggle('record-paint-active',this.recordPaintMode);
     if(this.recordPaintMode){this.dataset.recordPaintHint='Clique em um lote, rua ou área do modelo para registrar o progresso';notify('Modo pintar no mapa ativo: clique em uma área do empreendimento.');}
@@ -4366,7 +5451,14 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     this.clearStageOverlay(false); unique.forEach(item=>this.selectModelPart(item,false)); this.lastRecordMapArea=area; this.dataset.recordPaintArea=JSON.stringify(area); this._recordPaintCallback?.(area); this.setRecordPaintMode(false); this.removeMapAreaSelection(); notify(`${unique.length} áreas pintadas e vinculadas ao registro.`,'success'); return true;
   }
   refreshMapSurface(theme,w,h){
-    if(this.hasAttribute?.('data-public-satellite-base')&&this._publicGeoTheme)theme=this._publicGeoTheme;
+    if(this.hasAttribute?.('data-public-satellite-base')&&this._publicGeoTheme){
+      // O centro continua sendo o ponto GPS canônico do DWG. A escala, por
+      // sua vez, pode vir do enquadramento físico calculado após o GLB estar
+      // pronto; descartar esse zoom deixava a imagem menos detalhada e fazia
+      // a leitura das vias reais parecer ampliada/desproporcional.
+      const requestedZoom=Number(theme?.zoom);
+      theme={...this._publicGeoTheme,zoom:Number.isFinite(requestedZoom)?requestedZoom:Number(this._publicGeoTheme.zoom)||17};
+    }
     if(this.matches?.('map-scene[data-public-map],map-scene[data-public-presentation]')&&!this.hasAttribute('data-public-satellite-base')){
       // O fundo PDF/CSS já é a base pública. Não recompõe 64 tiles em um
       // CanvasTexture 2048² e não faz upload da textura a cada tile carregada.
@@ -4390,9 +5482,60 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     // Preserva o mosaico anterior até que o próximo esteja completo. Assim,
     // alterar enquadramento não cria uma janela vazia no limite da área visível.
     const hadSurface=this.mapSurface.visible; this.dataset.mapSurfaceVisible=hadSurface?'true':'false';
-    const canvas=this.mapSurfaceCanvas; canvas.width=cols*256; canvas.height=rows*256; const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); const token=key; let loaded=0,total=0;
+    const canvas=this.mapSurfaceCanvas; canvas.width=cols*256; canvas.height=rows*256; const ctx=canvas.getContext('2d'); ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high'; ctx.clearRect(0,0,canvas.width,canvas.height); const token=key; let loaded=0,total=0;
+    if(mode==='generated'){
+      const image=new Image(); image.decoding='async'; total=1;
+      image.onload=()=>{
+        if(this._mapSurfaceKey!==token)return;
+        const imageWidth=Math.max(1,image.naturalWidth);
+        const imageHeight=Math.max(1,image.naturalHeight);
+        // Preenche o canvas com a própria foto apenas como margem visual. A
+        // faixa central abaixo é a que vale para a geometria e é posicionada
+        // por coordenadas de tile, preservando a escala e o norte do mosaico.
+        const coverScale=Math.max(canvas.width/imageWidth,canvas.height/imageHeight);
+        const coverWidth=imageWidth*coverScale;
+        const coverHeight=imageHeight*coverScale;
+        ctx.save();
+        ctx.filter='blur(22px) saturate(.88) brightness(.92)';
+        ctx.drawImage(image,(canvas.width-coverWidth)/2,(canvas.height-coverHeight)/2,coverWidth,coverHeight);
+        ctx.restore();
+        const mosaicLogicalWidth=DWG_SATELLITE_MOSAIC_TILES*DWG_SATELLITE_MOSAIC_TILE_SIZE;
+        const mosaicLogicalHeight=mosaicLogicalWidth;
+        const exactZoom=zoom===DWG_SATELLITE_MOSAIC_ZOOM;
+        if(exactZoom){
+          const mosaicX=(DWG_SATELLITE_MOSAIC_TILE_X0-x0)*DWG_SATELLITE_MOSAIC_TILE_SIZE;
+          const mosaicY=(DWG_SATELLITE_MOSAIC_TILE_Y0-y0)*DWG_SATELLITE_MOSAIC_TILE_SIZE;
+          // A imagem final foi ampliada de 2304 para 3072 px. Reduzi-la aqui
+          // ao tamanho lógico original mantém 1 px do canvas = 1 px de tile.
+          ctx.drawImage(image,mosaicX,mosaicY,mosaicLogicalWidth,mosaicLogicalHeight);
+          this.dataset.mapGeneratedAerialAnchor=`tile ${DWG_SATELLITE_MOSAIC_TILE_X0}/${DWG_SATELLITE_MOSAIC_TILE_Y0} · z${DWG_SATELLITE_MOSAIC_ZOOM} → DWG site-center`;
+        }else{
+          const containScale=Math.min(canvas.width/imageWidth,canvas.height/imageHeight);
+          ctx.drawImage(image,(canvas.width-imageWidth*containScale)/2,(canvas.height-imageHeight*containScale)/2,imageWidth*containScale,imageHeight*containScale);
+          this.dataset.mapGeneratedAerialAnchor='site-center DWG · escala de contingência fora do z18';
+        }
+        loaded=1;
+        this.dataset.mapTileSource='Satélite tratado · mosaico real do DWG';
+        this.dataset.mapGeneratedAerialFit='mosaico satelital tratado · centro e enquadramento do DWG';
+        this.dataset.mapGeneratedAerialImage=`${image.naturalWidth}x${image.naturalHeight} · escala mundial corrigida · sem distorção`;
+        this.dataset.mapGeneratedAerialScale=exactZoom?'1.000× tile z18 · origem geográfica preservada':'escala de contingência · z fora da captura';
+        this.dataset.mapTextureTiles='1/1';
+        this.dataset.mapTexture='uploading';
+        try{const sample=ctx.getImageData(Math.floor(canvas.width/2),Math.floor(canvas.height/2),1,1).data;this.dataset.mapSurfacePixel=`${sample[0]},${sample[1]},${sample[2]},${sample[3]}`;}catch{this.dataset.mapSurfacePixel='unreadable';}
+        this.commitMapSurfaceTexture(token,canvas);
+        this.mapSurfaceTexture.needsUpdate=true;
+        this.renderer?.render(this.scene,this.camera);
+      };
+      image.onerror=()=>{if(this._mapSurfaceKey!==token)return;this.dataset.mapTexture='partial';this.dataset.mapTextureTiles='0/1';this.dataset.mapTileSource='Aérea HD indisponível · satélite preservado';};
+      this.dataset.mapTexture='loading'; this.dataset.mapTextureTiles='0/1';
+      image.src=mapTileSources.generated[0].url();
+      this.mapSurfaceTexture.image=canvas;
+      this.mapSurfaceTexture.needsUpdate=true;
+      this.dataset.mapSurfaceTexture=`${canvas.width}x${canvas.height} · generated-hd`;
+      return;
+    }
     const sources=mapTileSources[mode]||mapTileSources.satellite;
-    const drawTile=(row,col,tileX,tileY,attempt=0)=>{const image=new Image();image.crossOrigin='anonymous';image.onload=()=>{if(this._mapSurfaceKey!==token)return;loaded++;ctx.drawImage(image,col*256,row*256,256,256);if(String(sources[attempt]?.id||'').startsWith('satellite'))this.dataset.mapTileSource='Esri World Imagery';else if(!this.dataset.mapTileSource)this.dataset.mapTileSource='OpenStreetMap';ctx.fillStyle=mode==='satellite'?'rgba(4,11,22,.04)':'rgba(4,11,22,.14)';ctx.fillRect(col*256,row*256,256,256);this.dataset.mapTextureTiles=`${loaded}/${total}`;this.dataset.mapTexture=loaded===total?'uploading':'loading';if(loaded===total){try{const sample=ctx.getImageData(Math.floor(canvas.width/2),Math.floor(canvas.height/2),1,1).data;this.dataset.mapSurfacePixel=`${sample[0]},${sample[1]},${sample[2]},${sample[3]}`;}catch{this.dataset.mapSurfacePixel='unreadable';}this.commitMapSurfaceTexture(token,canvas);}this.mapSurfaceTexture.needsUpdate=true;this.renderer?.render(this.scene,this.camera);};image.onerror=()=>{if(attempt+1<sources.length)drawTile(row,col,tileX,tileY,attempt+1);else if(this._mapSurfaceKey===token){this.dataset.mapTextureTiles=`${loaded}/${total}`;this.dataset.mapTexture='partial';}};image.src=sources[attempt].url(zoom,tileX,tileY);};
+    const drawTile=(row,col,tileX,tileY,attempt=0)=>{const image=new Image();image.crossOrigin='anonymous';image.onload=()=>{if(this._mapSurfaceKey!==token)return;loaded++;ctx.drawImage(image,col*256,row*256,256,256);if(String(sources[attempt]?.id||'').startsWith('satellite'))this.dataset.mapTileSource='Esri World Imagery';else if(!this.dataset.mapTileSource)this.dataset.mapTileSource='OpenStreetMap';ctx.fillStyle=mode==='satellite'?'rgba(4,11,22,.012)':'rgba(4,11,22,.14)';ctx.fillRect(col*256,row*256,256,256);this.dataset.mapTextureTiles=`${loaded}/${total}`;this.dataset.mapTexture=loaded===total?'uploading':'loading';if(loaded===total){try{const sample=ctx.getImageData(Math.floor(canvas.width/2),Math.floor(canvas.height/2),1,1).data;this.dataset.mapSurfacePixel=`${sample[0]},${sample[1]},${sample[2]},${sample[3]}`;}catch{this.dataset.mapSurfacePixel='unreadable';}this.commitMapSurfaceTexture(token,canvas);}this.mapSurfaceTexture.needsUpdate=true;this.renderer?.render(this.scene,this.camera);};image.onerror=()=>{if(attempt+1<sources.length)drawTile(row,col,tileX,tileY,attempt+1);else if(this._mapSurfaceKey===token){this.dataset.mapTextureTiles=`${loaded}/${total}`;this.dataset.mapTexture='partial';}};image.src=sources[attempt].url(zoom,tileX,tileY);};
     for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){const tileX=((x0+col)%n+n)%n,tileY=y0+row;if(tileY<0||tileY>=n)continue;total++;drawTile(row,col,tileX,tileY);}
     this.dataset.mapTexture=hadSurface?'refreshing':'loading'; this.dataset.mapTextureTiles=`0/${total}`;
     // Keep the WebGL source explicitly bound after resizing the backing canvas.
@@ -4403,10 +5546,26 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     this.dataset.mapSurfaceTexture=`${canvas.width}x${canvas.height} · needsUpdate`;
   }
   applyMapRasterCentering(w,h){
-    const offset=this.mapRasterPixelOffset; if(!offset||!this.mapSurface)return;
+    if(!this.mapSurface)return;
+    // A imagem gerada já tem o empreendimento centralizado pelo ponto focal
+    // medido. O deslocamento fracionário existe apenas para mosaicos de tiles
+    // Web Mercator; aplicá-lo aqui separava a foto do GLB/DWG.
+    if(this.mapTileMode==='generated'){
+      this.mapSurface.position.set(0,0,SCENE_MAP_Z);
+      this.dataset.mapRasterCenterOffset='0,0 · treated satellite mosaic anchored to DWG origin';
+      return;
+    }
+    const offset=this.mapRasterPixelOffset; if(!offset)return;
     const worldX=(offset.x/offset.width)*Number(w||0),worldY=-(offset.y/offset.height)*Number(h||0); this.mapSurface.position.set(worldX,worldY,SCENE_MAP_Z); this.dataset.mapRasterCenterOffset=`${offset.x.toFixed(2)},${offset.y.toFixed(2)}px · ${worldX.toFixed(2)},${worldY.toFixed(2)}world`;
   }
   refreshOsmRaster(theme,w,h){
+    if(this.isPublicCustomerExperience()){
+      // O atendimento público usa somente a captura local já servida pelo
+      // projeto. Esta guarda impede que um host legado injete um raster OSM
+      // caso a cena seja remontada durante a navegação.
+      this.dataset.osmRaster='disabled · public local satellite capture';
+      return;
+    }
     // A única superfície cartográfica visível é a textura das tiles no plano
     // Three.js. A antiga camada DOM duplicava o mapa e se desacoplava do GLB.
     const host=this.querySelector('.osm-raster'); if(!host)return;
@@ -4428,8 +5587,13 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
   selectModelPart(node,announce=true){
     let source=node; while(source&&!source.userData?.partKind)source=source.parent; if(!source)return;
     const kind=source.userData.partKind,partId=source.userData.partId;
-    this.modelParts?.lots.concat(this.modelParts?.streets||[],this.modelParts?.other||[]).forEach(item=>{if(item.userData.highlightMaterial)this.restorePartMaterial(item);});
-    const matches=(this.modelParts[kind]||[]).filter(item=>(item.userData.partId||item.name)===partId);
+    if(this.setStreetPaverInstanceColor(source,kind==='lots'?0x2fe6ae:kind==='streets'?0x78a9ff:0xffb020)){
+      this.dataset.selectedPart=source.userData.partLabel||source.name||'Paralelepípedo · bloco';this.dataset.selectedKind=kind;
+      if(announce)appStore.set({lastAction:`Selecionou ${this.dataset.selectedPart}`});
+      this.renderActiveSceneV5370();return;
+    }
+    this.physicalMapParts().forEach(item=>{if(item.userData.highlightMaterial)this.restorePartMaterial(item);});
+    const matches=this.physicalMapParts().filter(item=>item.userData?.partKind===kind&&(item.userData.partId||item.name)===partId);
     const color=kind==='lots'?0x2fe6ae:kind==='streets'?0x78a9ff:0xffb020;
     matches.forEach(item=>{const original=item.userData.defaultMaterial,paint=mat=>{const clone=mat.clone();if(clone.color)clone.color.setHex(color);if(clone.emissive){clone.emissive.setHex(color);clone.emissiveIntensity=.72;}clone.transparent=true;clone.opacity=Math.max(.68,clone.opacity??1);return clone;};item.userData.highlightMaterial=Array.isArray(original)?original.map(paint):paint(original);item.material=item.userData.highlightMaterial;});
     const bounds=new this.THREE.Box3().setFromObject(source),center=bounds.getCenter(new this.THREE.Vector3()),size=bounds.getSize(new this.THREE.Vector3());
@@ -4439,7 +5603,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     // Seleção é somente estado/material do GLB. Não chame syncThree aqui:
     // esse método recompõe a base cartográfica e pode reprocessar os tiles
     // enquanto o usuário apenas está alternando um highlight.
-    this.sceneStage?.updateMatrixWorld(true); this.renderer?.render(this.scene,this.camera);
+    this.renderActiveSceneV5370();
   }
   getSceneOrbitPivot(targetX,targetY){
     const host=this.querySelector('.map-host');
@@ -4535,7 +5699,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
         // Na apresentação pública a textura definitiva vive no relevo 3D.
         // Não reexiba o plano raster depois do upload, pois ele cobria o
         // terreno e tornava invisíveis a topografia e as árvores do entorno.
-        this.mapSurface.visible=!this.isPublicMapVisual();
+        this.mapSurface.visible=!this.isPublicMapVisual()||!this.publicTerrainRelief;
         this.dataset.mapSurfaceVisible=this.mapSurface.visible?'true':'false';
         this.dataset.mapTextureUpload='data-url-image';
         this.renderer?.render(this.scene,this.camera);
@@ -4552,12 +5716,43 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
       console.warn('Upload da base cartográfica para WebGL falhou.',err);
     }
   }
+  // Projeção usada pela captura local. O raster público e os marcadores
+  // compartilham Web Mercator z18 e o centro do manifesto DWG; portanto a
+  // presença do Leaflet não é necessária para desenhar nem para atualizar a
+  // cena pública.
+  projectPublicStaticPointV1(lat,lng,mapCenter,w,h){
+    const safeLat=Math.max(-85,Math.min(85,Number(lat)));
+    const safeLng=Number(lng);
+    const centerLat=Number(mapCenter?.lat),centerLng=Number(mapCenter?.lng);
+    if(!Number.isFinite(safeLat)||!Number.isFinite(safeLng)||!Number.isFinite(centerLat)||!Number.isFinite(centerLng))return {x:w/2,y:h/2};
+    const zoom=Math.max(1,Math.min(22,Number(this._publicGeoTheme?.zoom)||DWG_SATELLITE_MOSAIC_ZOOM));
+    const n=2**zoom,rad=Math.PI/180;
+    const project=(latitude,longitude)=>({x:(longitude+180)/360*n,y:(1-Math.asinh(Math.tan(latitude*rad))/Math.PI)/2*n});
+    const point=project(safeLat,safeLng),origin=project(centerLat,centerLng);
+    const surface=this.sceneSurfaceDimensions||{width:w,height:h};
+    const canvasWidth=Number(this.mapSurfaceCanvas?.width)||Number(surface.width)||w;
+    const canvasHeight=Number(this.mapSurfaceCanvas?.height)||Number(surface.height)||h;
+    const scaleX=Number(surface.width||w)/Math.max(1,canvasWidth),scaleY=Number(surface.height||h)/Math.max(1,canvasHeight);
+    return {x:w/2+(point.x-origin.x)*256*scaleX,y:h/2+(point.y-origin.y)*256*scaleY};
+  }
   syncThree(){
-    if(!this.renderer||!this.map||!this.map._loaded)return;
+    const publicStaticCapture=this.isPublicCustomerExperience();
+    if(!this.renderer||(!publicStaticCapture&&(!this.map||!this.map._loaded)))return;
     const host=this.querySelector('.map-host'),w=host?.clientWidth,h=host?.clientHeight;
     if(!Number.isFinite(w)||!Number.isFinite(h)||w<2||h<2)return;
-    this.dataset.leafletZoom=String(this.map.getZoom());
-    const mapCenter=this.map.getCenter(); this.dataset.leafletCenter=`${mapCenter.lat.toFixed(6)},${mapCenter.lng.toFixed(6)}`;
+    // `THREE` é carregado por instância depois do bootstrap assíncrono. A
+    // rotina era chamada corretamente, mas usava um identificador de módulo
+    // que não existe neste escopo; isso interrompia o primeiro enquadramento
+    // e deixava o fundo ampliado com o loteamento reduzido ao centro.
+    const THREE=this.THREE;
+    if(!THREE){this.dataset.syncThreeGuard='three-pending';return;}
+    if(this.isPublicMapVisual())this.dataset.publicModelSyncState=`model:${this.masterplanModel?'1':'0'}|largest:${Number.isFinite(this.masterplanLargest)?'1':'0'}|group:${this.modelGroup?'1':'0'}|geo:${this.dwgGeo?'1':'0'}|lots:${this.modelParts?.lots?.length||0}`;
+    const publicCenter=this._publicGeoTheme?.center;
+    const mapCenter=publicStaticCapture
+      ?{lat:Number(publicCenter?.[0]??MAP_GEOREFERENCE_FALLBACK.lat),lng:Number(publicCenter?.[1]??MAP_GEOREFERENCE_FALLBACK.lng)}
+      :this.map.getCenter();
+    this.dataset.leafletZoom=publicStaticCapture?`static-capture-z${Number(this._publicGeoTheme?.zoom)||DWG_SATELLITE_MOSAIC_ZOOM}`:String(this.map.getZoom());
+    this.dataset.leafletCenter=`${mapCenter.lat.toFixed(6)},${mapCenter.lng.toFixed(6)}`;
     this.configurePerspectiveCamera(w,h);
     const theme=viewThemes[MAP_CAMERA_VIEW]||viewThemes.assistant;
     this.dataset.themeCenter=`${theme.center[0]},${theme.center[1]}`; this.dataset.themeZoom=String(theme.zoom);
@@ -4580,7 +5775,9 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     this.mapSurface.position.set(0,0,SCENE_MAP_Z); this.mapSurface.scale.set(surfaceW,surfaceH,1); this.dataset.mapSurfaceWorld=`${Math.round(surfaceW)}x${Math.round(surfaceH)} @ ${SCENE_MAP_Z}`; if(this.modelReady)this.applyMapRasterCentering(surfaceW,surfaceH);
     this.dataset.sceneComposition='map raster + GLB siblings · shared center/scale/tilt';
     if(this.modelGroup){
-      const anchor=this.map.latLngToContainerPoint(L.latLng(Number(mapTheme.center[0]),Number(mapTheme.center[1])));
+      const anchor=publicStaticCapture
+        ?{x:w/2,y:h/2}
+        :this.map.latLngToContainerPoint(L.latLng(Number(mapTheme.center[0]),Number(mapTheme.center[1])));
       if(Number.isFinite(anchor.x)&&Number.isFinite(anchor.y)){
         if(anchor.x===0&&anchor.y===0){anchor.x=w/2;anchor.y=h/2;}
         const anchorDeltaX=anchor.x-w/2,anchorDeltaY=anchor.y-h/2; this.dataset.mapModelAnchorOffset=`${anchorDeltaX.toFixed(3)},${anchorDeltaY.toFixed(3)}`;
@@ -4589,10 +5786,78 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
         // compensation is applied to the model's local XY position.
         this.modelGroup.position.set(0,0,0);
         if(this.masterplanModel&&this.masterplanLargest){
+          // O enquadramento público nasce do envelope geográfico do DWG, não
+          // do tamanho arbitrário do viewport. Primeiro medimos o retângulo
+          // que será capturado em Web Mercator; só depois aplicamos o
+          // tratamento solar e a composição da interface.
+          const publicGeoFrame=this.isPublicMapVisual()
+            ?this.publicDwgGeoFrame({zoom:Number(this._publicGeoTheme?.zoom)||Number(mapTheme.zoom)||18},w,h)
+            :null;
           const fitRatio=this.isPublicMapVisual()?MODEL_PUBLIC_FIT_RATIO:MODEL_FIT_RATIO;
-          const frame=Math.min(w,h)*fitRatio,localFrameScale=frame/this.masterplanLargest; this.masterplanModel.scale.set(localFrameScale,localFrameScale*MODEL_VERTICAL_EXAGGERATION,localFrameScale); this.masterplanModel.updateMatrixWorld(true); this.dataset.modelFit=`${Math.round(frame)}px`; this.dataset.modelFitRatio=String(fitRatio); this.dataset.modelFitProfile=this.isPublicMapVisual()?'public-compact-1.10':'standard-1.32';
+          const frame=publicGeoFrame?.heightPx
+            ?Math.min(Math.min(w,h)*fitRatio,publicGeoFrame.heightPx*1.015)
+            :Math.min(w,h)*fitRatio;
+          const localFrameScale=frame/this.masterplanLargest,sourceScale=this.modelSourceFootprint?.scale||localFrameScale;
+          const baseFootprintX=(this.modelSourceFootprint?.x||this.masterplanLargest)/sourceScale;
+          const baseFootprintY=(this.modelSourceFootprint?.y||this.masterplanLargest)/sourceScale;
+          const rawFootprint=publicGeoFrame
+            ?{x:publicGeoFrame.widthPx,y:publicGeoFrame.heightPx}
+            :{x:(this.modelSourceFootprint?.x||this.masterplanLargest)*(localFrameScale/sourceScale),y:(this.modelSourceFootprint?.y||this.masterplanLargest)*(localFrameScale/sourceScale)};
+          // O DWG é medido em pixels Web Mercator, enquanto o mosaico é
+          // desenhado em um plano 3D que cobre o viewport. A conversão
+          // precisa acontecer antes de escalar o GLB; sem ela a implantação
+          // fica deslocada em relação às ruas reais da fotografia.
+          const provisionalMapW=Math.max(w*SCENE_SURFACE_SCALE,rawFootprint.x*1.18),provisionalMapH=Math.max(h*SCENE_SURFACE_SCALE*PUBLIC_SATELLITE_VERTICAL_COVERAGE,rawFootprint.y*1.42);
+          const rasterWidth=Math.ceil(Math.min(MAP_RASTER_MAX,Math.max(1024,provisionalMapW))/256+MAP_TILE_OVERSCAN*2)*256;
+          const rasterHeight=Math.ceil(Math.min(MAP_RASTER_MAX,Math.max(1024,provisionalMapH))/256+MAP_TILE_OVERSCAN*2)*256;
+          const rasterWorldPerPixelX=publicGeoFrame?provisionalMapW/Math.max(1,Number(this.mapSurfaceCanvas?.width)||rasterWidth):1;
+          const rasterWorldPerPixelY=publicGeoFrame?provisionalMapH/Math.max(1,Number(this.mapSurfaceCanvas?.height)||rasterHeight):1;
+          // O enquadramento visual precisa usar cada lote como ponto de
+          // controle, e não apenas o envelope do GLB. O envelope sozinho
+          // preserva escala, mas não corrige inversão de eixo, rotação ou
+          // pequeno cisalhamento acumulado no export do modelo.
+          const publicScaleX=publicGeoFrame?publicGeoFrame.widthPx*rasterWorldPerPixelX/baseFootprintX:localFrameScale;
+          const publicScaleZ=publicGeoFrame?publicGeoFrame.heightPx*rasterWorldPerPixelY/baseFootprintY:localFrameScale;
+          const horizontalScale=(publicScaleX+publicScaleZ)/2;
+          const publicAffine=publicGeoFrame
+            ?this.publicDwgModelAffine(THREE,this.masterplanModel,publicGeoFrame,mapTheme.center,rasterWorldPerPixelX,rasterWorldPerPixelY,horizontalScale*MODEL_VERTICAL_EXAGGERATION)
+            :null;
+          this.dataset.publicAffineAttempt=`geo:${publicGeoFrame?'1':'0'}|lots:${this.modelParts?.lots?.length||0}`;
+          if(publicAffine){
+            // A matriz liga os centros dos 298 lotes do DWG ao mesmo espaço
+            // Web Mercator usado pelo mosaico. X/Z continuam sendo o plano
+            // horizontal; Y permanece a altura das geometrias 3D.
+            this.masterplanModel.matrixAutoUpdate=false;
+            this.masterplanModel.matrix.copy(publicAffine.matrix);
+            this.masterplanModel.matrixWorldNeedsUpdate=true;
+            this.masterplanModel.userData.publicDwgAffine=publicAffine;
+            this.dataset.publicModelGeoAffine=`${publicAffine.matched} lotes · RMS ${publicAffine.rms.toFixed(3)} world · máx ${publicAffine.residualMax.toFixed(3)}`;
+            this.dataset.publicModelGeoFitScale=`affine ${publicAffine.xAxis[1].toFixed(3)},${publicAffine.xAxis[2].toFixed(3)} · ${publicAffine.yAxis[1].toFixed(3)},${publicAffine.yAxis[2].toFixed(3)}`;
+            this.dataset.modelPlanHeading='saída superior = norte · giro à esquerda 90° · flip horizontal';
+            this.dataset.modelAerialGuide='saída superior + rua lateral + rua superior · orientação 3D corrigida · 298 centros DWG';
+          }else{
+            this.masterplanModel.matrixAutoUpdate=true;
+            this.masterplanModel.position.set(0,0,Number(this.masterplanModel.userData?.mapBaseLift)||SCENE_MODEL_BASE_Z);
+            this.masterplanModel.scale.set(PUBLIC_MODEL_HORIZONTAL_FLIP*publicScaleX,horizontalScale*MODEL_VERTICAL_EXAGGERATION,publicScaleZ);
+            this.masterplanModel.rotation.set(Math.PI/2,PUBLIC_MODEL_NORTH_ROTATION_RAD,DWG_PLAN_HEADING_RAD);
+            this.dataset.modelPlanHeading='fallback · saída superior = norte · orientação original do GLB';
+            this.dataset.publicModelOrientation='dwg-affine-fallback|north=upper-road-exit';
+            this.dataset.publicModelGeoAffine='fallback · envelope do DWG';
+          }
+          this.masterplanModel.updateMatrixWorld(true);
+          this.dataset.modelFit=`${Math.round(frame)}px`;
+          this.dataset.modelFitRatio=String(fitRatio);
+          this.dataset.modelFitProfile=this.isPublicMapVisual()?'public-dwg-envelope-z18':'standard-1.32';
+          if(publicGeoFrame){
+            this.dataset.publicModelGeoFit=`${Math.round(publicGeoFrame.widthPx)}x${Math.round(publicGeoFrame.heightPx)}px · ${publicGeoFrame.source}`;
+            this.dataset.publicModelGeoWorldFit=`${Math.round(publicGeoFrame.widthPx*rasterWorldPerPixelX)}x${Math.round(publicGeoFrame.heightPx*rasterWorldPerPixelY)}world · raster ${rasterWorldPerPixelX.toFixed(3)}x/${rasterWorldPerPixelY.toFixed(3)}y`;
+            this.dataset.publicGeoRasterScale=`${rasterWorldPerPixelX.toFixed(3)}x/${rasterWorldPerPixelY.toFixed(3)} world/px`;
+            if(!publicAffine)this.dataset.publicModelGeoFitScale=`${publicScaleX.toFixed(3)}x × ${publicScaleZ.toFixed(3)}z · heading ${DWG_PLAN_HEADING_DEG.toFixed(3)}°`;
+          }
           const lat=Number(mapTheme.center[0]),metersPerPixel=this.masterplanLargest/frame,computedFitZoom=Math.max(12,Math.min(20,Math.round(Math.log2(156543.033928*Math.cos(lat*Math.PI/180)/metersPerPixel)))),stableFitZoom=Number(this.dataset.mapFitZoom)||computedFitZoom; this.dataset.mapFitZoom=String(stableFitZoom);
-          const localScale=frame/this.masterplanLargest,sourceScale=this.modelSourceFootprint?.scale||localScale,footprint={x:(this.modelSourceFootprint?.x||this.masterplanLargest)*(localScale/sourceScale),y:(this.modelSourceFootprint?.y||this.masterplanLargest)*(localScale/sourceScale)},fitTheme={...mapTheme,zoom:Number(this.dataset.mapFitZoom)||mapTheme.zoom};
+          const footprint=publicGeoFrame
+            ?{x:publicGeoFrame.widthPx*rasterWorldPerPixelX,y:publicGeoFrame.heightPx*rasterWorldPerPixelY}
+            :rawFootprint,fitTheme={...mapTheme,zoom:Number(this.dataset.mapFitZoom)||mapTheme.zoom};
           // mapW/mapH são o retângulo geográfico que acompanha o footprint do
           // GLB. Sem essa declaração o reenquadramento lança ReferenceError e
           // o renderer fica preso no canvas inicial 450x225.
@@ -4601,8 +5866,8 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
           // tamanho da superfície (antes chegava a 7770×9766 px) perde o
           // contexto da GPU e deixa o dashboard branco. A câmera e o canvas
           // ficam no viewport; somente o plano dentro da cena recebe overscan.
-          const sceneMapW=Math.max(w*SCENE_SURFACE_SCALE,footprint.x*1.18),sceneMapH=Math.max(h*SCENE_SURFACE_SCALE,footprint.y*1.18);
-          surfaceCenterX=w/2; surfaceCenterY=h/2; this.sceneSurfaceDimensions={width:sceneMapW,height:sceneMapH}; this.dataset.mapOverscan=`${SCENE_SURFACE_SCALE.toFixed(2)}× viewport · ${MAP_TILE_OVERSCAN} tiles`;
+          const sceneMapW=Math.max(w*SCENE_SURFACE_SCALE,footprint.x*1.18),sceneMapH=Math.max(h*SCENE_SURFACE_SCALE*PUBLIC_SATELLITE_VERTICAL_COVERAGE,footprint.y*1.42);
+          surfaceCenterX=w/2; surfaceCenterY=h/2; this.sceneSurfaceDimensions={width:sceneMapW,height:sceneMapH}; this.dataset.mapOverscan=`${SCENE_SURFACE_SCALE.toFixed(2)}× horizontal · ${(SCENE_SURFACE_SCALE*PUBLIC_SATELLITE_VERTICAL_COVERAGE).toFixed(2)}× vertical · ${MAP_TILE_OVERSCAN} tiles`;
           const overlay=this.querySelector('.three-overlay'); if(overlay){overlay.style.left='50%';overlay.style.top='50%';overlay.style.right='auto';overlay.style.bottom='auto';overlay.style.width='100%';overlay.style.height='100%';}
           this.renderer.setSize(w,h,false); this.sceneSharedOrigin={x:surfaceCenterX+anchorDeltaX,y:surfaceCenterY+anchorDeltaY}; this.sceneTransformOrigin={x:this.sceneSharedOrigin.x+panX,y:this.sceneSharedOrigin.y+panY}; if(this.sceneStage)this.applySceneTransformAnchor(this._sceneVisual?.tilt||0,this._sceneVisual?.rotation||0,this._sceneVisual?.scale||1); this.configurePerspectiveCamera(w,h,this.sceneSharedOrigin.x,this.sceneSharedOrigin.y);
           this.mapSurface.scale.set(sceneMapW,sceneMapH,1); this.dataset.mapSurfaceWorld=`${Math.round(sceneMapW)}x${Math.round(sceneMapH)} @ ${SCENE_MAP_Z}`;
@@ -4621,7 +5886,11 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
       }
     }
     const boundedPan=this.clampScenePan(this.sceneManualPan.x,this.sceneManualPan.y); if(boundedPan.x!==this.sceneManualPan.x||boundedPan.y!==this.sceneManualPan.y){this.sceneManualPan=boundedPan;this.style.setProperty('--scene-pan-x',`${boundedPan.x}px`);this.style.setProperty('--scene-pan-y',`${boundedPan.y}px`);this.dataset.scenePan=`${Math.round(boundedPan.x)},${Math.round(boundedPan.y)}`;if(this.sceneStage){const origin=this.sceneSharedOrigin||{x:centerX,y:centerY};this.sceneTransformOrigin={x:origin.x+boundedPan.x,y:origin.y+boundedPan.y};this.applySceneTransformAnchor(this._sceneVisual?.tilt||0,this._sceneVisual?.rotation||0,this._sceneVisual?.scale||1);}}
-    for(const m of this.markerGroup?.children||[]){const p=this.map.latLngToContainerPoint(L.latLng(Number(m.userData.latlng[0]),Number(m.userData.latlng[1])));if(Number.isFinite(p.x)&&Number.isFinite(p.y))m.position.set(p.x-baseCenterX+surfaceCenterX,p.y-baseCenterY+surfaceCenterY,0);}
+    for(const m of this.markerGroup?.children||[]){const p=publicStaticCapture
+      ?this.projectPublicStaticPointV1(Number(m.userData.latlng[0]),Number(m.userData.latlng[1]),mapCenter,w,h)
+      :this.map.latLngToContainerPoint(L.latLng(Number(m.userData.latlng[0]),Number(m.userData.latlng[1])));
+      if(Number.isFinite(p.x)&&Number.isFinite(p.y))m.position.set(p.x-baseCenterX+surfaceCenterX,p.y-baseCenterY+surfaceCenterY,0);
+    }
     this.syncPublicRoadOverlayTransforms?.();
     this.ensurePublicTerrainRelief?.();
     this.syncPublicTerrainRelief?.();
@@ -4631,6 +5900,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     // perspectiva sem exigir uma nova navegação do visitante.
     if(publicTerrain&&this.masterplanModel)this.fitPublicGapView?.();
     this.updatePublicFocusFrame?.();
+    this.enforcePublicTechnicalVisibility?.();
     this.renderer.render(this.scene,this.camera); if(this._modelGpuReady)syncCompactMapMirrors();
   }
   setTheme(view){
@@ -4899,6 +6169,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     // bordas. Reduzimos o deslocamento permitido de forma conservadora para
     // que o plano cartográfico continue cobrindo o viewport inteiro.
     const tiltSafety=1+Math.sin(tilt*Math.PI/180)*.58;
+    const panSafety=this.isPublicMapVisual()?SCENE_PUBLIC_PAN_SAFETY:SCENE_PAN_SAFETY;
     const visibleLocalW=viewportW/scale;
     const visibleLocalH=viewportH/scale;
     // sceneStage.position is a world translation, while its children are
@@ -4923,8 +6194,12 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
       const corners=[[rect.left,rect.top],[rect.right,rect.top],[rect.right,rect.bottom],[rect.left,rect.bottom]];
       const footprint=corners.map(([x,y])=>this.screenPointOnMapPlane(x,y)).filter(point=>point&&Number.isFinite(point.x)&&Number.isFinite(point.y));
       if(footprint.length===corners.length){
-        visibleWorldHalfW=Math.max(...footprint.map(point=>Math.abs(point.x-origin.x)))*SCENE_PAN_SAFETY*rotationSafety;
-        visibleWorldHalfH=Math.max(...footprint.map(point=>Math.abs(point.y-origin.y)))*SCENE_PAN_SAFETY*rotationSafety;
+        // A interseção dos quatro cantos já contém a rotação real da câmera.
+        // Aplicar mais um fator de heading aqui fazia o limite encolher de
+        // forma diferente em cada ângulo e dava a sensação de pan travado.
+        visibleWorldHalfW=Math.max(...footprint.map(point=>Math.abs(point.x-origin.x)))*panSafety;
+        visibleWorldHalfH=Math.max(...footprint.map(point=>Math.abs(point.y-origin.y)))*panSafety;
+        this.dataset.scenePanRotationProjection='camera-ground-envelope · exact heading';
         // Preserve the public source label used by diagnostics while the
         // rotation-safe envelope remains expressed by `rotationSafety` above.
         panBoundsSource='camera-ground-envelope';
@@ -4933,6 +6208,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     const panX=Math.max(0,Number(surface.width||viewportW)*scale/2-visibleWorldHalfW);
     const panY=Math.max(0,Number(surface.height||viewportH)*scale/2-visibleWorldHalfH);
     this.dataset.scenePanSpace=`world-translation · zoom-aware · ${panBoundsSource}`;
+    this.dataset.scenePanSafety=panSafety.toFixed(3);
     this.dataset.sceneVisibleTerrain=`${Math.round(visibleLocalW)}x${Math.round(visibleLocalH)}`;
     this.dataset.sceneTerrain=`${Math.round(surface.width)}x${Math.round(surface.height)}`;
     return {
@@ -5075,6 +6351,23 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
     }
     if(!this.sceneStage)return; const start=this._sceneVisual?.scale||1,targetScale=target; if(!animate){this._sceneTransition=Symbol('manual-zoom');this.setSceneVisual(this._sceneVisual?.tilt||40,this._sceneVisual?.rotation||0,targetScale);return;}
     const started=performance.now(),duration=320,token=Symbol('manual-zoom');this._sceneTransition=token;const tick=now=>{if(this._sceneTransition!==token)return;const t=Math.min(1,(now-started)/duration),e=t*t*(3-2*t);this.setSceneVisual(this._sceneVisual?.tilt||40,this._sceneVisual?.rotation||0,start+(targetScale-start)*e);if(t<1)requestAnimationFrame(tick);else this.syncThree();};requestAnimationFrame(tick);
+  }
+  setSceneZoomAt(value,clientX,clientY,animate=false){
+    const canvas=this.querySelector('.three-overlay'),rect=canvas?.getBoundingClientRect?.();
+    const pointBefore=rect?.width&&rect?.height?this.screenPointOnMapPlane(clientX,clientY):null;
+    const previous=this.sceneManualPan||{x:0,y:0};
+    this.setSceneZoom(value,animate);
+    if(animate||!pointBefore)return;
+    const pointAfter=this.screenPointOnMapPlane(clientX,clientY);
+    if(!pointAfter)return;
+    // O delta está no plano do terreno e já incorpora a rotação e a
+    // inclinação atuais da câmera. Não aplicar uma segunda rotação.
+    this.dataset.mapZoomAnchor='cursor-ground · rotation-aware';
+    this.setScenePan(
+      previous.x+(pointAfter.x-pointBefore.x),
+      previous.y+(pointAfter.y-pointBefore.y),
+      false
+    );
   }
   getSceneTiltBounds(){
     const mapSurface=this.sceneSurfaceDimensions||{};
@@ -5269,6 +6562,18 @@ MapScene.prototype.setTheme=function(view){
 };
 MapScene.prototype.setMapContext=function(view){
   this.dataset.mapContext=view;
+  this.dataset.dashboardProgressMap=view==='assistant'||view==='map'?'enabled':'available';
+  this.dataset.recordPolygonSelection=view==='records'?'enabled':'available';
+  this.dataset.sharedMapContract='public-scene · administrative-extensions';
+  // O painel de registros lê a mesma cena, mas troca a camada temática de
+  // etapa pela camada de status dos registros. Ao voltar ao dashboard,
+  // restaura automaticamente o highlight da etapa selecionada.
+  if(view==='records'){
+    if(this.stageOverlayKey)this.clearStageOverlay(false);
+  }else if((view==='assistant'||view==='map')&&this.modelReady){
+    const stage=demoData.activities.find(item=>item.id===appStore.get().selectedStage);
+    if(stage)this.setStageOverlay(stage.name,false);
+  }
   const badge=this.querySelector('.map-badge'),category=this.querySelector('.map-category-switcher'),rotation=this.querySelector('.map-rotation-controls'),legend=this.querySelector('.map-gesture-legend'),solar=this.querySelector('.map-solar-control');
   // Controles pertencem à cena persistente. Nas superfícies que trabalham
   // diretamente sobre o mapa eles continuam visíveis e capturam input acima
@@ -5657,7 +6962,7 @@ export class ViewLayer extends HTMLElement {
       target.insertAdjacentHTML('beforeend','<tr data-stage-material-row><td><input name="materialName" placeholder="Ex.: Tubo PEAD"></td><td><input name="materialDescription" placeholder="Escopo, bitola, uso..."></td><td><input name="materialQuantity" inputmode="decimal" placeholder="0"></td><td><input name="materialUnit" placeholder="m, un, m²"></td><td><input name="materialStatus" placeholder="Planejado"></td></tr>');
     }));
   }
-  connectedCallback(){ this.render(); this.loadPersistentRecords(); this.loadPublicLeads(); this.loadCommercialReservations(); this.runOperationalLoop('client.init'); this.connectOperationalNotifications(); this.startOperationalLoopTicker(); appStore.subscribe(()=>this.render()); }
+  connectedCallback(){ this.render(); this.loadPersistentRecords(); this.loadPublicLeads(); this.loadCommercialReservations(); this.refreshCashFlow(); Promise.resolve(this.runOperationalLoop('client.init')).finally(()=>this.refreshCashFlow()); this.connectOperationalNotifications(); this.startOperationalLoopTicker(); appStore.subscribe(()=>this.render()); }
   disconnectedCallback(){ this._unsubscribeOperationalNotifications?.(); this._unsubscribeOperationalNotifications=null; clearInterval(this._operationalLoopTimer); this._operationalLoopTimer=null; }
   async loadPersistentRecords(){
     try{
@@ -5683,6 +6988,18 @@ export class ViewLayer extends HTMLElement {
       const payload=await response.json(),reservations=(payload.sales||[]).filter(item=>item.broker==='Site público');
       appStore.set({publicReservations:reservations,lastAction:reservations.length?'Atualizou reservas vindas do site':'Serviço local de reservas conectado'});
     }catch(error){console.info('Reservas locais indisponíveis.',error);}
+  }
+  async refreshCashFlow(){
+    if(this._cashFlowRefreshPromise)return this._cashFlowRefreshPromise;
+    this._cashFlowRefreshPromise=(async()=>{
+      try{
+        const response=await apiFetch('/api/cash-flow'); if(!response.ok)throw new Error(`HTTP ${response.status}`);
+        const payload=await response.json();
+        appStore.set({cashSummary:payload.summary||{},cashFlowLocal:Array.isArray(payload.entries)?payload.entries:[]});
+      }catch(error){console.info('Fluxo de caixa remoto ainda indisponível.',error);}
+      finally{this._cashFlowRefreshPromise=null;}
+    })();
+    return this._cashFlowRefreshPromise;
   }
   startOperationalLoopTicker(){
     if(this._operationalLoopTimer)return;
@@ -5778,7 +7095,7 @@ export class ViewLayer extends HTMLElement {
     this.querySelectorAll('[data-report-type-tab]').forEach(button=>button.addEventListener('click',()=>{const report=reportCatalog.find(item=>item.id===button.dataset.reportTypeTab);if(report)appStore.set({reportFamily:report.family,reportType:report.id,lastAction:`Abriu ${report.label}`});}));
     this.querySelector('[data-report-type]')?.addEventListener('change',event=>{const report=reportCatalog.find(item=>item.id===event.currentTarget.value);appStore.set({reportType:event.currentTarget.value,lastAction:`Abriu relatório ${report?.label||event.currentTarget.value}`});});
     this.querySelector('[data-report-period]')?.addEventListener('change',event=>{appStore.set({reportPeriod:event.currentTarget.value,lastAction:`Alterou período do relatório para ${event.currentTarget.options[event.currentTarget.selectedIndex].text}`});});
-    this.querySelectorAll('[data-report-row-toggle]').forEach(button=>button.addEventListener('click',()=>{const index=button.dataset.reportRowToggle,row=this.querySelector(`[data-report-detail="${index}"]`),open=row?.hidden!==false;if(row)row.hidden=!open;button.setAttribute('aria-expanded',String(open));button.textContent=open?'Ocultar itens':'Ver itens';appStore.set({lastAction:`${open?'Abriu':'Fechou'} desdobramento da linha ${Number(index)+1} do relatório`});}));
+    this.querySelectorAll('[data-report-row-toggle]').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();event.stopImmediatePropagation();const index=button.dataset.reportRowToggle,row=this.querySelector(`[data-report-detail="${index}"]`),open=row?.hidden!==false;if(row){row.hidden=!open;row.classList.toggle('is-open',open);}button.setAttribute('aria-expanded',String(open));button.textContent=open?'Ocultar itens':'Ver itens';appStore.set({lastAction:`${open?'Abriu':'Fechou'} desdobramento da linha ${Number(index)+1} do relatório`});}));
     this.querySelectorAll('[data-report-export]').forEach(button=>button.addEventListener('click',()=>{const s=appStore.get(),report=reportCatalog.find(item=>item.id===s.reportType)||reportCatalog[0],csv=[report.columns,...report.rows].map(row=>row.map(cell=>`"${String(cell).replaceAll('"','""')}"`).join(';')).join('\n'),url=URL.createObjectURL(new Blob([`\ufeff${csv}`],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download=`${report.id}-${s.reportPeriod||'2024-06'}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);notify(`${report.label} exportado em CSV.`,'success');appStore.set({lastAction:`Exportou ${report.label}`});}));
     this.querySelector('[data-report-print]')?.addEventListener('click',()=>{window.print();appStore.set({lastAction:'Abriu impressão do relatório'});});
     this.querySelector('.records-new')?.addEventListener('click',()=>{this.querySelector('.records-form-wrap')?.classList.add('open');});
@@ -5786,7 +7103,7 @@ export class ViewLayer extends HTMLElement {
     this.querySelectorAll('[data-record-delete]').forEach(b=>b.addEventListener('click',async()=>{if(!confirm('Excluir este registro?'))return;try{const response=await apiFetch(`/api/records/${encodeURIComponent(b.dataset.recordDelete)}`,{method:'DELETE',headers:operationalHeaders()});if(!response.ok)throw new Error(`HTTP ${response.status}`);appStore.update(s=>({...s,records:s.records.filter(r=>r.id!==b.dataset.recordDelete),lastAction:'Excluiu registro no banco'}));notify('Registro excluído do banco operacional.','success');}catch(error){notify('Não foi possível excluir o registro.','warning');console.warn('Exclusão persistente indisponível.',error);}}));
     this.querySelector('.record-cancel')?.addEventListener('click',()=>appStore.set({editingRecord:null}));
     this.querySelector('.record-form')?.addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.currentTarget),value=Object.fromEntries(f.entries()),rawEditingId=appStore.get().editingRecord,editingId=rawEditingId&&rawEditingId!=='new'?rawEditingId:null,contextFields=[...e.currentTarget.querySelectorAll('[data-record-context-field]')].map(input=>`${input.dataset.recordContextLabel}: ${String(input.value||'').trim()}`).filter(item=>!item.endsWith(': '));if(contextFields.length)value.detalhes=[value.detalhes,`Campos de ${e.currentTarget.dataset.recordNature||'execução'}:`,...contextFields].filter(Boolean).join('\n');try{const response=await apiFetch(editingId?`/api/records/${encodeURIComponent(editingId)}`:'/api/records',{method:editingId?'PUT':'POST',headers:operationalHeaders({'Content-Type':'application/json'}),body:JSON.stringify(value)});if(!response.ok)throw new Error(`HTTP ${response.status}`);const record=await response.json();appStore.update(s=>({...s,records:editingId?s.records.map(r=>r.id===editingId?record:r):[record,...s.records],editingRecord:null,recordContext:null,recordCameraName:null,recordCameraPreview:null,lastAction:editingId?'Atualizou registro no banco':'Criou registro no banco'}));this._recordCameraFile=null;notify('Registro salvo na camada operacional.','success');}catch(error){notify('Serviço operacional indisponível; registro não confirmado.','warning');console.warn('Persistência de registro indisponível.',error);}});
-    this.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{const next=b.dataset.view==='inventory'?'assistant':b.dataset.view;appStore.set({view:next,activityDedicated:false,selectedActivity:null,lastAction:`Abriu ${b.textContent.trim()}`});}));
+    this.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{const next=b.dataset.view==='inventory'?'assistant':b.dataset.view;appStore.set({view:next,activityDedicated:false,selectedActivity:null,lastAction:`Abriu ${b.textContent.trim()}`});if(next==='finance')this.refreshCashFlow?.();}));
     this.querySelectorAll('[data-lead]').forEach(b=>b.addEventListener('click',()=>{appStore.set({selectedLead:+b.dataset.lead});this.render();}));
     this.querySelector('[data-lead-search]')?.addEventListener('input',event=>{const query=event.currentTarget.value.trim().toLowerCase();this.querySelectorAll('.lead-client-row').forEach(row=>{row.hidden=Boolean(query&&!row.textContent.toLowerCase().includes(query));});});
     this.querySelectorAll('[data-lead-message]').forEach(button=>button.addEventListener('click',()=>{const detail=button.closest('.lead-ops-detail'),name=detail?.querySelector('h2')?.textContent?.trim()||'interessado',lot=detail?.querySelector('.lead-lot-focus b')?.textContent?.trim()||'lote selecionado',message=`Olá, ${name}! Aqui é da equipe Vista Verde. Recebemos seu interesse no ${lot} e podemos enviar as condições, disponibilidade e próximos passos.`;window.open(`https://wa.me/?text=${encodeURIComponent(message)}`,'_blank','noopener');notify(`Mensagem de WhatsApp preparada para ${name}.`,'success');appStore.set({lastAction:`Preparou WhatsApp para ${name}`});}));
@@ -5796,7 +7113,7 @@ export class ViewLayer extends HTMLElement {
     this.querySelectorAll('[data-activity-detail]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.dragged==='true')return;this.openActivityPage(b.dataset.activityDetail);}));
     this.querySelectorAll('[data-close-detail]').forEach(b=>b.addEventListener('click',()=>b.closest('.activity-detail')?.classList.remove('open')));
     this.querySelectorAll('button:not([data-view]):not([data-cmd]):not([data-lead]):not([data-lead-message]):not([data-lead-reserve]):not([id])').forEach(button=>button.addEventListener('click',()=>{
-      if(button.matches('[data-agenda-day],[data-agenda-new],[data-agenda-item-menu],[data-agenda-whatsapp],[data-agenda-alert],[data-activity-category-filter],[data-activity-open],[data-activity-new],[data-progress-period],[data-progress-new],[data-progress-send],[data-progress-cancel],[data-record-paint],[data-record-mobile-select],[data-record-camera],[data-map-pdf],[data-map-print-start],[data-map-print-close],[data-audit-clear],[data-audit-export],[data-lead-reservation-start],[data-reservation-start],[data-reservation-close],[data-reservation-analyze],[data-copy-pix],.reservation-submit,.records-new,.record-confirm,.record-cancel,.journal-open,.personnel-primary-button-v5372')||button.closest('.activity-journal-form'))return;
+      if(button.matches('[data-report-row-toggle],[data-agenda-day],[data-agenda-new],[data-agenda-item-menu],[data-agenda-whatsapp],[data-agenda-alert],[data-activity-category-filter],[data-activity-open],[data-activity-new],[data-progress-period],[data-progress-new],[data-progress-send],[data-progress-cancel],[data-record-paint],[data-record-mobile-select],[data-record-camera],[data-map-pdf],[data-map-print-start],[data-map-print-close],[data-audit-clear],[data-audit-export],[data-lead-reservation-start],[data-reservation-start],[data-reservation-close],[data-reservation-analyze],[data-copy-pix],.reservation-submit,.records-new,.record-confirm,.record-cancel,.journal-open,.personnel-primary-button-v5372')||button.closest('.activity-journal-form'))return;
       if(button.closest('.reports-toolbar,.report-footer'))return;
       const label=button.textContent.trim().replace(/\s+/g,' '); if(!label)return;
       if(button.classList.contains('stage-tab')){this.querySelectorAll('.stage-tab').forEach(x=>x.classList.remove('active'));button.classList.add('active');notify(`Visão ${label} selecionada.`);return;}
@@ -6583,9 +7900,10 @@ ViewLayer.prototype.bindStageExtensions=function(){
     this.querySelector('[data-agenda-new]')?.addEventListener('click',()=>{
       appStore.set({view:'records',lastAction:'Abriu formulário para novo compromisso'});
     });
+    this.querySelectorAll('.whatsapp-action,[data-agenda-whatsapp]').forEach(button=>{button.lastChild.textContent=' Notificar';button.setAttribute('aria-label','Notificar pelo TWA');});
     this.querySelector('[data-agenda-whatsapp]')?.addEventListener('click',()=>{
-      notify('Agenda preparada para envio aos envolvidos via WhatsApp.','success');
-      appStore.set({lastAction:'Preparou agenda para WhatsApp'});
+      notify('Notificação da agenda preparada para o TWA.','success');
+      appStore.set({lastAction:'Preparou notificação da agenda pelo TWA'});
     });
     this.querySelector('[data-agenda-alert]')?.addEventListener('click',()=>{
       notify('Alerta criado para o próximo compromisso da etapa.','warning');
@@ -6612,7 +7930,11 @@ ViewLayer.prototype.bindStageExtensions=function(){
       drawer.querySelector('[data-activity-save]')?.addEventListener('click',()=>{notify(`${item.name} salva com campos e associações.`,`success`);appStore.set({lastAction:`Salvou atividade ${item.name}`});});
       window.lucide?.createIcons();
     }));
-    this.querySelector('[data-activity-new]')?.addEventListener('click',()=>notify('Escolha uma natureza no catálogo para criar uma nova atividade conectada.'));
+    this.querySelector('[data-activity-new]')?.addEventListener('click',()=>{
+      const stage=extensionStage();
+      const stageKey=stage?.id||'project';
+      window.location.assign(runtimeRouteV1('/admin/workers/activity',`stage=${encodeURIComponent(stageKey)}&activity=new`));
+    });
   }
   if(view==='progress'){
     this.querySelectorAll('[data-progress-period]').forEach(button=>button.addEventListener('click',()=>{
@@ -6699,12 +8021,17 @@ ViewLayer.prototype.commissions=function(){
   return `<section class="commissions-page"><header class="commission-page-head"><div><span class="activity-kind">OPERAÇÃO COMERCIAL · COMISSÕES</span><h1>Carteira de comissões</h1><p>Perfis comerciais, negócios vinculados, lotes reservados e contratos rastreáveis.</p></div><button type="button" class="commission-primary" data-commission-new>${ico('plus')} Novo lançamento</button></header><div class="commission-kpis"><div><small>Vendas elegíveis</small><b>${total}</b><span>no ciclo atual</span></div><div><small>Comissão provisionada</small><b>R$ 194.400</b><span>7 contratos com vínculo</span></div><div><small>Valor geral de venda</small><b>R$ 3,28M</b><span>carteira acompanhada</span></div><div><small>Em aprovação</small><b>2</b><span>minutas e reservas</span></div></div><div class="commission-profile-grid">${commissionProfiles.map(person=>`<button type="button" class="commission-profile-card" data-commission-profile="${person.id}"><div class="commission-profile-top"><span class="commission-avatar" style="background:${person.avatar}">${person.initials}</span><span class="commission-open">Abrir carteira ${ico('arrow-up-right')}</span></div><div><h2>${person.name}</h2><p>${person.role}</p><small>${person.creci}</small></div><div class="commission-profile-metrics"><span><b>${person.sales}</b><small>vendas</small></span><span><b>${person.commission}</b><small>comissão</small></span><span><b>${person.conversion}</b><small>conversão</small></span></div><footer><span>${person.lots.length} relações lote–cliente ativas</span><i>${ico('chevron-right')}</i></footer></button>`).join('')}</div><section class="commission-process"><div><span class="activity-kind">FLUXO AUDITÁVEL</span><h2>Do lote ao pagamento</h2></div><ol><li><b>01</b><span>Interesse e reserva</span></li><li><b>02</b><span>Cliente e proposta</span></li><li><b>03</b><span>Contrato e assinaturas</span></li><li><b>04</b><span>Comissão e repasse</span></li></ol></section></section>`;
 };
 
+ViewLayer.prototype.commissionProposal=function(deal){
+  const profile=commissionProfiles.find(item=>item.id===deal.profile)||commissionProfiles[0];
+  return `<section class="contract-page proposal-page-v5427"><div class="contract-actions no-print"><button type="button" class="commission-back" data-proposal-back>${ico('arrow-left')} Voltar para ${profile.name}</button><div><button type="button" class="contract-action" data-proposal-print>${ico('printer')} Imprimir / PDF</button><button type="button" class="commission-primary" data-proposal-save>${ico('save')} Salvar proposta</button></div></div><article class="contract-paper proposal-paper-v5427"><header class="contract-letterhead"><div class="contract-logo">◢</div><div><b>ALIANÇA PARK LOTEAMENTO</b><small>PROPOSTA COMERCIAL · DOCUMENTO PARA REVISÃO</small></div><span>PROPOSTA · ${esc(deal.id)}</span></header><div class="contract-title"><span>INTENÇÃO DE NEGÓCIO</span><h1>Proposta de aquisição de lote</h1><p>Documento preliminar sujeito à validação comercial e documental.</p></div><section class="contract-parties"><div><span>CLIENTE</span><b>${esc(deal.client)}</b><p>Cadastro associado ao lote ${esc(deal.lot)}.</p></div><div><span>INTERMEDIAÇÃO</span><b>${esc(profile.name)}</b><p>${esc(profile.role)} · ${esc(profile.creci)}</p></div></section><section class="proposal-edit-grid-v5427"><label>Lote<input value="${esc(deal.lot)}"></label><label>Valor proposto<input value="${esc(deal.value)}"></label><label>Condição de pagamento<input value="${esc(deal.payment||'A definir')}"></label><label>Validade<input value="7 dias"></label></section><section class="contract-clause"><h2>Condições registradas</h2><p>Interesse no imóvel <b>${esc(deal.quadra||deal.lot)}</b>, pelo valor de <b>${esc(deal.value)}</b>, com condição inicial de <b>${esc(deal.payment||'a definir')}</b>. A proposta não substitui contrato e depende de aprovação do responsável.</p></section><section class="contract-clause"><h2>Próximos passos</h2><p>Conferir disponibilidade, validar documentos, registrar aceite e somente então converter a proposta em contrato.</p></section><div class="contract-appendix"><div><span>SITUAÇÃO</span><b>${esc(deal.status||'Proposta')}</b><small>${esc(deal.stage||'Em análise')}</small></div><div><span>COMISSÃO</span><b>${esc(deal.commission||'A calcular')}</b><small>${esc(deal.rate||'Taxa cadastrada')}</small></div><div><span>VALIDADE</span><b>7 dias</b><small>Contados da emissão</small></div></div><footer class="contract-footer"><span>Aliança Park · proposta preliminar</span><span>Emissão: ${new Date().toLocaleDateString('pt-BR')}</span></footer></article></section>`;
+};
 const commissionsTemplate=ViewLayer.prototype.commissions;
 const brlToNumber=value=>Number(String(value||'').replace(/[^\d,]/g,'').replace(',','.'))||0;
 const formatBRL=value=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(value)||0);
 const operationalHeaders=(extra={})=>{const actor=appStore.get().currentActor||{role:'owner',uid:'local-warley',name:'Warley'};return {'X-Belavista-Role':actor.role,'X-Belavista-User':actor.uid,'X-Belavista-Name':actor.name,...extra};};
 ViewLayer.prototype.commissions=function(){
   const state=appStore.get();
+  if(state.selectedCommissionProposal){const deal=commissionDeals.find(item=>item.id===state.selectedCommissionProposal)||(state.commissionEntries||[]).find(item=>item.id===state.selectedCommissionProposal);return deal?this.commissionProposal(deal):'';}
   if(state.selectedCommissionProfile||state.selectedCommissionContract)return commissionsTemplate.call(this);
   const filters={query:'',status:'all',profile:'all',...(state.commissionFilters||{})};
   const local=state.commissionEntries||[],hidden=new Set(state.commissionHiddenIds||[]);
@@ -6735,9 +8062,21 @@ ViewLayer.prototype.bind=function(){
     map.setAttribute('compact','');map.dataset.stage=`${card.querySelector('h2')?.textContent||'Carteira'} · lotes`;map.dataset.overlay='terraplanagem';map.className='commission-profile-map';map.setAttribute('aria-label','Mapa 3D dos lotes desta carteira');
     card.querySelector('.commission-profile-top')?.insertAdjacentElement('afterend',map);
   });
+  this.querySelectorAll('.commission-deal-card[data-commission-contract]').forEach(card=>{
+    if(card.nextElementSibling?.matches('[data-commission-proposal]'))return;
+    const proposal=document.createElement('button');
+    proposal.type='button';proposal.className='commission-proposal-inline';
+    proposal.dataset.commissionProposal=card.dataset.commissionContract;
+    proposal.textContent='Abrir proposta';
+    card.insertAdjacentElement('afterend',proposal);
+  });
   this.querySelectorAll('[data-commission-profile]').forEach(button=>button.addEventListener('click',()=>appStore.set({selectedCommissionProfile:button.dataset.commissionProfile,selectedCommissionContract:null,lastAction:`Abriu carteira de comissões`})));
   this.querySelectorAll('[data-commission-contract]').forEach(button=>button.addEventListener('click',()=>appStore.set({selectedCommissionContract:button.dataset.commissionContract,lastAction:`Abriu contrato ${button.dataset.commissionContract}`})));
+  this.querySelectorAll('[data-commission-proposal]').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();appStore.set({selectedCommissionProposal:button.dataset.commissionProposal,selectedCommissionProfile:null,selectedCommissionContract:null,lastAction:`Abriu proposta ${button.dataset.commissionProposal}`});}));
   this.querySelector('[data-commission-back]')?.addEventListener('click',()=>appStore.set({selectedCommissionProfile:null,selectedCommissionContract:null,lastAction:'Voltou para a carteira de comissões'}));
+  this.querySelector('[data-proposal-back]')?.addEventListener('click',()=>appStore.set({selectedCommissionProposal:null,selectedCommissionProfile:null,selectedCommissionContract:null,lastAction:'Voltou da proposta'}));
+  this.querySelector('[data-proposal-print]')?.addEventListener('click',()=>window.print());
+  this.querySelector('[data-proposal-save]')?.addEventListener('click',()=>notify('Proposta salva como minuta para revisão.','success'));
   this.querySelector('[data-contract-print]')?.addEventListener('click',()=>window.print());
   this.querySelector('[data-contract-whatsapp]')?.addEventListener('click',()=>{const deal=commissionDeals.find(item=>item.id===appStore.get().selectedCommissionContract);if(deal){const profile=commissionProfiles.find(item=>item.id===deal.profile);window.open(`https://wa.me/${profile.phone}?text=${encodeURIComponent(`Olá, ${deal.client}. Segue a minuta do contrato ${deal.id} referente ao ${deal.quadra}, no valor de ${deal.value}.`)}`,'_blank','noopener');}});
   this.querySelector('[data-commission-new]')?.addEventListener('click',()=>notify('Novo lançamento de comissão: escolha um perfil comercial para associar o negócio.'));
@@ -6765,7 +8104,7 @@ const financeControlV8=function(){
   const state=appStore.get(),actor=state.currentActor||{role:'owner',label:'Dono'},summary=state.cashSummary||{},operational=state.operationalState||{},cash=operational.cash||{},entries=state.cashFlowLocal||[],notifications=state.operationalNotifications||[],guidance=state.operationalGuidance||null,agenda=(state.operationalAgenda||[]).slice(0,4);
   const stages=operational.stages||[];
   queueMicrotask(()=>this.bindCommercialPagesV7?.());
-  return `<section class="control-page finance-control-page"><header class="control-page-head"><div><span class="activity-kind">GESTÃO FINANCEIRA · CONTROLE TOTAL</span><h1>Caixa e distribuição da obra</h1><p>Livro-razão, reserva operacional, alocação por dependência e alertas do agente.</p></div><div class="control-head-actions"><button type="button" data-view="reports">${ico('chart-no-axes-combined')} Relatórios gerenciais</button><button type="button" class="toolbar-primary" data-v7-finance-export>${ico('download')} Exportar dados</button></div></header><section class="finance-master-grid"><article class="finance-master-balance"><span>CAIXA MESTRE · DONO</span><strong>${formatBRL(Number(cash.balanceCents??summary.balanceCents??0)/100)}</strong><small>Entradas ${formatBRL(Number(summary.entriesCents||0)/100)} · Saídas ${formatBRL(Number(summary.exitsCents||0)/100)}</small></article><article><small>Reserva mínima</small><b>${formatBRL(Number(cash.reserveCents||0)/100)}</b><span>calibrada pelo Administrador</span></article><article><small>Disponível para alocação</small><b>${formatBRL(Number(cash.allocatableCents||0)/100)}</b><span>após reserva operacional</span></article><article><small>Notificações do perfil</small><b>${notifications.length}</b><span>eventos auditáveis</span></article></section>${guidance?`<section class="control-ledger"><header><div><span class="activity-kind">INFERÊNCIA OPERACIONAL CENTRAL</span><h2>${esc(guidance.focalStage?.name||'Frente prioritária')}</h2></div><small>${esc(guidance.summary||'')}</small></header><div class="finance-allocation-list"><article><span>01</span><div><b>Ação de caixa</b><small>${esc(guidance.cashAction||'Sem ação definida')}</small></div><div><small>Início previsto</small><b>${esc(guidance.focalStage?.plannedStart||'—')}</b></div><div><small>Fim previsto</small><b>${esc(guidance.focalStage?.plannedFinish||'—')}</b></div><em>${esc(String(guidance.focalStage?.adjustedRate||'—'))}</em></article>${agenda.map((item,index)=>`<article><span>${String(index+2).padStart(2,'0')}</span><div><b>${esc(item.title)}</b><small>${esc(item.stageName)} · ${esc(item.owner||'Responsável a definir')}</small></div><div><small>Início</small><b>${esc(item.plannedStart||'—')}</b></div><div><small>Status</small><b>${esc(item.status)}</b></div><em>${esc(item.category)}</em></article>`).join('')}</div></section>`:''}${['owner','developer'].includes(actor.role)?`<form class="cash-entry-control" data-v8-cash-entry><header><div><span class="activity-kind">NOVO LANÇAMENTO · AUTORIDADE DO DONO</span><h2>Movimentar fluxo de caixa</h2></div><small>Correções futuras devem usar estorno ou ajuste, preservando a trilha.</small></header><div><label>Tipo<select name="kind"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></label><label>Data<input type="date" name="date" value="${new Date().toISOString().slice(0,10)}" required></label><label>Categoria<input name="category" placeholder="Vendas, obra, ajuste…" required></label><label>Etapa<select name="stage"><option>Geral</option>${executionModel.stages.map(item=>`<option>${esc(item.name)}</option>`).join('')}</select></label><label>Valor (R$)<input name="amount" inputmode="decimal" placeholder="0,00" required></label><label class="wide">Origem / descrição<input name="description" placeholder="Identifique recebimento, pagamento, estorno ou ajuste" required></label></div><footer><span data-v8-cash-status>O agente recalculará todas as frentes após confirmar.</span><button type="submit">${ico('wallet-cards')} Registrar e recalcular</button></footer></form>`:`<div class="role-boundary-notice">${ico('lock-keyhole')} Somente o Dono altera o caixa. Seu perfil atual é ${esc(actor.label||actor.role)}.</div>`}<section class="finance-allocation-board"><header><div><span class="activity-kind">ALOCAÇÃO SEQUENCIAL · VERSÃO ${operational.calibrationVersion||1}</span><h2>Capacidade financeira por etapa</h2></div><button type="button" data-view="settings">Abrir calibrações</button></header><div class="finance-allocation-list">${stages.map((stage,index)=>`<article><span>${String(index+1).padStart(2,'0')}</span><div><b>${esc(stage.name)}</b><small>${stage.blockedBy?.length?`Bloqueada por ${stage.blockedBy.join(', ')}`:'Elegível conforme relações'}</small></div><div><small>Necessidade</small><b>${formatBRL(Number(stage.needCents||0)/100)}</b></div><div><small>Alocado</small><b>${formatBRL(Number(stage.allocatedCents||0)/100)}</b></div><em class="${stage.coverage<35?'critical':''}">${stage.coverage}%</em></article>`).join('')||'<p>Aguardando o primeiro cálculo operacional.</p>'}</div></section><section class="control-ledger finance-ledger"><header><div><span class="activity-kind">LIVRO-RAZÃO</span><h2>Entradas e saídas registradas</h2></div><label>Filtrar lançamentos<input data-v8-finance-search placeholder="ID, etapa, categoria ou descrição"></label></header><div class="control-table-wrap"><table><thead><tr><th>Data / ID</th><th>Natureza</th><th>Categoria</th><th>Etapa</th><th>Descrição</th><th>Valor</th></tr></thead><tbody>${entries.map(item=>`<tr data-v8-finance-row data-search="${esc(JSON.stringify(item).toLowerCase())}"><td><b>${esc(item.date)}</b><small>${esc(item.id)}</small></td><td><span class="cash-kind ${esc(item.kind)}">${esc(item.kind)}</span></td><td>${esc(item.category)}</td><td>${esc(item.stage)}</td><td>${esc(item.description)}</td><td><b>${item.kind==='saida'?'−':'＋'} ${formatBRL(Number(item.amountCents||0)/100)}</b></td></tr>`).join('')}</tbody></table></div></section><aside class="finance-notification-list"><span class="activity-kind">CIÊNCIA DO AGENTE</span>${notifications.slice(0,6).map(item=>`<article class="${esc(item.severity)}"><b>${esc(item.title)}</b><p>${esc(item.message)}</p><small>${new Date(item.createdAt).toLocaleString('pt-BR')}</small></article>`).join('')||'<p>Nenhuma notificação para o perfil atual.</p>'}</aside></section>`;
+  return `<section class="control-page finance-control-page"><header class="control-page-head"><div><span class="activity-kind">GESTÃO FINANCEIRA · CONTROLE TOTAL</span><h1>Caixa e distribuição da obra</h1><p>Livro-razão, reserva operacional, alocação por dependência e alertas do agente.</p></div><div class="control-head-actions"><button type="button" data-view="reports">${ico('chart-no-axes-combined')} Relatórios gerenciais</button><button type="button" class="toolbar-primary" data-v7-finance-export>${ico('download')} Exportar dados</button></div></header><section class="finance-master-grid"><article class="finance-master-balance"><span>CAIXA MESTRE · DONO</span><strong>${formatBRL(Number(summary.balanceCents??cash.balanceCents??0)/100)}</strong><small>Entradas ${formatBRL(Number(summary.entriesCents||0)/100)} · Saídas ${formatBRL(Number(summary.exitsCents||0)/100)}</small></article><article><small>Reserva mínima</small><b>${formatBRL(Number(cash.reserveCents||0)/100)}</b><span>calibrada pelo Administrador</span></article><article><small>Disponível para alocação</small><b>${formatBRL(Number(cash.allocatableCents||0)/100)}</b><span>após reserva operacional</span></article><article><small>Notificações do perfil</small><b>${notifications.length}</b><span>eventos auditáveis</span></article></section>${guidance?`<section class="control-ledger"><header><div><span class="activity-kind">INFERÊNCIA OPERACIONAL CENTRAL</span><h2>${esc(guidance.focalStage?.name||'Frente prioritária')}</h2></div><small>${esc(guidance.summary||'')}</small></header><div class="finance-allocation-list"><article><span>01</span><div><b>Ação de caixa</b><small>${esc(guidance.cashAction||'Sem ação definida')}</small></div><div><small>Início previsto</small><b>${esc(guidance.focalStage?.plannedStart||'—')}</b></div><div><small>Fim previsto</small><b>${esc(guidance.focalStage?.plannedFinish||'—')}</b></div><em>${esc(String(guidance.focalStage?.adjustedRate||'—'))}</em></article>${agenda.map((item,index)=>`<article><span>${String(index+2).padStart(2,'0')}</span><div><b>${esc(item.title)}</b><small>${esc(item.stageName)} · ${esc(item.owner||'Responsável a definir')}</small></div><div><small>Início</small><b>${esc(item.plannedStart||'—')}</b></div><div><small>Status</small><b>${esc(item.status)}</b></div><em>${esc(item.category)}</em></article>`).join('')}</div></section>`:''}${['owner','developer'].includes(actor.role)?`<form class="cash-entry-control" data-v8-cash-entry><header><div><span class="activity-kind">NOVO LANÇAMENTO · AUTORIDADE DO DONO</span><h2>Movimentar fluxo de caixa</h2></div><small>Correções futuras devem usar estorno ou ajuste, preservando a trilha.</small></header><div><label>Tipo<select name="kind"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></label><label>Data<input type="date" name="date" value="${new Date().toISOString().slice(0,10)}" required></label><label>Categoria<input name="category" placeholder="Vendas, obra, ajuste…" required></label><label>Etapa<select name="stage"><option>Geral</option>${executionModel.stages.map(item=>`<option>${esc(item.name)}</option>`).join('')}</select></label><label>Valor (R$)<input name="amount" inputmode="decimal" placeholder="0,00" required></label><label class="wide">Origem / descrição<input name="description" placeholder="Identifique recebimento, pagamento, estorno ou ajuste" required></label></div><footer><span data-v8-cash-status>O agente recalculará todas as frentes após confirmar.</span><button type="submit">${ico('wallet-cards')} Registrar e recalcular</button></footer></form>`:`<div class="role-boundary-notice">${ico('lock-keyhole')} Somente o Dono altera o caixa. Seu perfil atual é ${esc(actor.label||actor.role)}.</div>`}<section class="finance-allocation-board"><header><div><span class="activity-kind">ALOCAÇÃO SEQUENCIAL · VERSÃO ${operational.calibrationVersion||1}</span><h2>Capacidade financeira por etapa</h2></div><button type="button" data-view="settings">Abrir calibrações</button></header><div class="finance-allocation-list">${stages.map((stage,index)=>`<article><span>${String(index+1).padStart(2,'0')}</span><div><b>${esc(stage.name)}</b><small>${stage.blockedBy?.length?`Bloqueada por ${stage.blockedBy.join(', ')}`:'Elegível conforme relações'}</small></div><div><small>Necessidade</small><b>${formatBRL(Number(stage.needCents||0)/100)}</b></div><div><small>Alocado</small><b>${formatBRL(Number(stage.allocatedCents||0)/100)}</b></div><em class="${stage.coverage<35?'critical':''}">${stage.coverage}%</em></article>`).join('')||'<p>Aguardando o primeiro cálculo operacional.</p>'}</div></section><section class="control-ledger finance-ledger"><header><div><span class="activity-kind">LIVRO-RAZÃO</span><h2>Entradas e saídas registradas</h2></div><label>Filtrar lançamentos<input data-v8-finance-search placeholder="ID, etapa, categoria ou descrição"></label></header><div class="control-table-wrap"><table><thead><tr><th>Data / ID</th><th>Natureza</th><th>Categoria</th><th>Etapa</th><th>Descrição</th><th>Valor</th></tr></thead><tbody>${entries.map(item=>`<tr data-v8-finance-row data-search="${esc(JSON.stringify(item).toLowerCase())}"><td><b>${esc(item.date)}</b><small>${esc(item.id)}</small></td><td><span class="cash-kind ${esc(item.kind)}">${esc(item.kind)}</span></td><td>${esc(item.category)}</td><td>${esc(item.stage)}</td><td>${esc(item.description)}</td><td><b>${item.kind==='saida'?'−':'＋'} ${formatBRL(Number(item.amountCents||0)/100)}</b></td></tr>`).join('')}</tbody></table></div></section><aside class="finance-notification-list"><span class="activity-kind">CIÊNCIA DO AGENTE</span>${notifications.slice(0,6).map(item=>`<article class="${esc(item.severity)}"><b>${esc(item.title)}</b><p>${esc(item.message)}</p><small>${new Date(item.createdAt).toLocaleString('pt-BR')}</small></article>`).join('')||'<p>Nenhuma notificação para o perfil atual.</p>'}</aside></section>`;
 };
 
 const bindControlPageEventsV8=function(){
@@ -6783,6 +8122,37 @@ const bindControlPageEventsV8=function(){
 const viewLayerBindWithDataToolbars=ViewLayer.prototype.bind;
 ViewLayer.prototype.bind=function(){
   viewLayerBindWithDataToolbars.call(this);
+  // A calibração deixou de ser uma tela de operação: o caixa é a entrada única.
+  this.querySelectorAll('.calibration-settings').forEach(panel=>panel.remove());
+  this.querySelectorAll('[data-view="settings"]').forEach(button=>{
+    if(button.textContent.includes('calibra')){
+      button.removeAttribute('data-view');
+      button.dataset.focusCashEntry='';
+      button.textContent='Abrir registro de caixa';
+    }
+  });
+  this.querySelectorAll('[data-focus-cash-entry]').forEach(button=>button.addEventListener('click',()=>{
+    const cash=this.querySelector('[data-v8-cash-entry]');
+    cash?.scrollIntoView({behavior:'smooth',block:'center'});
+    cash?.querySelector('input[name="amount"]')?.focus();
+    appStore.set({lastAction:'Abriu o registro de caixa'});
+  },{once:true}));
+  this.querySelectorAll('[data-view="finance"]').forEach(button=>{
+    if(button.textContent.includes('Abrir financeiro')) button.innerHTML='Abrir registro de caixa';
+  });
+  const operationalLedger=this.querySelector('.control-center-page .control-center-section');
+  if(operationalLedger){
+    operationalLedger.classList.add('control-ledger','control-ledger-operational');
+    operationalLedger.dataset.controlLedger='operational-cash';
+  }
+  const stageTabs=this.querySelector('[data-stage-detail-tabs]');
+  if(stageTabs&&!stageTabs.querySelector('[data-stage-detail-tab="requisitos"]')){
+    const requirements=document.createElement('button');
+    requirements.type='button'; requirements.dataset.stageDetailTab='requisitos'; requirements.textContent='Requisitos';
+    requirements.addEventListener('click',()=>{stageTabs.querySelectorAll('button').forEach(item=>item.classList.toggle('active',item===requirements));appStore.set({selectedStageDetailTab:'requisitos',lastAction:'Abriu a aba Requisitos da etapa'});this.querySelector('.stage-v9-detail-grid')?.scrollIntoView({behavior:'smooth',block:'start'});});
+    stageTabs.insertBefore(requirements,stageTabs.querySelector('[data-stage-detail-tab="diario"]')||null);
+  }
+  this.querySelectorAll('[data-stage-detail-tab="andamento"]').forEach(button=>button.addEventListener('click',()=>appStore.set({view:'records',activityDedicated:false,lastAction:'Abriu Andamento nos registros completos'}),{once:true}));
   const downloadCsv=(filename,columns,rows)=>{
     const csv=[columns,...rows].map(row=>row.map(cell=>`"${String(cell??'').replaceAll('"','""')}"`).join(';')).join('\n');
     const url=URL.createObjectURL(new Blob([`\ufeff${csv}`],{type:'text/csv;charset=utf-8'}));
@@ -8311,7 +9681,7 @@ ViewLayer.prototype.assistant=function(){
   const state=appStore.get(),cash=state.cashSummary||{},stages=demoData.activities||[],notifications=state.operationalNotifications||[],records=state.records||[],widgets=[['stages','workflow','Etapas'],['records','clipboard-pen-line','Diário'],['leads','users-round','Leads'],['brokers','users-round','Corretores'],['finance','wallet-cards','Financeiro'],['reports','chart-no-axes-combined','Relatórios'],['settings','settings','Ajustes']];
   const cashBalance=Number(cash.balanceCents||0)/100,active=stages.filter(item=>Number(item.progress)>0&&Number(item.progress)<100).length,completed=stages.filter(item=>Number(item.progress)>=100).length;
   const widget=(title,eyebrow,body,view,icon,meta)=>`<article class="dashboard-carbon-widget"><header><div><span>${eyebrow}</span><h2>${title}</h2></div><button type="button" data-view="${view}" aria-label="Abrir ${title}">${ico('arrow-up-right')}</button></header><p>${body}</p><footer><small>${meta}</small><button type="button" data-view="${view}">Abrir contexto</button></footer></article>`;
-  return `<section class="dashboard-home dashboard-carbon-home"><header class="dashboard-carbon-head"><div><span class="activity-kind">DASHBOARD INICIAL · ALIANÇA PARK</span><h1>Panorama operacional</h1><p>Registros rápidos e leitura de status, com o mapa aberto somente quando necessário.</p></div><div class="dashboard-top-action-row"><button type="button" class="carbon-top-button" data-view="map">${ico('map')} Mapa</button><button type="button" class="carbon-top-button" data-view="reports">${ico('file-chart-column')} Relatórios</button><button type="button" class="carbon-top-button primary" data-view="records">${ico('plus')} Novo registro</button></div></header><section class="dashboard-carbon-kpis"><article class="dashboard-cash-kpi"><small>CAIXA MESTRE · DONO</small><b>${formatBRL(cashBalance)}</b><span>Base para a distribuição das etapas</span></article><article><small>Frentes ativas</small><b>${active}</b><span>${completed} concluídas</span></article><article><small>Notificações</small><b>${notifications.length}</b><span>Ciência do agente</span></article><article><small>Registros no histórico</small><b>${records.length}</b><span>Somente consulta no Diário</span></article></section><nav class="carbon-widget-bar dashboard-initial-widget-bar" aria-label="Interfaces operacionais">${widgets.map(([view,icon,label])=>`<button type="button" data-view="${view}">${ico(icon)}<span>${label}</span></button>`).join('')}</nav><section class="dashboard-carbon-widget-grid">${widget('Próxima frente','PRIORIDADE PELO CAIXA','A etapa elegível é recalculada pelas dependências, cobertura financeira e materiais registrados.','stages','workflow',`${active} frentes em acompanhamento`)}${widget('Registros rápidos','APONTAMENTOS DE CAMPO','Abra a interface para registrar produção, unidade de medida, evidências e responsável.','records','clipboard-pen-line',`${records.length} registro(s) preservado(s)`)}${widget('Atendimento de leads','COMERCIAL','Consulte reservas, conversas, documentos e o vínculo de cada cliente ao lote.','leads','users-round',`${(state.publicLeads||[]).length} leads recebidos`)}${widget('Comissões','CARTEIRAS','Navegue por cards de corretores e aplique a regra na página dedicada.','brokers','users-round','Mensal · anual · acumulado')}</section></section>`;
+  return `<section class="dashboard-home dashboard-carbon-home"><header class="dashboard-carbon-head"><div><span class="activity-kind">DASHBOARD INICIAL · ALIANÇA PARK</span><h1>Panorama operacional</h1><p>Registros rápidos e leitura de status, com o mapa aberto somente quando necessário.</p></div><div class="dashboard-top-action-row"><button type="button" class="carbon-top-button" data-view="map">${ico('map')} Mapa</button><button type="button" class="carbon-top-button" data-view="reports">${ico('file-chart-column')} Relatórios</button><button type="button" class="carbon-top-button primary" data-view="records" data-records-open-new="true">${ico('plus')} Novo registro</button></div></header><section class="dashboard-carbon-kpis"><article class="dashboard-cash-kpi"><small>CAIXA MESTRE · DONO</small><b>${formatBRL(cashBalance)}</b><span>Base para a distribuição das etapas</span></article><article><small>Frentes ativas</small><b>${active}</b><span>${completed} concluídas</span></article><article><small>Notificações</small><b>${notifications.length}</b><span>Ciência do agente</span></article><article><small>Registros no histórico</small><b>${records.length}</b><span>Somente consulta no Diário</span></article></section><nav class="carbon-widget-bar dashboard-initial-widget-bar" aria-label="Interfaces operacionais">${widgets.map(([view,icon,label])=>`<button type="button" data-view="${view}">${ico(icon)}<span>${label}</span></button>`).join('')}</nav><section class="dashboard-carbon-widget-grid">${widget('Próxima frente','PRIORIDADE PELO CAIXA','A etapa elegível é recalculada pelas dependências, cobertura financeira e materiais registrados.','stages','workflow',`${active} frentes em acompanhamento`)}${widget('Registros rápidos','APONTAMENTOS DE CAMPO','Abra a interface para registrar produção, unidade de medida, evidências e responsável.','records','clipboard-pen-line',`${records.length} registro(s) preservado(s)`)}${widget('Atendimento de leads','COMERCIAL','Consulte reservas, conversas, documentos e o vínculo de cada cliente ao lote.','leads','users-round',`${(state.publicLeads||[]).length} leads recebidos`)}${widget('Comissões','CARTEIRAS','Navegue por cards de corretores e aplique a regra na página dedicada.','brokers','users-round','Mensal · anual · acumulado')}</section></section>`;
 };
 
 // STAGES_V9: árvore de diretrizes, etapas e atividades dedicadas.
@@ -8392,6 +9762,15 @@ ViewLayer.prototype.bind=function(){
   bindBeforeStagesV9?.call(this);
   this.querySelectorAll('[data-stage-v9]').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();appStore.set({view:'stages',selectedStageV9:button.dataset.stageV9,selectedStage:button.dataset.stageV9,activityDedicated:true,stageActivityDedicatedV9:false,lastAction:`Abriu a etapa ${button.textContent.trim()}`});}));
   this.querySelector('[data-stage-v9-back]')?.addEventListener('click',()=>appStore.set({view:'stages',activityDedicated:false,stageActivityDedicatedV9:false,selectedActivity:null,lastAction:'Voltou para a árvore de etapas'}));
+  const dedicated=this.querySelector('.stage-v9-dedicated-page');
+  if(dedicated&&!dedicated.querySelector('[data-stage-detail-tabs]')){
+    const tabs=document.createElement('nav');
+    tabs.className='stage-detail-tabs-v5428';tabs.dataset.stageDetailTabs='';tabs.setAttribute('aria-label','Seções da etapa');
+    [['andamento','Andamento'],['agenda','Agenda'],['atividades','Atividades'],['materiais','Materiais'],['diario','Diário']].forEach(([key,label])=>{const button=document.createElement('button');button.type='button';button.dataset.stageDetailTab=key;button.textContent=label;button.addEventListener('click',()=>{tabs.querySelectorAll('button').forEach(item=>item.classList.toggle('active',item===button));appStore.set({selectedStageDetailTab:key,lastAction:`Abriu a aba ${label} da etapa`});const targets={andamento:'.stage-v9-status-lines',agenda:'.stage-v9-diary',atividades:'.stage-v9-flow-section,materiais:.stage-v9-detail-grid',diario:'.stage-v9-diary'};const selector=targets[key];if(selector)dedicated.querySelector(selector)?.scrollIntoView({behavior:'smooth',block:'start'});});tabs.appendChild(button);});
+    const ai=document.createElement('button');ai.type='button';ai.className='stage-detail-ai-v5428';ai.dataset.stageDetailAi='';ai.textContent='Inteligência da etapa';ai.addEventListener('click',()=>{const current=appStore.get();appStore.set({view:'actions',selectedStageV9:current.selectedStageV9||current.selectedStage,lastAction:'Abriu a inteligência da etapa'});});tabs.appendChild(ai);
+    dedicated.querySelector('.stage-v9-dedicated-head')?.insertAdjacentElement('afterend',tabs);
+    const active=appStore.get().selectedStageDetailTab||'andamento';tabs.querySelector(`[data-stage-detail-tab="${active}"]`)?.classList.add('active');
+  }
   this.querySelectorAll('[data-activity-v9]').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();appStore.set({view:'activities',selectedActivity:button.dataset.activityV9,activityDedicated:false,stageActivityDedicatedV9:true,lastAction:`Abriu atividade ${button.textContent.trim()}`});}));
   this.querySelector('[data-activity-v9-back]')?.addEventListener('click',()=>appStore.set({view:'stages',activityDedicated:true,stageActivityDedicatedV9:false,lastAction:'Voltou ao fluxo da etapa'}));
   this.querySelector('[data-stage-activity-action]')?.addEventListener('click',()=>{appStore.set({lastAction:'Confirmou requisitos da atividade no Diário'});notify('Confirmação registrada. A propagação permanece auditável no Diário de obra.','success');});
@@ -8649,6 +10028,98 @@ ViewLayer.prototype.bind=function(...args){
   return result;
 };
 
+// ENCARREGADOS_DIRECTORY_V5424
+// Cadastro simples de encarregados; equipes/formação permanecem apenas como
+// dados de apoio às atividades, não como uma tela administrativa separada.
+ViewLayer.prototype.personnel=function(){
+  const state=appStore.get(),contacts=Array.isArray(state.foremenContacts)?state.foremenContacts:[],stages=executionModel.stages||[];
+  return `<section class="personnel-page-v5372 foremen-directory-v5424"><header class="personnel-head-v5372"><div><span class="activity-kind">CADASTRO OPERACIONAL · ENCARREGADOS</span><h1>Encarregados de atividade</h1><p>Cadastre responsáveis por e-mail e telefone, gere uma senha inicial e vincule as etapas que eles acompanham.</p></div><span class="personnel-live-v5372"><i></i> Escuta ativa</span></header><div class="foremen-layout-v5424"><section class="personnel-panel-v5372"><header class="personnel-panel-head-v5372"><div><span class="personnel-kicker-v5372">01 · NOVO CADASTRO</span><h2>Adicionar encarregado</h2></div></header><form class="foreman-form-v5424" data-foreman-form><label>Nome completo<input name="name" required autocomplete="name"></label><label>E-mail<input name="email" type="email" required autocomplete="email"></label><label>Telefone<input name="phone" required inputmode="tel" placeholder="(00) 00000-0000"></label><fieldset><legend>Etapas acompanhadas</legend>${stages.map(stage=>`<label><input type="checkbox" name="stages" value="${esc(stage.key)}"> ${esc(stage.name)}</label>`).join('')}</fieldset><button class="button button-primary" type="submit">Cadastrar e gerar senha</button><p class="foreman-form-status-v5424" data-foreman-status aria-live="polite"></p></form></section><section class="personnel-panel-v5372"><header class="personnel-panel-head-v5372"><div><span class="personnel-kicker-v5372">02 · VISUALIZAÇÃO</span><h2>Encarregados cadastrados</h2><p>A senha inicial é exibida uma vez após o cadastro e deve ser trocada pelo responsável.</p></div><span class="personnel-panel-count-v5372">${contacts.length} pessoas</span></header><div class="foreman-list-v5424">${contacts.map(contact=>`<article><div class="avatar">${esc((contact.name||'?')[0])}</div><div><strong>${esc(contact.name)}</strong><small>${esc(contact.email)} · ${esc(contact.phone)}</small><p>${(contact.stages||[]).map(key=>esc(stages.find(s=>s.key===key)?.name||key)).join(' · ')||'Nenhuma etapa vinculada'}</p></div><span class="foreman-activities-v5424">${esc(String(contact.activityCount||0))} atividades</span></article>`).join('')||'<p class="stage-input-empty">Nenhum encarregado cadastrado.</p>'}</div></section></div></section>`;
+};
+const foremenBindV5424=ViewLayer.prototype.bind;
+ViewLayer.prototype.bind=function(...args){
+  const result=foremenBindV5424?.apply(this,args),form=this.querySelector('[data-foreman-form]');
+  if(!form||form.dataset.bound==='true')return result;form.dataset.bound='true';
+  const contactGrid=form.querySelector('fieldset');
+  if(contactGrid){
+    contactGrid.insertAdjacentHTML('beforebegin',`<div class="foreman-registration-fields-v5424"><label>CPF / documento<input name="document" inputmode="numeric" autocomplete="off" placeholder="Opcional"></label><label>Data de nascimento<input name="birthDate" type="date" autocomplete="bday"></label><label>Endereço / cidade<input name="address" autocomplete="street-address" placeholder="Cidade e UF"></label><label>WhatsApp <span aria-hidden="true">*</span><input name="whatsapp" required inputmode="tel" autocomplete="tel" placeholder="(00) 00000-0000"></label><label class="foreman-photo-field-v5424">Foto (opcional)<input name="photo" type="file" accept="image/*" capture="user"></label></div>`);
+  }
+  form.addEventListener('submit',event=>{
+    const whatsapp=String(new FormData(form).get('whatsapp')||'').replace(/\D/g,'');
+    if(whatsapp.length<10){event.preventDefault();event.stopImmediatePropagation();const message=form.querySelector('[data-foreman-status]');if(message){message.textContent='Informe um número de WhatsApp válido (DDD + número).';message.dataset.tone='warning';}form.elements.whatsapp?.focus();}
+    else {const data=new FormData(form);form._foremanSubmission={name:String(data.get('name')||'').trim(),email:String(data.get('email')||'').trim(),phone:String(data.get('phone')||'').trim(),document:String(data.get('document')||'').trim(),birthDate:String(data.get('birthDate')||''),address:String(data.get('address')||'').trim(),whatsapp,stages:data.getAll('stages'),photo:data.get('photo') instanceof File?data.get('photo'):null};}
+  },true);
+  const foremanFileToDataUrlV5424=file=>new Promise(resolve=>{if(!file||!file.size)return resolve('');const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||''));reader.onerror=()=>resolve('');reader.readAsDataURL(file);});
+  form.addEventListener('submit',()=>{const snapshot=form._foremanSubmission;if(!snapshot)return;setTimeout(async()=>{const photoDataUrl=await foremanFileToDataUrlV5424(snapshot.photo);appStore.update(state=>{const contacts=[...(state.foremenContacts||[])],index=contacts.findIndex(contact=>contact.email===snapshot.email&&contact.name===snapshot.name);if(index<0)return state;contacts[index]={...contacts[index],document:snapshot.document,birthDate:snapshot.birthDate,address:snapshot.address,whatsapp:snapshot.whatsapp,photoDataUrl:photoDataUrl||contacts[index].photoDataUrl||''};return {...state,foremenContacts:contacts};});},0);},false);
+  form.addEventListener('submit',event=>{event.preventDefault();const data=new FormData(form),name=String(data.get('name')||'').trim(),email=String(data.get('email')||'').trim(),phone=String(data.get('phone')||'').trim(),stages=data.getAll('stages'),password=`AP-${Math.random().toString(36).slice(2,8).toUpperCase()}`,contact={id:`foreman-${Date.now()}`,name,email,phone,stages,password,activityCount:0};const contacts=[...(appStore.get().foremenContacts||[]),contact];appStore.set({foremenContacts:contacts,lastAction:`Cadastrou encarregado ${name}`});form.reset();form.querySelector('[data-foreman-status]').textContent=`Cadastro salvo. Senha inicial: ${password}`;personnelPublishV5372('foreman.created','foreman',contact.id,{name,email,phone,stages});});return result;
+};
+
 // A rota histórica de colaboradores continua válida, mas passa a abrir a
 // mesma superfície de formação para não duplicar a lógica de pessoal.
 ViewLayer.prototype.collaborators=function(){return this.personnel();};
+
+// COMMISSIONS_DIRECTORY_V5426
+ViewLayer.prototype.brokers=function(){
+  const state=appStore.get(),deals=[...commissionDeals,...(state.commissionEntries||[])].map((deal,index)=>({...deal,_index:index})).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  const pageSize=6,page=Math.max(0,Number(state.commissionDirectoryPage)||0),pageDeals=deals.slice(page*pageSize,(page+1)*pageSize),pages=Math.max(1,Math.ceil(deals.length/pageSize));
+  const profileFor=id=>commissionProfiles.find(item=>item.id===id)||commissionProfiles[0],money=deal=>formatBRL(brlToNumber(deal.commission));
+  const latest=profile=>deals.filter(item=>item.profile===profile.id).slice(0,3);
+  if(state.selectedCommissionProfile){const profile=profileFor(state.selectedCommissionProfile);return typeof this.commissionProfile==='function'?this.commissionProfile(profile):'';}
+  const rows=pageDeals.map(deal=>{const person=profileFor(deal.profile);return `<tr><td><b>${esc(deal.id||'—')}</b><small>${esc(deal.date||'Sem data')}</small></td><td><b>${esc(person?.name||'A definir')}</b><small>${esc(person?.creci||'')}</small></td><td><b>${esc(deal.client||'Cliente')}</b><small>${esc(deal.lot||'Lote a definir')}</small></td><td>${esc(deal.value||'—')}</td><td><strong>${money(deal)}</strong><small>${esc(deal.rate||'Taxa')}</small></td><td><span class="commission-directory-status-v5426">${esc(deal.status||deal.stage||'Em acompanhamento')}</span></td><td><button type="button" data-commission-directory-profile="${esc(deal.profile||'')}">Abrir corretor</button></td></tr>`;}).join('');
+  const cards=commissionProfiles.map(person=>{const own=latest(person),total=own.reduce((sum,item)=>sum+brlToNumber(item.commission),0);return `<button type="button" class="commission-broker-card-v5426" data-commission-directory-profile="${esc(person.id)}"><header><span class="commission-avatar">${esc(person.initials)}</span><span><b>${esc(person.name)}</b><small>${esc(person.role)} · ${esc(person.creci)}</small></span><em>${esc(person.conversion||'—')}</em></header><dl><div><dt>Telefone</dt><dd>${esc(person.phone||'—')}</dd></div><div><dt>Carteira</dt><dd>${person.sales||0} vendas · ${esc(person.commission||'—')}</dd></div></dl><section><small>ÚLTIMAS COMISSÕES</small>${own.map(item=>`<p><span>${esc(item.lot||'Lote')}</span><b>${money(item)}</b></p>`).join('')||'<p><span>Sem lançamentos recentes</span></p>'}</section><footer><span>${own.length} lançamentos recentes · ${formatBRL(total)}</span><span>Ver perfil ${ico('arrow-up-right')}</span></footer></button>`;}).join('');
+  return `<section class="commission-directory-v5426"><header class="v7-page-head"><div><span class="activity-kind">GESTÃO COMERCIAL · COMISSÕES</span><h1>Comissões</h1><p>Comissões mais recentes, carteiras de corretores e contratos vinculados em uma leitura operacional.</p></div><div><button type="button" class="toolbar-primary" data-v8-broker-reports>${ico('file-down')} PDF / Excel</button></div></header><section class="commission-directory-ledger-v5426"><header><div><span class="activity-kind">01 · LANÇAMENTOS RECENTES</span><h2>Comissões por ordem de registro</h2><p>Use a paginação para avançar pelo histórico completo.</p></div><span>${deals.length} lançamentos</span></header><div class="control-table-wrap"><table><thead><tr><th>Contrato</th><th>Corretor</th><th>Cliente / lote</th><th>Venda</th><th>Comissão</th><th>Situação</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="7">Nenhuma comissão registrada.</td></tr>'}</tbody></table></div><footer class="commission-directory-pagination-v5426"><button type="button" data-commission-directory-page="${Math.max(0,page-1)}" ${page===0?'disabled':''}>← Anteriores</button><span>Página ${page+1} de ${pages}</span><button type="button" data-commission-directory-page="${Math.min(pages-1,page+1)}" ${page>=pages-1?'disabled':''}>Próximas →</button></footer></section><section class="commission-directory-brokers-v5426"><header><div><span class="activity-kind">02 · CARTEIRAS</span><h2>Corretores e últimas comissões</h2><p>Selecione um card para abrir o perfil completo, contratos, lotes e repasses.</p></div><span>${commissionProfiles.length} carteiras</span></header><div>${cards}</div></section><section class="commission-directory-settings-v5426"><header><div><span class="activity-kind">03 · CONFIGURAÇÃO</span><h2>Configurações de comissão</h2><p>As regras de repasse continuam editáveis na central e são aplicadas ao perfil dedicado.</p></div><button type="button" data-view="control">Abrir central de configuração ${ico('settings-2')}</button></header><div><span>Período atual: ${esc(state.reportPeriod||'monthly')}</span><span>Regras ativas: ${brokerReasonsV9(state).length}</span><span>Aplicação: manual e auditada</span></div></section></section>`;
+};
+const commissionDirectoryBindV5426=ViewLayer.prototype.bind;
+ViewLayer.prototype.bind=function(...args){
+  const result=commissionDirectoryBindV5426?.apply(this,args),root=this.querySelector('.commission-directory-v5426,.broker-profile-dedicated');if(!root||root.dataset.commissionDirectoryBound)return result;root.dataset.commissionDirectoryBound='1';
+  root.querySelectorAll('[data-commission-directory-profile]').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();appStore.set({selectedCommissionProfile:button.dataset.commissionDirectoryProfile,selectedCommissionContract:null,lastAction:'Abriu perfil do corretor'});}));
+  root.querySelectorAll('[data-commission-directory-page]').forEach(button=>button.addEventListener('click',()=>appStore.set({commissionDirectoryPage:Number(button.dataset.commissionDirectoryPage),lastAction:'Navegou pelas comissões recentes'})));
+  root.querySelector('[data-commission-back]')?.addEventListener('click',()=>appStore.set({selectedCommissionProfile:null,selectedCommissionContract:null,lastAction:'Voltou à lista de comissões'}));return result;
+};
+
+// ADMIN_LEADS_DIRECTORY_V5425
+// A página administrativa usa os mesmos leads capturados pela experiência
+// pública, mas com leitura compacta e um perfil dedicado para o atendimento.
+const adminLeadRecordsV5425=()=>{
+  const state=appStore.get(),reservations=Array.isArray(state.publicReservations)?state.publicReservations:[],publicLeads=Array.isArray(state.publicLeads)?state.publicLeads:[];
+  const fromReservation=reservations.map(item=>({id:item.id||`reservation-${Math.random()}`,name:item.client||'Cliente em análise',lot:item.lot||'A definir',status:item.status||'Reserva em análise',source:'Reserva',note:item.notes||'Reserva recebida pela página pública.',phone:item.phone||item.whatsapp||'',whatsapp:item.whatsapp||item.phone||'',email:item.email||'',objective:item.objective||'A definir',budget:item.budget||'A confirmar',createdAt:item.createdAt||item.date||'',conversation:item.conversation||item.messages||''}));
+  const fromPublic=publicLeads.map(item=>({id:item.id||`lead-${Math.random()}`,name:item.name||'Novo interessado',lot:item.lot||'A definir',status:item.status||'Novo',source:'Página pública',note:item.conversation||item.notes||'Intenção recebida na conversa da página pública.',phone:item.phone||item.whatsapp||'',whatsapp:item.whatsapp||item.phone||'',email:item.email||'',objective:item.objective||'Moradia',budget:item.budget||'A confirmar',sun:item.sun||'A definir',terrain:item.terrain||'A definir',altitude:item.altitude||'—',createdAt:item.createdAt||item.date||'',conversation:item.conversation||item.messages||''}));
+  const demo=(demoData.leads||[]).map((item,index)=>({...item,id:`demo-lead-${index}`,source:'Demonstração',note:`Objetivo: ${item.objective||'não informado'}`}));
+  return [...fromReservation,...fromPublic,...(fromReservation.length||fromPublic.length?[]:demo)];
+};
+const adminLeadStatusToneV5425=status=>{const value=String(status||'').toLowerCase();return value.includes('vend')||value.includes('convert')?'sold':value.includes('reserv')||value.includes('propost')?'reserved':value.includes('contat')||value.includes('qualif')?'contact':'new';};
+const adminLeadPropertiesV5425=lead=>[['Lote desejado',lead.lot],['Objetivo',lead.objective],['Faixa de valor',lead.budget],['WhatsApp',lead.whatsapp||lead.phone||'Não informado'],['E-mail',lead.email||'Não informado'],['Orientação solar',lead.sun||'A definir'],['Terreno',lead.terrain||'A definir'],['Altitude',lead.altitude||'—'],['Origem',lead.source],['Cadastro',lead.createdAt||'Registro recente']];
+ViewLayer.prototype.leads=function(){
+  const state=appStore.get(),all=adminLeadRecordsV5425(),selectedIndex=Math.max(0,Math.min(all.length-1,Number(state.selectedLead)||0)),lead=all[selectedIndex],profile=Boolean(state.adminLeadProfile),query=String(state.adminLeadQuery||'').toLowerCase();
+  if(!lead)return `<section class="admin-leads-v5425"><header class="workspace-head-v5356"><div><span>CRM · CAPTAÇÃO PÚBLICA</span><h1>Leads</h1><p>Nenhum lead recebido ainda.</p></div></header><div class="admin-leads-empty-v5425">As conversas da página pública aparecerão aqui como perfis de contato.</div></section>`;
+  if(profile)return `<section class="admin-leads-v5425"><header class="workspace-head-v5356"><div><span>CRM · PERFIL DO CONTATO</span><h1>${esc(lead.name)}</h1><p>Drill-in do lead gerado na conversa pública e pronto para continuidade comercial.</p></div><button type="button" data-admin-leads-back>${ico('arrow-left')} Voltar aos leads</button></header><div class="admin-lead-profile-v5425"><main class="admin-lead-paper-v5425"><header><div class="admin-lead-avatar-v5425">${esc((lead.name||'?')[0])}</div><div><span class="admin-lead-kicker-v5425">${esc(lead.source||'Página pública')}</span><h2>${esc(lead.name)}</h2><p>${esc(lead.status)} · ${esc(lead.lot)}</p></div><span class="admin-lead-status-v5425 ${adminLeadStatusToneV5425(lead.status)}">${esc(lead.status)}</span></header><section class="admin-lead-property-grid-v5425">${adminLeadPropertiesV5425(lead).map(([label,value])=>`<div><small>${esc(label)}</small><b>${esc(value||'—')}</b></div>`).join('')}</section><section class="admin-lead-conversation-v5425"><span class="admin-lead-kicker-v5425">CONTEXTO DA CONVERSA</span><h3>Intenção capturada</h3><p>${esc(lead.conversation||lead.note||'Sem resumo textual registrado. Consulte o histórico para continuar o atendimento.')}</p></section><footer><button type="button" class="admin-lead-primary-v5425" data-admin-lead-message>${ico('message-circle')} Abrir atendimento</button><button type="button" data-view="map">${ico('map-pinned')} Ver lote no mapa</button></footer></main><aside class="admin-lead-ai-summary-v5425"><span class="admin-lead-kicker-v5425">IA · RESUMO CONTEXTUAL</span><h2>Próxima melhor ação</h2><p>Priorizar o contato com base no lote indicado, no objetivo de compra e na disponibilidade de retorno.</p><ul><li><b>Intenção:</b> ${esc(lead.objective||'não informada')}</li><li><b>Sinal comercial:</b> ${esc(lead.budget||'faixa ainda não informada')}</li><li><b>Origem:</b> conversa na ${esc(lead.source||'página pública')}</li></ul><div class="admin-lead-ai-note-v5425">A IA sugere a ação; a confirmação do corretor continua necessária antes de reservar ou alterar o status.</div></aside></div></section>`;
+  const filtered=all.map((item,index)=>({item,index})).filter(({item})=>!query||JSON.stringify(item).toLowerCase().includes(query));
+  const cards=filtered.map(({item,index})=>`<button type="button" class="admin-lead-card-v5425 ${index===selectedIndex?'selected':''}" data-admin-lead-index="${index}"><header><span class="admin-lead-avatar-v5425">${esc((item.name||'?')[0])}</span><span><b>${esc(item.name)}</b><small>${esc(item.source||'Página pública')}</small></span><em class="admin-lead-status-v5425 ${adminLeadStatusToneV5425(item.status)}">${esc(item.status)}</em></header><strong>${esc(item.lot)}</strong><p>${esc(item.objective||'Objetivo a confirmar')} · ${esc(item.budget||'Faixa a confirmar')}</p><footer><span>${ico('message-circle')} ${esc(item.whatsapp||item.phone||'Contato pendente')}</span><span>Abrir perfil ${ico('arrow-up-right')}</span></footer></button>`).join('');
+  return `<section class="admin-leads-v5425"><header class="workspace-head-v5356"><div><span>CRM · CAPTAÇÃO PÚBLICA</span><h1>Leads</h1><p>Contatos gerados nas conversas da página pública, organizados para triagem e atendimento.</p></div><div class="admin-leads-header-actions-v5425"><button type="button" data-v5356-open-public>${ico('external-link')} Abrir página pública</button><span>${all.length} contatos</span></div></header><section class="admin-leads-toolbar-v5425"><label>${ico('search')} Buscar contato, lote ou objetivo<input type="search" value="${esc(state.adminLeadQuery||'')}" placeholder="Ex.: Juliana, Lote 54, investimento" data-admin-lead-search></label><span class="admin-leads-live-v5425"><i></i> Escuta da captação pública ativa</span></section><section class="admin-leads-grid-v5425">${cards||'<div class="admin-leads-empty-v5425">Nenhum lead corresponde à busca.</div>'}</section></section>`;
+};
+const adminLeadsBindV5425=ViewLayer.prototype.bind;
+ViewLayer.prototype.bind=function(...args){
+  const result=adminLeadsBindV5425?.apply(this,args),root=this.querySelector('.admin-leads-v5425'); if(!root||root.dataset.bound==='true')return result; root.dataset.bound='true';
+  root.querySelectorAll('[data-admin-lead-index]').forEach(button=>button.addEventListener('click',()=>appStore.set({selectedLead:Number(button.dataset.adminLeadIndex)||0,adminLeadProfile:true,lastAction:'Abriu perfil do lead'})));
+  root.querySelector('[data-admin-leads-back]')?.addEventListener('click',()=>appStore.set({adminLeadProfile:false,lastAction:'Voltou à lista de leads'}));
+  root.querySelector('[data-admin-lead-search]')?.addEventListener('input',event=>appStore.set({adminLeadQuery:event.currentTarget.value}));
+  root.querySelector('[data-admin-lead-message]')?.addEventListener('click',()=>{
+    const state=appStore.get(),lead=adminLeadRecordsV5425()[Math.max(0,Number(state.selectedLead)||0)],chat=document.querySelector('ai-chat');
+    const name=lead?.name||'lead selecionado',lot=lead?.lot||'lote a definir',context=[
+      `Atendimento do lead ${name}.`,
+      `Lote: ${lot}.`,
+      `Status: ${lead?.status||'Novo'}.`,
+      `Objetivo: ${lead?.objective||'não informado'}.`,
+      `Resumo: ${lead?.conversation||lead?.note||'sem resumo registrado'}.`,
+      'Apresente a próxima ação comercial e aguarde confirmação antes de alterar qualquer status.'
+    ].join(' ');
+    appStore.set({lastAction:`Abriu atendimento de ${name}`,selectedLead:Number(state.selectedLead)||0});
+    chat?.classList.remove('collapsed');
+    if(chat?.respond){
+      chat.respond(context);
+      notify(`Atendimento de ${name} aberto no chat da IA.`,'success');
+    }else{
+      notify('O chat de atendimento ainda está carregando. Tente novamente em instantes.','warning');
+    }
+  });
+  root.querySelector('[data-v5356-open-public]')?.addEventListener('click',()=>window.open(runtimeRouteV1('/leads'),'_blank','noopener')); return result;
+};

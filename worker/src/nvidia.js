@@ -162,6 +162,12 @@ export async function explainMaterialPlan(env,plan){
     materialNeedCents:plan.materialNeedCents,
     allocatedCents:plan.allocatedCents,
     coverage:plan.coverage,
+    pendingCount:plan.pendingCount||0,
+    pending:plan.decisions.filter(item=>item.action==='blocked_pending').slice(0,20).map(item=>({
+      activity:item.activity?.title||item.requirement?.activityId,
+      stage:item.requirement?.stageName,
+      items:item.pending?.items||[]
+    })),
     decisions:plan.decisions.slice(0,20).map(item=>({
       action:item.action,
       project:item.project?.name||item.requirement.projectId,
