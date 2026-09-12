@@ -1,7 +1,7 @@
 // BELAVISTA_RECORDS_ACTIVITY_DRILL_IN_V5377
 // Registros: etapa -> atividade -> apontamento. Materiais permanecem na
 // central única de caixa, com o mesmo contexto de evidência financeira.
-import {ViewLayer, ico, esc} from './components.js?v=personnel-production-v5373&route=ngrok-route-v1';
+import {ViewLayer, ico, esc} from './components.js?v=dashboard-stage-focus-v1&route=ngrok-route-v1';
 import {appStore, demoData} from './state.js?v=personnel-production-v5373';
 import {apiFetch} from './api-client.mjs';
 

@@ -1,7 +1,7 @@
 // BELAVISTA_ADMIN_PUBLIC_MAP_SURFACE_V5352
 // v5.3.51 deferred after shell: import './admin-runtime-v11.js?v=admin-runtime-v11';
 // v5.3.51 deferred after shell: import './admin-lots-canvas-v1.js?v=admin-lots-canvas-v1';
-import './components.js?v=dwg-satellite-fit-v5410&route=ngrok-route-v1';
+import './components.js?v=dashboard-stage-focus-v1&route=ngrok-route-v1';
 import {appStore, persistUiState, restoreUiState, viewThemes} from './state.js?v=solar-clock-hover-v5384';
 // v5.3.51 deferred after shell: import './stage-admin-v10.js?v=stage-admin-v10-primary';
 // BELAVISTA_ORIGINAL_ADMIN_BOOT_RESCUE_V5351
