@@ -199,7 +199,7 @@ const syncCompactMapMirrors=()=>{
 // Keep zoom and tilt as transforms of the shared Three.js scene. The map tile
 // surface and GLB therefore gain range together without ever rasterizing the
 // model or changing the surrounding DOM layout.
-const DEFAULT_SCENE_ZOOM=1.12, INITIAL_SCENE_ZOOM=1.68, MAX_SCENE_ZOOM=10, MIN_SCENE_TILT=8, MAX_SCENE_TILT=48, SCENE_TILT_ADJUST_LIMIT=34, TILT_DRAG_SENSITIVITY=.18, ZOOM_DRAG_SENSITIVITY=.012, DEFAULT_TILT_BOOST=52, DASHBOARD_TILT_BOOST=22, SCENE_SURFACE_SCALE=2.7, PUBLIC_SATELLITE_VERTICAL_COVERAGE=1.42, MODEL_FIT_RATIO=1.32, MODEL_PUBLIC_FIT_RATIO=1.10, MODEL_VERTICAL_EXAGGERATION=1.33335, SCENE_MAP_Z=0, SCENE_MODEL_BASE_Z=0, SCENE_VIEWPORT_COVERAGE=2.5, SCENE_PAN_SAFETY=1.18, SCENE_PUBLIC_PAN_SAFETY=1.020, MAP_TILE_OVERSCAN=1, MAP_RASTER_MAX=1536, MAP_SCENE_STATE_VERSION=6, STAGE_FILTER_TRANSITION_MS=520;
+const DEFAULT_SCENE_ZOOM=1.12, INITIAL_SCENE_ZOOM=1.68, MIN_SCENE_ZOOM=.62, MAX_SCENE_ZOOM=10, MIN_SCENE_TILT=8, MAX_SCENE_TILT=48, SCENE_TILT_ADJUST_LIMIT=34, TILT_DRAG_SENSITIVITY=.18, ZOOM_DRAG_SENSITIVITY=.012, DEFAULT_TILT_BOOST=52, DASHBOARD_TILT_BOOST=22, SCENE_SURFACE_SCALE=2.7, PUBLIC_SATELLITE_VERTICAL_COVERAGE=1.42, MODEL_FIT_RATIO=1.32, MODEL_PUBLIC_FIT_RATIO=1.10, MODEL_VERTICAL_EXAGGERATION=1.33335, SCENE_MAP_Z=0, SCENE_MODEL_BASE_Z=0, SCENE_VIEWPORT_COVERAGE=2.5, SCENE_PAN_SAFETY=1.18, SCENE_PUBLIC_PAN_SAFETY=1.020, MAP_TILE_OVERSCAN=1, MAP_RASTER_MAX=1536, MAP_SCENE_STATE_VERSION=6, STAGE_FILTER_TRANSITION_MS=520;
 const MAP_CAMERA_VIEW='map';
 const DWG_GEOREFERENCE_URL=runtimeRouteV1('/assets/data/dwg-georeference.json','v=dwg-georef-v1');
 // Janela solar calculada a partir do centro geográfico oficial do DWG. O
@@ -399,7 +399,7 @@ export class AppSidebar extends HTMLElement {
   connectedCallback(){ this.render(); appStore.subscribe(()=>{if(!this._dedicated)this.render();}); }
   render(){
     const state=appStore.get(),view=state.view,actor=state.currentActor||{name:'Warley',label:'Dono'};
-    const items=[['assistant','house','Dashboard inicial'],['control','table-properties','Central operacional'],['stages','workflow','Etapas e Cronograma'],['records','clipboard-pen-line','Diário'],['personnel','users-round','Encarregados'],['leads','users','Leads'],['brokers','badge-dollar-sign','Comissões'],['finance','wallet-cards','Financeiro'],['reports','chart-no-axes-combined','Relatórios'],['settings','settings','Configurações']];
+    const items=[['assistant','house','Dashboard inicial'],['control','table-properties','Central operacional'],['stages','workflow','Etapas e Cronograma'],['records','clipboard-pen-line','Registros'],['personnel','users-round','Encarregados'],['leads','users','Leads'],['brokers','badge-dollar-sign','Comissões'],['finance','wallet-cards','Financeiro'],['reports','chart-no-axes-combined','Relatórios'],['settings','settings','Configurações']];
     const extensionViews=['agenda','activities','progress','pert','actions','raci','raid'];
     const reportFamilies=[...new Set(reportCatalog.map(report=>report.family))];
     const reportIcons={Financeiro:'wallet-cards',Construção:'hard-hat',Suprimentos:'package-check',Comercial:'filter',Governança:'shield-check'};
@@ -527,7 +527,7 @@ export class AiChat extends HTMLElement {
     this._chatHistoryHydrated=true; log.scrollTop=log.scrollHeight;
   }
   systemViewLabel(view){
-    return {assistant:'dashboard inicial',map:'mapa operacional',stages:'etapas e cronograma',agenda:'agenda',activities:'atividades',progress:'diário de obras',records:'registros',leads:'leads',commissions:'corretores e comissões',reports:'relatórios',settings:'configurações',purchases:'compras',inventory:'materiais',control:'central de controle'}[view]||'esta área';
+    return {assistant:'dashboard inicial',map:'mapa operacional',stages:'etapas e cronograma',agenda:'agenda',activities:'atividades',progress:'andamento da obra',records:'registros',leads:'leads',commissions:'corretores e comissões',reports:'relatórios',settings:'configurações',purchases:'compras',inventory:'materiais',control:'central de controle'}[view]||'esta área';
   }
   systemSnapshot(state){
     const notifications=Array.isArray(state.operationalNotifications)?state.operationalNotifications:[];
@@ -616,7 +616,7 @@ export class AiChat extends HTMLElement {
   openMapContext(){
     this.chatMapContext=true;
     appStore.set({view:'map',lastAction:'Abriu os lotes 3D pelo chat da IA'});
-    const map=document.querySelector('map-scene:not([compact])');
+    const map=document.querySelector('map-scene[data-dashboard-operational-map]')||document.querySelector('map-scene:not([compact])');
     if(map){map.classList.add('chat-map-focus');clearTimeout(this._mapFocusTimer);this._mapFocusTimer=setTimeout(()=>map.classList.remove('chat-map-focus'),1200);}
     const node=this.appendConversationMessage('user','🗺️ Contexto de lotes 3D aberto');
     node?.classList.add('chat-context-mini');
@@ -6343,7 +6343,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`);
   }
   setSceneZoom(value,animate=true){
     this.markAdminCameraInteracted();
-    const target=Math.max(.9,Math.min(MAX_SCENE_ZOOM,Number(value)||DEFAULT_SCENE_ZOOM)); this.sceneManualZoom=target; this.dataset.sceneZoom=`${Math.round(target*100)}%`; this.dataset.sceneZoomMax=`${Math.round(MAX_SCENE_ZOOM*100)}%`;
+    const target=Math.max(MIN_SCENE_ZOOM,Math.min(MAX_SCENE_ZOOM,Number(value)||DEFAULT_SCENE_ZOOM)); this.sceneManualZoom=target; this.dataset.sceneZoom=`${Math.round(target*100)}%`; this.dataset.sceneZoomMin=`${Math.round(MIN_SCENE_ZOOM*100)}%`; this.dataset.sceneZoomMax=`${Math.round(MAX_SCENE_ZOOM*100)}%`;
     this.rememberMapView();
     if(this.isAdminStandaloneInteractiveV5370()){
       this.setAdminStandaloneZoomV5370(target,animate);
@@ -7459,7 +7459,8 @@ const dashboardFilters=[
   ['schedule','Cronograma','calendar-clock','pavimentacao'],
   ['leads','Leads','users-round','urbanizacao'],
   ['materials','Materiais','boxes','rede-agua'],
-  ['risks','Riscos','triangle-alert','rede-eletrica']
+  ['risks','Riscos','triangle-alert','rede-eletrica'],
+  ['progress','Progresso','chart-no-axes-combined','progress']
 ];
 const highlightStatus={
   execution:{eyebrow:'EXECUÇÃO ATUAL',title:'Drenagem pluvial',progress:42,status:'Em andamento',priority:'Alta',detail:'Frente ativa com medição e liberação parcial de trechos.',next:'Validar medição e liberar o próximo trecho.',view:'stages'},
@@ -7467,7 +7468,8 @@ const highlightStatus={
   schedule:{eyebrow:'CRONOGRAMA',title:'Pavimentação',progress:0,status:'Bloqueada',priority:'Dependência',detail:'Só inicia após as redes e liberações de infraestrutura.',next:'Acompanhar a liberação da rede de água.',view:'stages'},
   leads:{eyebrow:'INTERESSE COMERCIAL',title:'Quadras e áreas verdes',progress:63,status:'Em visualização',priority:'Comercial',detail:'Destaque territorial para leitura de lotes e demanda.',next:'Responder leads com lote e condição disponíveis.',view:'leads'},
   materials:{eyebrow:'MATERIAIS',title:'Rede de água',progress:12,status:'Aguardando insumos',priority:'Antes da pavimentação',detail:'Tubos PEAD, cavaletes e ramais vinculados aos 298 lotes.',next:'Conferir entrega e apontar consumo por frente.',view:'stages'},
-  risks:{eyebrow:'RISCO E DEPENDÊNCIA',title:'Rede elétrica',progress:8,status:'Aguardando Coelba',priority:'Última frente',detail:'Ligação depende do prazo externo e dos requisitos de material.',next:'Confirmar prazo da Coelba e lista de materiais.',view:'stages'}
+  risks:{eyebrow:'RISCO E DEPENDÊNCIA',title:'Rede elétrica',progress:8,status:'Aguardando Coelba',priority:'Última frente',detail:'Ligação depende do prazo externo e dos requisitos de material.',next:'Confirmar prazo da Coelba e lista de materiais.',view:'stages'},
+  progress:{eyebrow:'PROGRESSO FÍSICO',title:'Avanço das etapas',progress:63,status:'Leitura consolidada',priority:'Visão geral',detail:'Selecione uma área do loteamento para visualizar e registrar o avanço físico.',next:'Abrir o mapa completo e selecionar uma área de progresso.',view:'map'}
 };
 
 export class MapFilterRail extends HTMLElement {
@@ -7480,9 +7482,10 @@ export class MapFilterRail extends HTMLElement {
   }
   select(key){
     const filter=dashboardFilters.find(item=>item[0]===key)||dashboardFilters[0];
-    const map=document.querySelector('map-scene:not([compact])');
+    const map=document.querySelector('map-scene[data-dashboard-operational-map]')||document.querySelector('map-scene:not([compact])');
     appStore.set({mapFilter:key,lastAction:`Filtrou mapa por ${filter[1]}`});
-    map?.setStageOverlay(filter[3],false);
+    if(key==='progress')map?.setMapSelectionMode('progress');
+    else map?.setStageOverlay(filter[3],false);
     this.render();
   }
 }
@@ -8510,7 +8513,7 @@ ViewLayer.prototype.assistant=function(){
 };
 
 ViewLayer.prototype.assistant=function(){
-  const widgets=[['control','table-properties','Central'],['stages','workflow','Etapas'],['records','clipboard-pen-line','Diário'],['leads','users-round','Leads'],['brokers','users-round','Corretores'],['finance','wallet-cards','Financeiro'],['reports','chart-no-axes-combined','Relatórios'],['settings','settings','Ajustes']];
+  const widgets=[['control','table-properties','Central'],['stages','workflow','Etapas'],['records','clipboard-pen-line','Registros'],['leads','users-round','Leads'],['brokers','users-round','Corretores'],['finance','wallet-cards','Financeiro'],['reports','chart-no-axes-combined','Relatórios'],['settings','settings','Ajustes']];
   return `<section class="dashboard-home interface-dashboard"><header class="dashboard-head"><div><span class="activity-kind">PAINEL OPERACIONAL</span><h1>Dashboard inicial</h1><p>Escolha uma interface para acompanhar e registrar a operação.</p></div></header><nav class="carbon-widget-bar" aria-label="Interfaces do sistema">${widgets.map(([view,icon,label])=>`<button type="button" data-view="${view}">${ico(icon)}<span>${label}</span></button>`).join('')}</nav></section>`;
 };
 
@@ -8633,7 +8636,7 @@ globalThis.installBelavistaProductWorkspacesV5356=()=>{
     const activities=Array.isArray(demoData.activities)?demoData.activities:[];
     const widgets=[
       ['stages','workflow','Etapas'],
-      ['records','clipboard-pen-line','Diário'],
+      ['records','clipboard-pen-line','Registros'],
       ['leads','users-round','Leads'],
       ['finance','wallet-cards','Financeiro'],
       ['reports','chart-no-axes-combined','Relatórios'],
@@ -8875,7 +8878,7 @@ globalThis.installBelavistaFinalWorkspacesV5360=()=>{
 
     const widgets=[
       ['stages','workflow','Etapas'],
-      ['records','clipboard-pen-line','Diário'],
+      ['records','clipboard-pen-line','Registros'],
       ['leads','users-round','Leads'],
       ['finance','wallet-cards','Financeiro'],
       ['reports','chart-no-axes-combined','Relatórios']
@@ -9574,7 +9577,7 @@ globalThis.installBelavistaFinalUiV5362=()=>{
     const commissionOpen=Boolean(state.dashboardCommissionOpenV5362);
     const selected=profiles.find(p=>p.id===state.dashboardCommissionBrokerV5362)||null;
     const latest=id=>deals.filter(d=>d.profile===id).slice().reverse()[0]||null;
-    const nav=[['stages','workflow','Etapas'],['records','clipboard-pen-line','Diário'],['leads','users-round','Leads'],['finance','wallet-cards','Financeiro'],['reports','chart-no-axes-combined','Relatórios']];
+    const nav=[['stages','workflow','Etapas'],['records','clipboard-pen-line','Registros'],['leads','users-round','Leads'],['finance','wallet-cards','Financeiro'],['reports','chart-no-axes-combined','Relatórios']];
     const rows=(items,kind)=>items.map((item,i)=>{
       if(kind==='r')return `<article><span><b>${esc(item.client||item.name||'Interessado')}</b><small>${esc(item.lot||'Lote a definir')}</small></span><em>${esc(item.status||'Reserva')}</em></article>`;
       if(kind==='n')return `<article><span><b>${esc(item.title||'Notificação')}</b><small>${esc(item.message||'')}</small></span><em>${esc(item.severity||'info')}</em></article>`;
@@ -9678,10 +9681,12 @@ ViewLayer.prototype.bind=function(){
 // Dashboard inicial leve: widgets e ações ficam na área superior; o mapa
 // continua sendo acessado sob demanda pelo botão de contexto.
 ViewLayer.prototype.assistant=function(){
-  const state=appStore.get(),cash=state.cashSummary||{},stages=demoData.activities||[],notifications=state.operationalNotifications||[],records=state.records||[],widgets=[['stages','workflow','Etapas'],['records','clipboard-pen-line','Diário'],['leads','users-round','Leads'],['brokers','users-round','Corretores'],['finance','wallet-cards','Financeiro'],['reports','chart-no-axes-combined','Relatórios'],['settings','settings','Ajustes']];
+  const state=appStore.get(),cash=state.cashSummary||{},stages=demoData.activities||[],notifications=state.operationalNotifications||[],records=state.records||[],widgets=[['stages','workflow','Etapas'],['records','clipboard-pen-line','Registros'],['leads','users-round','Leads'],['brokers','users-round','Corretores'],['finance','wallet-cards','Financeiro'],['reports','chart-no-axes-combined','Relatórios'],['settings','settings','Ajustes']];
   const cashBalance=Number(cash.balanceCents||0)/100,active=stages.filter(item=>Number(item.progress)>0&&Number(item.progress)<100).length,completed=stages.filter(item=>Number(item.progress)>=100).length;
   const widget=(title,eyebrow,body,view,icon,meta)=>`<article class="dashboard-carbon-widget"><header><div><span>${eyebrow}</span><h2>${title}</h2></div><button type="button" data-view="${view}" aria-label="Abrir ${title}">${ico('arrow-up-right')}</button></header><p>${body}</p><footer><small>${meta}</small><button type="button" data-view="${view}">Abrir contexto</button></footer></article>`;
-  return `<section class="dashboard-home dashboard-carbon-home"><header class="dashboard-carbon-head"><div><span class="activity-kind">DASHBOARD INICIAL · ALIANÇA PARK</span><h1>Panorama operacional</h1><p>Registros rápidos e leitura de status, com o mapa aberto somente quando necessário.</p></div><div class="dashboard-top-action-row"><button type="button" class="carbon-top-button" data-view="map">${ico('map')} Mapa</button><button type="button" class="carbon-top-button" data-view="reports">${ico('file-chart-column')} Relatórios</button><button type="button" class="carbon-top-button primary" data-view="records" data-records-open-new="true">${ico('plus')} Novo registro</button></div></header><section class="dashboard-carbon-kpis"><article class="dashboard-cash-kpi"><small>CAIXA MESTRE · DONO</small><b>${formatBRL(cashBalance)}</b><span>Base para a distribuição das etapas</span></article><article><small>Frentes ativas</small><b>${active}</b><span>${completed} concluídas</span></article><article><small>Notificações</small><b>${notifications.length}</b><span>Ciência do agente</span></article><article><small>Registros no histórico</small><b>${records.length}</b><span>Somente consulta no Diário</span></article></section><nav class="carbon-widget-bar dashboard-initial-widget-bar" aria-label="Interfaces operacionais">${widgets.map(([view,icon,label])=>`<button type="button" data-view="${view}">${ico(icon)}<span>${label}</span></button>`).join('')}</nav><section class="dashboard-carbon-widget-grid">${widget('Próxima frente','PRIORIDADE PELO CAIXA','A etapa elegível é recalculada pelas dependências, cobertura financeira e materiais registrados.','stages','workflow',`${active} frentes em acompanhamento`)}${widget('Registros rápidos','APONTAMENTOS DE CAMPO','Abra a interface para registrar produção, unidade de medida, evidências e responsável.','records','clipboard-pen-line',`${records.length} registro(s) preservado(s)`)}${widget('Atendimento de leads','COMERCIAL','Consulte reservas, conversas, documentos e o vínculo de cada cliente ao lote.','leads','users-round',`${(state.publicLeads||[]).length} leads recebidos`)}${widget('Comissões','CARTEIRAS','Navegue por cards de corretores e aplique a regra na página dedicada.','brokers','users-round','Mensal · anual · acumulado')}</section></section>`;
+  const timelineStages=(executionModel.stages||[]).map((stage,index)=>{const live=stages.find(item=>String(item.name).toLocaleLowerCase('pt-BR')===String(stage.name).toLocaleLowerCase('pt-BR'))||{};const progress=Math.max(0,Math.min(100,Number(live.progress)||0));const status=progress>=100?'Concluída':progress>0?'Em andamento':'Planejada';const period=live.week||`Fase ${String(index+1).padStart(2,'0')}`;return {stage,live,progress,status,period};});
+  const timeline=timelineStages.map(({stage,live,progress,status,period},index)=>`<button type="button" class="dashboard-stage-timeline-card" data-stage-v9="${esc(stage.key)}" data-stage-state="${progress>=100?'done':progress>0?'active':'planned'}"><span class="dashboard-stage-timeline-index">${String(index+1).padStart(2,'0')}</span><header><small>${esc(period)}</small><em>${esc(status)}</em></header><h3>${esc(stage.name)}</h3><p>${esc(live.owner||'Responsável a definir')}</p><div class="dashboard-stage-timeline-progress"><i><b style="width:${progress}%"></b></i><strong>${progress}%</strong></div><footer><span>${stage.dependsOn?.length?`Após ${esc(stage.dependsOn[stage.dependsOn.length-1])}`:'Início do encadeamento'}</span>${ico('arrow-up-right')}</footer></button>`).join('');
+  return `<section class="dashboard-home dashboard-carbon-home"><header class="dashboard-carbon-head"><div><span class="activity-kind">DASHBOARD INICIAL · ALIANÇA PARK</span><h1>Panorama operacional</h1><p>Registros rápidos e leitura de status, com o mapa aberto somente quando necessário.</p></div><div class="dashboard-top-action-row"><button type="button" class="carbon-top-button" data-view="map">${ico('map')} Mapa</button><button type="button" class="carbon-top-button" data-view="reports">${ico('file-chart-column')} Relatórios</button><button type="button" class="carbon-top-button primary" data-view="records" data-records-open-new="true">${ico('plus')} Novo registro</button></div></header><section class="dashboard-carbon-kpis"><article class="dashboard-cash-kpi"><small>CAIXA MESTRE · DONO</small><b>${formatBRL(cashBalance)}</b><span>Base para a distribuição das etapas</span></article><article><small>Frentes ativas</small><b>${active}</b><span>${completed} concluídas</span></article><article><small>Notificações</small><b>${notifications.length}</b><span>Ciência do agente</span></article><article><small>Registros no histórico</small><b>${records.length}</b><span>Somente consulta no Diário</span></article></section><section class="dashboard-operational-map-card" aria-labelledby="dashboard-operational-map-title"><header><div><span class="activity-kind">MAPA OPERACIONAL · MESMA SUPERFÍCIE DE LEADS</span><h2 id="dashboard-operational-map-title">Progresso físico por etapa</h2><p>Use os filtros para destacar no mapa as áreas de execução, equipes, cronograma, leads, materiais, riscos e progresso.</p></div><button type="button" class="dashboard-map-open-button" data-view="map">Abrir mapa completo ${ico('arrow-up-right')}</button></header><div class="dashboard-operational-map-frame"><map-scene compact interactive data-base-map data-dashboard-operational-map="true" class="dashboard-operational-map" data-stage="Execução do Aliança Park" data-overlay="drenagem" aria-label="Mapa operacional 3D com progresso por etapa"></map-scene><map-filter-rail></map-filter-rail></div></section><section class="dashboard-stage-timeline" aria-labelledby="dashboard-stage-timeline-title"><header><div><span class="activity-kind">CRONOGRAMA · ETAPAS DA OBRA</span><h2 id="dashboard-stage-timeline-title">Linha do tempo de execução</h2><p>Visão gráfica das frentes, seus avanços e dependências. Selecione um card para abrir o fluxo completo da etapa.</p></div><div class="dashboard-stage-timeline-summary"><b>${timelineStages.length}</b><span>etapas<br>relacionais</span></div></header><div class="dashboard-stage-timeline-track">${timeline||'<p>Nenhuma etapa cadastrada.</p>'}</div><footer class="dashboard-stage-timeline-legend"><span><i class="planned"></i> Planejada</span><span><i class="active"></i> Em andamento</span><span><i class="done"></i> Concluída</span><button type="button" data-view="stages">Abrir cronograma completo ${ico('arrow-up-right')}</button></footer></section><nav class="carbon-widget-bar dashboard-initial-widget-bar" aria-label="Interfaces operacionais">${widgets.map(([view,icon,label])=>`<button type="button" data-view="${view}">${ico(icon)}<span>${label}</span></button>`).join('')}</nav><section class="dashboard-carbon-widget-grid">${widget('Próxima frente','PRIORIDADE PELO CAIXA','A etapa elegível é recalculada pelas dependências, cobertura financeira e materiais registrados.','stages','workflow',`${active} frentes em acompanhamento`)}${widget('Registros rápidos','APONTAMENTOS DE CAMPO','Abra a interface para registrar produção, unidade de medida, evidências e responsável.','records','clipboard-pen-line',`${records.length} registro(s) preservado(s)`)}${widget('Atendimento de leads','COMERCIAL','Consulte reservas, conversas, documentos e o vínculo de cada cliente ao lote.','leads','users-round',`${(state.publicLeads||[]).length} leads recebidos`)}${widget('Comissões','CARTEIRAS','Navegue por cards de corretores e aplique a regra na página dedicada.','brokers','users-round','Mensal · anual · acumulado')}</section></section>`;
 };
 
 // STAGES_V9: árvore de diretrizes, etapas e atividades dedicadas.
@@ -9841,12 +9846,25 @@ ViewLayer.prototype.connectControlCenterListenerV1=async function(){
   catch(error){console.info('Escuta da Central indisponível; edição local permanece ativa.',error);}
 };
 
+const controlCenterMaterialsAccordionMarkupV1=(materials,stages)=>{
+  const groups=stages.map(stage=>({stage,items:materials.filter(item=>item.stageKey===stage.key)})).filter(group=>group.items.length);
+  if(!groups.length)return '<div class="control-material-accordion-empty">Nenhum material ou equipamento relacionado às etapas.</div>';
+  return `<div class="control-material-accordion-list">${groups.map(({stage,items},index)=>`<details class="control-material-accordion" ${index===0?'open':''}><summary><span><small>ETAPA · ${esc(stage.key)}</small><b>${esc(stage.name)}</b><em>${items.length} propriedade(s) vinculada(s)</em></span><i>${ico('chevron-down')}</i></summary><div class="control-material-accordion-body"><p class="control-material-group-description">Esta composição orienta a frente de <strong>${esc(stage.name)}</strong>. Cada propriedade possui quantidade, unidade e situação próprias para facilitar a leitura e a decisão operacional.</p><div class="control-material-property-grid">${items.map(item=>`<article class="control-material-property" data-control-material-row="${esc(item.id)}"><header><div><small>PROPRIEDADE MATERIAL · ${esc(item.activityName||'Atividade principal')}</small><h3>${esc(item.name)}</h3><p>${esc(item.scope||'Requisito operacional da etapa, aguardando descrição complementar.')}</p></div><span class="control-material-status">${esc(item.status||'Planejado')}</span></header><div class="control-material-fields"><label><span>Quantidade<small>volume previsto ou medido</small></span><input data-control-material-field="quantity" data-control-material-id="${esc(item.id)}" type="number" min="0" step="any" value="${item.quantity==null?'':esc(item.quantity)}" aria-label="Quantidade de ${esc(item.name)}"></label><label><span>Unidade<small>como o consumo é contabilizado</small></span><input data-control-material-field="unit" data-control-material-id="${esc(item.id)}" value="${esc(item.unit||'')}" aria-label="Unidade de ${esc(item.name)}"></label><label><span>Situação<small>estado atual da propriedade</small></span><select data-control-material-field="status" data-control-material-id="${esc(item.id)}"><option ${item.status==='Planejado'?'selected':''}>Planejado</option><option ${item.status==='Em andamento'?'selected':''}>Em andamento</option><option ${item.status==='Atenção'?'selected':''}>Atenção</option><option ${item.status==='Concluído'?'selected':''}>Concluído</option><option ${item.status==='Dimensionar'?'selected':''}>Dimensionar</option></select></label></div></article>`).join('')}</div></div></details>`).join('')}</div>`;
+};
+const upgradeControlCenterMaterialsV1=(root,state)=>{
+  const section=[...root.querySelectorAll('.control-center-section')].find(item=>item.querySelector('.activity-kind')?.textContent.includes('02 · MATERIAIS'));
+  const host=section?.querySelector('.control-table-wrap');
+  if(!host||host.dataset.materialAccordionReady==='true')return;
+  const stages=executionModel.stages||[],materials=controlCenterMaterialRowsV1(state);
+  host.outerHTML=`<div class="control-material-accordion-host" data-material-accordion-ready="true">${controlCenterMaterialsAccordionMarkupV1(materials,stages)}</div>`;
+};
 const renderBeforeControlCenterV1=ViewLayer.prototype.render;
 ViewLayer.prototype.render=function(){
   renderBeforeControlCenterV1.call(this);
   if(appStore.get().view==='control'){
     const head=this.querySelector('.activity-header');
     if(head){const title=head.querySelector('span'),subtitle=head.querySelector('small');if(title)title.textContent='Central de operação';if(subtitle)subtitle.textContent='Tabelas relacionais, edições e escuta do agente';}
+    upgradeControlCenterMaterialsV1(this,appStore.get());
   }
 };
 const bindBeforeControlCenterV1=ViewLayer.prototype.bind;
@@ -10122,4 +10140,44 @@ ViewLayer.prototype.bind=function(...args){
     }
   });
   root.querySelector('[data-v5356-open-public]')?.addEventListener('click',()=>window.open(runtimeRouteV1('/leads'),'_blank','noopener')); return result;
+};
+
+// STAGE_DEDICATED_SUBPAGES_V5427: cards do cronograma e abas da etapa
+// compartilham o mesmo contexto. Agenda e Registros são superfícies próprias,
+// enquanto as abas de leitura permanecem âncoras dentro da etapa dedicada.
+const stageDedicatedSubpagesBindV5427=ViewLayer.prototype.bind;
+ViewLayer.prototype.bind=function(...args){
+  const result=stageDedicatedSubpagesBindV5427?.apply(this,args);
+  const recordsTab=this.querySelector('[data-stage-detail-tab="diario"]');
+  if(recordsTab)recordsTab.textContent='Registros';
+  if(this.dataset.stageDedicatedSubpagesBound==='true')return result;
+  this.dataset.stageDedicatedSubpagesBound='true';
+  const stageContext=key=>{
+    const stage=(executionModel.stages||[]).find(item=>String(item.key)===String(key))||executionModel.stages?.[0];
+    const activity=demoData.activities.find(item=>item.name===stage?.name)||demoData.activities.find(item=>item.id===stage?.key);
+    return {selectedStageV9:stage?.key||'',selectedStage:activity?.id||stage?.key||''};
+  };
+  this.addEventListener('click',event=>{
+    const stageButton=event.target?.closest?.('[data-stage-v9]');
+    if(stageButton&&this.contains(stageButton)){
+      event.preventDefault();event.stopImmediatePropagation();
+      const context=stageContext(stageButton.dataset.stageV9);
+      appStore.set({...context,view:'stages',activityDedicated:true,stageActivityDedicatedV9:false,selectedStageDetailTab:'andamento',lastAction:`Abriu a etapa ${stageButton.textContent.trim()}`});
+      return;
+    }
+    const tab=event.target?.closest?.('[data-stage-detail-tab]');
+    if(!tab||!this.contains(tab))return;
+    event.preventDefault();event.stopImmediatePropagation();
+    const dedicated=tab.closest('.stage-v9-dedicated-page'),key=tab.dataset.stageDetailTab;
+    dedicated?.querySelectorAll('[data-stage-detail-tab]').forEach(item=>item.classList.toggle('active',item===tab));
+    const state=appStore.get(),context=stageContext(state.selectedStageV9||state.selectedStage),label=key==='diario'?'Registros':tab.textContent.trim();
+    if(key==='agenda'||key==='diario'){
+      appStore.set({...context,view:key==='agenda'?'agenda':'records',activityDedicated:false,stageActivityDedicatedV9:false,selectedStageDetailTab:key,lastAction:`Abriu ${label} da etapa`});
+      return;
+    }
+    appStore.set({...context,selectedStageDetailTab:key,lastAction:`Abriu a aba ${label} da etapa`});
+    const targets={andamento:'.stage-v9-status-lines',atividades:'.stage-v9-flow-section',materiais:'.stage-v9-detail-grid'};
+    dedicated?.querySelector(targets[key])?.scrollIntoView({behavior:'smooth',block:'start'});
+  },true);
+  return result;
 };

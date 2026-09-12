@@ -292,11 +292,14 @@ export function createStore(initial) {
 }
 
 const sessionStarted = new Date().toISOString();
+const sessionStorageApi = typeof sessionStorage === 'undefined'
+  ? {getItem:()=>null,setItem:()=>{}}
+  : sessionStorage;
 export const appStore = createStore({
   view:'map', selectedLead:0, selectedMaterial:2, chatOpen:true, chatManual:false,
   currentActor:{uid:'local-warley',name:'Warley',role:'owner',label:'Dono'},
   config:null, mapReady:false, mapFilter:'execution', mapTileMode:'satellite', installPrompt:null, lastAction:'Aplicação iniciada', theme:'dark', reportFamily:'Financeiro', reportType:'financial-balance', reportPeriod:'2024-06',
-  sessionId:sessionStorage.getItem('belavista.session')||crypto.randomUUID().slice(0,8).toUpperCase(), sessionStarted, sidebarCollapsed:false, mapMode:'overview', adminMenu:false, selectedStage:2, stageSelected:false, selectedActivity:null, activityDedicated:false, printMode:false, editingRecord:null, recordMapArea:null, publicLeads:[],
+  sessionId:sessionStorageApi.getItem('belavista.session')||crypto.randomUUID().slice(0,8).toUpperCase(), sessionStarted, sidebarCollapsed:false, mapMode:'overview', adminMenu:false, selectedStage:2, stageSelected:false, selectedActivity:null, activityDedicated:false, printMode:false, editingRecord:null, recordMapArea:null, publicLeads:[],
   actionAudit:[{id:'ACT-BOOT',label:'Aplicação iniciada',at:sessionStarted,actor:'Warley',role:'Dono',view:'map'}],
   aiActions:[], selectedAiAction:null, raidItems:[], selectedRaidItem:null, raciAssignments:null, selectedRaciCell:null, selectedPertNode:null, pertOverrides:{},
   widgetLayouts:{chat:{},floating:{}}, mapView:{rotation:0,zoom:1.68,pan:{x:0,y:0},tiltAdjust:0}, solarHour:9, solarHourMode:'clock',
@@ -305,7 +308,7 @@ export const appStore = createStore({
   records:[{id:'REG-001',obra:'Aliança Park',atividade:'Drenagem Pluvial',data:'2024-06-06',hora:'08:30',responsavel:'Carlos Mendes',detalhes:'Medição da rede principal',status:'Pendente'}],
   ...restoredUiState
 });
-sessionStorage.setItem('belavista.session',appStore.get().sessionId);
+sessionStorageApi.setItem('belavista.session',appStore.get().sessionId);
 
 
 // BELAVISTA_MAP_WIDGETS_V4_GLOBALS
