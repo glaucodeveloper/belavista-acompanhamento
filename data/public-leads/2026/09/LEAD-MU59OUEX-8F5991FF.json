@@ -1,0 +1,44 @@
+{
+  "schema": "belavista.public-lead.v1",
+  "id": "LEAD-MU59OUEX-8F5991FF",
+  "createdAt": "2026-09-17T08:28:06.777Z",
+  "source": "public-map",
+  "project": "Aliança Park",
+  "status": "Novo lead",
+  "contact": {
+    "name": "Teste de certificacao Worker",
+    "whatsapp": "71999990000",
+    "instagramHandle": "@teste_certificacao_worker"
+  },
+  "document": {
+    "type": "CPF",
+    "last4": "4725",
+    "sha256": "7281dfb5e8becca0a1c5e77c1268baacb0f983572b8c204fd8df72b24175b231",
+    "encrypted": {
+      "algorithm": "AES-256-GCM",
+      "iv": "iri8zIBjFxMYScjO",
+      "ciphertext": "uvjNNs3Ogy9UepppKTIwWuHurpKOxtF7ZgOv"
+    }
+  },
+  "lot": {
+    "selectedLot": "LOTE-TESTE-CERTIFICACAO",
+    "selectedLotId": "TESTE-CERTIFICACAO-20260917",
+    "selectedLotData": null
+  },
+  "intent": {
+    "message": "Registro fictício para certificar a propagação pública no Worker.",
+    "detectedAt": "2026-09-17T08:28:08.681Z"
+  },
+  "conversation": {
+    "id": "test-certificacao-worker-20260917",
+    "history": []
+  },
+  "page": {
+    "href": "http://localhost:8080/public-leads.html?test=worker-certification",
+    "source": "public-map"
+  },
+  "consent": {
+    "granted": true,
+    "recordedAt": "2026-09-17T08:28:06.777Z"
+  }
+}
