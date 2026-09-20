@@ -6,6 +6,7 @@ const THREAD_KEY = 'belavista.worker-context-chat.v1';
 const VOICE_KEY = 'belavista.worker-context-chat.voice.v1';
 const NAV_KEY = 'belavista.worker-context-chat.last-route.v1';
 const MAX_MESSAGES = 60;
+const CHAT_IMAGE_MAX_BYTES = 6 * 1024 * 1024;
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -69,6 +70,8 @@ class WorkerContextChat {
     this.poll = null;
     this.pendingObservation = null;
     this.contextFadeTimer = null;
+    this.attachment = null;
+    this.pasteHandler = null;
   }
 
   mount() {
@@ -90,7 +93,12 @@ class WorkerContextChat {
             <button type="button" data-worker-chat-action="requirements">Revisar requisitos</button>
           </div>
           <form class="worker-context-chat-form" data-worker-chat-form>
-            <textarea name="message" rows="2" maxlength="2000" placeholder="Descreva um fato, peça uma ação ou revise uma diretriz…" aria-label="Mensagem para o assistente dos workers"></textarea>
+            <div class="worker-context-chat-attachment" data-worker-chat-attachment aria-live="polite" hidden></div>
+            <div class="worker-context-chat-input-shell">
+              <button type="button" class="worker-context-chat-image-button" data-worker-chat-camera aria-label="Adicionar foto à mensagem" title="Adicionar foto"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7.5h3l1.4-2h3.2l1.4 2H16a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="11.5" cy="13.5" r="3.1" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M16.5 11h.01" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg><span class="sr-only">Adicionar foto</span></button>
+              <input type="file" class="worker-context-chat-image-input" data-worker-chat-camera-input accept="image/png,image/jpeg,image/webp" capture="environment" aria-label="Capturar imagem para o raciocínio da IA">
+              <textarea name="message" rows="2" maxlength="2000" placeholder="Descreva um fato, peça uma ação ou revise uma diretriz…" aria-label="Mensagem para o assistente dos workers"></textarea>
+            </div>
             <div><small data-worker-chat-status>Pronto para observar e organizar.</small><button type="submit" data-worker-chat-submit>Enviar</button></div>
           </form>
         </div>
@@ -120,14 +128,31 @@ class WorkerContextChat {
       this.status.textContent = this.voiceEnabled ? 'Avisos falados ativados neste dispositivo.' : 'Avisos falados desativados.';
       if (!this.voiceEnabled) globalThis.speechSynthesis?.cancel();
     });
+    const cameraInput = qs('[data-worker-chat-camera-input]', this.root);
+    qs('[data-worker-chat-camera]', this.root)?.addEventListener('click', () => cameraInput?.click());
+    cameraInput?.addEventListener('change', event => {
+      const file = event.currentTarget.files?.[0];
+      if (file) this.readImage(file, 'camera');
+    });
+    this.pasteHandler = event => {
+      const item = [...(event.clipboardData?.items || [])].find(entry => entry.kind === 'file' && /^image\/(?:png|jpeg|webp)$/i.test(entry.type));
+      const file = item?.getAsFile?.();
+      if (!file) return;
+      event.preventDefault();
+      this.readImage(file, 'clipboard');
+    };
+    this.root.addEventListener('paste', this.pasteHandler);
     qs('[data-worker-chat-form]', this.root)?.addEventListener('submit', event => {
       event.preventDefault();
       const value = this.input.value.trim();
-      if (!value) return;
+      if (!value && !this.attachment) return;
       const editing = this.editingId;
+      const attachment = this.attachment;
       this.input.value = '';
       this.editingId = null;
-      this.submit(value, editing);
+      this.attachment = null;
+      this.renderAttachment();
+      this.submit(value || 'Analise a imagem anexada e descreva os fatos visíveis e seus impactos operacionais.', editing, attachment);
     });
     this.input?.addEventListener('keydown', event => {
       if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
@@ -142,6 +167,14 @@ class WorkerContextChat {
       if (speak) this.speak(speak.dataset.workerChatSpeak);
       const action = event.target.closest('[data-worker-chat-action]');
       if (action) this.runAction(action.dataset.workerChatAction);
+      const collapse = event.target.closest('[data-worker-chat-collapse]');
+      if (collapse) {
+        const message = collapse.closest('[data-message-id]');
+        if (!message) return;
+        const collapsed = message.classList.toggle('is-collapsed');
+        collapse.setAttribute('aria-expanded', String(!collapsed));
+        collapse.textContent = collapsed ? 'Expandir' : 'Recolher';
+      }
     });
   }
 
@@ -151,7 +184,8 @@ class WorkerContextChat {
       const isUser = item.kind === 'user';
       const text = esc(item.text);
       const meta = `${isUser ? 'Entrada registrada' : item.auto ? 'Observação automática' : 'Resposta da IA'} · ${new Date(item.at || Date.now()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-      return `<article class="worker-chat-message ${isUser ? 'is-user' : 'is-assistant'}" data-message-id="${esc(item.id)}"><div class="worker-chat-message-meta"><span>${esc(meta)}</span>${isUser ? `<button type="button" data-worker-chat-edit="${esc(item.id)}">Editar</button>` : `<button type="button" data-worker-chat-speak="${esc(item.text)}" aria-label="Ouvir resposta">Ouvir</button>`}</div><p>${text}</p>${item.audit ? `<small class="worker-chat-audit">${esc(item.audit)}</small>` : ''}</article>`;
+      const attachment = item.attachment ? `<small class="worker-chat-image-badge">📷 ${esc(item.attachment.name || 'imagem')}</small>` : '';
+      return `<article class="worker-chat-message ${isUser ? 'is-user' : 'is-assistant'}" data-message-id="${esc(item.id)}"><div class="worker-chat-message-meta"><span>${esc(meta)}</span><span class="worker-chat-message-actions">${isUser ? `<button type="button" data-worker-chat-edit="${esc(item.id)}">Editar</button>` : `<button type="button" data-worker-chat-speak="${esc(item.text)}" aria-label="Ouvir resposta">Ouvir</button><button type="button" data-worker-chat-collapse aria-expanded="true">Recolher</button>`}</span></div>${attachment}<p>${text}</p>${item.audit ? `<small class="worker-chat-audit">${esc(item.audit)}</small>` : ''}</article>`;
     }).join('');
     this.log.scrollTop = this.log.scrollHeight;
   }
@@ -167,7 +201,8 @@ class WorkerContextChat {
     const item = {
       id: `worker-chat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       kind, text: value, at: now(), auto: Boolean(options.auto),
-      audit: options.audit || ''
+      audit: options.audit || '',
+      attachment: options.attachment ? { name: String(options.attachment.name || 'imagem'), mimeType: String(options.attachment.mimeType || 'image/png') } : null
     };
     this.messages.push(item);
     this.save();
@@ -185,7 +220,7 @@ class WorkerContextChat {
     this.status.textContent = 'Editando entrada; envie para reavaliar a diretriz.';
   }
 
-  async submit(text, editingId = null) {
+  async submit(text, editingId = null, attachment = null) {
     if (editingId) {
       const item = this.messages.find(message => message.id === editingId);
       if (item) {
@@ -199,35 +234,83 @@ class WorkerContextChat {
       this.render();
       qs('[data-worker-chat-submit]', this.root).textContent = 'Enviar';
     } else {
-      this.add('user', text, { audit: `Contexto capturado: ${contextSummary(currentContext())}` });
+      this.add('user', text, { audit: `Contexto capturado: ${contextSummary(currentContext())}`, attachment });
     }
     this.status.textContent = 'Lendo contexto, relações e saídas possíveis…';
-    const reply = await this.ask(text);
+    const reply = await this.ask(text, attachment);
     this.add('assistant', reply.text, { audit: reply.audit });
-    this.status.textContent = reply.source === 'endpoint' ? 'Resposta recebida do endpoint; trilha registrada.' : 'Modo local de demonstração; saída externa desabilitada.';
+    this.status.textContent = reply.source === 'endpoint' ? 'Resposta recebida do endpoint; trilha registrada.' : 'Endpoint indisponível; nenhuma ação executada.';
+    const recordTool = reply.toolCalls?.find(call => call?.name === 'records.open_form');
+    if (recordTool && location.pathname.startsWith('/admin')) {
+      window.dispatchEvent(new CustomEvent('alianca:open-general-event', { detail: recordTool.arguments || recordTool.args || {} }));
+      this.status.textContent = 'Ficha de evento aberta para revisão; nada foi registrado automaticamente.';
+    }
     this.executeSafeActions(text);
     if (this.voiceEnabled) this.speak(reply.text);
   }
 
-  async ask(message) {
+  readImage(file, source = 'file') {
+    if (!file) return;
+    const mimeType = String(file.type || '').toLowerCase();
+    if (!/^image\/(?:png|jpeg|webp)$/.test(mimeType)) {
+      this.status.textContent = 'Use PNG, JPEG ou WEBP.';
+      return;
+    }
+    if (Number(file.size) > CHAT_IMAGE_MAX_BYTES) {
+      this.status.textContent = 'A imagem precisa ter no máximo 6 MB.';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '');
+      if (!/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/i.test(dataUrl)) {
+        this.status.textContent = 'Não foi possível preparar a imagem.';
+        return;
+      }
+      this.attachment = { name: String(file.name || `imagem-${source}.png`), mimeType, dataUrl, source };
+      this.renderAttachment();
+      this.status.textContent = 'Imagem pronta; escreva a pergunta ou envie diretamente.';
+    };
+    reader.onerror = () => { this.status.textContent = 'Não foi possível ler a imagem.'; };
+    reader.readAsDataURL(file);
+  }
+
+  renderAttachment() {
+    const slot = qs('[data-worker-chat-attachment]', this.root);
+    if (!slot) return;
+    slot.hidden = !this.attachment;
+    slot.innerHTML = this.attachment ? `<img src="${esc(this.attachment.dataUrl)}" alt="Prévia da imagem ${esc(this.attachment.name)}"><span><b>${this.attachment.source === 'clipboard' ? 'Imagem colada' : 'Imagem pronta para a IA'}</b><small>${esc(this.attachment.name)}</small></span><button type="button" data-worker-chat-attachment-remove aria-label="Remover imagem">×</button>` : '';
+    qs('[data-worker-chat-attachment-remove]', slot)?.addEventListener('click', () => {
+      this.attachment = null;
+      const input = qs('[data-worker-chat-camera-input]', this.root);
+      if (input) input.value = '';
+      this.renderAttachment();
+      this.status.textContent = 'Imagem removida; pronto para observar e organizar.';
+    });
+  }
+
+  async ask(message, attachment = null) {
     const context = currentContext();
     try {
-      const response = await fetch('/api/ai', {
+      const endpoint = attachment ? '/api/ai/vision-reasoning' : '/api/ai';
+      const response = await fetch(endpoint, {
         method: 'POST', cache: 'no-store', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           message, view: 'workers', context: {
             ...context,
             summary: contextSummary(context),
             capabilities: ['observar eventos', 'editar entradas', 'organizar agenda', 'programar cronograma', 'recalcular materiais e equipe', 'preparar notificações locais']
-          }
+          },
+          attachment: attachment ? { name: attachment.name, mimeType: attachment.mimeType, dataUrl: attachment.dataUrl } : null
         })
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const payload = await response.json();
       return {
         text: String(payload.text || '').trim() || 'O endpoint de IA retornou uma resposta vazia.',
+        toolCalls: Array.isArray(payload.toolCalls) ? payload.toolCalls : [],
         source: 'endpoint',
-        audit: `Endpoint consultado · ${contextSummary(context)}`
+        audit: `Endpoint consultado${payload.vision ? ` · NVIDIA ${payload.model || 'multimodal reasoning'}` : ''} · ${contextSummary(context)}`
       };
     } catch (error) {
       return {
@@ -348,7 +431,12 @@ class WorkerContextChat {
       monitorFrame = globalThis.requestAnimationFrame(() => {
         monitorFrame = 0;
         const monitor = qs('[data-worker-chat-monitor]', this.root);
-        if (monitor) monitor.textContent = `Observando ${labelForPath(location.pathname)} · ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+        if (!monitor) return;
+        const next = `Observando ${labelForPath(location.pathname)} · ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+        // O monitor está dentro do body observado. Reescrever o mesmo texto
+        // a cada callback criava MutationObserver → textContent → observer,
+        // mantendo a aba ocupada mesmo sem interação ou renderização 3D.
+        if (monitor.textContent !== next) monitor.textContent = next;
       });
     });
     this.observer.observe(document.body, { childList: true, subtree: true });

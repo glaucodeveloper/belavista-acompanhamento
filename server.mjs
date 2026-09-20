@@ -10,12 +10,17 @@ const port = Number(process.env.PORT || 8080);
 const host = process.env.HOST || '0.0.0.0';
 const publicOrigin = String(process.env.PUBLIC_ORIGIN || '').replace(/\/$/,'');
 const belavistaApiBase = String(process.env.BELAVISTA_API_BASE || '').replace(/\/$/,'');
+const instagramAccessToken = process.env.INSTAGRAM_ACCESS_TOKEN || process.env.CLIENT_ACCESS_TOKEN || '';
 const aiProvider=String(process.env.AI_PROVIDER||'gemini').trim().toLowerCase();
 const geminiModel = process.env.GEMINI_MODEL || 'gemini-3.7-flash';
 const nvidiaModel = process.env.NVIDIA_MODEL || 'meta/llama-3.2-11b-vision-instruct';
+const nvidiaVisionModel = process.env.NVIDIA_VISION_MODEL || process.env.NVIDIA_VLM_MODEL || 'meta/llama-3.2-90b-vision-instruct';
 const nvidiaApiUrl = process.env.NVIDIA_API_URL || 'https://integrate.api.nvidia.com/v1/chat/completions';
+const nvidiaReasoningVisionModel = process.env.NVIDIA_REASONING_VISION_MODEL || process.env.NVIDIA_REASONING_VLM_MODEL || nvidiaVisionModel;
+const nvidiaReasoningApiUrl = process.env.NVIDIA_REASONING_API_URL || nvidiaApiUrl;
+const nvidiaReasoningBudget = Math.max(256,Math.min(16384,Number(process.env.NVIDIA_REASONING_BUDGET)||2048));
 const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.glb':'model/gltf-binary','.pdf':'application/pdf','.xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'};
-const {health,entitySummary,listRecords,createRecord,createFieldConfirmation,updateRecord,deleteRecord,listPurchaseReceipts,purchaseReceiptSummary,createPurchaseReceipt,getPurchaseReceiptFile,deletePurchaseReceipt,listCommercialSales,createCommercialSale,updateCommercialSale,getCommercialSaleFile,deleteCommercialSale,listCashFlowEntries,createCashFlowEntry,cashFlowSummary,listCommissionReasons,updateCommissionReason,listOutsourcingReceipts,createOutsourcingReceipt,getOutsourcingReceiptFile,listLeadMessages,createLeadMessage,getDesktopSetup,saveDesktopSetup,ingestInstagramDirect,listInstagramLeadReports,getInstagramLeadReport,listStagesAdmin,getStageAdmin,updateStageAdmin,saveStageAiConfig,getStageReport,getStageWorkbenchState,saveStageWorkbenchState,listWorkbenchActivityLocations,listWorkbenchDiary,createWorkbenchDiary,listWorkbenchAttachments,createWorkbenchAttachment,getWorkbenchAttachmentFile,deleteWorkbenchAttachment}=await import('./persistence.mjs');
+const {health,entitySummary,listRecords,createRecord,createFieldConfirmation,updateRecord,deleteRecord,listPurchaseReceipts,purchaseReceiptSummary,createPurchaseReceipt,getPurchaseReceiptFile,deletePurchaseReceipt,listCommercialSales,createCommercialSale,updateCommercialSale,getCommercialSaleFile,deleteCommercialSale,listCashFlowEntries,createCashFlowEntry,getCashFlowAttachment,cashFlowSummary,listCommissionReasons,updateCommissionReason,listOutsourcingReceipts,createOutsourcingReceipt,getOutsourcingReceiptFile,listLeadMessages,createLeadMessage,getDesktopSetup,saveDesktopSetup,ingestInstagramDirect,listInstagramLeadReports,getInstagramLeadReport,listStagesAdmin,getStageAdmin,updateStageAdmin,saveStageAiConfig,getStageReport,getStageWorkbenchState,saveStageWorkbenchState,listWorkbenchActivityLocations,listWorkbenchDiary,createWorkbenchDiary,listWorkbenchAttachments,createWorkbenchAttachment,getWorkbenchAttachmentFile,deleteWorkbenchAttachment}=await import('./persistence.mjs');
 const {agentTree,evaluateAgentTree}=await import('./agent-tree.js');
 const {requestActor,requireRoles,authStatus}=await import('./auth-service.mjs');
 const {getCalibration,updateCalibration,recordAgentEvent,recalculateOperationalState,latestOperationalState,listNotifications,acknowledgeNotification,registerDevice,buildAutomationPanorama,runAutomationPlanner,runOperationalLoop,buildWorkerMonitor,markEventProcessed}=await import('./operational-engine.mjs');
@@ -23,6 +28,7 @@ const {getProductionBaseline,getProductionPlan}=await import('./production-plann
 const {publishBridgeEvent}=await import('./firebase-bridge.mjs');
 const {runOperationalAssistant}=await import('./worker/src/nvidia.js');
 const {getCamofoxBridgeStatus,openInstagramInbox,fallbackInstagramDraft}=await import('./desktop/instagram-bridge.mjs');
+const {listInstagramFeed,replyInstagramComment,defaultInstagramAutomationPolicy}=await import('./worker/src/social.js');
 
 // A mesma fonte legível pelo time fica incorporada ao prompt operacional. Isso
 // evita que a interface, o worker e o modelo mantenham ordens de execução
@@ -31,6 +37,7 @@ const {getCamofoxBridgeStatus,openInstagramInbox,fallbackInstagramDraft}=await i
 let aiConstructionDocument='';
 try { aiConstructionDocument=await readFile(join(serverRoot,'docs/ai-construction-operational-playbook.md'),'utf8'); } catch (error) { console.warn('[ai protocol]',error.message); }
 const aiProductionBaseline=getProductionBaseline();
+let localInstagramAutomationPolicy={...defaultInstagramAutomationPolicy,source:'local'};
 
 function bridgeAgentEvent(input){
   const stored=recordAgentEvent(input);
@@ -43,11 +50,11 @@ function bridgeAgentEvent(input){
 // and UI state exist. The server only asks the model for validated intent; it
 // never lets a prompt execute shell, SQL, network or arbitrary JavaScript.
 const clientTools=[
-  {name:'ui.navigate',description:'Abre uma área da aplicação.',args:{view:'assistant|control|stages|agenda|activities|progress|records|leads|commissions|brokers|finance|reports|settings'}},
+  {name:'ui.navigate',description:'Abre uma área da aplicação.',args:{view:'assistant|control|stages|agenda|activities|progress|records|leads|commissions|brokers|brokers-board|commission-deal|finance|reports|settings'}},
   {name:'map.set_overlay',description:'Destaca uma frente no GLB compartilhado.',args:{category:'terraplanagem|drenagem|rede-agua|rede-eletrica|pavimentacao|urbanizacao|clear'}},
   {name:'map.adjust_view',description:'Ajusta a vista 3D do mapa por deltas pequenos.',args:{rotationDelta:'number opcional',tiltDelta:'number opcional',zoomDelta:'number opcional',fit:'boolean opcional'}},
   {name:'map.set_tiles',description:'Alterna a base cartográfica.',args:{mode:'satellite|osm'}},
-  {name:'records.open_form',description:'Abre o formulário local de novo registro sem gravar dados.',args:{activity:'texto opcional',responsible:'texto opcional',details:'texto opcional'}},
+  {name:'records.open_form',description:'Abre a ficha de evento geral na Central operacional, com sugestões para revisão humana; não grava dados.',args:{activity:'nome do evento opcional',responsible:'responsável opcional',details:'descrição inferida opcional',category:'ocorrencia|vistoria|reuniao|comunicacao|decisao|outro opcional'}},
   {name:'reports.select',description:'Abre um relatório salvo.',args:{family:'Financeiro|Construção|Suprimentos|Comercial|Governança',reportType:'id opcional'}},
   {name:'commissions.filter',description:'Filtra a carteira comercial.',args:{query:'texto opcional',status:'Reserva|Em análise|Proposta|Assinado|all opcional',profile:'id opcional'}},
   {name:'ui.print',description:'Solicita impressão do escopo visível; exige confirmação humana.',args:{scope:'current|map|contract'}}
@@ -72,17 +79,18 @@ function mergeToolCalls(...groups){
   const output=[],seen=new Set();for(const group of groups)for(const call of group||[]){const normalized=normalizeToolCall(call);const key=normalized?`${normalized.name}:${JSON.stringify(normalized.arguments)}`:'';if(normalized&&!seen.has(key)){seen.add(key);output.push(normalized);}}return output.slice(0,4);
 }
 function parseToolEnvelope(content){
-  const raw=String(content||'').trim();
+  const raw=String(content||'').trim().replace(/<think>[\s\S]*?<\/think>/gi,'').trim();
   const candidates=[raw,raw.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1],raw.match(/\{[\s\S]*\}/)?.[0]].filter(Boolean);
   for(const candidate of candidates){
-    try{const parsed=JSON.parse(candidate);const toolCalls=(parsed.toolCalls||parsed.tool_calls||[]).map(normalizeToolCall).filter(Boolean);if(typeof parsed.reply==='string'||typeof parsed.text==='string'||toolCalls.length)return toolEnvelope(parsed.reply||parsed.text||'',toolCalls);}catch{}
+    try{const parsed=JSON.parse(candidate);const toolCalls=(parsed.toolCalls||parsed.tool_calls||[]).map(normalizeToolCall).filter(Boolean);if(typeof parsed.reply==='string'||typeof parsed.text==='string'||parsed.proposal||parsed.extracted||toolCalls.length)return {...parsed,...toolEnvelope(parsed.reply||parsed.text||'',toolCalls)};}catch{}
   }
   return toolEnvelope(raw,[]);
 }
 function inferredToolCalls(message){
   const text=String(message||'').toLocaleLowerCase('pt-BR'),calls=[];
   const go=(view)=>calls.push({name:'ui.navigate',arguments:{view}});
-  if(/\b(central\s+operacional|tabelas?\s+(de\s+)?(materiais|comiss[oõ]es|finan[cç]as)|escuta\s+(do\s+)?(agente|firebase))\b/.test(text))go('control');
+  if(/\b(registr\w*|cri\w*|adicion\w*|novo|nova)\b/.test(text)&&/\b(evento|ocorr[eê]ncia|registro\s+geral)\b/.test(text))calls.push({name:'records.open_form',arguments:{details:String(message||'').trim()}});
+  else if(/\b(central\s+operacional|tabelas?\s+(de\s+)?(materiais|comiss[oõ]es|finan[cç]as)|escuta\s+(do\s+)?(agente|firebase))\b/.test(text))go('control');
   else if(/\b(registro|apontamento|di[aá]rio)\b/.test(text))go('records');
   else if(/\b(dre|fluxo de caixa|balan[cç]o|financeir)\b/.test(text))go('finance');
   else if(/\b(relat[oó]rio)\b/.test(text))go('reports');
@@ -98,12 +106,14 @@ function inferredToolCalls(message){
   if(/\b(osm|openstreet)\b/.test(text))calls.push({name:'map.set_tiles',arguments:{mode:'osm'}});
   const overlays=[['terraplanagem','terraplanagem'],['drenagem','drenagem'],['rede de [aá]gua','rede-agua'],['rede el[eé]trica','rede-eletrica'],['pavimenta','pavimentacao'],['pra[cç]a|urbaniza|lazer','urbanizacao']];
   const overlay=overlays.find(([pattern])=>new RegExp(pattern).test(text));if(overlay&&/\b(mapa|destac|mostrar|real[cç]ar|highlight)\b/.test(text))calls.push({name:'map.set_overlay',arguments:{category:overlay[1]}});
-  if(/\b(novo|criar|adicionar)\b/.test(text)&&/\b(registro|apontamento)\b/.test(text))calls.push({name:'records.open_form',arguments:{}});
+  if(/\b(novo|criar|adicionar)\b/.test(text)&&/\b(registro|apontamento)\b/.test(text)&&!calls.some(call=>call.name==='records.open_form'))calls.push({name:'records.open_form',arguments:{details:String(message||'').trim()}});
   if(/\b(imprim|pdf|exportar mapa)\b/.test(text))calls.push({name:'ui.print',arguments:{scope:/mapa/.test(text)?'map':'current'}});
-  if(/\b(financeir\w*|dre|fluxo de caixa)\b/.test(text))calls.push({name:'reports.select',arguments:{family:'Financeiro'}});
-  else if(/\b(constru[cç]\w*|obra|f[ií]sico-financeir\w*|evm)\b/.test(text))calls.push({name:'reports.select',arguments:{family:'Construção'}});
-  else if(/\b(suprimento\w*|fornecedor\w*|material\w*|compra\w*)\b/.test(text))calls.push({name:'reports.select',arguments:{family:'Suprimentos'}});
-  else if(/\b(comercial\w*|convers[aã]o\w*|funil|venda\w*)\b/.test(text))calls.push({name:'reports.select',arguments:{family:'Comercial'}});
+  if(!calls.some(call=>call.name==='records.open_form')){
+    if(/\b(financeir\w*|dre|fluxo de caixa)\b/.test(text))calls.push({name:'reports.select',arguments:{family:'Financeiro'}});
+    else if(/\b(constru[cç]\w*|obra|f[ií]sico-financeir\w*|evm)\b/.test(text))calls.push({name:'reports.select',arguments:{family:'Construção'}});
+    else if(/\b(suprimento\w*|fornecedor\w*|material\w*|compra\w*)\b/.test(text))calls.push({name:'reports.select',arguments:{family:'Suprimentos'}});
+    else if(/\b(comercial\w*|convers[aã]o\w*|funil|venda\w*)\b/.test(text))calls.push({name:'reports.select',arguments:{family:'Comercial'}});
+  }
   return calls.slice(0,4);
 }
 
@@ -210,16 +220,36 @@ async function gemini(req,res){
   result.toolCalls=mergeToolCalls(result.toolCalls,inferredToolCalls(message));
   return send(res,200,{...result,provider:'gemini',model:geminiModel});
 }
+function normalizeNvidiaImageAttachment(attachment){
+  const source=String(attachment?.dataUrl||'').trim();
+  const match=source.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/=\s]+)$/i);
+  if(!match)return null;
+  const mimeType=match[1].toLowerCase()==='image/jpg'?'image/jpeg':match[1].toLowerCase();
+  const base64=match[2].replace(/\s+/g,'');
+  if(!base64||base64.length>8_400_000)return null;
+  return {mimeType,dataUrl:`data:${mimeType};base64,${base64}`};
+}
 async function nvidia(req,res){
   if(!process.env.NVIDIA_API_KEY) return send(res,503,{error:'NVIDIA_API_KEY não configurada no servidor.'});
+  const reasoningVision=req.url&&new URL(req.url,'http://localhost').pathname==='/api/ai/vision-reasoning';
   const {message,view='assistant',mapContext=false,attachment=null,context={}}=await body(req);
-  if(typeof message!=='string'||!message.trim()) return send(res,400,{error:'Mensagem inválida.'});
-  const upstream=await fetch(nvidiaApiUrl,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','Authorization':`Bearer ${process.env.NVIDIA_API_KEY}`},body:JSON.stringify({model:nvidiaModel,messages:[{role:'system',content:'Você é um assistente operacional objetivo. Siga exatamente o protocolo JSON de ferramentas entregue no pedido do usuário.'},{role:'user',content:operationalPrompt(message,view,mapContext,context)}],temperature:.15,top_p:.9,max_tokens:700,stream:false}),signal:AbortSignal.timeout(60000)});
+  if(reasoningVision&&!attachment)return send(res,400,{error:'A rota de reasoning exige uma imagem.'});
+  if((typeof message!=='string'||!message.trim())&&!attachment)return send(res,400,{error:'Mensagem inválida.'});
+  const image=attachment?normalizeNvidiaImageAttachment(attachment):null;
+  if(attachment&&!image)return send(res,400,{error:'Imagem inválida. Use PNG, JPEG ou WEBP de até 6 MB.'});
+  const requestMessage=typeof message==='string'&&message.trim()?message:'Analise a imagem anexada e descreva os fatos visíveis e seus impactos operacionais.';
+  const prompt=operationalPrompt(requestMessage,view,mapContext,context);
+  const userContent=[{type:'text',text:prompt}];
+  if(image)userContent.push({type:'image_url',image_url:{url:image.dataUrl}});
+  const model=image?(reasoningVision?nvidiaReasoningVisionModel:nvidiaVisionModel):nvidiaModel;
+  const endpoint=image&&reasoningVision?nvidiaReasoningApiUrl:nvidiaApiUrl;
+  const upstream=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','Authorization':`Bearer ${process.env.NVIDIA_API_KEY}`},body:JSON.stringify({model,messages:[{role:'system',content:'Você é um assistente operacional objetivo. Para imagens, use raciocínio visual interno, não exponha cadeia de pensamento e siga exatamente o protocolo JSON de ferramentas entregue no pedido do usuário.'},{role:'user',content:image?userContent:prompt}],temperature:image&&reasoningVision?.6:.15,top_p:image&&reasoningVision?.95:.9,max_tokens:image&&reasoningVision?4096:700,reasoning_budget:image&&reasoningVision?nvidiaReasoningBudget:undefined,stream:false}),signal:AbortSignal.timeout(120000)});
   const json=await upstream.json();
   if(!upstream.ok) return send(res,502,{error:json?.detail||json?.message||json?.error?.message||'NVIDIA NIM recusou a solicitação.'});
   const result=parseToolEnvelope(json?.choices?.[0]?.message?.content||'NVIDIA NIM não retornou texto.');
-  result.toolCalls=mergeToolCalls(result.toolCalls,inferredToolCalls(message));
-  return send(res,200,{...result,provider:'nvidia',model:nvidiaModel,attachmentIgnored:Boolean(attachment)});
+  result.toolCalls=mergeToolCalls(result.toolCalls,inferredToolCalls(requestMessage));
+  const attachmentRef=image?{id:`IMG-LOCAL-${Date.now().toString(36).toUpperCase()}`,name:String(attachment?.name||'imagem'),mimeType:image.mimeType,sizeBytes:Math.floor(image.dataUrl.split(',')[1].length*3/4),stored:false,storage:'local-ephemeral',reference:'local://ai-attachment',warning:'O servidor local não persiste anexos; use o endpoint do Cloudflare Worker com R2 para aceitar como evidência.'}:null;
+  return send(res,200,{...result,provider:'nvidia',model,endpoint,vision:Boolean(image),reasoning:Boolean(image&&reasoningVision),attachmentAccepted:Boolean(image),attachment:attachmentRef,attachmentStorage:'local-ephemeral'});
 }
 async function ai(req,res){
   if(aiProvider==='nvidia') return nvidia(req,res);
@@ -228,7 +258,7 @@ async function ai(req,res){
 }
 function aiStatus(){
   const configured=aiProvider==='nvidia'?Boolean(process.env.NVIDIA_API_KEY):aiProvider==='gemini'?Boolean(process.env.GEMINI_API_KEY):false;
-  return {provider:aiProvider,model:aiProvider==='nvidia'?nvidiaModel:geminiModel,configured,supportsImages:aiProvider==='gemini',toolProtocol:'belavista-client-tools/v1',toolCount:clientTools.length};
+  return {provider:aiProvider,model:aiProvider==='nvidia'?nvidiaModel:geminiModel,visionModel:nvidiaVisionModel,reasoningVisionModel:nvidiaReasoningVisionModel,reasoningVisionEndpoint:nvidiaReasoningApiUrl,reasoningBudget:nvidiaReasoningBudget,configured,supportsImages:aiProvider==='nvidia'||aiProvider==='gemini',supportsImageReasoning:aiProvider==='nvidia',attachmentStorage:'local-ephemeral',toolProtocol:'belavista-client-tools/v1',toolCount:clientTools.length};
 }
 function requestOrigin(req){
   if(publicOrigin)return publicOrigin;
@@ -242,12 +272,19 @@ function pageForPath(pathname){
   if(pathname==='/leads'||pathname==='/leads/')return 'public-leads.html';
   if(pathname==='/admin'||pathname==='/admin/')return 'index.html';
   if(pathname==='/desktop/setup'||pathname==='/desktop/setup/')return 'desktop-setup.html';
-  if(pathname==='/admin/workers'||pathname==='/admin/workers/'||pathname==='/admin/workers/stage'||pathname==='/admin/workers/stage/'||pathname==='/admin/workers/activity'||pathname==='/admin/workers/activity/')return 'admin-workers.html';
+  if(pathname==='/admin/workers'||pathname==='/admin/workers/'||pathname==='/admin/workers/stage'||pathname==='/admin/workers/stage/'||pathname==='/admin/workers/activity'||pathname==='/admin/workers/activity/'||pathname==='/admin/workers/activity/record'||pathname==='/admin/workers/activity/record/')return 'admin-workers.html';
   return pathname==='/'?'index.html':pathname;
 }
 function send(res,status,data,headers={}){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto',...headers});res.end(JSON.stringify(data));}
-const proxiedApiPrefixes=['/api/records','/api/field-confirmations','/api/purchase-receipts','/api/budget-lines','/api/agenda-items','/api/notifications','/api/stages','/api/stage-correlations'];
+const proxiedApiPrefixes=['/api/records','/api/field-confirmations','/api/purchase-receipts','/api/budget-lines','/api/agenda-items','/api/notifications','/api/stages','/api/stage-correlations','/api/communications'];
 function shouldProxyApi(pathname){
+  // A instalação local sem BELAVISTA_API_TOKEN precisa gravar os registros na
+  // base SQLite local. Sem esta exceção, o HTML de campo era encaminhado ao
+  // Worker sem o token de serviço e recebia 401 antes de chegar ao parser de
+  // mapArea/partIds. Em produção, quando o token existe, o proxy continua
+  // ativo para manter o Worker como origem operacional.
+  const recordsPath=pathname==='/api/records'||pathname.startsWith('/api/records/');
+  if(recordsPath&&!process.env.BELAVISTA_API_TOKEN)return false;
   return Boolean(belavistaApiBase)&&proxiedApiPrefixes.some(prefix=>pathname===prefix||pathname.startsWith(`${prefix}/`));
 }
 async function proxyApi(req,res,pathname){
@@ -382,6 +419,14 @@ async function purchaseReceiptsApi(req,res,pathname){
 
 async function cashFlowApi(req,res,pathname){
   if(req.method==='GET'&&pathname==='/api/cash-flow')return send(res,200,{entries:listCashFlowEntries(),summary:cashFlowSummary()});
+  const fileMatch=pathname.match(/^\/api\/cash-flow\/([^/]+)\/file$/);
+  if(fileMatch&&req.method==='GET'){
+    await requireRoles(req,['owner','admin','developer']);
+    const file=getCashFlowAttachment(decodeURIComponent(fileMatch[1]));
+    if(!file)return send(res,404,{error:'Anexo do registro de caixa não encontrado.'});
+    const data=await readFile(file.storagePath);
+    res.writeHead(200,{'Content-Type':file.mimeType||'application/octet-stream','Content-Length':data.length,'Content-Disposition':`inline; filename*=UTF-8''${encodeURIComponent(file.fileName||'anexo-caixa')}`,'Cache-Control':'private, max-age=300'});res.end(data);return;
+  }
   if(req.method==='POST'&&pathname==='/api/cash-flow'){const actor=await requireRoles(req,['owner']),entry=createCashFlowEntry(await body(req));bridgeAgentEvent({type:'cash.changed',entity:'cash_flow_entries',entityId:entry.id,actor,payload:entry});return send(res,201,{entry,summary:cashFlowSummary(),operational:recalculateOperationalState('cash.changed')});}
   return send(res,405,{error:'Método não permitido.'});
 }
@@ -418,7 +463,38 @@ async function createInstagramDraft(report,instructions=''){
   }catch(error){console.warn('[instagram draft]',error.message);}
   return {body:fallback,provider:'deterministic',requiresApproval:true,delivery:'draft-only'};
 }
+const localInstagramFeed=()=>({source:'local-demo',configured:false,accountId:'demo',updatedAt:new Date().toISOString(),notice:'Feed demonstrativo local. Configure o token do Instagram no Worker para consultar publicações reais.',permissions:['instagram_business_basic','instagram_business_manage_comments'],posts:[
+  {id:'demo-post-01',mediaType:'IMAGE',mediaUrl:'/assets/public/alianca-park-satellite-generated-v5406.png',thumbnailUrl:'/assets/public/alianca-park-satellite-generated-v5406.png',caption:'Um novo jeito de viver bem. Conheça o Aliança Park em Amargosa, Bahia.',permalink:'#',timestamp:'2026-09-14T12:00:00.000Z',likeCount:42,commentsCount:2,comments:[
+    {id:'demo-comment-01',mediaId:'demo-post-01',text:'Onde fica o empreendimento?',username:'@mariana.souza',timestamp:'2026-09-14T13:12:00.000Z',likeCount:3,replies:[]},
+    {id:'demo-comment-02',mediaId:'demo-post-01',text:'Tem lotes disponíveis para investimento?',username:'@rafael.alves',timestamp:'2026-09-14T13:40:00.000Z',likeCount:1,replies:[]}
+  ]},
+  {id:'demo-post-02',mediaType:'IMAGE',mediaUrl:'/assets/public/dwg-satellite-photoreal-v5420.png',thumbnailUrl:'/assets/public/dwg-satellite-photoreal-v5420.png',caption:'Espaço, natureza e novas possibilidades para os próximos capítulos.',permalink:'#',timestamp:'2026-09-11T15:30:00.000Z',likeCount:68,commentsCount:1,comments:[
+    {id:'demo-comment-03',mediaId:'demo-post-02',text:'Gostaria de conhecer a implantação e as condições.',username:'@camila.oliveira',timestamp:'2026-09-11T16:02:00.000Z',likeCount:2,replies:[]}
+  ]},
+  {id:'demo-post-03',mediaType:'IMAGE',mediaUrl:'/assets/public/alianca-park-terrain-expanded-v5390.png',thumbnailUrl:'/assets/public/alianca-park-terrain-expanded-v5390.png',caption:'Seu lugar começa aqui. Fale com a equipe e agende uma visita.',permalink:'#',timestamp:'2026-09-08T10:10:00.000Z',likeCount:31,commentsCount:1,comments:[
+    {id:'demo-comment-04',mediaId:'demo-post-03',text:'É possível reservar um lote?',username:'@joaopedro.bahia',timestamp:'2026-09-08T11:26:00.000Z',likeCount:0,replies:[]}
+  ]}
+]});
+async function instagramFeedApi(req,res,pathname){
+  await desktopActor(req);
+  if(pathname==='/api/instagram/feed'&&req.method==='GET'){
+    if(instagramAccessToken&&(process.env.INSTAGRAM_ACCOUNT_ID||process.env.INSTAGRAM_USER_ID)){
+      try{const query=new URL(req.url,'http://localhost').searchParams;return send(res,200,await listInstagramFeed(process.env,{limit:query.get('limit'),commentsLimit:query.get('commentsLimit')}));}
+      catch(error){return send(res,502,{source:'unavailable',configured:true,accountId:'configured',updatedAt:new Date().toISOString(),error:error.message||'Não foi possível consultar o feed real.',metaCode:error.metaCode||null,metaSubcode:error.metaSubcode||null,permissions:['instagram_business_basic','instagram_business_manage_comments'],posts:[]});}
+    }
+    return send(res,200,localInstagramFeed());
+  }
+  if(pathname==='/api/instagram/automation-policy'){
+    if(req.method==='GET')return send(res,200,localInstagramAutomationPolicy);
+    if(req.method==='PUT'){const input=await body(req);localInstagramAutomationPolicy={...defaultInstagramAutomationPolicy,preset:String(input.preset||defaultInstagramAutomationPolicy.preset).slice(0,40),tone:String(input.tone||defaultInstagramAutomationPolicy.tone).slice(0,120),instructions:String(input.instructions||defaultInstagramAutomationPolicy.instructions).slice(0,1200),autoDraft:input.autoDraft!==false,requireApproval:true,updatedAt:new Date().toISOString(),source:'local'};return send(res,200,localInstagramAutomationPolicy);}
+    return send(res,405,{error:'Método não permitido.'});
+  }
+  const replyMatch=pathname.match(/^\/api\/instagram\/comments\/([^/]+)\/reply$/);
+  if(replyMatch&&req.method==='POST')return send(res,409,{error:'Instagram Graph API não configurado nesta estação. A resposta foi mantida como rascunho; configure o Worker para enviar.'});
+  return send(res,404,{error:'Rota de feed do Instagram não encontrada.'});
+}
 async function instagramDesktopApi(req,res,pathname){
+  if(pathname==='/api/instagram/feed'||pathname==='/api/instagram/automation-policy'||pathname.match(/^\/api\/instagram\/comments\/[^/]+\/reply$/))return instagramFeedApi(req,res,pathname);
   if(pathname==='/api/desktop/setup'){
     if(req.method==='GET')return send(res,200,{setup:getDesktopSetup()});
     if(req.method==='POST'){await desktopActor(req);return send(res,200,{setup:saveDesktopSetup(await body(req))});}
@@ -463,6 +539,22 @@ async function instagramDesktopApi(req,res,pathname){
     return send(res,201,{message,delivery:'awaiting-operator-send',notice:'Rascunho aprovado e auditado. O envio no Instagram deve ser confirmado manualmente pelo operador.'});
   }
   return send(res,404,{error:'Rota de integração do Instagram não encontrada.'});
+}
+
+async function communicationsApi(req,res,pathname){
+  await desktopActor(req);
+  const reports=listInstagramLeadReports();
+  if(pathname==='/api/communications/status'&&req.method==='GET')return send(res,200,{social:{instagram:{configured:Boolean(instagramAccessToken&&process.env.INSTAGRAM_APP_SECRET&&(process.env.INSTAGRAM_ACCOUNT_ID||process.env.INSTAGRAM_USER_ID)),verifyTokenConfigured:Boolean(process.env.INSTAGRAM_VERIFY_TOKEN)}}});
+  if(pathname==='/api/communications/conversations'&&req.method==='GET')return send(res,200,{conversations:reports.map(report=>({id:`instagram:${report.lead?.id}`,channel:'instagram',externalThreadId:report.lead?.instagramUserId||report.lead?.username||report.lead?.id,leadId:report.lead?.id,contactName:report.lead?.name||report.lead?.username||'Lead Instagram',status:report.lead?.status||'open',createdAt:report.lead?.createdAt,updatedAt:report.messages?.at(-1)?.createdAt||report.lead?.createdAt}))});
+  const match=pathname.match(/^\/api\/communications\/conversations\/([^/]+)\/messages$/);
+  if(match){
+    const conversationId=decodeURIComponent(match[1]),leadId=conversationId.replace(/^instagram:/,'');
+    const report=getInstagramLeadReport(leadId);if(!report)return send(res,404,{error:'Conversa do Instagram não encontrada.'});
+    if(req.method==='GET')return send(res,200,{messages:(report.messages||[]).map(item=>({id:item.id,channel:'instagram',direction:item.direction,body:item.body,createdAt:item.createdAt}))});
+    if(req.method==='POST'){const input=await body(req),message=createLeadMessage({leadId,direction:'outbound',channel:'instagram-direct-outbox',body:String(input.text||input.message||'').trim(),author:'Operador'});return message?send(res,201,{sent:false,queued:true,delivery:'awaiting-worker-or-manual-send',message}):send(res,422,{error:'Mensagem vazia ou lead não encontrado.'});}
+    return send(res,405,{error:'Método não permitido.'});
+  }
+  return send(res,404,{error:'Comunicação não encontrada.'});
 }
 async function commissionReasonsApi(req,res,pathname){
   if(req.method==='GET'&&pathname==='/api/commission-reasons')return send(res,200,{reasons:listCommissionReasons()});
@@ -682,5 +774,5 @@ async function brokerReportsApi(req,res){
 }
 
 createServer(async (req,res)=>{
-  try { const pathname=new URL(req.url,'http://localhost').pathname; if(shouldProxyApi(pathname))return await proxyApi(req,res,pathname); if(publicCatalogApi(req,res,pathname))return; if(pathname==='/api/health'&&req.method==='GET')return send(res,200,{...health(),ai:aiStatus(),auth:authStatus(),origin:requestOrigin(req),forwarded:Boolean(req.headers['x-forwarded-host']),belavistaApiBase}); if(pathname==='/api/runtime'&&req.method==='GET')return send(res,200,{origin:requestOrigin(req),host,port,forwardedHost:req.headers['x-forwarded-host']||null,forwardedProto:req.headers['x-forwarded-proto']||null,firebaseMessagingVapidKey:process.env.FIREBASE_MESSAGING_VAPID_KEY||'',belavistaApiBase}); if(pathname==='/api/ai/status'&&req.method==='GET')return send(res,200,aiStatus()); if(pathname==='/api/ai/tools'&&req.method==='GET')return send(res,200,{protocol:'belavista-client-tools/v1',tools:clientTools}); if(pathname==='/api/agent/tree'||pathname==='/api/agent/evaluate')return await agentTreeApi(req,res,pathname); if(pathname==='/api/operational-loop'||pathname==='/api/operational-state'||pathname==='/api/calibrations'||pathname==='/api/automation/panorama'||pathname==='/api/automation/run'||pathname==='/api/devices'||pathname==='/api/notifications'||pathname.startsWith('/api/notifications/'))return await operationalApi(req,res,pathname); if(pathname==='/api/stages-admin'||pathname.startsWith('/api/stages-admin/'))return await stagesAdminApi(req,res,pathname); if(pathname==='/api/workbench/infer'&&req.method==='POST')return await workbenchInferenceApi(req,res); if(pathname==='/api/workbench/state'||pathname==='/api/workbench/diary')return await workbenchApi(req,res,pathname); if(pathname==='/api/desktop/setup'||pathname.startsWith('/api/instagram/'))return await instagramDesktopApi(req,res,pathname); if(pathname.startsWith('/api/leads/'))return await leadMessagesApi(req,res,pathname); if(pathname==='/api/entities'&&req.method==='GET')return send(res,200,{entities:entitySummary()}); if(pathname==='/api/broker-reports')return await brokerReportsApi(req,res); if(pathname==='/api/field-confirmations')return await fieldConfirmationsApi(req,res); if(pathname==='/api/records'||pathname.startsWith('/api/records/'))return await recordsApi(req,res,pathname); if(pathname==='/api/cash-flow'||pathname.startsWith('/api/cash-flow/'))return await cashFlowApi(req,res,pathname); if(pathname==='/api/commission-reasons'||pathname.startsWith('/api/commission-reasons/'))return await commissionReasonsApi(req,res,pathname); if(pathname==='/api/outsourcing-receipts'||pathname.startsWith('/api/outsourcing-receipts/'))return await outsourcingReceiptsApi(req,res,pathname); if(pathname==='/api/purchase-receipts'||pathname.startsWith('/api/purchase-receipts/'))return await purchaseReceiptsApi(req,res,pathname); if(pathname==='/api/commercial-sales'||pathname.startsWith('/api/commercial-sales/'))return await commercialSalesApi(req,res,pathname); if(req.method==='POST'&&(pathname==='/api/gemini'||pathname==='/api/ai')) return await ai(req,res); if(req.method!=='GET') return send(res,405,{error:'Método não permitido.'}); const requested=normalize(pageForPath(pathname)).replace(/^[/\\]+/,''); const file=join(root,requested); if(!file.startsWith(root)) return send(res,403,{error:'Acesso negado.'}); const data=await readFile(file); res.writeHead(200,{'Content-Type':types[extname(file)]||'application/octet-stream','Content-Length':data.length,'Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto'}); res.end(data); } catch (error) { if(String(req.url||'').startsWith('/api/')) return send(res,error?.statusCode||500,{error:error?.message||'Falha no serviço local.'}); const data=await readFile(join(root,'index.html')); res.writeHead(200,{'Content-Type':types['.html'],'Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto'}); res.end(data); }
-}).listen(port,host,()=>console.log(`Aliança Park local: http://localhost:${port} · rede: http://10.75.216.173:${port} · bind: ${host}`));
+  try { const pathname=new URL(req.url,'http://localhost').pathname; if(shouldProxyApi(pathname))return await proxyApi(req,res,pathname); if(publicCatalogApi(req,res,pathname))return; if(pathname==='/api/health'&&req.method==='GET')return send(res,200,{...health(),ai:aiStatus(),auth:authStatus(),origin:requestOrigin(req),forwarded:Boolean(req.headers['x-forwarded-host']),belavistaApiBase}); if(pathname==='/api/runtime'&&req.method==='GET')return send(res,200,{origin:requestOrigin(req),host,port,forwardedHost:req.headers['x-forwarded-host']||null,forwardedProto:req.headers['x-forwarded-proto']||null,firebaseMessagingVapidKey:process.env.FIREBASE_MESSAGING_VAPID_KEY||'',belavistaApiBase}); if(pathname==='/api/ai/status'&&req.method==='GET')return send(res,200,aiStatus()); if(pathname==='/api/ai/tools'&&req.method==='GET')return send(res,200,{protocol:'belavista-client-tools/v1',tools:clientTools}); if(pathname==='/api/agent/tree'||pathname==='/api/agent/evaluate')return await agentTreeApi(req,res,pathname); if(pathname==='/api/operational-loop'||pathname==='/api/operational-state'||pathname==='/api/calibrations'||pathname==='/api/automation/panorama'||pathname==='/api/automation/run'||pathname==='/api/devices'||pathname==='/api/notifications'||pathname.startsWith('/api/notifications/'))return await operationalApi(req,res,pathname); if(pathname==='/api/stages-admin'||pathname.startsWith('/api/stages-admin/'))return await stagesAdminApi(req,res,pathname); if(pathname==='/api/workbench/infer'&&req.method==='POST')return await workbenchInferenceApi(req,res); if(pathname.startsWith('/api/communications'))return await communicationsApi(req,res,pathname); if(pathname==='/api/workbench/state'||pathname==='/api/workbench/diary')return await workbenchApi(req,res,pathname); if(pathname==='/api/desktop/setup'||pathname.startsWith('/api/instagram/'))return await instagramDesktopApi(req,res,pathname); if(pathname.startsWith('/api/leads/'))return await leadMessagesApi(req,res,pathname); if(pathname==='/api/entities'&&req.method==='GET')return send(res,200,{entities:entitySummary()}); if(pathname==='/api/broker-reports')return await brokerReportsApi(req,res); if(pathname==='/api/field-confirmations')return await fieldConfirmationsApi(req,res); if(pathname==='/api/records'||pathname.startsWith('/api/records/'))return await recordsApi(req,res,pathname); if(pathname==='/api/cash-flow'||pathname.startsWith('/api/cash-flow/'))return await cashFlowApi(req,res,pathname); if(pathname==='/api/commission-reasons'||pathname.startsWith('/api/commission-reasons/'))return await commissionReasonsApi(req,res,pathname); if(pathname==='/api/outsourcing-receipts'||pathname.startsWith('/api/outsourcing-receipts/'))return await outsourcingReceiptsApi(req,res,pathname); if(pathname==='/api/purchase-receipts'||pathname.startsWith('/api/purchase-receipts/'))return await purchaseReceiptsApi(req,res,pathname); if(pathname==='/api/commercial-sales'||pathname.startsWith('/api/commercial-sales/'))return await commercialSalesApi(req,res,pathname); if(req.method==='POST'&&(pathname==='/api/gemini'||pathname==='/api/ai'||pathname==='/api/ai/vision-reasoning')) return await ai(req,res); if(req.method!=='GET') return send(res,405,{error:'Método não permitido.'}); const requested=normalize(pageForPath(pathname)).replace(/^[/\\]+/,''); const file=join(root,requested); if(!file.startsWith(root)) return send(res,403,{error:'Acesso negado.'}); const data=await readFile(file); res.writeHead(200,{'Content-Type':types[extname(file)]||'application/octet-stream','Content-Length':data.length,'Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto'}); res.end(data); } catch (error) { if(String(req.url||'').startsWith('/api/')) return send(res,error?.statusCode||500,{error:error?.message||'Falha no serviço local.'}); const data=await readFile(join(root,'index.html')); res.writeHead(200,{'Content-Type':types['.html'],'Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto'}); res.end(data); }
+ }).listen(port,host,()=>console.log(`Aliança Park local: http://localhost:${port} · rede: http://10.75.216.173:${port} · bind: ${host}`));

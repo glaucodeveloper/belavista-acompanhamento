@@ -9,11 +9,13 @@ const dbPath=process.env.BELAVISTA_DB||join(dataRoot,'belavista.sqlite');
 const receiptsRoot=process.env.BELAVISTA_RECEIPTS_ROOT||join(dataRoot,'receipts');
 const salesRoot=process.env.BELAVISTA_SALES_ROOT||join(dataRoot,'sales');
 const outsourcingRoot=process.env.BELAVISTA_OUTSOURCING_ROOT||join(dataRoot,'outsourcing');
+const cashFlowAttachmentsRoot=process.env.BELAVISTA_CASH_ATTACHMENTS_ROOT||join(dataRoot,'cash-attachments');
 const workbenchAttachmentsRoot=process.env.BELAVISTA_WORKBENCH_ATTACHMENTS_ROOT||join(dataRoot,'workbench-attachments');
 mkdirSync(dirname(dbPath),{recursive:true});
 mkdirSync(receiptsRoot,{recursive:true});
 mkdirSync(salesRoot,{recursive:true});
 mkdirSync(outsourcingRoot,{recursive:true});
+mkdirSync(cashFlowAttachmentsRoot,{recursive:true});
 mkdirSync(workbenchAttachmentsRoot,{recursive:true});
 
 export const db=new DatabaseSync(dbPath);
@@ -125,6 +127,14 @@ db.exec(`
     stage TEXT NOT NULL DEFAULT '',
     description TEXT NOT NULL DEFAULT '',
     amount_cents INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS cash_flow_attachments (
+    id TEXT PRIMARY KEY,
+    cash_flow_id TEXT NOT NULL REFERENCES cash_flow_entries(id) ON DELETE CASCADE,
+    file_name TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    storage_path TEXT NOT NULL,
     created_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS commission_reasons (
@@ -299,6 +309,11 @@ try { db.exec(`ALTER TABLE records ADD COLUMN map_area TEXT`); } catch {}
 try { db.exec(`ALTER TABLE stage_workbench_state ADD COLUMN activity_locations_json TEXT NOT NULL DEFAULT '{}'`); } catch {}
 try { db.exec(`ALTER TABLE stage_workbench_state ADD COLUMN input_sessions_json TEXT NOT NULL DEFAULT '[]'`); } catch {}
 try { db.exec(`ALTER TABLE stage_workbench_state ADD COLUMN calendar_date TEXT`); } catch {}
+for(const [name,type] of [
+  ['fiscal_document_type','TEXT'],['fiscal_document_number','TEXT'],
+  ['fiscal_issuer','TEXT'],['fiscal_issue_date','TEXT'],
+  ['fiscal_status',"TEXT NOT NULL DEFAULT 'pendente'"],
+])try{db.exec(`ALTER TABLE cash_flow_entries ADD COLUMN ${name} ${type}`);}catch{}
 
 const now=()=>new Date().toISOString();
 const commissionReasonSeed=[
@@ -415,6 +430,11 @@ const fallbackActivityByStage=db.prepare(`SELECT a.id AS activityId
   LIMIT 1`);
 const audit=db.prepare(`INSERT INTO audit_events(entity,entity_id,action,payload_json,created_at) VALUES(?,?,?,?,?)`);
 const asText=(value,fallback='')=>String(value??fallback).trim();
+const serializeMapArea=(value,fallback='')=>{
+  if(value===undefined||value===null||value==='')return fallback||null;
+  if(typeof value==='string')return value.trim()||fallback||null;
+  try{return JSON.stringify(value);}catch{return fallback||null;}
+};
 const slug=(value,fallback='item')=>String(value??fallback).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80)||fallback;
 const numeric=(value,fallback=0)=>{const normalized=String(value??'').replace(/\./g,'').replace(',','.').replace(/[^\d.-]/g,'');const amount=Number(normalized);return Number.isFinite(amount)?amount:fallback;};
 const toRecordInput=(input,existing={})=>{
@@ -424,10 +444,14 @@ const toRecordInput=(input,existing={})=>{
   const responsavel=asText(input.responsavel,existing.responsavel||'A definir');
   const ids=resolveIds.get(etapa,atividade,responsavel,obra)||{};
   const fallbackActivityId=ids.stageId&&!ids.activityId?fallbackActivityByStage.get(ids.stageId)?.activityId||null:null;
+  const partIds=(Array.isArray(input.partIds)?input.partIds:String(input.partIds||'').split(',')).map(value=>asText(value)).filter(Boolean).slice(0,500);
+  const mapAreaInput=input.mapArea|| (partIds.length?{partIds}:existing.mapArea||'');
+  const mapArea=serializeMapArea(mapAreaInput,existing.mapArea||'');
   // Depois de limpar o estado operacional, as atividades ainda podem estar
   // vazias. Registros gerais continuam válidos: a relação activity_id fica
   // nula até que a atividade seja criada, em vez de apontar para um ID órfão.
-  return {projectId:ids.projectId||projectId,stageId:ids.stageId||existing.stageId||2,activityId:ids.activityId||fallbackActivityId||existing.activityId||null,responsibleId:ids.responsibleId||existing.responsibleId||null,obra,etapa,atividade,responsavel,data:asText(input.data,existing.data||new Date().toISOString().slice(0,10)),hora:asText(input.hora,existing.hora||'08:30'),detalhes:asText(input.detalhes,existing.detalhes||''),status:asText(input.status,existing.status||'Pendente'),evidenceUri:asText(input.evidenceUri,existing.evidenceUri||'')||null,mapArea:asText(input.mapArea,existing.mapArea||'')||null};
+  const generalEvent=asText(input.etapa).toLocaleLowerCase('pt-BR')==='geral';
+  return {projectId:ids.projectId||projectId,stageId:generalEvent?null:ids.stageId||existing.stageId||2,activityId:generalEvent?null:ids.activityId||fallbackActivityId||existing.activityId||null,responsibleId:ids.responsibleId||existing.responsibleId||null,obra,etapa,atividade,responsavel,data:asText(input.data,existing.data||new Date().toISOString().slice(0,10)),hora:asText(input.hora,existing.hora||'08:30'),detalhes:asText(input.detalhes,existing.detalhes||''),status:asText(input.status,existing.status||'Pendente'),evidenceUri:asText(input.evidenceUri,existing.evidenceUri||'')||null,mapArea};
 };
 
 
@@ -558,9 +582,21 @@ export function createCommercialSale(input={}){
 }
 export function updateCommercialSale(id,input={}){
   const current=db.prepare(`${saleSelect} WHERE id=?`).get(asText(id));if(!current)return null;
-  const status=asText(input.status,current.status),notes=asText(input.notes,current.notes),timestamp=now();
+  const status=asText(input.status,current.status),notes=asText(input.notes,current.notes),timestamp=now(),files=Array.isArray(input.files)?input.files.slice(0,8):[];
   db.prepare(`UPDATE commercial_sales SET status=?,notes=?,updated_at=? WHERE id=?`).run(status,notes,timestamp,asText(id));
-  audit.run('commercial_sales',asText(id),'updated',JSON.stringify({status,documentValidation:Boolean(input.documentValidation)}),timestamp);
+  let totalBytes=0;
+  for(let index=0;index<files.length;index++){
+    const file=files[index]||{},dataUrl=String(file.dataUrl||''),match=dataUrl.match(/^data:(application\/pdf|image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
+    if(!match)throw new Error('Anexos devem ser PDF, JPG, PNG ou WEBP.');
+    const bytes=Buffer.from(match[2],'base64'); totalBytes+=bytes.length;
+    if(!bytes.length)throw new Error('Arquivo comercial vazio.');
+    if(bytes.length>12_000_000||totalBytes>30_000_000)throw new Error('Anexos da venda excedem o limite permitido.');
+    const mimeType=match[1],requested=safeSaleName(file.fileName||`arquivo-${index+1}`),ext=saleMimeExt(mimeType),fileName=requested.toLowerCase().endsWith(ext)?requested:`${requested}${ext}`;
+    const fileId=`ARQ-${Date.now().toString(36).toUpperCase()}-${index}-${Math.random().toString(36).slice(2,5).toUpperCase()}`,storagePath=join(salesRoot,`${id}-${fileId}-${fileName}`);
+    writeFileSync(storagePath,bytes,{flag:'wx'});
+    db.prepare(`INSERT INTO commercial_sale_files(id,sale_id,kind,file_name,mime_type,storage_path,created_at) VALUES(?,?,?,?,?,?,?)`).run(fileId,asText(id),asText(file.kind,'attachment'),fileName,mimeType,storagePath,timestamp);
+  }
+  audit.run('commercial_sales',asText(id),'updated',JSON.stringify({status,documentValidation:Boolean(input.documentValidation),files:files.length}),timestamp);
   return listCommercialSales().find(row=>row.id===asText(id));
 }
 export function getCommercialSaleFile(saleId,fileId){
@@ -576,8 +612,23 @@ export function deleteCommercialSale(id){
 }
 
 
+const safeCashAttachmentName=(name='anexo-caixa')=>String(name||'anexo-caixa').normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,120)||'anexo-caixa';
+const cashAttachmentMimeExt={'application/pdf':'.pdf','image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp'};
+const parseCashAttachment=(input={})=>{
+  const attachment=input?.attachment&&typeof input.attachment==='object'?input.attachment:null;
+  if(!attachment?.dataUrl)return null;
+  const match=String(attachment.dataUrl).match(/^data:(application\/pdf|image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
+  if(!match)throw Object.assign(new Error('Anexo deve ser PDF, JPG, PNG ou WEBP.'),{statusCode:400});
+  const bytes=Buffer.from(match[2],'base64');
+  if(!bytes.length||bytes.length>12_000_000)throw Object.assign(new Error('Anexo inválido ou maior que 12 MB.'),{statusCode:400});
+  return {bytes,mimeType:match[1],fileName:safeCashAttachmentName(attachment.fileName||'anexo-caixa'),ext:cashAttachmentMimeExt[match[1]]||''};
+};
 export function listCashFlowEntries(){
-  return db.prepare(`SELECT id,entry_date AS date,kind,category,stage,description,amount_cents AS amountCents,created_at AS createdAt FROM cash_flow_entries ORDER BY entry_date DESC,created_at DESC`).all();
+  const rows=db.prepare(`SELECT id,entry_date AS date,kind,category,stage,description,amount_cents AS amountCents,fiscal_document_type AS fiscalDocumentType,fiscal_document_number AS fiscalDocumentNumber,fiscal_issuer AS fiscalIssuer,fiscal_issue_date AS fiscalIssueDate,fiscal_status AS fiscalStatus,created_at AS createdAt FROM cash_flow_entries ORDER BY entry_date DESC,created_at DESC`).all();
+  return rows.map(row=>{
+    const file=db.prepare(`SELECT id,file_name AS fileName,mime_type AS mimeType FROM cash_flow_attachments WHERE cash_flow_id=? ORDER BY created_at DESC LIMIT 1`).get(row.id);
+    return file?{...row,attachment:{...file,fileUrl:'/api/cash-flow/'+encodeURIComponent(row.id)+'/file'}}:row;
+  });
 }
 export function listLeadMessages(leadId){
   return db.prepare(`SELECT id,lead_id AS leadId,direction,channel,body,author,created_at AS createdAt FROM lead_messages WHERE lead_id=? ORDER BY created_at ASC`).all(asText(leadId));
@@ -641,9 +692,31 @@ export function listInstagramLeadReports(limit=50){
 export function createCashFlowEntry(input={}){
   const id=asText(input.id)||`CX-${Date.now().toString(36).toUpperCase()}`,timestamp=now(),kind=asText(input.kind,'saida')==='entrada'?'entrada':'saida';
   const amountCents=Math.max(0,Math.round(Number(input.amountCents)||0));
-  db.prepare(`INSERT INTO cash_flow_entries(id,entry_date,kind,category,stage,description,amount_cents,created_at) VALUES(?,?,?,?,?,?,?,?)`).run(id,asText(input.date,new Date().toISOString().slice(0,10)),kind,asText(input.category),asText(input.stage),asText(input.description),amountCents,timestamp);
-  audit.run('cash_flow_entries',id,'created',JSON.stringify({kind,amountCents,stage:asText(input.stage)}),timestamp);
+  const attachment=parseCashAttachment(input);
+  const fiscalStatus=['pendente','em_conferencia','conferido','nao_aplicavel'].includes(input.fiscalStatus)?input.fiscalStatus:'pendente';
+  const fiscalDocumentType=asText(input.fiscalDocumentType);
+  const fiscalDocumentNumber=asText(input.fiscalDocumentNumber);
+  const fiscalIssuer=asText(input.fiscalIssuer);
+  const fiscalIssueDate=asText(input.fiscalIssueDate);
+  if(fiscalStatus==='conferido'&&(!fiscalDocumentType||!fiscalDocumentNumber||!fiscalIssuer||!fiscalIssueDate||!attachment))throw Object.assign(new Error('Conferência fiscal exige tipo, número, emitente, data e documento anexado.'),{statusCode:400});
+  db.prepare(`INSERT INTO cash_flow_entries(id,entry_date,kind,category,stage,description,amount_cents,fiscal_document_type,fiscal_document_number,fiscal_issuer,fiscal_issue_date,fiscal_status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,asText(input.date,new Date().toISOString().slice(0,10)),kind,asText(input.category),asText(input.stage),asText(input.description),amountCents,fiscalDocumentType,fiscalDocumentNumber,fiscalIssuer,fiscalIssueDate,fiscalStatus,timestamp);
+  if(attachment){
+    const ext=attachment.ext,base=attachment.fileName.toLowerCase().endsWith(ext)?attachment.fileName:`${attachment.fileName}${ext}`,storagePath=join(cashFlowAttachmentsRoot,`${id}-${base}`),attachmentId=`CXA-${Date.now().toString(36).toUpperCase()}`;
+    try{
+      writeFileSync(storagePath,attachment.bytes,{flag:'wx'});
+      db.prepare(`INSERT INTO cash_flow_attachments(id,cash_flow_id,file_name,mime_type,storage_path,created_at) VALUES(?,?,?,?,?,?)`).run(attachmentId,id,base,attachment.mimeType,storagePath,timestamp);
+    }catch(error){
+      try{if(existsSync(storagePath))unlinkSync(storagePath);}catch{}
+      db.prepare(`DELETE FROM cash_flow_entries WHERE id=?`).run(id);
+      throw error;
+    }
+  }
+  audit.run('cash_flow_entries',id,'created',JSON.stringify({kind,amountCents,stage:asText(input.stage),fiscalStatus,fiscalDocumentType,fiscalDocumentNumber}),timestamp);
   return listCashFlowEntries().find(row=>row.id===id);
+}
+export function getCashFlowAttachment(id){
+  const row=db.prepare(`SELECT file_name AS fileName,mime_type AS mimeType,storage_path AS storagePath FROM cash_flow_attachments WHERE cash_flow_id=? ORDER BY created_at DESC LIMIT 1`).get(asText(id));
+  return row&&existsSync(row.storagePath)?row:null;
 }
 export function cashFlowSummary(){
   const totals=db.prepare(`SELECT COALESCE(SUM(CASE WHEN kind='entrada' THEN amount_cents ELSE 0 END),0) AS entries,COALESCE(SUM(CASE WHEN kind='saida' THEN amount_cents ELSE 0 END),0) AS exits FROM cash_flow_entries`).get();
@@ -838,6 +911,8 @@ export function getStageAdmin(stageId){
     evidenceFocus:safeJson(aiConfig.evidence_focus_json,[]),
     requestHints:safeJson(aiConfig.request_hints_json,[]),
     typicalDescription:aiConfig.typical_description||'',
+    organizationRequest:safeJson(aiConfig.execution_profile_json,{}).aiOrganization?.request||'',
+    organizationContext:safeJson(aiConfig.execution_profile_json,{}).aiOrganization?.context||'',
     updatedAt:aiConfig.updated_at
   }:null;
   const purchaseTotal=purchases.reduce((a,p)=>a+(Number(p.valueCents)||0),0);
@@ -862,7 +937,7 @@ export function saveStageAiConfig(stageId,input={}){
   const timestamp=now();
   const requirements=JSON.stringify(Array.isArray(input.requirements)?input.requirements:[]);
   const conditions=JSON.stringify(Array.isArray(input.conditions)?input.conditions:[]);
-  const executionProfile=JSON.stringify(input.executionProfile||{});
+  const executionProfile=JSON.stringify({...input.executionProfile||{},aiOrganization:{request:String(input.organizationRequest||input.executionProfile?.aiOrganization?.request||'').trim(),context:String(input.organizationContext||input.executionProfile?.aiOrganization?.context||'').trim()}});
   const notificationTargets=JSON.stringify(input.notificationTargets||{});
   const procurementFocus=JSON.stringify(Array.isArray(input.procurementFocus)?input.procurementFocus:[]);
   const evidenceFocus=JSON.stringify(Array.isArray(input.evidenceFocus)?input.evidenceFocus:[]);

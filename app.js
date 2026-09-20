@@ -1,8 +1,18 @@
 // BELAVISTA_ADMIN_PUBLIC_MAP_SURFACE_V5352
 // v5.3.51 deferred after shell: import './admin-runtime-v11.js?v=admin-runtime-v11';
 // v5.3.51 deferred after shell: import './admin-lots-canvas-v1.js?v=admin-lots-canvas-v1';
-import './components.js?v=dashboard-stage-focus-v1&route=ngrok-route-v1';
-import {appStore, persistUiState, restoreUiState, viewThemes} from './state.js?v=solar-clock-hover-v5384';
+import './components.js?v=instagram-api-live-v25&route=ngrok-route-v1&full-image-3d-environment-v1&foreman-surface-v1&admin-map-static-first-v20-scene-only-168&leads-content-tabs-v1&map-aerial-alignment-v76';
+import {appStore, persistUiState, restoreUiState, viewThemes} from './state.js?v=system-metrics-v1-20260919';
+import {apiFetch} from './api-client.mjs?v=instagram-api-live-v1';
+import {normalizeOperationalRole, roleCanOpenView} from './admin-role-policy.mjs?v=admin-role-policy-v1';
+
+document.addEventListener('click',event=>{
+  const back=event.target?.closest?.('.stage-v9-dedicated-page .stage-v9-back');
+  if(!back)return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  appStore.set({view:'stages',activityDedicated:false,stageActivityDedicatedV9:false,selectedActivity:null,lastAction:'Voltou para a central de etapas'});
+},true);
 // v5.3.51 deferred after shell: import './stage-admin-v10.js?v=stage-admin-v10-primary';
 // BELAVISTA_ORIGINAL_ADMIN_BOOT_RESCUE_V5351
 const ADMIN_DEFERRED_MODULES_V5351=[
@@ -10,24 +20,61 @@ const ADMIN_DEFERRED_MODULES_V5351=[
   "./admin-lots-canvas-v1.js?v=admin-lots-canvas-v1",
   "./stage-admin-v10.js?v=stage-admin-v10-primary",
   "./execution-planning-v8.js?v=navigation-state-v22",
-  "./map-page-widgets-v5.js?v=operations-v19",
+  "./map-page-widgets-v5.js?v=widget-blue-smoke-v1",
   "./dashboard-map-tabs-v3.js?v=map-tabs-v3",
-  "./admin-public-map-surface-v5352.mjs?v=5.3.53",
-  "./public-leads-map-v50.mjs?v=admin-public-map-parity-v1",
+  "./admin-public-map-surface-v5352.mjs?v=5.3.54",
+  "./public-leads-map-v50.mjs?v=admin-public-map-fixed-180-v1",
   "./admin-public-map-3d-status-v5353.mjs?v=5.3.53",
   "./finance-mobile-cash-v5358.mjs?v=5.3.58",
   "./chat-tab-widget-ghost-v5359.mjs?v=5.3.59",
   "./final-workspaces-v5360.mjs?v=5.3.60",
   "./stages-landing-v5361.mjs?v=5.3.61",
   "./belavista-final-ui-v5362.mjs?v=5.3.62",
-  "./records-activity-drill-in-v5377.mjs?v=records-activity-drill-in-v5377"
+  "./records-activity-drill-in-v5377.mjs?v=control-stage-unified-form-v3-20260915"
 ];
 
-async function loadDeferredAdminModulesV5351(){
+// O mapa administrativo abre primeiro como fotografia aérea estática. Os
+// módulos abaixo são extensões do mapa antigo: cada um instala um observer,
+// rAF ou ponte de câmera própria. Carregá-los nessa rota reintroduz trabalho
+// concorrente enquanto a cena ainda está sem 3D e pode travar o Chromium.
+const ADMIN_STATIC_FIRST_MAP_MODULES_V5370=new Set([
+  "./map-page-widgets-v5.js?v=widget-blue-smoke-v1",
+  "./dashboard-map-tabs-v3.js?v=map-tabs-v3",
+  "./admin-public-map-surface-v5352.mjs?v=5.3.54",
+  "./public-leads-map-v50.mjs?v=admin-public-map-fixed-180-v1",
+  "./admin-public-map-3d-status-v5353.mjs?v=5.3.53"
+]);
+
+const isAdminStaticFirstMapV5370=()=>Boolean(
+  document.querySelector('map-scene[data-map-init="admin-static-first-v5370"]')
+);
+
+async function loadDeferredAdminModulesV5351({force=false}={}){
   const failures=[];
+  const skipped=[];
   document.documentElement.dataset.adminDeferredState='loading';
 
+  // Primeiro confirme que o shell e a fotografia aérea permanecem estáveis
+  // sem nenhum addon administrativo. Isso separa um crash de WebGL de um
+  // loop de extensão/DOM que acontece depois do primeiro paint.
+  if(isAdminStaticFirstMapV5370()&&!force){
+    skipped.push(...ADMIN_DEFERRED_MODULES_V5351);
+    document.documentElement.dataset.adminDeferredState='static-map-only';
+    globalThis.__BELAVISTA_ADMIN_DEFERRED_V5351={
+      modules:[...ADMIN_DEFERRED_MODULES_V5351],
+      skipped,
+      failures,
+      isolated:true,
+      loadedAt:new Date().toISOString()
+    };
+    return globalThis.__BELAVISTA_ADMIN_DEFERRED_V5351;
+  }
+
   for(const specifier of ADMIN_DEFERRED_MODULES_V5351){
+    if(isAdminStaticFirstMapV5370()&&ADMIN_STATIC_FIRST_MAP_MODULES_V5370.has(specifier)){
+      skipped.push(specifier);
+      continue;
+    }
     try{
       await import(specifier);
     }catch(error){
@@ -48,6 +95,7 @@ async function loadDeferredAdminModulesV5351(){
 
   globalThis.__BELAVISTA_ADMIN_DEFERRED_V5351={
     modules:[...ADMIN_DEFERRED_MODULES_V5351],
+    skipped,
     failures,
     loadedAt:new Date().toISOString()
   };
@@ -67,6 +115,7 @@ async function loadDeferredAdminModulesV5351(){
   globalThis.installBelavistaFinalWorkspacesV5360?.();
   globalThis.installBelavistaStagesLandingV5361?.();
   globalThis.installBelavistaRecordsActivityDrillInV5377?.();
+  globalThis.installStageHomeRaidAiRecordsCalendarV1?.();
   try{
     appStore.set({lastAction:'Extensões administrativas renderizadas'});
   }catch{}
@@ -75,6 +124,25 @@ async function loadDeferredAdminModulesV5351(){
 
 const STORAGE_KEY='belavista.install.v1';
 const qs=new URLSearchParams(location.search);
+
+// A sessão de instalação só faz sentido quando a base SQL operacional deste
+// dispositivo ainda não tem atividades. O endpoint é local no servidor Node
+// e continua funcionando no PWA/URL visit; em uma visita sem SQL local, a
+// sessão permanece oculta até que uma base compatível seja detectada.
+const directViewsV1=new Set(['map','assistant','control','stages','agenda','activities','progress','pert','actions','raci','raid','records','foremen','leads','messages','personnel','proposals','contracts','brokers','brokers-board','commission-deal','finance','cash-record','reports','settings','activity-installation']);
+async function refreshLocalSqlStateV1(requestedView=''){
+  try{
+    const response=await apiFetch('/api/health',{cache:'no-store'});
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const payload=await response.json(),entities=payload?.entities&&typeof payload.entities==='object'?payload.entities:{};
+    const activities=Number(entities.activities)||0,records=Number(entities.records)||0,relations=Number(entities.activity_relations)||0;
+    const clean=payload?.database==='sqlite'&&activities===0&&records===0&&relations===0;
+    appStore.set({localSqlState:{status:'ready',clean,entities,checkedAt:new Date().toISOString(),error:null}});
+    if(requestedView==='activity-installation'&&clean&&appStore.get().view==='stages')appStore.set({view:'activity-installation',stageSelected:true,lastAction:'Abriu a sessão de instalação pela URL'});
+  }catch(error){
+    appStore.set({localSqlState:{status:'unavailable',clean:false,entities:{},checkedAt:new Date().toISOString(),error:String(error?.message||error)}});
+  }
+}
 
 // Inicia o aquecimento da base cartográfica em segundo plano. A interface deve
 // abrir primeiro; mapa lento ou sem rede nao pode travar o painel operacional.
@@ -144,16 +212,19 @@ class BelavistaApp extends HTMLElement {
   connectedCallback(){ this.mountShell(); if(!this._bound){this._bound=true;this.bind();} }
   mountShell(){
     if(this.querySelector('.app-shell'))return;
-    this.innerHTML=`<div class="app-shell ${appStore.get().sidebarCollapsed?'sidebar-collapsed':''}"><app-sidebar></app-sidebar><div class="app-main"><app-topbar></app-topbar><main class="scene"><map-scene data-persistent-map="true" data-public-map="" data-public-presentation="true" data-base-map="" data-stage="Aliança Park · comercial" data-overlay="urbanizacao" data-admin-shared-public-map="v5352" data-dashboard-progress-map="true" data-admin-record-selection="true" data-map-context="admin" aria-label="Mapa operacional do Aliança Park"></map-scene><view-layer></view-layer><ai-chat></ai-chat></main></div></div>`;
+    this.innerHTML=`<div class="app-shell ${appStore.get().sidebarCollapsed?'sidebar-collapsed':''}"><app-sidebar></app-sidebar><div class="app-main"><app-topbar></app-topbar><main class="scene"><map-scene data-persistent-map="true" data-public-map="" data-public-presentation="true" data-base-map="" data-stage="Aliança Park · comercial" data-overlay="urbanizacao" data-admin-shared-public-map="v5352" data-dashboard-progress-map="true" data-admin-record-selection="true" data-map-context="admin" aria-label="Mapa operacional do Aliança Park"></map-scene><view-layer></view-layer></main></div></div>`;
     window.lucide?.createIcons();
   }
   bind(){
     let deferredExtensionsPromise=null;
     const ensureDeferredExtensions=()=>{
+      const deferredState=document.documentElement.dataset.adminDeferredState;
+      if(deferredState==='loading'||deferredState==='ready'||deferredState==='partial')
+        return Promise.resolve(globalThis.__BELAVISTA_ADMIN_DEFERRED_V5351||null);
       if(deferredExtensionsPromise)return deferredExtensionsPromise;
       const loader=globalThis.loadBelavistaAdminExtensionsV5351;
       if(typeof loader!=='function')return Promise.resolve(null);
-      deferredExtensionsPromise=loader().catch(error=>{
+      deferredExtensionsPromise=loader({force:true}).catch(error=>{
         deferredExtensionsPromise=null;
         console.warn('[Aliança Park admin] extensões sob demanda indisponíveis',error);
         return null;
@@ -162,10 +233,19 @@ class BelavistaApp extends HTMLElement {
     };
     appStore.subscribe(s=>{
       this.dataset.view=s.view;
+      const role=normalizeOperationalRole(s.currentActor?.role||'owner');
+      this.dataset.role=role;
       const shell=this.querySelector('.app-shell');
       shell?.classList.toggle('sidebar-collapsed',s.sidebarCollapsed);
       shell?.classList.toggle('print-mode',!!s.printMode);
-      if(shell)shell.dataset.shellView=s.view;
+      if(shell){shell.dataset.shellView=s.view;shell.dataset.shellRole=role;}
+      if(role==='foreman'&&!roleCanOpenView(role,s.view)){
+        queueMicrotask(()=>{
+          const current=appStore.get();
+          if(current.currentActor?.role&&normalizeOperationalRole(current.currentActor.role)==='foreman'&&!roleCanOpenView('foreman',current.view))
+            appStore.set({view:'map',activityDedicated:false,stageActivityDedicatedV9:false,selectedActivity:null,lastAction:'Área indisponível para o perfil de encarregado'});
+        });
+      }
       // A navegação deve continuar imediatamente responsiva. O lote legado de
       // extensões altera protótipos e importa cenas pesadas; iniciá-lo no
       // mesmo clique fazia o navegador parecer congelado antes de renderizar
@@ -180,6 +260,7 @@ class BelavistaApp extends HTMLElement {
     },true);
     window.addEventListener('pagehide',()=>persistUiState(appStore.get()));
     this.addEventListener('click',event=>{const back=event.target?.closest?.('.activity-dedicated-page [data-view="stages"]');if(!back)return;event.preventDefault();event.stopPropagation();appStore.set({view:'stages',activityDedicated:false,selectedActivity:null,lastAction:'Voltou para as etapas'});},true);
+    this.addEventListener('click',event=>{const back=event.target?.closest?.('.stage-v9-dedicated-page .stage-v9-back');if(!back)return;event.preventDefault();event.stopImmediatePropagation();appStore.set({view:'stages',activityDedicated:false,stageActivityDedicatedV9:false,selectedActivity:null,lastAction:'Voltou para a central de etapas'});},true);
     this.addEventListener('click',e=>{if(e.target.closest('#reinstall')){localStorage.removeItem(STORAGE_KEY);location.href=location.pathname;}if(e.target.closest('#clearPat')){const cfg=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');cfg.pat='';localStorage.setItem(STORAGE_KEY,JSON.stringify(cfg));alert('PAT removido do armazenamento local.');}});
   }
 }
@@ -199,7 +280,7 @@ async function startApp(config){
   }
   let boot=document.querySelector('#boot');
   if(!boot){boot=document.createElement('div');boot.id='boot';boot.className='boot-screen';boot.setAttribute('aria-live','polite');boot.innerHTML='<div class="boot-orb"></div><p>Abrindo painel operacional...</p>';document.body.appendChild(boot);}
-  const app=document.querySelector('belavista-app'),savedUi=restoreUiState(),authActor=globalThis.BELAVISTA_ADMIN_ACTOR; app.hidden=false; app.dataset.preloading='true'; appStore.set({...savedUi,config,currentActor:authActor||savedUi.currentActor,view:'map',mapMode:'overview',sidebarCollapsed:false,activityDedicated:false,theme:'dark',lastAction:'Abriu o mapa operacional'}); document.documentElement.dataset.theme='dark';
+  const app=document.querySelector('belavista-app'),savedUi=restoreUiState(),authActor=globalThis.BELAVISTA_ADMIN_ACTOR,rawRequestedView=qs.get('view'),requestedView=rawRequestedView==='assistant'?'map':directViewsV1.has(rawRequestedView)?rawRequestedView:'map',actor=authActor||savedUi.currentActor||{},role=normalizeOperationalRole(actor.role||'owner'),safeView=role==='foreman'&&!roleCanOpenView(role,requestedView)?'map':requestedView,initialView=safeView==='activity-installation'?'stages':safeView; app.hidden=false; app.dataset.preloading='true'; app.dataset.role=role; globalThis.installStageHomeRaidAiRecordsCalendarV1?.(); appStore.set({...savedUi,config,currentActor:actor,view:initialView,mapMode:'overview',sidebarCollapsed:false,activityDedicated:false,proposalFormOpen:false,contractEditing:null,theme:'dark',lastAction:initialView==='map'?'Abriu o mapa operacional':`Abriu ${initialView}`}); if(initialView==='stages'){[0,500,1800,4200].forEach(delay=>setTimeout(()=>globalThis.ensureStageHomeRaidAiRecordsCalendarV1?.(),delay));} document.documentElement.dataset.theme='dark';
   delete app.dataset.preloading; if(boot)boot.remove();
   // Extensões administrativas são opcionais na abertura. Alguns módulos
   // antigos instalam observadores de documento e não podem disputar o
@@ -207,13 +288,18 @@ async function startApp(config){
   // uma ativação explícita, sem transformar a navegação inicial em uma corrida.
   globalThis.loadBelavistaAdminExtensionsV5351=loadDeferredAdminModulesV5351;
   document.documentElement.dataset.adminDeferredState='idle-until-action';
+  // Carrega as extensões depois do primeiro desenho do shell. Sem este
+  // aquecimento, as ações de agenda, central, caixa e páginas de etapa ficam
+  // dependentes de um gatilho que não existe na interface principal.
+  setTimeout(()=>globalThis.loadBelavistaAdminExtensionsV5351?.(),900);
   // O mapa é aquecido depois que o painel já está utilizável.
   setTimeout(()=>waitForMapWarmup().catch(()=>{}),120);
   // No celular a aplicação mantém toda a navegação disponível. A tela de
   // Registros continua podendo ser aberta diretamente por `?mobile=records`,
   // mas não substitui mais a página que o usuário deixou salva.
   if(window.matchMedia?.('(max-width: 760px)').matches&&qs.get('mobile')==='records') appStore.set({view:'records',lastAction:'Modo mobile de registros ativado'});
-  if('serviceWorker' in navigator && location.protocol!=='file:') navigator.serviceWorker.register('./sw.js').catch(console.warn);
+  if('serviceWorker' in navigator && location.protocol!=='file:') navigator.serviceWorker.register('./sw.js?v=full-image-3d-environment-v1',{updateViaCache:'none'}).catch(console.warn);
+  void refreshLocalSqlStateV1(requestedView);
 }
 
 window.addEventListener('beforeinstallprompt',e=>{
