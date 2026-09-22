@@ -1,0 +1,43 @@
+{
+  "packageId": "com.belavista.aliancapark.admin",
+  "host": "belavista-3f887.web.app",
+  "name": "Aliança Park Administrativo",
+  "launcherName": "AliançaAdmin",
+  "display": "standalone",
+  "themeColor": "#0F62FE",
+  "themeColorDark": "#000000",
+  "navigationColor": "#161616",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#000000",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#161616",
+  "enableNotifications": true,
+  "startUrl": "https://belavista-3f887.web.app/admin?twa=admin",
+  "iconUrl": "https://belavista-3f887.web.app/assets/icons/icon-512.png",
+  "maskableIconUrl": "https://belavista-3f887.web.app/assets/icons/icon-512.png",
+  "splashScreenFadeOutDuration": 0,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "android"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 3,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://belavista-3f887.web.app/admin-twa-manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "minSdkVersion": 21,
+  "orientation": "portrait",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "displayOverride": [],
+  "appVersion": "1.0.0"
+}

@@ -1,0 +1,10 @@
+.tokensave
+.env
+mobile/twa/keys/
+mobile/twa/app-release.aab
+mobile/twa/app-release.apk
+mobile/twa/android-admin/.gradle/
+mobile/twa/android-admin/build/
+mobile/twa/android-admin/app/build/
+mobile/twa/android-admin/*-unsigned*.apk
+mobile/twa/android-admin/app-release*.aab

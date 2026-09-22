@@ -27,7 +27,7 @@ fi
 
 git add .
 if ! git diff --cached --quiet; then
-  git commit -m "chore: initial Belavista AI monitoring prototype"
+  git commit -m "chore: initial Aliança Park AI monitoring prototype"
 fi
 
 OWNER="$(gh api user --jq .login)"

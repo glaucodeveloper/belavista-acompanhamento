@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07131d">
+  <title>Instalar Aliança Park Desktop</title>
+  <link rel="stylesheet" href="/desktop-setup.css">
+</head>
+<body class="desktop-setup-page">
+  <main class="setup-shell">
+    <section class="setup-brand" aria-label="Aliança Park">
+      <img src="/assets/public/alianca-park-logo-full-transparent-v551.png" alt="Aliança Park Loteamento">
+      <p class="eyebrow">VERSÃO DESKTOP · INSTALAÇÃO LOCAL</p>
+      <h1>Seu centro de operação, no computador da equipe.</h1>
+      <p>Configure o primeiro responsável e o canal de atendimento. O painel continuará usando a autenticação e os perfis administrativos do sistema.</p>
+      <ul><li>Dados operacionais isolados no perfil local do aplicativo.</li><li>Leads do Direct entram no CRM com o histórico da conversa.</li><li>A IA prepara rascunhos; a aprovação e o envio permanecem humanos.</li></ul>
+    </section>
+    <section class="setup-card" aria-labelledby="setup-title">
+      <p class="eyebrow">PRIMEIRO ACESSO</p>
+      <h2 id="setup-title">Configure a estação de atendimento</h2>
+      <p class="muted">Nenhuma senha do Instagram é salva aqui. A sessão é aberta manualmente no navegador local conectado.</p>
+      <form id="setup-form">
+        <fieldset><legend>Responsável inicial</legend><label>Nome<input id="owner-name" name="ownerName" autocomplete="name" required minlength="2" placeholder="Nome do responsável"></label><label>E-mail administrativo<input id="owner-email" name="ownerEmail" type="email" autocomplete="email" required placeholder="voce@empresa.com"></label></fieldset>
+        <fieldset><legend>Empreendimento e canal</legend><label>Nome do empreendimento<input id="enterprise-name" name="enterpriseName" required value="Aliança Park"></label><label>Instagram do empreendimento<span class="input-prefix"><b>@</b><input id="instagram-handle" name="instagramHandle" required pattern="[A-Za-z0-9._]+" placeholder="aliancapark"></span></label></fieldset>
+        <label class="consent"><input id="instagram-consent" type="checkbox" required><span>Confirmo que a conta será autenticada manualmente pelo responsável e que os Directs serão tratados conforme a política de atendimento do empreendimento.</span></label>
+        <p id="setup-status" class="status" role="status">Preencha os dados para preparar a estação.</p>
+        <div class="setup-actions"><button class="button primary" type="submit">Salvar e preparar desktop</button><button id="open-instagram" class="button" type="button" disabled>Abrir Direct local</button><button id="open-admin" class="button ghost" type="button">Ir ao painel</button></div>
+      </form>
+      <aside class="security-note"><strong>Como funciona o Direct</strong><p>Após salvar, inicie a ponte local do Camofox e faça login você mesmo. A integração cria leads e rascunhos auditáveis, mas não envia mensagens reais sozinha.</p></aside>
+    </section>
+  </main>
+  <script type="module" src="/desktop-setup.mjs"></script>
+</body>
+</html>
+

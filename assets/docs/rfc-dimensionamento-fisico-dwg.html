@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RFC-AP-0001 · Projeção operacional de construção</title>
+  <style>
+    :root{color-scheme:dark;--bg:#07131a;--panel:#0d2025;--panel-2:#102a2f;--text:#e9f2ed;--muted:#a8bbb4;--line:#28504d;--accent:#b5e86c;--gold:#f1bd54;--blue:#8ed8ff}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(circle at 15% 0,#163b39 0,transparent 34rem),linear-gradient(135deg,#07131a,#09181c 55%,#051016);color:var(--text);font:16px/1.7 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{max-width:1180px;margin:0 auto;padding:48px 24px 80px}.brand{display:flex;align-items:center;gap:14px;margin-bottom:34px;color:var(--accent);font-size:.78rem;letter-spacing:.16em;text-transform:uppercase}.brand-mark{width:38px;height:38px;border:1px solid var(--accent);border-radius:50%;display:grid;place-items:center;color:var(--gold);font-weight:800;box-shadow:0 0 24px #9ae66a33}.hero{border:1px solid var(--line);background:linear-gradient(145deg,#132d31dd,#0b1b20cc);padding:34px 36px;border-radius:18px;box-shadow:0 25px 80px #0006}.eyebrow{color:var(--blue);font-size:.7rem;letter-spacing:.17em;text-transform:uppercase}h1,h2,h3{line-height:1.18;letter-spacing:-.025em}h1{font-size:clamp(2.2rem,6vw,4.7rem);max-width:900px;margin:15px 0 18px}h2{font-size:1.8rem;margin-top:54px;border-top:1px solid var(--line);padding-top:20px}h3{font-size:1.2rem;margin-top:30px;color:var(--accent)}p{color:var(--muted);max-width:930px}.meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}.tag{border:1px solid var(--line);background:#092027;padding:7px 11px;border-radius:999px;color:var(--muted);font-size:.85rem}.toc{margin:34px 0;padding:22px 26px;border:1px solid var(--line);background:#091e24cc;border-radius:14px}.toc a{color:var(--accent);text-decoration:none}.toc a:hover{text-decoration:underline}.toc ul{columns:2;margin:8px 0 0;padding-left:22px}table{width:100%;border-collapse:collapse;margin:20px 0 28px;background:#081a20aa;border:1px solid var(--line);font-size:.92rem}th,td{padding:11px 13px;border:1px solid #21403f;text-align:left;vertical-align:top}th{color:var(--accent);font-weight:600;background:#10282c}td{color:#cfddd7}code,pre{font-family:"SFMono-Regular",Consolas,monospace}pre{overflow:auto;padding:18px;border:1px solid var(--line);background:#041116;border-radius:12px;color:#d4efbb}code{color:#c8ee9b}blockquote{margin:22px 0;padding:14px 18px;border-left:3px solid var(--gold);background:#1a2420;color:#d9e8df}.notice{border:1px solid #8a6c32;background:#261e0d;padding:16px 18px;border-radius:12px;color:#f4dfad}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}.card{border:1px solid var(--line);background:#0c2226;padding:18px;border-radius:12px}.card strong{display:block;color:var(--accent);font-size:1.35rem}.footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:.9rem}@media(max-width:700px){main{padding:24px 14px 60px}.hero{padding:24px 20px}.toc ul{columns:1}table{display:block;overflow-x:auto;white-space:normal}h2{font-size:1.45rem}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="brand"><span class="brand-mark">A</span><span>Aliança Park · literatura operacional</span></div>
+  <section class="hero">
+    <span class="eyebrow">RFC-AP-0001 · documento de projeção</span>
+    <h1>Projeção operacional de construção por base DWG</h1>
+    <p>Manual de uso da camada que transforma a leitura cartográfica do loteamento em volumes, equipes, materiais, cronograma, agenda, correlações e recomendações do agente de obra.</p>
+    <div class="meta"><span class="tag">Status: proposto / vigente</span><span class="tag">Versão 1.0.0</span><span class="tag">04/09/2026</span><span class="tag">Endpoint NVIDIA</span></div>
+  </section>
+  <nav class="toc" aria-label="Índice"><strong>Leitura rápida</strong><ul><li><a href="#fontes">Fontes e limites</a></li><li><a href="#base">Base física vigente</a></li><li><a href="#etapas">Etapas e produção</a></li><li><a href="#recursos">Materiais, equipes e caixa</a></li><li><a href="#paginas">Páginas de projeção</a></li><li><a href="#nvidia">Contrato NVIDIA</a></li><li><a href="#iso">RFC e ISO</a></li><li><a href="#glossario">Glossário</a></li></ul></nav>
+
+  <h2 id="fontes">1. Fontes, linguagem e limites</h2>
+  <p>As palavras-chave <strong>MUST</strong>, <strong>MUST NOT</strong>, <strong>SHOULD</strong> e <strong>MAY</strong> têm sentido normativo segundo <a href="https://datatracker.ietf.org/doc/html/rfc2119">RFC 2119</a> e <a href="https://datatracker.ietf.org/doc/html/rfc8174">RFC 8174</a>. O DWG fornece áreas, contagens, limites, vias resumidas, polilinhas e pontos elétricos. Comprimentos, profundidades, espaçamentos e consumos lineares que não constam como geometria medida são premissas iniciais e precisam ser validados pelo projeto executivo ou pelo responsável técnico.</p>
+  <div class="notice"><strong>Regra de segurança:</strong> a IA sugere. O worker valida e registra. A confirmação de produção, documento, compra, caixa, reserva e serviço continua humana e autorizada por perfil.</div>
+  <h3>Fontes usadas</h3>
+  <div class="grid"><div class="card"><strong>DWG publicado</strong>298 lotes, áreas, limites GPS/UTM, vias e pontos.</div><div class="card"><strong>Estado persistido</strong>caixa, compras, recebimentos, materiais, pessoas e registros.</div><div class="card"><strong>Diretrizes</strong>relações, gatilhos, requisitos, autonomia e propagação.</div><div class="card"><strong>NVIDIA</strong>inferência contextual explicada, sem autoridade final.</div></div>
+
+  <h2 id="base">2. Base física vigente</h2>
+  <table><thead><tr><th>Elemento</th><th>Valor</th></tr></thead><tbody><tr><td>Lotes</td><td>298 (272 residenciais e 26 comerciais)</td></tr><tr><td>Área total dos lotes</td><td>99.437,03 m²</td></tr><tr><td>Vias resumidas</td><td>15</td></tr><tr><td>Polilinhas de meio-fio/calçada</td><td>109</td></tr><tr><td>Pontos elétricos mapeados</td><td>24</td></tr><tr><td>CRS</td><td>SIRGAS 2000 / UTM zona 24S · EPSG:31984</td></tr><tr><td>Centro GPS</td><td>-13.00044486, -39.62315439 · <a href="https://www.google.com/maps/@-13.00044486,-39.62315439,17z">abrir no Google Maps</a></td></tr></tbody></table>
+  <p>A base utilizada no painel é identificada como <code>dwg-lots-plus-calibrated-linear-coefficients</code>. Esta identificação informa que as áreas/contagens vieram do DWG, enquanto a parte linear foi completada com coeficientes visíveis e editáveis.</p>
+  <h3>Premissas atuais</h3>
+  <table><thead><tr><th>Parâmetro</th><th>Valor</th><th>Aplicação</th></tr></thead><tbody><tr><td>Superfície viária</td><td>32,2% da área dos lotes</td><td>área de pavimento inicial</td></tr><tr><td>Largura média</td><td>8 m</td><td>conversão de área em eixo viário</td></tr><tr><td>Profundidade média</td><td>0,511814375 m</td><td>volume de terraplanagem</td></tr><tr><td>Água</td><td>10 m/lote</td><td>rede PEAD inicial</td></tr><tr><td>Pedra</td><td>45 un/m² + 5% de perda</td><td>paralelepípedo</td></tr><tr><td>Caçamba</td><td>12 m³</td><td>viagens internas</td></tr><tr><td>Elétrica</td><td>150 m/ponto</td><td>reserva preliminar de cabo</td></tr></tbody></table>
+
+  <h2 id="etapas">3. Etapas, materiais e unidade de produção</h2>
+  <table><thead><tr><th>Etapa</th><th>Unidade</th><th>Volume inicial</th><th>Complementos</th></tr></thead><tbody><tr><td>Projeto executivo</td><td>projeto</td><td>1 conjunto</td><td>memoriais, aprovações, compatibilização e locação</td></tr><tr><td>Terraplanagem</td><td>m³</td><td>16.387,64 m³</td><td>1.366 viagens internas · 384 m³/dia</td></tr><tr><td>Drenagem pluvial</td><td>m</td><td>800,47 m</td><td>49 bocas de lobo · 25 m/dia</td></tr><tr><td>Rede de água</td><td>lote</td><td>298 lotes</td><td>2.980 m PEAD · 298 cavaletes · 298 ramais</td></tr><tr><td>Meio-fio</td><td>m</td><td>8.004,68 m</td><td>duas faces da extensão viária</td></tr><tr><td>Pavimentação</td><td>m²</td><td>32.018,72 m²</td><td>1.512.885 pedras · 1.600,94 m³ · 303 viagens</td></tr><tr><td>Rede elétrica</td><td>poste</td><td>24 pontos</td><td>3.600 m de cabo inicial · janela Coelba 30 dias</td></tr><tr><td>Sinalização</td><td>frente</td><td>15 frentes</td><td>uma frente por via resumida</td></tr></tbody></table>
+  <pre>superfície viária = área dos lotes × 0,322
+volume de terra = superfície viária × profundidade média
+viagens de terra = teto(volume de terra ÷ 12 m³)
+pedras = teto(superfície viária × 45 × 1,05)
+viagens de pedras = teto(pedras ÷ 5.000)</pre>
+  <p>A página de atividade deve medir o trabalho na sua unidade própria: m³, viagem, hora-máquina, metro, lote, m², poste, protocolo ou frente. Caminhão recebido não equivale automaticamente a m² executado; o diário e a evidência de campo fazem essa ligação.</p>
+
+  <h2 id="recursos">4. Recursos, caixa e prontidão</h2>
+  <p>Para todos os itens, o sistema calcula <code>disponível = máximo(0, recebido - utilizado)</code> e <code>falta = máximo(0, necessário - disponível)</code>. Cobertura de 75% ou mais é suficiente, de 45% a 74,99% é atenção e abaixo de 45% é crítica.</p>
+  <table><thead><tr><th>Material</th><th>Disponível inicial</th><th>Unidade</th></tr></thead><tbody><tr><td>Caçambas</td><td>60</td><td>viagens</td></tr><tr><td>Manilhas</td><td>110</td><td>m</td></tr><tr><td>Bocas de lobo</td><td>14</td><td>un</td></tr><tr><td>Tubos PEAD</td><td>580</td><td>m</td></tr><tr><td>Cavaletes</td><td>58</td><td>un</td></tr><tr><td>Ramais</td><td>48</td><td>un</td></tr><tr><td>Meio-fio</td><td>1.300</td><td>m</td></tr><tr><td>Paralelepípedo</td><td>300.000</td><td>un</td></tr><tr><td>Postes</td><td>32</td><td>un</td></tr><tr><td>Cabos elétricos</td><td>0</td><td>m provisionado</td></tr></tbody></table>
+  <p>O caixa é atributo mestre de prioridade e provisão, não medidor físico:</p>
+  <table><thead><tr><th>Indicador</th><th>Valor atual</th></tr></thead><tbody><tr><td>Entradas</td><td>R$ 312.000,00</td></tr><tr><td>Saídas</td><td>R$ 628.691,30</td></tr><tr><td>Saldo</td><td>-R$ 316.691,30</td></tr><tr><td>Reserva mínima</td><td>R$ 20.000,00</td></tr><tr><td>Caixa provisionável</td><td>R$ 0,00</td></tr></tbody></table>
+  <p>Com caixa provisionável igual a zero, a IA pode recomendar contenção, requisição e priorização, mas não pode criar uma saída financeira. O dono movimenta o caixa; administradores calibram o sistema; encarregados registram produção, diário e evidências.</p>
+  <pre>fator de prontidão = material × 0,35
+                  + caixa × 0,30
+                  + equipe efetiva × 0,20
+                  + evidência × 0,15</pre>
+  <h3>Relações de execução</h3>
+  <table><thead><tr><th>Relação</th><th>Regra</th></tr></thead><tbody><tr><td>Projeto → Terraplanagem</td><td>projeto libera locação e terraplanagem</td></tr><tr><td>Terraplanagem → Drenagem</td><td>sobreposição setorial com greide e rota liberados</td></tr><tr><td>Drenagem → Água</td><td>rede entra após drenagem aceita</td></tr><tr><td>Água → Meio-fio</td><td>meio-fio acompanha setor com rede testada</td></tr><tr><td>Meio-fio → Pavimentação</td><td>base e guias liberadas antes do pavimento</td></tr><tr><td>Pavimentação → Elétrica</td><td>montagem elétrica por último; aprovação/compra paralelas</td></tr><tr><td>Elétrica → Sinalização</td><td>sinalização fecha frente aceita</td></tr></tbody></table>
+
+  <h2 id="paginas">5. Páginas formadas pela projeção</h2>
+  <div class="grid"><div class="card"><strong>/admin/workers</strong>Resumo do DWG, caixa, materiais, equipe, riscos, agenda, jobs e linhas de cada etapa.</div><div class="card"><strong>/admin/workers/stage</strong>Fluxograma de atividades, datas, requisitos, relações e sobreposições por etapa.</div><div class="card"><strong>/admin/workers/activity</strong>Detalhe estrutural, status, produção, orçamento, responsável, diário e anexos responsivos.</div><div class="card"><strong>API operacional</strong><code>/api/automation/monitor</code>, <code>/api/automation/panorama</code> e <code>/api/operational-loop</code>.</div></div>
+  <p>Quando um registro, compra, comprovante, produção, navegação ou alteração de caixa chega, o worker atualiza a leitura da página, agenda a consequência, registra a propagação e publica a notificação correspondente.</p>
+
+  <h2 id="nvidia">6. Inferência no endpoint NVIDIA</h2>
+  <p>A requisição deve carregar projeto, baseline, etapa, localidade, produção, materiais, equipe, caixa, relações, sobreposição, fatos de origem e ação solicitada. A resposta deve trazer recomendação, justificativa, incertezas, impacto, autonomia e próxima ação. O worker valida a resposta e impede transições proibidas.</p>
+  <pre>{
+  "stage": {"key": "paving", "localityId": "setor-a"},
+  "production": {"quantity": 32018.72, "unit": "m²", "adjustedRate": 600},
+  "resources": {"cashCoverage": 0, "materialCoverage": 19.83, "personnelCoverage": 0.25},
+  "relations": [{"type": "dependency", "from": "curbs", "to": "paving"}],
+  "requestedAction": "recalcular agenda e requisições"
+}</pre>
+  <p>O fluxo é: fato → normalização → leitura DWG → cálculo → NVIDIA → validação → sugestão/alerta → confirmação autorizada → persistência. OCR pode comparar documentos, mas a confirmação humana permanece obrigatória.</p>
+
+  <h2 id="iso">7. RFC e referências ISO</h2>
+  <p>O RFC usa referências de gestão da informação e do projeto como orientação de operação, sem declarar certificação.</p>
+  <table><thead><tr><th>Referência</th><th>Como é aplicada</th></tr></thead><tbody><tr><td><a href="https://www.iso.org/standard/68078.html">ISO 19650-1:2018</a></td><td>fonte, versão, organização, troca e registro do DWG, evidências e requisições</td></tr><tr><td><a href="https://www.iso.org/standard/74947.html">ISO 21502:2020</a></td><td>iniciação, planejamento, execução, controle e encerramento</td></tr><tr><td><a href="https://www.iso.org/standard/62085.html">ISO 9001:2015</a></td><td>informação documentada, competência, recursos, monitoramento e melhoria</td></tr><tr><td><a href="https://www.iso.org/standard/65694.html?browse=tc">ISO 31000:2018</a></td><td>identificação, tratamento, comunicação e monitoramento de riscos</td></tr></tbody></table>
+  <p>Cada mudança deve manter id, autor, data, fonte, versão anterior, versão nova, motivo, impacto e confirmação.</p>
+
+  <h2 id="glossario">8. Glossário da operação inteligente</h2>
+  <table><thead><tr><th>Termo</th><th>Significado no sistema</th></tr></thead><tbody><tr><td>Baseline físico</td><td>quantidades e premissas versionadas que iniciam a projeção</td></tr><tr><td>Unidade de produção</td><td>unidade que permite medir o trabalho real</td></tr><tr><td>Cobertura / falta</td><td>recurso disponível / recurso necessário ainda não atendido</td></tr><tr><td>Relação</td><td>dependência ou condição entre etapas</td></tr><tr><td>Sobreposição</td><td>execução simultânea controlada em setores compatíveis</td></tr><tr><td>Fato</td><td>ocorrência persistida, como recebimento, medição ou anexo</td></tr><tr><td>Propagação</td><td>consequências geradas a partir do fato</td></tr><tr><td>Inferência</td><td>recomendação contextual do endpoint NVIDIA</td></tr><tr><td>Confirmação humana</td><td>aceite explícito do perfil competente</td></tr></tbody></table>
+  <footer class="footer">RFC-AP-0001 · Aliança Park · configuração inicial de projeção operacional · documento navegável publicado como asset do site.</footer>
+</main>
+</body>
+</html>

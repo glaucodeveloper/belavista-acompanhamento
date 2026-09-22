@@ -1,0 +1,8 @@
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import path from 'node:path';
+const root=process.env.BELAVISTA_ROOT||process.cwd(),r=f=>fs.readFileSync(path.join(root,f),'utf8');
+test('somente loader v5.3.3 está referenciado',()=>{const h=r('public-leads.html');assert.match(h,/public-model-loading-v533\.mjs/);assert.match(h,/public-fast-runtime-v533\.mjs/);assert.doesNotMatch(h,/public-model-loading-v5321|public-fast-runtime-v5321/);});
+test('Leaflet e Lucide não bloqueiam parser',()=>{const h=r('public-leads.html');assert.match(h,/<script defer src="https:\/\/unpkg\.com\/leaflet@1\.9\.4\/dist\/leaflet\.js/);assert.match(h,/<script defer[^>]+lucide/);});
+test('runtime intercepta map-scene antes do upgrade',()=>{const s=r('public-fast-runtime-v533.mjs');assert.match(s,/customElements\.define=function/);assert.match(s,/initWhenReady/);assert.match(s,/idle-deferred/);assert.doesNotMatch(s,/queueMicrotask\(.*initThree/);});
+test('fast path elimina processamento público pesado',()=>{const s=r('public-fast-runtime-v533.mjs');assert.match(s,/streetSegmentation='public-skipped'/);assert.match(s,/lotStatusBadges='public-deferred'/);assert.match(s,/lightweightOverlayTargets/);assert.match(s,/webgl-live-glb-fast/);});
+test('splash é curto e não bloqueia input',()=>{const js=r('public-model-loading-v533.mjs'),css=r('public-model-loading-v533.css');assert.match(js,/RELEASE_MS=520/);assert.match(css,/pointer-events:none/);assert.doesNotMatch(css,/overflow:hidden!important/);});
+test('components recebe cache bust v5.3.3',()=>assert.match(r('public-leads.js'),/components\.js\?v=model-loading-v5\.3\.3/));

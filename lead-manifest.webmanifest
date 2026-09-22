@@ -1,0 +1,9 @@
+{
+  "name": "Aliança Park · Lotes",
+  "short_name": "Aliança Park",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#07100e",
+  "theme_color": "#0f1b18",
+  "icons": [{"src":"./assets/icons/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}

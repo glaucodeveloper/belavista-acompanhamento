@@ -1,0 +1,23 @@
+{
+  "name": "@belavista/system-ui",
+  "version": "0.1.0",
+  "description": "Biblioteca visual e sistêmica das interfaces operacionais do Aliança Park.",
+  "type": "module",
+  "sideEffects": [
+    "./src/index.css",
+    "./src/components.js"
+  ],
+  "exports": {
+    ".": "./src/index.js",
+    "./components": "./src/components.js",
+    "./system": "./src/system.js",
+    "./styles": "./src/index.css",
+    "./tokens": "./src/tokens.css"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "license": "UNLICENSED",
+  "private": true
+}

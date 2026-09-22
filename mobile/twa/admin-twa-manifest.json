@@ -1,0 +1,21 @@
+{
+  "packageId": "com.belavista.aliancapark.admin",
+  "host": "belavista-3f887.web.app",
+  "name": "Aliança Park Administrativo",
+  "launcherName": "Aliança Park Admin",
+  "display": "standalone",
+  "orientation": "portrait",
+  "enableNotifications": true,
+  "enableSiteSettingsShortcut": true,
+  "themeColor": "#0f62fe",
+  "navigationColor": "#161616",
+  "backgroundColor": "#161616",
+  "startUrl": "https://belavista-3f887.web.app/admin?twa=admin",
+  "iconUrl": "https://belavista-3f887.web.app/assets/icons/icon-512.png",
+  "maskableIconUrl": "https://belavista-3f887.web.app/assets/icons/icon-512.png",
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap",
+  "webManifestUrl": "https://belavista-3f887.web.app/admin-twa-manifest.webmanifest"
+}

@@ -1,0 +1,41 @@
+{
+  "version": "v5.3.28",
+  "generatedAt": "2026-09-02T02:29:32.885Z",
+  "deals": [
+    {
+      "id": "CT-2026-041",
+      "lot": "Q12-L54",
+      "status": "Assinado"
+    },
+    {
+      "id": "CT-2026-038",
+      "lot": "Q03-L12",
+      "status": "Em análise"
+    },
+    {
+      "id": "CT-2026-034",
+      "lot": "Q18-L93",
+      "status": "Reserva"
+    },
+    {
+      "id": "CT-2026-029",
+      "lot": "Q07-L08",
+      "status": "Assinado"
+    },
+    {
+      "id": "CT-2026-027",
+      "lot": "Q09-L31",
+      "status": "Proposta"
+    },
+    {
+      "id": "CT-2026-021",
+      "lot": "Q14-L22",
+      "status": "Assinado"
+    },
+    {
+      "id": "CT-2026-018",
+      "lot": "Q15-L40",
+      "status": "Reserva"
+    }
+  ]
+}

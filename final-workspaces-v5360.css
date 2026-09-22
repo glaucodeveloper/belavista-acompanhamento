@@ -1,0 +1,574 @@
+/* BELAVISTA_FINAL_WORKSPACES_V5360 */
+
+/* ------------------------------------------------------------------ */
+/* Dashboard = real persistent 3D map as background                   */
+/* ------------------------------------------------------------------ */
+.scene:has(>view-layer[data-view="map"]){
+  position:relative!important;
+  overflow:hidden!important;
+}
+.scene:has(>view-layer[data-view="map"])>map-scene[data-persistent-map]{
+  position:absolute!important;
+  inset:0!important;
+  z-index:10!important;
+  width:100%!important;
+  height:100%!important;
+  visibility:visible!important;
+}
+.scene:has(>view-layer[data-view="map"])>view-layer[data-view="map"]{
+  display:contents!important;
+}
+.dashboard-map-v5360{
+  position:absolute;
+  inset:0;
+  z-index:35;
+  box-sizing:border-box;
+  padding:18px;
+  pointer-events:none;
+  color:#f4f4f4;
+  overflow:hidden;
+}
+.dashboard-map-v5360 [data-map-widget]{
+  pointer-events:auto;
+}
+.dashboard-map-head-v5360{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+  width:min(760px,calc(100% - 24px));
+  padding:12px 14px;
+  border:1px solid rgba(184,230,207,.28);
+  background:rgba(4,25,18,.82);
+  backdrop-filter:blur(12px);
+  box-sizing:border-box;
+}
+.dashboard-map-head-v5360>div:first-child{
+  display:grid;
+  gap:3px;
+}
+.dashboard-map-head-v5360 span,
+.dashboard-map-widget-v5360 header span,
+.workspace-head-v5360 span,
+.stage-period-v5360>header span,
+.record-page-body-v5360>span{
+  font:700 8px/1.3 "IBM Plex Mono",monospace;
+  letter-spacing:.13em;
+  color:#78a9ff;
+}
+.dashboard-map-head-v5360 h1{
+  margin:0;
+  font:500 23px/1.05 Georgia,serif;
+}
+.dashboard-map-head-v5360 p{
+  margin:0;
+  color:#a7bdb2;
+  font-size:9px;
+}
+.dashboard-inference-v5360{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.dashboard-inference-v5360 small{
+  color:#a7bdb2;
+  font-size:8px;
+  white-space:nowrap;
+}
+.dashboard-inference-v5360 button,
+.dashboard-map-widget-v5360 button,
+.workspace-head-v5360>button,
+.record-page-actions-v5360 button{
+  border:1px solid rgba(184,230,207,.32);
+  background:rgba(8,38,28,.94);
+  color:#e8f5ef;
+  min-height:34px;
+  padding:0 10px;
+  cursor:pointer;
+}
+.dashboard-system-nav-v5360{
+  position:absolute!important;
+  left:18px;
+  top:102px;
+  width:min(760px,calc(100% - 36px));
+  display:grid!important;
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+  background:rgba(7,18,15,.78)!important;
+  backdrop-filter:blur(10px);
+}
+.dashboard-system-nav-v5360 button.active{
+  border-color:#42be65!important;
+  background:rgba(13,70,46,.92)!important;
+}
+.dashboard-map-grid-v5360{
+  position:absolute;
+  left:18px;
+  right:18px;
+  bottom:18px;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+  pointer-events:none;
+}
+.dashboard-map-widget-v5360{
+  min-height:200px;
+  max-height:280px;
+  display:grid;
+  grid-template-rows:auto 1fr auto;
+  overflow:hidden;
+  border:1px solid rgba(184,230,207,.26);
+  background:rgba(4,25,18,.86);
+  box-shadow:0 14px 36px rgba(0,0,0,.25);
+  backdrop-filter:blur(12px);
+  pointer-events:auto;
+}
+.dashboard-map-widget-v5360>header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:8px;
+  padding:10px 11px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.dashboard-map-widget-v5360 h2{
+  margin:3px 0 0;
+  font-size:13px;
+}
+.dashboard-map-widget-v5360>div{
+  overflow:auto;
+  padding:4px 11px;
+}
+.dashboard-map-widget-v5360 article{
+  display:flex;
+  justify-content:space-between;
+  gap:9px;
+  padding:8px 0;
+  border-bottom:1px solid rgba(255,255,255,.07);
+}
+.dashboard-map-widget-v5360 article span{
+  display:grid;
+  gap:2px;
+}
+.dashboard-map-widget-v5360 article b{
+  font-size:9px;
+}
+.dashboard-map-widget-v5360 article small{
+  color:#a7bdb2;
+  font-size:8px;
+}
+.dashboard-map-widget-v5360 article em{
+  align-self:start;
+  padding:3px 5px;
+  border:1px solid #4b6157;
+  font:8px "IBM Plex Mono",monospace;
+  font-style:normal;
+}
+.dashboard-map-widget-v5360 article em.done{border-color:#24a148;color:#42be65}
+.dashboard-map-widget-v5360 article em.warn{border-color:#f1c21b;color:#f1c21b}
+.dashboard-map-widget-v5360>footer{
+  display:flex;
+  gap:5px;
+  padding:8px 11px;
+  border-top:1px solid rgba(255,255,255,.08);
+}
+.dashboard-empty-v5360{
+  padding:18px!important;
+  color:#8d8d8d;
+  font-size:9px;
+  text-align:center;
+}
+
+/* Commission quick panel */
+.commission-quick-v5360{
+  position:absolute;
+  right:18px;
+  top:102px;
+  width:min(390px,calc(100% - 36px));
+  min-height:290px;
+  max-height:calc(100% - 410px);
+  z-index:6;
+}
+.dashboard-broker-list-v5360{
+  display:grid;
+  align-content:start;
+  gap:5px;
+  padding:7px!important;
+}
+.dashboard-broker-row-v5360{
+  display:grid!important;
+  grid-template-columns:34px 1fr auto;
+  align-items:center;
+  gap:8px;
+  width:100%;
+  min-height:52px!important;
+  padding:7px!important;
+  text-align:left;
+  border:1px solid rgba(255,255,255,.09)!important;
+  background:rgba(18,42,32,.8)!important;
+}
+.dashboard-broker-row-v5360>span:nth-child(2){
+  display:grid;
+  gap:2px;
+}
+.dashboard-broker-row-v5360 b{font-size:9px}
+.dashboard-broker-row-v5360 small{color:#9fb6aa;font-size:7px}
+.dashboard-broker-row-v5360 em{
+  font:700 8px "IBM Plex Mono",monospace;
+  font-style:normal;
+  color:#b7ead1;
+}
+.dashboard-broker-avatar-v5360{
+  width:30px;
+  height:30px;
+  border-radius:50%;
+  display:grid!important;
+  place-items:center;
+  color:#fff!important;
+  font:700 9px "IBM Plex Mono",monospace!important;
+}
+.dashboard-broker-detail-v5360{
+  display:grid;
+  gap:10px;
+  padding:10px;
+  overflow:auto;
+}
+.dashboard-broker-detail-v5360>header{
+  display:grid;
+  grid-template-columns:auto 34px 1fr;
+  align-items:center;
+  gap:8px;
+}
+.dashboard-broker-detail-v5360>header>div{
+  display:grid;
+  gap:2px;
+}
+.dashboard-broker-detail-v5360>header small{
+  color:#9fb6aa;
+  font-size:7px;
+}
+.dashboard-broker-metrics-v5360{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:5px;
+}
+.dashboard-broker-metrics-v5360 span{
+  display:grid;
+  gap:3px;
+  padding:8px;
+  border:1px solid rgba(255,255,255,.08);
+}
+.dashboard-broker-metrics-v5360 small{color:#9fb6aa;font-size:7px}
+.dashboard-broker-metrics-v5360 b{font-size:10px}
+.dashboard-broker-last-v5360{
+  display:grid;
+  gap:4px;
+  padding:9px;
+  border-left:2px solid #42be65;
+  background:rgba(255,255,255,.04);
+}
+.dashboard-broker-last-v5360 span{
+  color:#42be65;
+  font:700 7px "IBM Plex Mono",monospace;
+}
+.dashboard-broker-last-v5360 small{
+  color:#9fb6aa;
+  font-size:7px;
+}
+.dashboard-broker-actions-v5360{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:5px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Stages: ONE mode only                                               */
+/* ------------------------------------------------------------------ */
+.stage-calendar-only-v5360,
+.records-table-page-v5360,
+.record-page-v5360{
+  height:100%;
+  box-sizing:border-box;
+  padding:26px;
+  background:#161616;
+  color:#f4f4f4;
+}
+.stage-calendar-only-v5360{
+  display:grid;
+  grid-template-rows:auto 1fr;
+  overflow:hidden;
+}
+.workspace-head-v5360{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+  padding-bottom:16px;
+  border-bottom:1px solid #393939;
+}
+.workspace-head-v5360>div:first-child{
+  display:grid;
+  gap:4px;
+}
+.workspace-head-v5360 h1{
+  margin:0;
+  font-size:25px;
+}
+.workspace-head-v5360 p{
+  margin:0;
+  color:#a8a8a8;
+  font-size:10px;
+}
+.stage-calendar-legend-v5360{
+  display:flex;
+  gap:5px;
+}
+.stage-calendar-legend-v5360 span{
+  padding:5px 7px;
+  border:1px solid #525252;
+  font:7px "IBM Plex Mono",monospace;
+}
+.stage-calendar-legend-v5360 .done{border-color:#24a148}
+.stage-calendar-legend-v5360 .warn{border-color:#f1c21b}
+.stage-calendar-v5360{
+  display:flex;
+  gap:10px;
+  min-height:0;
+  padding-top:16px;
+  overflow:auto;
+}
+.stage-period-v5360{
+  flex:0 0 245px;
+  display:grid;
+  grid-template-rows:auto 1fr;
+  padding-left:9px;
+  border-left:1px solid #393939;
+}
+.stage-period-v5360>header{
+  display:grid;
+  gap:3px;
+  padding-bottom:8px;
+}
+.stage-period-v5360>header b{
+  font-size:13px;
+}
+.stage-period-v5360>div{
+  display:grid;
+  align-content:start;
+  gap:7px;
+}
+.stage-card-v5360{
+  display:grid;
+  gap:7px;
+  padding:12px;
+  text-align:left;
+  border:1px solid #393939;
+  border-left:3px solid #4589ff;
+  background:#1f1f1f;
+  color:#f4f4f4;
+  cursor:pointer;
+}
+.stage-card-v5360.warn{border-left-color:#f1c21b}
+.stage-card-v5360.done{border-left-color:#24a148}
+.stage-card-v5360>span{
+  color:#a8a8a8;
+  font:700 7px "IBM Plex Mono",monospace;
+}
+.stage-card-v5360 h2{
+  margin:0;
+  font-size:12px;
+}
+.stage-card-v5360 p{
+  margin:0;
+  color:#a8a8a8;
+  font-size:8px;
+}
+.stage-card-v5360 i{
+  display:block;
+  height:3px;
+  background:#393939;
+}
+.stage-card-v5360 i em{
+  display:block;
+  height:100%;
+  background:#4589ff;
+}
+.stage-card-v5360 footer{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.stage-card-v5360 footer small{
+  color:#8d8d8d;
+  font-size:7px;
+}
+
+/* Absolutely suppress the historical stage nav if any old render hook tries
+   to inject it around a future extension. */
+view-layer[data-view="stages"] .stage-view-tabs,
+view-layer[data-view="stages"] .stage-plan-tabs,
+view-layer[data-view="stages"] [data-stage-pane],
+view-layer[data-view="stages"] .planning-gantt,
+view-layer[data-view="stages"] .gantt-operational-tools{
+  display:none!important;
+}
+
+/* ------------------------------------------------------------------ */
+/* Diary table + dedicated page                                        */
+/* ------------------------------------------------------------------ */
+.records-table-page-v5360,
+.record-page-v5360{
+  overflow:auto;
+}
+.records-kpis-v5360,
+.record-page-kpis-v5360{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  margin:16px 0;
+}
+.records-kpis-v5360 article,
+.record-page-kpis-v5360 article{
+  display:grid;
+  gap:4px;
+  padding:12px;
+  border:1px solid #393939;
+  background:#1f1f1f;
+}
+.records-kpis-v5360 small,
+.record-page-kpis-v5360 small{
+  color:#a8a8a8;
+  font-size:8px;
+}
+.records-kpis-v5360 b,
+.record-page-kpis-v5360 b{
+  font:700 19px "IBM Plex Mono",monospace;
+}
+.records-table-v5360{
+  overflow:auto;
+  border:1px solid #393939;
+  background:#1f1f1f;
+}
+.records-table-v5360 table{
+  width:100%;
+  min-width:950px;
+  border-collapse:collapse;
+}
+.records-table-v5360 th{
+  padding:9px 10px;
+  text-align:left;
+  border-bottom:1px solid #525252;
+  background:#262626;
+  color:#a8a8a8;
+  font:700 8px "IBM Plex Mono",monospace;
+}
+.records-table-v5360 td{
+  padding:10px;
+  border-bottom:1px solid #303030;
+  vertical-align:top;
+  font-size:9px;
+}
+.records-table-v5360 td b,
+.records-table-v5360 td small{
+  display:block;
+}
+.records-table-v5360 td small{
+  margin-top:2px;
+  color:#8d8d8d;
+}
+.record-note-v5360{
+  max-width:360px;
+  color:#c6c6c6;
+}
+.record-tone-v5360{
+  display:inline-flex;
+  padding:3px 5px;
+  border:1px solid #525252;
+}
+.record-tone-v5360.done{border-color:#24a148;color:#42be65}
+.record-tone-v5360.warn{border-color:#f1c21b;color:#f1c21b}
+.records-table-v5360 td button{
+  border:1px solid #4589ff;
+  background:#0f62fe;
+  color:#fff;
+  padding:6px 8px;
+  cursor:pointer;
+}
+.record-page-body-v5360{
+  min-height:230px;
+  padding:18px;
+  border:1px solid #393939;
+  background:#1f1f1f;
+}
+.record-page-body-v5360 p{
+  max-width:850px;
+  color:#d6d6d6;
+  line-height:1.6;
+}
+.record-page-body-v5360 dl{
+  display:grid;
+  grid-template-columns:140px 1fr;
+  gap:4px;
+}
+.record-page-body-v5360 dt{color:#8d8d8d}
+.record-page-actions-v5360{
+  display:flex;
+  gap:6px;
+  margin-top:10px;
+}
+
+@media(max-width:1050px){
+  .dashboard-map-grid-v5360{
+    grid-template-columns:1fr 1fr;
+  }
+  .dashboard-map-grid-v5360>section:last-child{
+    display:none;
+  }
+  .dashboard-system-nav-v5360{
+    grid-template-columns:repeat(3,1fr)!important;
+  }
+}
+@media(max-width:760px){
+  .dashboard-map-v5360{padding:8px}
+  .dashboard-map-head-v5360{
+    width:calc(100% - 16px);
+    padding:10px;
+  }
+  .dashboard-map-head-v5360 p,
+  .dashboard-inference-v5360 small{
+    display:none;
+  }
+  .dashboard-system-nav-v5360{
+    left:8px;
+    top:82px;
+    width:calc(100% - 16px);
+    grid-template-columns:repeat(3,1fr)!important;
+  }
+  .dashboard-map-grid-v5360{
+    left:8px;
+    right:8px;
+    bottom:8px;
+    grid-template-columns:1fr;
+  }
+  .dashboard-map-grid-v5360>section:not(:first-child){
+    display:none;
+  }
+  .commission-quick-v5360{
+    left:8px;
+    right:8px;
+    top:180px;
+    width:auto;
+    max-height:calc(100% - 250px);
+  }
+  .stage-calendar-only-v5360,
+  .records-table-page-v5360,
+  .record-page-v5360{
+    padding:12px;
+  }
+  .stage-period-v5360{
+    flex-basis:210px;
+  }
+  .records-kpis-v5360,
+  .record-page-kpis-v5360{
+    grid-template-columns:1fr 1fr;
+  }
+}

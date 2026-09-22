@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+const root=process.env.BELAVISTA_ROOT;
+const read=f=>fs.readFileSync(path.join(root,f),'utf8');
+test('html usa apenas loader 5.3.1',()=>{const h=read('public-leads.html');assert.match(h,/public-model-loading-v531\.mjs\?v=model-loading-v5\.3\.1/);assert.doesNotMatch(h,/public-model-loading-v53\.mjs/);});
+test('watchdog impede loading infinito',()=>{const j=read('public-model-loading-v531.mjs');assert.match(j,/HARD_RELEASE_MS=30000/);assert.match(j,/timeout-static/);});
+test('ready considera estado real do componente',()=>{const j=read('public-model-loading-v531.mjs');assert.match(j,/modelReady===true/);assert.match(j,/classList\?\.contains\('model-ready'\)/);});
+test('falha de runtime libera base estática',()=>{const j=read('public-model-loading-v531.mjs');assert.match(j,/MISSING_RUNTIME_RELEASE_MS=9000/);assert.match(j,/fallback-error/);});
+test('diagnóstico fica exposto no window',()=>{const j=read('public-model-loading-v531.mjs');assert.match(j,/__BELAVISTA_MODEL_LOADER_STATE__/);});

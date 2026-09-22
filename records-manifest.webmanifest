@@ -1,0 +1,15 @@
+{
+  "name": "Aliança Park · Registros de campo",
+  "short_name": "Aliança Park Campo",
+  "description": "Registro de progresso e evidências fotográficas do loteamento.",
+  "start_url": "./public-records.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#07111f",
+  "theme_color": "#07111f",
+  "orientation": "portrait-primary",
+  "icons": [
+    {"src":"./assets/icons/icon-192.png","sizes":"192x192","type":"image/png"},
+    {"src":"./assets/icons/icon-512.png","sizes":"512x512","type":"image/png"}
+  ]
+}
