@@ -1,9 +1,13 @@
 // BELAVISTA_RECORDS_ACTIVITY_DRILL_IN_V5377
 // Registros: etapa -> atividade -> apontamento. Materiais permanecem na
 // central única de caixa, com o mesmo contexto de evidência financeira.
-import {ViewLayer, ico, esc} from './components.js?v=dashboard-stage-focus-v1&route=ngrok-route-v1';
+import {ViewLayer as ImportedViewLayer, ico, esc} from './components.js?v=instagram-api-live-v25&route=ngrok-route-v1&full-image-3d-environment-v1&foreman-surface-v1&admin-map-static-first-v20-scene-only-168&map-aerial-alignment-v88&stage-context-chrome-v5&road-integral-asphalt-slices-v14';
 import {appStore, demoData} from './state.js?v=personnel-production-v5373';
 import {apiFetch} from './api-client.mjs';
+
+// Reuse the class registered by app.js: separate URL versions of components.js
+// would attempt to register a second view-layer custom element.
+const ViewLayer = globalThis.customElements?.get('view-layer') || ImportedViewLayer;
 
 const RECORDS_DRILL_VERSION = '5.3.77';
 

@@ -68,7 +68,7 @@ const watchdog=setTimeout(()=>{
 
 try{
   globalThis.__BELAVISTA_BOOT_V5351.phase='import-app';
-  await import('./app.js?v=instagram-api-live-v25&full-image-3d-environment-v1&foreman-surface-v1&admin-map-static-first-v20-scene-only-168&map-aerial-alignment-v76');
+  await import('./app.js?v=instagram-api-live-v25&full-image-3d-environment-v1&foreman-surface-v1&admin-map-static-first-v20-scene-only-168&map-aerial-alignment-v88&stage-context-chrome-v5&road-integral-asphalt-slices-v14');
   globalThis.__BELAVISTA_BOOT_V5351.phase='app-imported';
   globalThis.__BELAVISTA_BOOT_V5351.importedAt=performance.now();
   clearTimeout(watchdog);

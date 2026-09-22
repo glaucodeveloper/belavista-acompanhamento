@@ -1076,6 +1076,45 @@ const createAdminReferenceAerialRoadGeometryV1 = (
   return geometry;
 };
 
+// Versão em UV do mesmo traçado. Ela é aplicada diretamente sobre o plano
+// aéreo, sem herdar a matriz do GLB; assim o asfalto e a foto compartilham
+// exatamente o mesmo referencial, inclusive no renderer administrativo isolado.
+const createAdminReferenceAerialRoadPlaneGeometryV1 = (THREE, roadTrace) => {
+  if (!Array.isArray(roadTrace?.roads) || !roadTrace.roads.length) return null;
+  const imageWidth = Math.max(1, Number(roadTrace.imageSize?.[0]) || 1672),
+    imageHeight = Math.max(1, Number(roadTrace.imageSize?.[1]) || 941),
+    toPlane = (point) => [
+      (Number(point?.[0]) || 0) / imageWidth - 0.5,
+      0.5 - (Number(point?.[1]) || 0) / imageHeight,
+    ],
+    appendPath = (path, points) => {
+      if (!Array.isArray(points) || points.length < 3) return false;
+      points.forEach((point, index) => {
+        const [x, y] = toPlane(point);
+        if (index === 0) path.moveTo(x, y);
+        else path.lineTo(x, y);
+      });
+      path.closePath();
+      return true;
+    },
+    shapes = [];
+  for (const road of roadTrace.roads) {
+    const shape = new THREE.Shape();
+    if (!appendPath(shape, road.outer)) continue;
+    for (const holePoints of road.holes || []) {
+      const hole = new THREE.Path();
+      if (appendPath(hole, holePoints)) shape.holes.push(hole);
+    }
+    shapes.push(shape);
+  }
+  if (!shapes.length) return null;
+  const geometry = new THREE.ShapeGeometry(shapes);
+  geometry.translate(0, 0, 0.035);
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return { geometry, imageWidth, imageHeight };
+};
+
 const warpAdminGlbToFixedAerialV1 = ({ THREE, source, georef, image, trace, roadTrace }) => {
   if (!THREE || !source || !georef) return null;
   const matrix = georef.alignment.glbToDwgMatrix,
@@ -3768,6 +3807,10 @@ const roadPlanarAngleV1 = (points, fallback = 0) => {
   return Math.atan2(2 * sxz, sxx - szz) / 2;
 };
 
+// Lote padrão do empreendimento: aproximadamente 10 m de frente. As vias são
+// paginadas longitudinalmente a cada meia frente de lote.
+const ROAD_HALF_LOT_SLICE_WORLD_V1 = 5;
+
 export class MapScene extends HTMLElement {
   // BELAVISTA_ADMIN_3D_HARD_ISOLATION_V5370
   connectedCallback() {
@@ -4339,6 +4382,7 @@ export class MapScene extends HTMLElement {
     }
 
     const run = async () => {
+      this.dataset.roadSurfacePatchVersion = "integral-asphalt-slices-v14";
       this._adminStandaloneActivatedV5370 = true;
       this.persistAdminStandalonePhaseV5370("import-three");
 
@@ -4578,6 +4622,7 @@ export class MapScene extends HTMLElement {
         ]);
         const trace = traceResponse.ok ? await traceResponse.json() : null;
         const roadTrace = roadTraceResponse.ok ? await roadTraceResponse.json() : null;
+        this._adminStandaloneRoadTraceV1 = roadTrace;
         if (trace?.lotCount !== 298 || !Array.isArray(trace?.grid))
           throw new Error("Traçado aéreo dos 298 lotes indisponível ou inválido");
         if (!Array.isArray(roadTrace?.roads) || !roadTrace.roads.length)
@@ -4966,6 +5011,7 @@ export class MapScene extends HTMLElement {
           error,
         );
       });
+      this.ensureAdminStandaloneRoadSurfaceV1();
 
       // O GLB mantém sua geometria semântica integrada ao sistema.
       // V13 preserva UV/imageBounds apenas como metadados de seleção;
@@ -13623,6 +13669,384 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
     return false;
   }
 
+  ensureAdminStandaloneRoadSurfaceV1() {
+    if (
+      this._adminStandaloneRoadSurfaceGroupV1 ||
+      this._adminStandaloneRoadSurfacePromiseV1 ||
+      this.dataset.publicRoadSurfaceState === "error"
+    )
+      return this._adminStandaloneRoadSurfaceGroupV1 || null;
+
+    const THREE = this.THREE,
+      stage = this._adminStandaloneStageV5370,
+      surface = this._adminStandaloneAerialSurfaceV5380;
+    if (!THREE || !stage || !surface) return null;
+
+    const install = (roadTrace) => {
+      if (!Array.isArray(roadTrace?.roads) || !roadTrace.roads.length)
+        throw new Error("O traçado fotográfico das ruas está vazio.");
+      this._adminStandaloneRoadTraceV1 = roadTrace;
+      const group = this.buildAdminStandaloneRoadSurfaceV1({
+        THREE,
+        stage,
+        surface,
+        roadTrace,
+      });
+      if (!group) throw new Error("A malha de asfalto não foi construída.");
+      this.dataset.roadSurfacePatchVersion = "integral-asphalt-slices-v10";
+      this.dataset.publicRoadSurfaceState = "ready";
+      this.dataset.publicRoadTraceCount = String(roadTrace.roads.length);
+      this._adminStandaloneRendererV5370?.render?.(
+        this._adminStandaloneSceneV5370,
+        this._adminStandaloneCameraV5370,
+      );
+      return group;
+    };
+
+    if (Array.isArray(this._adminStandaloneRoadTraceV1?.roads)) {
+      try {
+        return install(this._adminStandaloneRoadTraceV1);
+      } catch (error) {
+        this.dataset.publicRoadSurfaceState = "error";
+        this.dataset.publicRoadSurfaceError = String(
+          error?.message || error,
+        ).slice(0, 220);
+        console.warn("[Aliança Park] Falha ao montar o asfalto integral.", error);
+        return null;
+      }
+    }
+
+    this.dataset.publicRoadSurfaceState = "loading-trace";
+    this._adminStandaloneRoadSurfacePromiseV1 = fetch(
+      ADMIN_REFERENCE_AERIAL_ROAD_TRACE_URL_V1,
+    )
+      .then((response) => {
+        if (!response.ok)
+          throw new Error(`Traçado viário indisponível (${response.status}).`);
+        return response.json();
+      })
+      .then(install)
+      .catch((error) => {
+        this.dataset.publicRoadSurfaceState = "error";
+        this.dataset.publicRoadSurfaceError = String(
+          error?.message || error,
+        ).slice(0, 220);
+        console.warn("[Aliança Park] Falha ao carregar o traçado viário.", error);
+        return null;
+      });
+    return null;
+  }
+
+  buildAdminStandaloneRoadSurfaceV1({ THREE, stage, surface, roadTrace }) {
+    if (!THREE || !stage || !surface || !Array.isArray(roadTrace?.roads))
+      return null;
+    const plane = createAdminReferenceAerialRoadPlaneGeometryV1(
+      THREE,
+      roadTrace,
+    );
+    if (!plane) return null;
+    const worldWidth = Math.max(1, Number(surface.scale?.x) || 1),
+      worldHeight = Math.max(1, Number(surface.scale?.y) || 1),
+      asphaltMaterial = new THREE.MeshBasicMaterial({
+        color: 0x363a3d,
+        side: THREE.DoubleSide,
+        transparent: false,
+        opacity: 1,
+        depthTest: false,
+        depthWrite: false,
+        toneMapped: false,
+      }),
+      asphalt = new THREE.Mesh(plane.geometry, asphaltMaterial),
+      group = new THREE.Group();
+    group.name = "AliançaPark__asfalto-integral-tracado-aereo";
+    group.position.copy(surface.position);
+    group.rotation.copy(surface.rotation);
+    group.scale.copy(surface.scale);
+    group.renderOrder = 28;
+    asphalt.name = "Asfalto_tracado_da_imagem__asfalto-integral";
+    asphalt.frustumCulled = false;
+    asphalt.userData = {
+      publicRoadSurface: true,
+      publicRoadSurfaceMode: "asfalto integral opaco por contorno da imagem",
+      publicRoadCenterlineIgnored: true,
+      publicRoadTraceSource: roadTrace.source || ADMIN_REFERENCE_AERIAL_ASSET_V1,
+      publicRoadCoverage: "contornos completos das ruas",
+    };
+    group.add(asphalt);
+
+    const dividerPositions = [],
+      sliceSurfacePositions = [],
+      sliceSurfaceColors = [],
+      halfLot = ROAD_HALF_LOT_SLICE_WORLD_V1,
+      slicePalette = [0x3b4043, 0x34383b];
+    let dividerCount = 0,
+      filledSliceCount = 0,
+      filledFaceTriangleCount = 0;
+    const clipAtU = (polygon, boundary, keepGreater) => {
+      const output = [];
+      for (let index = 0; index < polygon.length; index++) {
+        const a = polygon[index],
+          b = polygon[(index + 1) % polygon.length],
+          aInside = keepGreater ? a.u >= boundary - 1e-8 : a.u <= boundary + 1e-8,
+          bInside = keepGreater ? b.u >= boundary - 1e-8 : b.u <= boundary + 1e-8;
+        if (aInside) output.push(a);
+        if (aInside === bInside) continue;
+        const ratio = (boundary - a.u) / (b.u - a.u);
+        output.push({ u: boundary, v: a.v + (b.v - a.v) * ratio });
+      }
+      return output;
+    };
+    for (const [roadIndex, road] of roadTrace.roads.entries()) {
+      const sourcePoints = Array.isArray(road.outer)
+        ? road.outer
+            .map((point) => {
+              const [u, v] = [
+                (Number(point?.[0]) || 0) / plane.imageWidth - 0.5,
+                0.5 - (Number(point?.[1]) || 0) / plane.imageHeight,
+              ];
+              return { x: u * worldWidth, z: v * worldHeight };
+            })
+            .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.z))
+        : [];
+      if (sourcePoints.length < 3) continue;
+      const angle = roadPlanarAngleV1(sourcePoints, 0),
+        axisCos = Math.cos(angle),
+        axisSin = Math.sin(angle),
+        center = sourcePoints.reduce(
+          (sum, point) => ({ x: sum.x + point.x, z: sum.z + point.z }),
+          { x: 0, z: 0 },
+        );
+      center.x /= sourcePoints.length;
+      center.z /= sourcePoints.length;
+      const local = sourcePoints.map((point) => ({
+        u: (point.x - center.x) * axisCos + (point.z - center.z) * axisSin,
+        v: -(point.x - center.x) * axisSin + (point.z - center.z) * axisCos,
+      }));
+      const minU = Math.min(...local.map((point) => point.u)),
+        maxU = Math.max(...local.map((point) => point.u));
+      const bandCount = Math.max(1, Math.ceil((maxU - minU) / halfLot)),
+        roadShape = new THREE.Shape(),
+        toPlane = (point) => [
+          (Number(point?.[0]) || 0) / plane.imageWidth - 0.5,
+          0.5 - (Number(point?.[1]) || 0) / plane.imageHeight,
+        ],
+        appendShapePath = (path, points) => {
+          if (!Array.isArray(points) || points.length < 3) return false;
+          points.forEach((point, index) => {
+            const [x, y] = toPlane(point);
+            if (index === 0) path.moveTo(x, y);
+            else path.lineTo(x, y);
+          });
+          path.closePath();
+          return true;
+        };
+      if (!appendShapePath(roadShape, road.outer)) continue;
+      for (const holePoints of road.holes || []) {
+        const hole = new THREE.Path();
+        if (appendShapePath(hole, holePoints)) roadShape.holes.push(hole);
+      }
+
+      // Recorta los triángulos de la cara trazada en bandas de media frente.
+      // Cada banda resultante es una cara rellena; al partir la triangulación
+      // existente se conservan curvas, uniones, huecos y todo el perímetro.
+      const roadGeometry = new THREE.ShapeGeometry(roadShape),
+        roadVertices = roadGeometry.getAttribute("position"),
+        roadIndex = roadGeometry.getIndex(),
+        triangleCount = roadIndex ? roadIndex.count / 3 : roadVertices.count / 3,
+        roadSlices = new Set(),
+        asphaltColor = new THREE.Color();
+      for (let triangle = 0; triangle < triangleCount; triangle++) {
+        const trianglePoints = [];
+        for (let corner = 0; corner < 3; corner++) {
+          const vertexIndex = roadIndex
+              ? roadIndex.getX(triangle * 3 + corner)
+              : triangle * 3 + corner,
+            planeX = roadVertices.getX(vertexIndex),
+            planeY = roadVertices.getY(vertexIndex),
+            worldX = planeX * worldWidth,
+            worldZ = planeY * worldHeight;
+          trianglePoints.push({
+            u: (worldX - center.x) * axisCos + (worldZ - center.z) * axisSin,
+            v: -(worldX - center.x) * axisSin + (worldZ - center.z) * axisCos,
+          });
+        }
+        const triangleMinU = Math.min(...trianglePoints.map((point) => point.u)),
+          triangleMaxU = Math.max(...trianglePoints.map((point) => point.u)),
+          firstBand = Math.max(0, Math.floor((triangleMinU - minU) / halfLot)),
+          lastBand = Math.min(
+            bandCount - 1,
+            Math.floor((triangleMaxU - minU - 1e-8) / halfLot),
+          );
+        for (let band = firstBand; band <= lastBand; band++) {
+          const lowU = minU + band * halfLot,
+            highU = Math.min(maxU, lowU + halfLot),
+            clipped = clipAtU(
+              clipAtU(trianglePoints, lowU, true),
+              highU,
+              false,
+            );
+          if (clipped.length < 3) continue;
+          let areaTwice = 0;
+          for (let vertex = 0; vertex < clipped.length; vertex++) {
+            const a = clipped[vertex],
+              b = clipped[(vertex + 1) % clipped.length];
+            areaTwice += a.u * b.v - b.u * a.v;
+          }
+          if (Math.abs(areaTwice) < 1e-8) continue;
+          roadSlices.add(band);
+          asphaltColor.setHex(slicePalette[band % slicePalette.length]);
+          for (let fan = 1; fan + 1 < clipped.length; fan++) {
+            for (const point of [clipped[0], clipped[fan], clipped[fan + 1]]) {
+              const x = center.x + point.u * axisCos - point.v * axisSin,
+                z = center.z + point.u * axisSin + point.v * axisCos;
+              sliceSurfacePositions.push(x / worldWidth, z / worldHeight, 0.042);
+              sliceSurfaceColors.push(asphaltColor.r, asphaltColor.g, asphaltColor.b);
+            }
+            filledFaceTriangleCount++;
+          }
+        }
+      }
+      roadGeometry.dispose();
+      filledSliceCount += roadSlices.size;
+
+      // Os cortes ficam exatamente a meia frente do início da via; assim
+      // cada faixa cheia tem 5 m (e não uma meia-faixa inicial de 2,5 m).
+      for (let targetU = minU + halfLot; targetU < maxU; targetU += halfLot) {
+        const intersections = [];
+        for (let index = 0; index < local.length; index++) {
+          const a = local[index],
+            b = local[(index + 1) % local.length],
+            delta = b.u - a.u;
+          if (Math.abs(delta) < 0.000001) {
+            if (Math.abs(targetU - a.u) < 0.0005) {
+              intersections.push(a.v, b.v);
+            }
+            continue;
+          }
+          const ratio = (targetU - a.u) / delta;
+          if (ratio >= -0.000001 && ratio <= 1.000001)
+            intersections.push(a.v + (b.v - a.v) * ratio);
+        }
+        intersections.sort((a, b) => a - b);
+        for (let index = 0; index + 1 < intersections.length; index += 2) {
+          const minV = intersections[index],
+            maxV = intersections[index + 1];
+          if (maxV - minV < 0.25) continue;
+          const startX =
+              center.x + targetU * axisCos - minV * axisSin,
+            startZ = center.z + targetU * axisSin + minV * axisCos,
+            endX = center.x + targetU * axisCos - maxV * axisSin,
+            endZ = center.z + targetU * axisSin + maxV * axisCos;
+          dividerPositions.push(
+            startX / worldWidth,
+            startZ / worldHeight,
+            0.055,
+            endX / worldWidth,
+            endZ / worldHeight,
+            0.055,
+          );
+          dividerCount++;
+        }
+      }
+    }
+    if (sliceSurfacePositions.length) {
+      const sliceGeometry = new THREE.BufferGeometry();
+      sliceGeometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(sliceSurfacePositions, 3),
+      );
+      sliceGeometry.setAttribute(
+        "color",
+        new THREE.Float32BufferAttribute(sliceSurfaceColors, 3),
+      );
+      sliceGeometry.computeVertexNormals();
+      const sliceMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        vertexColors: true,
+        side: THREE.DoubleSide,
+        transparent: false,
+        depthTest: false,
+        depthWrite: false,
+        toneMapped: false,
+      });
+      const filledSlices = new THREE.Mesh(sliceGeometry, sliceMaterial);
+      filledSlices.name = "Asfalto_tracado_da_imagem__faces-cheias-meia-frente";
+      filledSlices.frustumCulled = false;
+      filledSlices.renderOrder = 29;
+      filledSlices.userData = {
+        publicRoadSurface: true,
+        streetFilledHorizontalSlices: true,
+        streetSliceThickness: halfLot,
+        streetSliceOrientation: "faixas contínuas transversais ao eixo da rua",
+        streetSliceCount: filledSliceCount,
+        streetFaceTriangleCount: filledFaceTriangleCount,
+        publicRoadCenterlineIgnored: true,
+      };
+      group.add(filledSlices);
+    }
+    if (dividerPositions.length) {
+      const dividerGeometry = new THREE.BufferGeometry();
+      dividerGeometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(dividerPositions, 3),
+      );
+      dividerGeometry.computeBoundingSphere();
+      const dividerMaterial = new THREE.LineBasicMaterial({
+        // A junta apenas indica o módulo: não pode parecer um vão sem asfalto.
+        // O underlay integral permanece contínuo por baixo de todas as faixas.
+        color: 0x252a2d,
+        transparent: true,
+        opacity: 0.48,
+        depthTest: false,
+        depthWrite: false,
+        toneMapped: false,
+      });
+      const dividers = new THREE.LineSegments(
+        dividerGeometry,
+        dividerMaterial,
+      );
+      dividers.name = "Asfalto_tracado_da_imagem__fatias-meio-lote";
+      dividers.frustumCulled = false;
+      dividers.renderOrder = 29;
+      dividers.userData = {
+        streetSliceDividers: true,
+        streetSliceThickness: halfLot,
+        streetSliceOrientation: "transversal ao eixo local da rua",
+        publicRoadSurface: true,
+        publicRoadCenterlineIgnored: true,
+      };
+      group.add(dividers);
+    }
+    group.userData = {
+      publicRoadSurface: true,
+      publicRoadSurfaceMode: "asfalto integral opaco por contorno da imagem",
+      publicRoadCenterlineIgnored: true,
+      publicRoadTraceCount: roadTrace.roads.length,
+      publicRoadSliceCount: filledSliceCount,
+      publicRoadFaceTriangleCount: filledFaceTriangleCount,
+      publicRoadSliceDividerCount: dividerCount,
+      publicRoadSliceThickness: halfLot,
+      publicRoadCoverage: "contornos completos das ruas preenchidos",
+      publicRoadSliceSurface: "faces contíguas sobre asfalto integral contínuo",
+    };
+    stage.add(group);
+    this._adminStandaloneRoadSurfaceGroupV1 = group;
+    this.dataset.modelOperationalGeometry =
+      "ready · asfalto integral georreferenciado · centros ignorados";
+    this.dataset.publicRoadSurfaceMode =
+      "asfalto integral por contorno da imagem · centros ignorados";
+    this.dataset.publicRoadCoverage = "contornos completos das ruas preenchidos";
+    this.dataset.publicRoadSliceSurface =
+      "faces contíguas · juntas discretas · asfalto sem vãos";
+    this.dataset.publicStreetPaverRaster =
+      `${filledSliceCount} faixas preenchidas · ${dividerCount} cortes · meia frente de lote ${halfLot.toFixed(2)}`;
+    this.dataset.publicRoadFaceTriangleCount = String(filledFaceTriangleCount);
+    this.dataset.publicRoadHalfLotSlice = halfLot.toFixed(2);
+    this.dataset.publicRoadCenterlinePolicy =
+      "centros ignorados · fatias calculadas no perímetro da rua";
+    return group;
+  }
+
   addLotStatusBadges(THREE, model) {
     if (!model || !this.modelParts?.lots?.length) return;
     const reserved = new Set(
@@ -14577,6 +15001,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
   }
   renderActiveSceneV5370() {
     if (this.isAdminStandaloneInteractiveV5370()) {
+      this.ensureAdminStandaloneRoadSurfaceV1();
       this._adminStandaloneStageV5370.updateMatrixWorld?.(true);
       this._adminStandaloneRendererV5370.render(
         this._adminStandaloneSceneV5370,
