@@ -1,5 +1,21 @@
 # Glauco Asked Ruby — shared Ruby/WASM frontend reboot
 
+## Port do Aliança Park (F:\\belavista-acompanhamento)
+
+Este diretório agora executa telas nativas da DSL Ruby em `web/public/ruby/native-pages.rb`; a camada principal não incorpora mais `/admin` em WebView. O Browser JEV permanece para o Instagram Direct. `npm run dev` e `npm run build` exportam dados-base diretamente de `state.js` e `repasse-price-catalog.mjs` para `web/public/data/original-snapshot.json` (7 etapas, 298 lotes válidos). A página de prompt do atendente configura as instruções e o proxy local NVIDIA.
+
+Para conferir no navegador (PowerShell):
+
+```powershell
+cd F:\belavista-acompanhamento\glauco-ruby-port\web
+npm install # apenas na primeira execução
+npm run dev -- --port 5176 --host 127.0.0.1
+```
+
+Abra `http://127.0.0.1:5176/`. Para o desktop nativo, execute `..\scripts\windows\build-desktop.ps1` a partir de `web` (requer Rust/MSVC e WebView2). **Não use `run-example.ps1` neste projeto:** ele substitui `web/public/ruby/application.rb` pelo exemplo.
+
+Nesta etapa há Dashboard, Central, Etapas/agenda/materiais, Registros, Lotes/modal, Financeiro e páginas Instagram em Ruby. A prévia aérea usa o asset do projeto original; o mapa 3D interativo, o CRUD persistente e as telas comerciais completas ainda não foram portados. O snapshot não é dado operacional em tempo real. Não registre vendas, pagamentos ou status neste port até a API original estar integrada. O backend JS existente não foi alterado.
+
 Este pacote implementa a direção combinada definida para o framework:
 
 ```ruby

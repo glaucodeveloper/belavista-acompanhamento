@@ -118,11 +118,15 @@ async function boot() {
     throw new Error(`Ruby WASM returned invalid MIME type: ${contentType || '(empty)'}`);
   }
 
-  const [wasmModule, runtime, application] = await Promise.all([
+  const [wasmModule, runtime, application, nativePages, originalSnapshot] = await Promise.all([
     WebAssembly.compileStreaming(rubyResponse),
     source(new URL('./ruby/runtime.rb', globalThis.location.href)),
     source(new URL('./ruby/application.rb', globalThis.location.href)),
+    source(new URL('./ruby/native-pages.rb', globalThis.location.href)),
+    source(new URL('./data/original-snapshot.json', globalThis.location.href)),
   ]);
+
+  globalThis.BelavistaSnapshotJson = originalSnapshot;
 
   hostLog('phase', 'ruby-assets-loaded');
 
@@ -130,7 +134,7 @@ async function boot() {
   globalThis.rubyVM = vm;
 
   status('Preparing Ruby applicationâ€¦');
-  await vm.evalAsync(`${runtime}\n\n${application}\n\nRuby::Boot.prepare_loading!`);
+  await vm.evalAsync(`${runtime}\n\n${application}\n\n${nativePages}\n\nRuby::Boot.prepare_loading!`);
   hostLog('phase', 'ruby-loading-component-mounted');
 
   // AI initializes only on an explicitly requested monitor run.

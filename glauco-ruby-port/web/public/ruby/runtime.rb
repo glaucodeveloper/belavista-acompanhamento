@@ -717,8 +717,8 @@ module Frontend
 
   class Component
     TAGS = %i[
-      main section article aside header footer nav div span p h1 h2 h3 h4 h5 h6
-      button input textarea label form ul ol li img a strong small pre code canvas progress
+      main section article aside header footer nav div span p h1 h2 h3 h4 h5 h6 figure figcaption
+      button input textarea label form ul ol li img a strong small pre code canvas progress details summary
     ].freeze
 
     class << self

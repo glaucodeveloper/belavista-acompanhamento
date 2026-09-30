@@ -34,9 +34,6 @@ application "Aliança Park Desktop" do
 end
 
 class Application < Frontend::Component
-  LEGACY_BASE_URL =
-    "http://127.0.0.1:8080/admin?glauco_shell=1"
-
   INSTAGRAM_URL =
     "https://www.instagram.com/direct/inbox/"
 
@@ -78,24 +75,25 @@ class Application < Frontend::Component
   NAV_ITEMS = [
     ["map", "Dashboard inicial"],
     ["control", "Central operacional"],
-    ["materials", "Materiais"],
-    ["documents", "Documentos"],
     ["stages", "Etapas e Cronograma"],
-    ["personnel", "Encarregados"],
     ["records", "Registros"],
-    ["leads", "Leads"],
     ["instagram_leads", "Instagram Leads"],
+    ["instagram_direct", "Atendimento · Direct"],
+    ["instagram_prompt", "Prompt do atendente"],
     ["contracts", "Contratos"],
     ["brokers", "Comissões"],
-    ["brokers-board", "Corretores"],
+    ["brokers-board", "Lotes"],
     ["finance", "Financeiro"],
-    ["reports", "Relatórios"],
     ["settings", "Configurações"]
   ].freeze
 
   state(
     surface: :legacy,
     legacy_view: "map",
+    lot_filter: "",
+    selected_lot: "",
+    selected_stage: "earthwork",
+    stage_tab: "agenda",
     instagram_leads_status:
       "Monitor do Instagram aguardando inicialização."
   )
@@ -162,16 +160,23 @@ class Application < Frontend::Component
       .gsub("'", "&#39;")
   end
 
-  def legacy_url
-    JS.global[:RubyConnection].call(:url, state.legacy_view.to_s.to_js).to_s
-  end
-
   def open_navigation(view)
     view = view.to_s
+    state.selected_lot = "" if state.selected_lot != ""
 
     if view == "instagram_leads"
       state.surface = :instagram_leads
       refresh_instagram_leads_page
+      return
+    end
+
+    if view == "instagram_direct"
+      state.surface = :instagram_direct
+      return
+    end
+
+    if view == "instagram_prompt"
+      state.surface = :instagram_prompt
       return
     end
 
@@ -189,9 +194,8 @@ class Application < Frontend::Component
   end
 
   def active_navigation?(view)
-    if view.to_s == "instagram_leads"
-      state.surface == :instagram_leads ||
-        state.surface == :instagram_direct
+    if %w[instagram_leads instagram_direct instagram_prompt].include?(view.to_s)
+      state.surface.to_s == view.to_s
     else
       state.surface == :legacy &&
         state.legacy_view == view.to_s
@@ -315,17 +319,26 @@ class Application < Frontend::Component
   end
 
   def ensure_instagram_completion_backend
-    # The legacy Aliança Park server loads F:\belavista-acompanhamento\.env
-    # and exposes an OpenAI-compatible proxy without exposing NVIDIA_API_KEY.
-    storage_put(
-      MODEL_ENDPOINT_KEY,
-      "http://127.0.0.1:8080/v1/chat/completions"
-    )
+    # The original server loads its .env and proxies NVIDIA without exposing
+    # NVIDIA_API_KEY to the WebView. Do not overwrite an explicit user setting.
+    storage_put(MODEL_ENDPOINT_KEY, default_instagram_model_endpoint) if
+      storage_get(MODEL_ENDPOINT_KEY).empty?
+    storage_put(MODEL_NAME_KEY, "alianca-park-nvidia") if
+      storage_get(MODEL_NAME_KEY).empty?
+  end
 
-    storage_put(
-      MODEL_NAME_KEY,
-      "alianca-park-nvidia"
-    )
+  def default_instagram_model_endpoint
+    "http://127.0.0.1:8080/v1/chat/completions"
+  end
+
+  def instagram_model_endpoint
+    value = storage_get(MODEL_ENDPOINT_KEY)
+    value.empty? ? default_instagram_model_endpoint : value
+  end
+
+  def instagram_model_name
+    value = storage_get(MODEL_NAME_KEY)
+    value.empty? ? "alianca-park-nvidia" : value
   end
 
   def instagram_leads_policy
@@ -1030,11 +1043,6 @@ class Application < Frontend::Component
             }
         end
 
-        label "Servidor do programa", for: "alianca-server"
-        input id: "alianca-server", type: "url", value: JS.global[:RubyConnection].call(:base).to_s,
-          style: {"width" => "100%", "boxSizing" => "border-box", "margin" => "8px 0", "padding" => "8px"}
-        button "Conectar", onclick: proc { JS.global[:RubyConnection].call(:save, dom_value("alianca-server").to_js); state.surface = :legacy },
-          style: {"padding" => "8px", "marginBottom" => "16px"}
         NAV_ITEMS.each do |view, label|
           nav_button(view, label)
         end
@@ -1046,8 +1054,8 @@ class Application < Frontend::Component
         "minHeight" => "0",
         "overflow" => "hidden"
       } do
-        # Entire current Aliança Park program. It is mounted once and remains
-        # alive while Instagram Leads is in front of it.
+        # The original app's screens are authored in Ruby DSL. Only external
+        # browser services (Instagram Direct below) use a WebView.
         div id: "alianca-program-layer",
           style: {
             "position" => "absolute",
@@ -1065,17 +1073,7 @@ class Application < Frontend::Component
                 "30" :
                 "5"
           } do
-            webview_content(
-              id: "alianca-program",
-              url: legacy_url,
-              title: "Aliança Park",
-              style: {
-                "position" => "absolute",
-                "inset" => "0",
-                "width" => "100%",
-                "height" => "100%"
-              }
-            )
+            render_original_page
           end
 
         # Native Instagram Direct WebView. It is created at startup even when
@@ -1138,6 +1136,17 @@ class Application < Frontend::Component
                 "3"
           } do
             render_instagram_leads_page
+          end
+
+        div id: "instagram-prompt-layer",
+          style: {
+            "position" => "absolute",
+            "inset" => "0",
+            "visibility" => state.surface == :instagram_prompt ? "visible" : "hidden",
+            "pointerEvents" => state.surface == :instagram_prompt ? "auto" : "none",
+            "zIndex" => state.surface == :instagram_prompt ? "36" : "2"
+          } do
+            render_instagram_prompt_page
           end
       end
     end
