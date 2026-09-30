@@ -2841,3 +2841,62 @@ belavista-app[data-role="foreman"] .dashboard-cash-kpi{border-left-color:#525252
 .cash-fiscal-control-v1 input,.cash-fiscal-control-v1 select{min-width:0;min-height:40px;padding:8px 10px;border:0;border-bottom:1px solid #8d8d8d;border-radius:0;background:#393939;color:#f4f4f4;font:inherit}
 @media(max-width:860px){.record-composer-cash-v1{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:560px){.cash-fiscal-control-v1>div{grid-template-columns:minmax(0,1fr)}.record-quick-cash-v1{align-self:flex-start}}
+/* Agenda e materiais no foco da etapa dedicada */
+.stage-v9-agenda-stage-name{color:#78a9ff!important;font-weight:600!important;margin:0 0 4px!important}
+.stage-agenda-page{display:flex;flex-direction:column;gap:14px}
+.stage-agenda-page>.stage-v9-dedicated-head{order:0}
+.stage-agenda-page>.stage-detail-tabs-v5428{order:1}
+.stage-agenda-page>.stage-agenda-activities{order:2}
+.stage-agenda-page>.stage-v9-status-lines{order:3}
+.stage-agenda-page>.stage-v9-detail-grid{order:4}
+.stage-agenda-page>.stage-v9-diary{order:5}
+.stage-agenda-activity-list{display:grid;gap:8px}
+.stage-agenda-activity-row{display:grid;grid-template-columns:40px minmax(0,1fr) auto auto;align-items:center;gap:12px;width:100%;padding:14px;border:1px solid #3d4f65;background:#182536;color:#edf4ff;text-align:left;cursor:pointer}
+.stage-agenda-activity-row:hover,.stage-agenda-activity-row:focus-visible{border-color:#78a9ff;background:#20334b;outline:none}
+.stage-agenda-activity-index{font:16px "IBM Plex Mono",monospace;color:#78a9ff}
+.stage-agenda-activity-main{display:grid;gap:5px;min-width:0}.stage-agenda-activity-main strong{font-size:14px}.stage-agenda-activity-main small{font-size:10px;color:#bac9d8}.stage-agenda-activity-main em{font:9px "IBM Plex Mono",monospace;color:#8fbbff;font-style:normal}
+.stage-agenda-activity-status{padding:5px 8px;border:1px solid #516780;font-size:9px;white-space:nowrap}
+.stage-agenda-activity-open{font-size:10px;color:#8fbbff;white-space:nowrap}
+@media(max-width:650px){.stage-agenda-activity-row{grid-template-columns:28px minmax(0,1fr) auto;gap:8px;padding:10px}.stage-agenda-activity-open{grid-column:2/-1}}
+/* Workspace da etapa: materiais … esquerda, lista ao centro e formul rio … direita. */
+.stage-agenda-page>.stage-agenda-workspace{order:2}
+.stage-agenda-workspace{display:grid;grid-template-columns:minmax(230px,260px) minmax(0,1fr) minmax(280px,320px);align-items:start;gap:14px;min-width:0}
+.stage-agenda-workspace>*{min-width:0}
+.stage-agenda-material-sidebar,.stage-agenda-create-sidebar{position:sticky;top:76px;max-height:calc(100dvh - 92px);overflow:auto;border:1px solid #43536a;background:#172230;box-shadow:0 14px 34px #0005}
+.stage-agenda-material-sidebar>header,.stage-agenda-create-sidebar>header{display:grid;gap:7px;padding:15px;border-bottom:1px solid #34465a}
+.stage-agenda-material-sidebar h2,.stage-agenda-create-sidebar h2{margin:0;font-size:17px;color:#edf4ff}
+.stage-agenda-material-sidebar p,.stage-agenda-create-sidebar p{margin:0;color:#a8bacd;font-size:10px;line-height:1.45}
+.stage-agenda-material-sidebar>header button{justify-self:start;padding:5px 8px;border:1px solid #526b88;background:#20334b;color:#d9eaff;cursor:pointer;font-size:10px}
+.stage-agenda-material-accordions{display:grid;gap:7px;padding:10px}
+.stage-agenda-material-item{border:1px solid #3a4d62;background:#1d2b3a}
+.stage-agenda-material-item[hidden]{display:none}
+.stage-agenda-material-item summary{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;cursor:pointer;list-style:none}
+.stage-agenda-material-item summary::-webkit-details-marker{display:none}
+.stage-agenda-material-item summary::after{content:"?";color:#8fbbff}
+.stage-agenda-material-item[open] summary::after{content:"^"}
+.stage-agenda-material-item summary b{font-size:11px}.stage-agenda-material-item summary small{font-size:9px;color:#9bb4d0}
+.stage-agenda-material-details{padding:0 10px 10px;border-top:1px solid #34465a}
+.stage-agenda-material-details dl{display:grid;gap:0;margin:0}.stage-agenda-material-details dl>div{display:grid;gap:3px;padding:7px 0;border-bottom:1px solid #2d4053}
+.stage-agenda-material-details dt{color:#8fbbff;font:8px "IBM Plex Mono",monospace;text-transform:uppercase}
+.stage-agenda-material-details dd{margin:0;color:#e0e9f2;font-size:10px;overflow-wrap:anywhere}
+.stage-agenda-material-empty{padding:10px}
+.stage-agenda-activities{min-width:0}.stage-agenda-activities>header{display:grid;gap:8px}
+.stage-agenda-activity-row{grid-template-columns:28px minmax(0,1fr);gap:7px;padding:12px}
+.stage-agenda-activity-status,.stage-agenda-activity-open{grid-column:2;justify-self:start}
+.stage-agenda-activity-main strong{font-size:13px}
+.stage-agenda-create-sidebar form{display:grid;gap:10px;padding:14px}
+.stage-agenda-create-sidebar label{display:grid;gap:5px;color:#b9cadd;font-size:10px}
+.stage-agenda-create-sidebar input,.stage-agenda-create-sidebar select,.stage-agenda-create-sidebar textarea{width:100%;min-width:0;box-sizing:border-box;padding:8px;border:1px solid #465b72;background:#101b27;color:#f4f8ff;font:11px "IBM Plex Sans",sans-serif}
+.stage-agenda-create-sidebar input,.stage-agenda-create-sidebar select{min-height:34px}
+.stage-agenda-create-sidebar textarea{resize:vertical}
+.stage-agenda-form-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.stage-agenda-create-sidebar fieldset{min-width:0;margin:0;padding:10px;border:1px solid #3a4d62}
+.stage-agenda-create-sidebar legend{color:#8fbbff;font-size:9px;text-transform:uppercase}
+.stage-agenda-form-materials{display:grid;gap:5px;max-height:115px;overflow:auto}
+.stage-agenda-form-materials label{display:flex;align-items:center;gap:6px}.stage-agenda-form-materials input{width:auto;min-height:0}
+.stage-agenda-suggest-button,.stage-agenda-create-submit{min-height:34px;padding:7px 9px;border:1px solid #54749b;background:#203c5c;color:#e8f4ff;cursor:pointer;font-size:11px}
+.stage-agenda-create-submit{border-color:#0f62fe;background:#0f62fe;font-weight:700}
+.stage-agenda-fit{display:grid;gap:4px;padding:10px;border:1px solid #587ba4;background:#1b3654}
+.stage-agenda-fit b{font-size:10px}.stage-agenda-fit span{font-size:11px;color:#eaf4ff}.stage-agenda-fit small{font-size:9px;color:#abc1d9;line-height:1.35}
+@media(max-width:1180px){.stage-agenda-workspace{grid-template-columns:minmax(200px,240px) minmax(0,1fr)}.stage-agenda-create-sidebar{grid-column:2;position:static;max-height:none}}
+@media(max-width:760px){.stage-agenda-workspace{grid-template-columns:1fr}.stage-agenda-material-sidebar,.stage-agenda-create-sidebar{position:static;max-height:none}.stage-agenda-material-sidebar{grid-row:2}.stage-agenda-activities{grid-row:1}.stage-agenda-create-sidebar{grid-row:3;grid-column:1}.stage-agenda-activity-row{grid-template-columns:26px minmax(0,1fr)}}
