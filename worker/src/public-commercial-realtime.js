@@ -20,6 +20,16 @@ export async function publishPublicCommercialEvent(env,{type='lead.intent.detect
     [`operationalEvents/${eventId}`]:{id:eventId,type,entityType:'public-lead',entityId:base.entityId,lotId:base.lotId,source:'belavista-cloudflare-worker',createdAt},
     [`notificationAreas/commercial/${notificationId}`]:{...base,role:'commercial',area:'commercial'}
   };
+  if(lead.id&&lead.name){
+    updates[`publicLeads/${safeKey(lead.id)}`]={
+      id:text(lead.id,120),name:text(lead.name,120),whatsapp:text(lead.whatsapp,40),
+      email:text(lead.email,160),instagramHandle:text(lead.instagramHandle,60),
+      objective:text(lead.objective,80),lot:text(reservation.lotId||lot?.label||lot?.code||lot?.id,120),
+      status:type==='lot.reserved'?'Reserva em análise':'Novo',
+      conversationSummary:text(session.conversationSummary,1400),
+      sessionId:text(session.id,120),source:'Página pública',createdAt
+    };
+  }
   for(const role of channels(env))updates[`notifications/${role}/${notificationId}`]={...base,role};
   const auth=text(env.FIREBASE_AUTH_TOKEN,1000),endpoint=`${databaseUrl(env)}/.json${auth?`?auth=${encodeURIComponent(auth)}`:''}`;
   const response=await fetch(endpoint,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(updates)});

@@ -11,12 +11,14 @@ const salesRoot=process.env.BELAVISTA_SALES_ROOT||join(dataRoot,'sales');
 const outsourcingRoot=process.env.BELAVISTA_OUTSOURCING_ROOT||join(dataRoot,'outsourcing');
 const cashFlowAttachmentsRoot=process.env.BELAVISTA_CASH_ATTACHMENTS_ROOT||join(dataRoot,'cash-attachments');
 const workbenchAttachmentsRoot=process.env.BELAVISTA_WORKBENCH_ATTACHMENTS_ROOT||join(dataRoot,'workbench-attachments');
+const serviceRequestFilesRoot=process.env.BELAVISTA_SERVICE_REQUEST_FILES_ROOT||join(dataRoot,'service-request-files');
 mkdirSync(dirname(dbPath),{recursive:true});
 mkdirSync(receiptsRoot,{recursive:true});
 mkdirSync(salesRoot,{recursive:true});
 mkdirSync(outsourcingRoot,{recursive:true});
 mkdirSync(cashFlowAttachmentsRoot,{recursive:true});
 mkdirSync(workbenchAttachmentsRoot,{recursive:true});
+mkdirSync(serviceRequestFilesRoot,{recursive:true});
 
 export const db=new DatabaseSync(dbPath);
 db.exec(`
@@ -301,11 +303,36 @@ db.exec(`
     created_by TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS service_requests (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    domain TEXT NOT NULL,
+    stage_key TEXT NOT NULL DEFAULT '',
+    activity_id TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'triage',
+    requested_by TEXT NOT NULL,
+    requested_by_uid TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS service_request_files (
+    id TEXT PRIMARY KEY,
+    request_id TEXT NOT NULL REFERENCES service_requests(id) ON DELETE CASCADE,
+    file_name TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    storage_path TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_service_requests_created ON service_requests(created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_service_request_files_request ON service_request_files(request_id,created_at);
   CREATE INDEX IF NOT EXISTS idx_workbench_diary_activity ON workbench_diary(stage_key,activity_id,record_date DESC);
   CREATE INDEX IF NOT EXISTS idx_workbench_attachments_stage ON workbench_attachments(stage_key,activity_id,created_at DESC);
 `);
+try { db.exec(`ALTER TABLE service_requests ADD COLUMN requested_by_uid TEXT NOT NULL DEFAULT ''`); } catch {}
 
 try { db.exec(`ALTER TABLE records ADD COLUMN map_area TEXT`); } catch {}
+try { db.exec(`ALTER TABLE records ADD COLUMN properties_json TEXT NOT NULL DEFAULT '[]'`); } catch {}
 try { db.exec(`ALTER TABLE stage_workbench_state ADD COLUMN activity_locations_json TEXT NOT NULL DEFAULT '{}'`); } catch {}
 try { db.exec(`ALTER TABLE stage_workbench_state ADD COLUMN input_sessions_json TEXT NOT NULL DEFAULT '[]'`); } catch {}
 try { db.exec(`ALTER TABLE stage_workbench_state ADD COLUMN calendar_date TEXT`); } catch {}
@@ -404,7 +431,7 @@ seed();
 const recordSelect=`SELECT r.id,r.project_id AS projectId,r.stage_id AS stageId,r.activity_id AS activityId,
   p.name AS obra,s.name AS etapa,a.name AS atividade,r.record_date AS data,r.record_time AS hora,
   r.responsible_id AS responsibleId,r.responsible_name AS responsavel,r.details AS detalhes,
-  r.status,r.evidence_uri AS evidenceUri,r.map_area AS mapArea,r.created_at AS createdAt,r.updated_at AS updatedAt
+  r.status,r.evidence_uri AS evidenceUri,r.map_area AS mapArea,r.properties_json AS propertiesJson,r.created_at AS createdAt,r.updated_at AS updatedAt
   FROM records r JOIN projects p ON p.id=r.project_id LEFT JOIN stages s ON s.id=r.stage_id
   LEFT JOIN activities a ON a.id=r.activity_id`;
 
@@ -435,6 +462,15 @@ const serializeMapArea=(value,fallback='')=>{
   if(typeof value==='string')return value.trim()||fallback||null;
   try{return JSON.stringify(value);}catch{return fallback||null;}
 };
+const serializeRecordProperties=(value,fallback='[]')=>{
+  if(value===undefined)return typeof fallback==='string'?fallback:JSON.stringify(fallback||[]);
+  let parsed=value;
+  if(typeof value==='string'){try{parsed=JSON.parse(value);}catch{parsed=[];}}
+  if(!Array.isArray(parsed))parsed=[];
+  const clean=parsed.slice(0,40).map((item,index)=>({id:asText(item?.id,`property-${index+1}`).slice(0,80),label:asText(item?.label,'Propriedade sem nome').slice(0,120),type:['text','number','date','select','boolean','map_area'].includes(item?.type)?item.type:'text',value:item?.type==='map_area'&&item?.value&&typeof item.value==='object'?item.value:asText(item?.value).slice(0,2000),options:Array.isArray(item?.options)?item.options.map(option=>asText(option).slice(0,120)).filter(Boolean).slice(0,30):[]}));
+  return JSON.stringify(clean);
+};
+const parseRecordRow=row=>{if(!row)return row;let properties=[];try{properties=JSON.parse(row.propertiesJson||'[]');}catch{}const materialName=properties.find(item=>item.id==='material_name')?.value;return {...row,atividade:materialName?`Atualização de material: ${materialName}`:row.atividade,properties};};
 const slug=(value,fallback='item')=>String(value??fallback).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80)||fallback;
 const numeric=(value,fallback=0)=>{const normalized=String(value??'').replace(/\./g,'').replace(',','.').replace(/[^\d.-]/g,'');const amount=Number(normalized);return Number.isFinite(amount)?amount:fallback;};
 const toRecordInput=(input,existing={})=>{
@@ -451,7 +487,7 @@ const toRecordInput=(input,existing={})=>{
   // vazias. Registros gerais continuam válidos: a relação activity_id fica
   // nula até que a atividade seja criada, em vez de apontar para um ID órfão.
   const generalEvent=asText(input.etapa).toLocaleLowerCase('pt-BR')==='geral';
-  return {projectId:ids.projectId||projectId,stageId:generalEvent?null:ids.stageId||existing.stageId||2,activityId:generalEvent?null:ids.activityId||fallbackActivityId||existing.activityId||null,responsibleId:ids.responsibleId||existing.responsibleId||null,obra,etapa,atividade,responsavel,data:asText(input.data,existing.data||new Date().toISOString().slice(0,10)),hora:asText(input.hora,existing.hora||'08:30'),detalhes:asText(input.detalhes,existing.detalhes||''),status:asText(input.status,existing.status||'Pendente'),evidenceUri:asText(input.evidenceUri,existing.evidenceUri||'')||null,mapArea};
+  return {projectId:ids.projectId||projectId,stageId:generalEvent?null:ids.stageId||existing.stageId||2,activityId:generalEvent?null:ids.activityId||fallbackActivityId||existing.activityId||null,responsibleId:ids.responsibleId||existing.responsibleId||null,obra,etapa,atividade,responsavel,data:asText(input.data,existing.data||new Date().toISOString().slice(0,10)),hora:asText(input.hora,existing.hora||'08:30'),detalhes:asText(input.detalhes,existing.detalhes||''),status:asText(input.status,existing.status||'Pendente'),evidenceUri:asText(input.evidenceUri,existing.evidenceUri||'')||null,mapArea,propertiesJson:serializeRecordProperties(input.properties,existing.propertiesJson||existing.properties||'[]')};
 };
 
 
@@ -626,8 +662,9 @@ const parseCashAttachment=(input={})=>{
 export function listCashFlowEntries(){
   const rows=db.prepare(`SELECT id,entry_date AS date,kind,category,stage,description,amount_cents AS amountCents,fiscal_document_type AS fiscalDocumentType,fiscal_document_number AS fiscalDocumentNumber,fiscal_issuer AS fiscalIssuer,fiscal_issue_date AS fiscalIssueDate,fiscal_status AS fiscalStatus,created_at AS createdAt FROM cash_flow_entries ORDER BY entry_date DESC,created_at DESC`).all();
   return rows.map(row=>{
-    const file=db.prepare(`SELECT id,file_name AS fileName,mime_type AS mimeType FROM cash_flow_attachments WHERE cash_flow_id=? ORDER BY created_at DESC LIMIT 1`).get(row.id);
-    return file?{...row,attachment:{...file,fileUrl:'/api/cash-flow/'+encodeURIComponent(row.id)+'/file'}}:row;
+    const attachments=db.prepare(`SELECT id,file_name AS fileName,mime_type AS mimeType,created_at AS createdAt FROM cash_flow_attachments WHERE cash_flow_id=? ORDER BY created_at DESC`).all(row.id)
+      .map(file=>({...file,fileUrl:'/api/cash-flow/'+encodeURIComponent(row.id)+'/attachments/'+encodeURIComponent(file.id)+'/file'}));
+    return {...row,attachments,...(attachments[0]?{attachment:attachments[0]}:{})};
   });
 }
 export function listLeadMessages(leadId){
@@ -714,8 +751,25 @@ export function createCashFlowEntry(input={}){
   audit.run('cash_flow_entries',id,'created',JSON.stringify({kind,amountCents,stage:asText(input.stage),fiscalStatus,fiscalDocumentType,fiscalDocumentNumber}),timestamp);
   return listCashFlowEntries().find(row=>row.id===id);
 }
-export function getCashFlowAttachment(id){
-  const row=db.prepare(`SELECT file_name AS fileName,mime_type AS mimeType,storage_path AS storagePath FROM cash_flow_attachments WHERE cash_flow_id=? ORDER BY created_at DESC LIMIT 1`).get(asText(id));
+export function addCashFlowAttachment(id,input={}){
+  const cashFlowId=asText(id);
+  if(!db.prepare(`SELECT id FROM cash_flow_entries WHERE id=?`).get(cashFlowId))throw Object.assign(new Error('Lançamento de caixa não encontrado.'),{statusCode:404});
+  const attachment=parseCashAttachment(input);
+  if(!attachment)throw Object.assign(new Error('Selecione um PDF ou imagem para anexar.'),{statusCode:400});
+  const attachmentId=`CXA-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+  const base=attachment.fileName.toLowerCase().endsWith(attachment.ext)?attachment.fileName:`${attachment.fileName}${attachment.ext}`;
+  const storagePath=join(cashFlowAttachmentsRoot,`${cashFlowId}-${attachmentId}-${base}`);
+  writeFileSync(storagePath,attachment.bytes,{flag:'wx'});
+  try{
+    db.prepare(`INSERT INTO cash_flow_attachments(id,cash_flow_id,file_name,mime_type,storage_path,created_at) VALUES(?,?,?,?,?,?)`).run(attachmentId,cashFlowId,base,attachment.mimeType,storagePath,now());
+  }catch(error){try{unlinkSync(storagePath)}catch{}throw error}
+  audit.run('cash_flow_attachments',attachmentId,'created',JSON.stringify({cashFlowId,fileName:base}),now());
+  return listCashFlowEntries().find(row=>row.id===cashFlowId);
+}
+export function getCashFlowAttachment(id,attachmentId=''){
+  const row=attachmentId
+    ? db.prepare(`SELECT file_name AS fileName,mime_type AS mimeType,storage_path AS storagePath FROM cash_flow_attachments WHERE cash_flow_id=? AND id=?`).get(asText(id),asText(attachmentId))
+    : db.prepare(`SELECT file_name AS fileName,mime_type AS mimeType,storage_path AS storagePath FROM cash_flow_attachments WHERE cash_flow_id=? ORDER BY created_at DESC LIMIT 1`).get(asText(id));
   return row&&existsSync(row.storagePath)?row:null;
 }
 export function cashFlowSummary(){
@@ -744,12 +798,83 @@ export function createOutsourcingReceipt(input={}){
 }
 export function getOutsourcingReceiptFile(id){const row=db.prepare(`SELECT file_name AS fileName,mime_type AS mimeType,storage_path AS storagePath FROM outsourcing_receipts WHERE id=?`).get(id);return row&&existsSync(row.storagePath)?row:null;}
 
-export function listRecords(){return db.prepare(`${recordSelect} ORDER BY r.record_date DESC,r.record_time DESC,r.created_at DESC`).all();}
-export function getRecord(id){return db.prepare(`${recordSelect} WHERE r.id=?`).get(id);}
+export function listRecords(){return db.prepare(`${recordSelect} ORDER BY r.record_date DESC,r.record_time DESC,r.created_at DESC`).all().map(parseRecordRow);}
+const serviceRequestSelect=`SELECT id,title,description,domain,stage_key AS stageKey,activity_id AS activityId,status,requested_by AS requestedBy,requested_by_uid AS requestedByUid,created_at AS createdAt,updated_at AS updatedAt FROM service_requests`;
+const serviceRequestFiles=id=>db.prepare(`SELECT id,file_name AS fileName,mime_type AS mimeType,created_at AS createdAt FROM service_request_files WHERE request_id=? ORDER BY created_at,id`).all(id).map(file=>({...file,fileUrl:`/api/service-requests/${encodeURIComponent(id)}/files/${encodeURIComponent(file.id)}`}));
+export function listServiceRequests(actor){const scoped=actor&&!['owner','admin','developer'].includes(actor.role);return (scoped?db.prepare(`${serviceRequestSelect} WHERE requested_by_uid=? ORDER BY created_at DESC`).all(actor.uid):db.prepare(`${serviceRequestSelect} ORDER BY created_at DESC`).all()).map(row=>({...row,files:serviceRequestFiles(row.id)}));}
+export function getServiceRequest(id){const row=db.prepare(`${serviceRequestSelect} WHERE id=?`).get(id);return row?{...row,files:serviceRequestFiles(id)}:null;}
+const serviceFileName=name=>String(name||'arquivo').normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,120)||'arquivo';
+export function addServiceRequestFiles(requestId,files=[]){
+  if(!getServiceRequest(requestId))throw Object.assign(new Error('Solicitação não encontrada.'),{statusCode:404});
+  if(!Array.isArray(files)||files.length>5)throw Object.assign(new Error('Anexe no máximo cinco arquivos por envio.'),{statusCode:400});
+  const prepared=files.map(input=>{
+    const fileName=serviceFileName(input.fileName),dataUrl=String(input.dataUrl||'');
+    const match=dataUrl.match(/^data:([\w.+/-]+);base64,([A-Za-z0-9+/=]+)$/);
+    const ext=fileName.toLowerCase().split('.').pop();
+    const mimeType=match?.[1]||'';
+    const valid=['image/png','image/jpeg','image/webp','application/pdf'].includes(mimeType)||(['dwg','dxf'].includes(ext)&&['application/octet-stream','application/acad','image/vnd.dwg','application/dxf'].includes(mimeType));
+    const bytes=match?Buffer.from(match[2],'base64'):Buffer.alloc(0);
+    if(!valid||!bytes.length||bytes.length>10_000_000)throw Object.assign(new Error('Arquivo inválido: use imagem, PDF, DWG ou DXF com até 10 MB.'),{statusCode:400});
+    return {fileName,mimeType,bytes};
+  });
+  const created=[];
+  try{
+    for(const input of prepared){
+      const id=`SRF-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`,storagePath=join(serviceRequestFilesRoot,`${id}-${input.fileName}`),timestamp=now();
+      writeFileSync(storagePath,input.bytes,{flag:'wx'});
+      created.push({id,storagePath});
+      db.prepare(`INSERT INTO service_request_files(id,request_id,file_name,mime_type,storage_path,created_at) VALUES(?,?,?,?,?,?)`).run(id,requestId,input.fileName,input.mimeType,storagePath,timestamp);
+    }
+  }catch(error){for(const item of created){db.prepare(`DELETE FROM service_request_files WHERE id=?`).run(item.id);try{unlinkSync(item.storagePath)}catch{}}throw error;}
+  db.prepare(`UPDATE service_requests SET updated_at=? WHERE id=?`).run(now(),requestId);
+  return getServiceRequest(requestId);
+}
+export function createServiceRequest(input={},actor={}){
+  const title=asText(input.title).slice(0,140),description=asText(input.description).slice(0,4000);
+  if(title.length<4||description.length<4)throw Object.assign(new Error('Informe o serviço solicitado e sua descrição.'),{statusCode:400});
+  const domain=asText(input.domain,'geral').slice(0,60),id=`SR-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`,timestamp=now();
+  db.prepare(`INSERT INTO service_requests(id,title,description,domain,stage_key,activity_id,status,requested_by,requested_by_uid,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`).run(id,title,description,domain,asText(input.stageKey).slice(0,80),asText(input.activityId).slice(0,80),'triage',asText(actor.name,'Usuário'),asText(actor.uid),timestamp,timestamp);
+  try { if(input.files?.length)addServiceRequestFiles(id,input.files); }
+  catch(error){db.prepare(`DELETE FROM service_requests WHERE id=?`).run(id);throw error;}
+  audit.run('service_requests',id,'created',JSON.stringify({title,domain,stageKey:asText(input.stageKey),activityId:asText(input.activityId),fileCount:input.files?.length||0}),timestamp);
+  return getServiceRequest(id);
+}
+export function updateServiceRequest(id,input={}){
+  if(!getServiceRequest(id))return null;
+  const status=String(input.status||'');
+  if(!['triage','planned','in_progress','waiting_files','completed','cancelled'].includes(status))throw Object.assign(new Error('Estado da solicitação inválido.'),{statusCode:400});
+  db.prepare(`UPDATE service_requests SET status=?,updated_at=? WHERE id=?`).run(status,now(),id);
+  audit.run('service_requests',id,'status_changed',JSON.stringify({status}),now());
+  return getServiceRequest(id);
+}
+export function getServiceRequestFile(requestId,fileId){const row=db.prepare(`SELECT file_name AS fileName,mime_type AS mimeType,storage_path AS storagePath FROM service_request_files WHERE request_id=? AND id=?`).get(requestId,fileId);return row&&existsSync(row.storagePath)?row:null;}
+export function getRecord(id){return parseRecordRow(db.prepare(`${recordSelect} WHERE r.id=?`).get(id));}
 export function createRecord(input){
   const value=toRecordInput(input),id=asText(input.id)||`REG-${String(Date.now()).slice(-8)}`,timestamp=now();
-  db.prepare(`INSERT INTO records(id,project_id,stage_id,activity_id,record_date,record_time,responsible_id,responsible_name,details,status,evidence_uri,map_area,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,value.projectId,value.stageId,value.activityId,value.data,value.hora,value.responsibleId,value.responsavel,value.detalhes,value.status,value.evidenceUri,value.mapArea,timestamp,timestamp);
+  db.prepare(`INSERT INTO records(id,project_id,stage_id,activity_id,record_date,record_time,responsible_id,responsible_name,details,status,evidence_uri,map_area,properties_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,value.projectId,value.stageId,value.activityId,value.data,value.hora,value.responsibleId,value.responsavel,value.detalhes,value.status,value.evidenceUri,value.mapArea,value.propertiesJson,timestamp,timestamp);
   audit.run('records',id,'created',JSON.stringify(value),timestamp); return getRecord(id);
+}
+export function createMaterialTransition(input={}){
+  const materialId=asText(input.materialId).slice(0,100),name=asText(input.name).slice(0,120);
+  const stageName=asText(input.stageName),unit=asText(input.unit,'un.').slice(0,20);
+  const before=input.before||{},after=input.after||{};
+  const quantity=Number(after.quantity),previousQuantity=before.quantity==null?null:Number(before.quantity);
+  if(!materialId||!name||!stageName||!Number.isFinite(quantity)||quantity<0||!Number.isFinite(previousQuantity??0))throw Object.assign(new Error('Material, etapa e quantidades válidas são obrigatórios.'),{statusCode:400});
+  const description=asText(after.description).slice(0,4000),previousDescription=asText(before.description).slice(0,4000);
+  if(!description)throw Object.assign(new Error('Descreva a mudança do material.'),{statusCode:400});
+  const documentList=Array.isArray(input.documents)?input.documents.slice(0,3):[];
+  const stamp=now(),number=asText(input.materialNumber,materialId).slice(0,80),status=asText(after.status,'Planejado').slice(0,60);
+  const property=(id,label,type,value)=>({id,label,type,value:String(value??'')});
+  const properties=[property('material_transition','Transição de material','text','true'),property('material_id','ID do material','text',materialId),property('material_name','Material','text',name),property('material_number','Número associado','text',number),property('before_quantity','Quantidade anterior','number',previousQuantity??''),property('before_unit','Unidade anterior','text',before.unit||unit),property('before_description','Descrição anterior','text',previousDescription),property('before_status','Estado anterior','text',before.status||''),property('before_date','Data do estado anterior','date',before.updatedAt?.slice(0,10)||''),property('after_quantity','Nova quantidade','number',quantity),property('after_unit','Nova unidade','text',unit),property('after_description','Nova descrição','text',description),property('after_status','Novo estado','text',status),property('document_ids','Comprovantes associados','text',JSON.stringify(documentList.map(item=>item.id))),property('transition_date','Data da transição','date',stamp.slice(0,10))];
+  db.exec('BEGIN');
+  try{
+    const record=createRecord({id:`REG-MAT-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`,obra:'Aliança Park',etapa:stageName,atividade:`Material: ${name}`,responsavel:asText(input.responsible,'Equipe de suprimentos'),data:stamp.slice(0,10),hora:stamp.slice(11,16),detalhes:`Material ${number} · ${name}\n${previousQuantity??'—'} ${before.unit||unit} → ${quantity} ${unit}\nAntes: ${previousDescription||'Sem descrição'}\nDepois: ${description}\nComprovantes: ${documentList.map(item=>item.fileName).join(', ')||'nenhum'}`,status:'Pendente',evidenceUri:documentList[0]?.fileUrl||null,properties});
+    const dbStatus=/atenç/i.test(status)?'atencao':/crític/i.test(status)?'critico':'bom';
+    db.prepare(`INSERT INTO materials(id,name,unit,planned_quantity,received_quantity,used_quantity,status) VALUES(?,?,?,?,0,0,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,unit=excluded.unit,planned_quantity=excluded.planned_quantity,status=excluded.status`).run(materialId,name,unit,quantity,dbStatus);
+    audit.run('materials',materialId,'transition',JSON.stringify({recordId:record.id,before,after:{quantity,unit,status,description},documentIds:documentList.map(item=>item.id)}),stamp);
+    db.exec('COMMIT');
+    return {record,material:{id:materialId,name,quantity,unit,status,description,updatedAt:stamp},documents:documentList};
+  }catch(error){db.exec('ROLLBACK');throw error;}
 }
 export function createFieldConfirmation(input={}){
   const rawServices=Array.isArray(input.services)?input.services:Array.isArray(input.servicos)?input.servicos:[];
@@ -777,7 +902,7 @@ export function createFieldConfirmation(input={}){
 }
 export function updateRecord(id,input){
   const current=getRecord(id); if(!current)return null; const value=toRecordInput(input,current),timestamp=now();
-  db.prepare(`UPDATE records SET project_id=?,stage_id=?,activity_id=?,record_date=?,record_time=?,responsible_id=?,responsible_name=?,details=?,status=?,evidence_uri=?,map_area=?,updated_at=? WHERE id=?`).run(value.projectId,value.stageId,value.activityId,value.data,value.hora,value.responsibleId,value.responsavel,value.detalhes,value.status,value.evidenceUri,value.mapArea,timestamp,id);
+  db.prepare(`UPDATE records SET project_id=?,stage_id=?,activity_id=?,record_date=?,record_time=?,responsible_id=?,responsible_name=?,details=?,status=?,evidence_uri=?,map_area=?,properties_json=?,updated_at=? WHERE id=?`).run(value.projectId,value.stageId,value.activityId,value.data,value.hora,value.responsibleId,value.responsavel,value.detalhes,value.status,value.evidenceUri,value.mapArea,value.propertiesJson,timestamp,id);
   audit.run('records',id,'updated',JSON.stringify(value),timestamp); return getRecord(id);
 }
 export function deleteRecord(id){const current=getRecord(id);if(!current)return false;db.prepare(`DELETE FROM records WHERE id=?`).run(id);audit.run('records',id,'deleted','{}',now());return true;}

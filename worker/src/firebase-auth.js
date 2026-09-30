@@ -1,7 +1,9 @@
 const text=(value,max=500)=>String(value??'').trim().slice(0,max);
+const authToken=value=>String(value??'').trim().slice(0,8192);
 
 function bearer(request){
-  return text(request.headers.get('authorization')).replace(/^Bearer\s+/i,'');
+  const authorization=authToken(request.headers.get('authorization'));
+  return authorization.replace(/^Bearer\s+/i,'').trim();
 }
 
 function allowedEmails(env){
@@ -9,7 +11,7 @@ function allowedEmails(env){
 }
 
 export async function requireAdminRequest(request,env){
-  const token=bearer(request)||text(request.headers.get('x-belavista-token'));
+  const token=bearer(request)||authToken(request.headers.get('x-belavista-token'));
   if(env.BELAVISTA_API_TOKEN&&token===String(env.BELAVISTA_API_TOKEN))return {uid:'service-token',email:'',mode:'service-token'};
   if(!token)throw Object.assign(new Error('Autenticação administrativa obrigatória.'),{statusCode:401});
   const apiKey=text(env.FIREBASE_WEB_API_KEY);

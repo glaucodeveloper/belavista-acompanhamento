@@ -404,7 +404,7 @@
 
 /* Absolutely suppress the historical stage nav if any old render hook tries
    to inject it around a future extension. */
-view-layer[data-view="stages"] .stage-view-tabs,
+view-layer[data-view="stages"] .stage-view-tabs:not(.stage-context-home-tabs-v1),
 view-layer[data-view="stages"] .stage-plan-tabs,
 view-layer[data-view="stages"] [data-stage-pane],
 view-layer[data-view="stages"] .planning-gantt,

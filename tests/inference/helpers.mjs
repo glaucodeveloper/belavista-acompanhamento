@@ -1,4 +1,12 @@
 import assert from 'node:assert/strict';
+import {Agent,fetch as undiciFetch} from 'undici';
+
+const TEST_HTTP_TIMEOUT_MS=Number(process.env.BELAVISTA_TEST_HTTP_TIMEOUT_MS||720000);
+const TEST_HTTP_DISPATCHER=new Agent({
+  headersTimeout:TEST_HTTP_TIMEOUT_MS,
+  bodyTimeout:TEST_HTTP_TIMEOUT_MS
+});
+const fetch=(input,init={})=>undiciFetch(input,{...init,dispatcher:TEST_HTTP_DISPATCHER});
 
 export const BASE_URL=(process.env.BELAVISTA_WORKER_URL||'https://belavista-cloudflare-worker.icaroglaucooliveira.workers.dev').replace(/\/+$/,'');
 export const ADMIN_TOKEN=process.env.BELAVISTA_ADMIN_ID_TOKEN||'';
@@ -59,7 +67,7 @@ export function assertStrictNvidia(payload){
   const provider=String(inf.provider||payload?.provider||payload?.understanding?.provider||'');
   assert.match(provider,/nvidia/i,'A transição de estado não foi produzida pela NVIDIA API.');
   assert.ok(inf.strict!==false,'O endpoint declarou strict=false.');
-  assert.notMatch(provider,/deterministic|fallback|mock/i,'Fallback determinístico não é aceito na bateria real.');
+  assert.doesNotMatch(provider,/deterministic|fallback|mock/i,'Fallback determinístico não é aceito na bateria real.');
   assert.ok(inf.model||payload?.model||payload?.understanding?.model,'Resposta não identifica o modelo de inferência.');
 }
 

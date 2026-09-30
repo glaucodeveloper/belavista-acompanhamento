@@ -46,7 +46,13 @@ export function validateEventEffect(type,before,after,event){
     case 'locality.created': assert.ok(after.localities.some(x=>x.id===p.locality?.id)); break;
     case 'personnel.assigned': assert.ok(after.personnel.some(x=>x.id===p.person?.id&&x.localityId===p.person.localityId)); break;
     case 'agenda.item.accepted': assert.ok(after.agenda.some(x=>x.id===p.agendaItemId&&/accept|aceit|confirm/i.test(String(x.status)))); break;
-    case 'agenda.item.completed': assert.ok(after.agenda.some(x=>x.id===p.agendaItemId&&/complete|conclu/i.test(String(x.status)))); break;
+    case 'agenda.item.completed': {
+      assert.ok(after.agenda.some(x=>x.id===p.agendaItemId&&/complete|conclu/i.test(String(x.status))));
+      const agenda=after.agenda.find(x=>x.id===p.agendaItemId);
+      const activityId=p.activityId||agenda?.activityId;
+      if(activityId)assert.match(String(findActivity(after,activityId)?.status),/complete|conclu/i);
+      break;
+    }
     case 'operation.note.recorded': assert.ok(after.diary.length>=before.diary.length||after.notifications.length>=before.notifications.length); break;
   }
 }

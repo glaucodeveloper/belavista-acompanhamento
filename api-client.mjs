@@ -16,13 +16,18 @@ const ngrokPortProxyBase=()=>{
   return `${location.origin}${prefix||'/8080'}`;
 };
 
+const isLocalInstagramApi=(path='')=>{
+  if(typeof location==='undefined'||ngrokPortProxyBase())return false;
+  return /^\/api\/instagram(?:\/|$)/i.test(String(path||''))&&/^(localhost|127\.0\.0\.1|\[::1\])$/i.test(String(location.hostname||''));
+};
+
 function readSavedSettings(){
   try{return JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}');}
   catch{return {};}
 }
 
 function isAiPath(path=''){
-  return /^\/api\/ai(?:$|\/)|^\/api\/ai-tools$|^\/api\/ai\/status$|^\/api\/ai\/tools$|^\/api\/gemini(?:$|\/)/.test(String(path||''));
+  return /^\/api\/runtime$|^\/api\/ai(?:$|\/)|^\/api\/ai-tools$|^\/api\/ai\/status$|^\/api\/ai\/tools$|^\/api\/gemini(?:$|\/)|^\/api\/media\/attachment(?:$|\/)|^\/api\/public\/lead-chat(?:$|\/)/.test(String(path||''));
 }
 
 export function apiBase(){
@@ -56,6 +61,7 @@ export function apiUrl(path=''){
   const target=String(path||'');
   if(/^https?:\/\//i.test(target))return target;
   const normalized=target.startsWith('/')?target:`/${target}`;
+  if(isLocalInstagramApi(normalized))return normalized;
   const base=isAiPath(normalized)?aiBase():apiBase();
   return base?`${base}${normalized}`:normalized;
 }

@@ -1,0 +1,2110 @@
+// Generated from TABELA DE PPREÇOS - ALIANÇA PARK.xlsx
+export const REPASSE_PRICE_CATALOG = [
+  {
+    "lot": 1,
+    "quadra": "QA",
+    "area": 322.31,
+    "price": 145039.5,
+    "label": "QA-1"
+  },
+  {
+    "lot": 2,
+    "quadra": "QA",
+    "area": 250,
+    "price": 80000,
+    "label": "QA-2"
+  },
+  {
+    "lot": 3,
+    "quadra": "QA",
+    "area": 250,
+    "price": 80000,
+    "label": "QA-3"
+  },
+  {
+    "lot": 4,
+    "quadra": "QA",
+    "area": 250,
+    "price": 80000,
+    "label": "QA-4"
+  },
+  {
+    "lot": 5,
+    "quadra": "QA",
+    "area": 250,
+    "price": 80000,
+    "label": "QA-5"
+  },
+  {
+    "lot": 6,
+    "quadra": "QA",
+    "area": 250,
+    "price": 80000,
+    "label": "QA-6"
+  },
+  {
+    "lot": 7,
+    "quadra": "QA",
+    "area": 250,
+    "price": 80000,
+    "label": "QA-7"
+  },
+  {
+    "lot": 8,
+    "quadra": "QA",
+    "area": 250,
+    "price": 80000,
+    "label": "QA-8"
+  },
+  {
+    "lot": 9,
+    "quadra": "QA",
+    "area": 250,
+    "price": 80000,
+    "label": "QA-9"
+  },
+  {
+    "lot": 10,
+    "quadra": "QA",
+    "area": 250,
+    "price": 80000,
+    "label": "QA-10"
+  },
+  {
+    "lot": 11,
+    "quadra": "QA",
+    "area": 250,
+    "price": 80000,
+    "label": "QA-11"
+  },
+  {
+    "lot": 12,
+    "quadra": "QA",
+    "area": 250,
+    "price": 80000,
+    "label": "QA-12"
+  },
+  {
+    "lot": 13,
+    "quadra": "QA",
+    "area": 250,
+    "price": 80000,
+    "label": "QA-13"
+  },
+  {
+    "lot": 14,
+    "quadra": "QA",
+    "area": 250,
+    "price": 80000,
+    "label": "QA-14"
+  },
+  {
+    "lot": 15,
+    "quadra": "QA",
+    "area": 250,
+    "price": 80000,
+    "label": "QA-15"
+  },
+  {
+    "lot": 16,
+    "quadra": "QA",
+    "area": 250,
+    "price": 80000,
+    "label": "QA-16"
+  },
+  {
+    "lot": 17,
+    "quadra": "QA",
+    "area": 250,
+    "price": 80000,
+    "label": "QA-17"
+  },
+  {
+    "lot": 18,
+    "quadra": "QA",
+    "area": 250,
+    "price": 80000,
+    "label": "QA-18"
+  },
+  {
+    "lot": 19,
+    "quadra": "QA",
+    "area": 250,
+    "price": 80000,
+    "label": "QA-19"
+  },
+  {
+    "lot": 20,
+    "quadra": "QA",
+    "area": 259.23,
+    "price": 116653.5,
+    "label": "QA-20"
+  },
+  {
+    "lot": 21,
+    "quadra": "QA",
+    "area": 250.75,
+    "price": 80240,
+    "label": "QA-21"
+  },
+  {
+    "lot": 22,
+    "quadra": "QA",
+    "area": 250.75,
+    "price": 80240,
+    "label": "QA-22"
+  },
+  {
+    "lot": 23,
+    "quadra": "QA",
+    "area": 255.82,
+    "price": 115119,
+    "label": "QA-23"
+  },
+  {
+    "lot": 24,
+    "quadra": "QA",
+    "area": 250,
+    "price": 100000,
+    "label": "QA-24"
+  },
+  {
+    "lot": 25,
+    "quadra": "QA",
+    "area": 250,
+    "price": 100000,
+    "label": "QA-25"
+  },
+  {
+    "lot": 26,
+    "quadra": "QA",
+    "area": 250,
+    "price": 100000,
+    "label": "QA-26"
+  },
+  {
+    "lot": 27,
+    "quadra": "QA",
+    "area": 250,
+    "price": 100000,
+    "label": "QA-27"
+  },
+  {
+    "lot": 28,
+    "quadra": "QA",
+    "area": 250,
+    "price": 100000,
+    "label": "QA-28"
+  },
+  {
+    "lot": 29,
+    "quadra": "QA",
+    "area": 250,
+    "price": 100000,
+    "label": "QA-29"
+  },
+  {
+    "lot": 30,
+    "quadra": "QA",
+    "area": 250,
+    "price": 100000,
+    "label": "QA-30"
+  },
+  {
+    "lot": 31,
+    "quadra": "QA",
+    "area": 250,
+    "price": 100000,
+    "label": "QA-31"
+  },
+  {
+    "lot": 32,
+    "quadra": "QA",
+    "area": 250,
+    "price": 100000,
+    "label": "QA-32"
+  },
+  {
+    "lot": 33,
+    "quadra": "QA",
+    "area": 250,
+    "price": 100000,
+    "label": "QA-33"
+  },
+  {
+    "lot": 34,
+    "quadra": "QA",
+    "area": 250,
+    "price": 100000,
+    "label": "QA-34"
+  },
+  {
+    "lot": 35,
+    "quadra": "QA",
+    "area": 250,
+    "price": 100000,
+    "label": "QA-35"
+  },
+  {
+    "lot": 36,
+    "quadra": "QA",
+    "area": 250,
+    "price": 100000,
+    "label": "QA-36"
+  },
+  {
+    "lot": 37,
+    "quadra": "QA",
+    "area": 250,
+    "price": 100000,
+    "label": "QA-37"
+  },
+  {
+    "lot": 38,
+    "quadra": "QA",
+    "area": 250,
+    "price": 100000,
+    "label": "QA-38"
+  },
+  {
+    "lot": 39,
+    "quadra": "QA",
+    "area": 250,
+    "price": 100000,
+    "label": "QA-39"
+  },
+  {
+    "lot": 40,
+    "quadra": "QA",
+    "area": 250,
+    "price": 100000,
+    "label": "QA-40"
+  },
+  {
+    "lot": 41,
+    "quadra": "QA",
+    "area": 527.69,
+    "price": 237460.5,
+    "label": "QA-41"
+  },
+  {
+    "lot": 42,
+    "quadra": "QB",
+    "area": 431.18,
+    "price": 194031,
+    "label": "QB-42"
+  },
+  {
+    "lot": 43,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-43"
+  },
+  {
+    "lot": 44,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-44"
+  },
+  {
+    "lot": 45,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-45"
+  },
+  {
+    "lot": 46,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-46"
+  },
+  {
+    "lot": 47,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-47"
+  },
+  {
+    "lot": 48,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-48"
+  },
+  {
+    "lot": 49,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-49"
+  },
+  {
+    "lot": 50,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-50"
+  },
+  {
+    "lot": 51,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-51"
+  },
+  {
+    "lot": 52,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-52"
+  },
+  {
+    "lot": 53,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-53"
+  },
+  {
+    "lot": 54,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-54"
+  },
+  {
+    "lot": 55,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-55"
+  },
+  {
+    "lot": 56,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-56"
+  },
+  {
+    "lot": 57,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-57"
+  },
+  {
+    "lot": 58,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-58"
+  },
+  {
+    "lot": 59,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-59"
+  },
+  {
+    "lot": 60,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-60"
+  },
+  {
+    "lot": 61,
+    "quadra": "QB",
+    "area": 263.45,
+    "price": 118552.5,
+    "label": "QB-61"
+  },
+  {
+    "lot": 62,
+    "quadra": "QB",
+    "area": 254.84,
+    "price": 81548.8,
+    "label": "QB-62"
+  },
+  {
+    "lot": 63,
+    "quadra": "QB",
+    "area": 254.86,
+    "price": 81555.2,
+    "label": "QB-63"
+  },
+  {
+    "lot": 64,
+    "quadra": "QB",
+    "area": 260.03,
+    "price": 117013.5,
+    "label": "QB-64"
+  },
+  {
+    "lot": 65,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-65"
+  },
+  {
+    "lot": 66,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-66"
+  },
+  {
+    "lot": 67,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-67"
+  },
+  {
+    "lot": 68,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-68"
+  },
+  {
+    "lot": 69,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-69"
+  },
+  {
+    "lot": 70,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-70"
+  },
+  {
+    "lot": 71,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-71"
+  },
+  {
+    "lot": 72,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-72"
+  },
+  {
+    "lot": 73,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-73"
+  },
+  {
+    "lot": 74,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-74"
+  },
+  {
+    "lot": 75,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-75"
+  },
+  {
+    "lot": 76,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-76"
+  },
+  {
+    "lot": 77,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-77"
+  },
+  {
+    "lot": 78,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-78"
+  },
+  {
+    "lot": 79,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-79"
+  },
+  {
+    "lot": 80,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-80"
+  },
+  {
+    "lot": 81,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-81"
+  },
+  {
+    "lot": 82,
+    "quadra": "QB",
+    "area": 250,
+    "price": 80000,
+    "label": "QB-82"
+  },
+  {
+    "lot": 83,
+    "quadra": "QB",
+    "area": 386.56,
+    "price": 173952,
+    "label": "QB-83"
+  },
+  {
+    "lot": 84,
+    "quadra": "QC",
+    "area": 312.5,
+    "price": 140625,
+    "label": "QC-84"
+  },
+  {
+    "lot": 85,
+    "quadra": "QC",
+    "area": 312.5,
+    "price": 100000,
+    "label": "QC-85"
+  },
+  {
+    "lot": 86,
+    "quadra": "QC",
+    "area": 312.5,
+    "price": 100000,
+    "label": "QC-86"
+  },
+  {
+    "lot": 87,
+    "quadra": "QC",
+    "area": 312.5,
+    "price": 140625,
+    "label": "QC-87"
+  },
+  {
+    "lot": 88,
+    "quadra": "QC",
+    "area": 500,
+    "price": 160000,
+    "label": "QC-88"
+  },
+  {
+    "lot": 89,
+    "quadra": "QC",
+    "area": 500,
+    "price": 160000,
+    "label": "QC-89"
+  },
+  {
+    "lot": 90,
+    "quadra": "QC",
+    "area": 500,
+    "price": 160000,
+    "label": "QC-90"
+  },
+  {
+    "lot": 91,
+    "quadra": "QC",
+    "area": 255.05,
+    "price": 114772.5,
+    "label": "QC-91"
+  },
+  {
+    "lot": 92,
+    "quadra": "QC",
+    "area": 250,
+    "price": 80000,
+    "label": "QC-92"
+  },
+  {
+    "lot": 93,
+    "quadra": "QC",
+    "area": 250,
+    "price": 80000,
+    "label": "QC-93"
+  },
+  {
+    "lot": 94,
+    "quadra": "QC",
+    "area": 258.46,
+    "price": 116307,
+    "label": "QC-94"
+  },
+  {
+    "lot": 95,
+    "quadra": "QC",
+    "area": 500,
+    "price": 160000,
+    "label": "QC-95"
+  },
+  {
+    "lot": 96,
+    "quadra": "QC",
+    "area": 500,
+    "price": 160000,
+    "label": "QC-96"
+  },
+  {
+    "lot": 97,
+    "quadra": "QC",
+    "area": 500,
+    "price": 160000,
+    "label": "QC-97"
+  },
+  {
+    "lot": 98,
+    "quadra": "QD",
+    "area": 341.86,
+    "price": 34869.72,
+    "label": "QD-98"
+  },
+  {
+    "lot": 99,
+    "quadra": "QD",
+    "area": 511.99,
+    "price": 163836.8,
+    "label": "QD-99"
+  },
+  {
+    "lot": 100,
+    "quadra": "QD",
+    "area": 511.91,
+    "price": 163811.2,
+    "label": "QD-100"
+  },
+  {
+    "lot": 101,
+    "quadra": "QD",
+    "area": 511.65,
+    "price": 163728,
+    "label": "QD-101"
+  },
+  {
+    "lot": 102,
+    "quadra": "QD",
+    "area": 344.75,
+    "price": 155137.5,
+    "label": "QD-102"
+  },
+  {
+    "lot": 103,
+    "quadra": "QE",
+    "area": 681.99,
+    "price": 306895.5,
+    "label": "QE-103"
+  },
+  {
+    "lot": 104,
+    "quadra": "QE",
+    "area": 250,
+    "price": 100000,
+    "label": "QE-104"
+  },
+  {
+    "lot": 105,
+    "quadra": "QE",
+    "area": 250,
+    "price": 100000,
+    "label": "QE-105"
+  },
+  {
+    "lot": 106,
+    "quadra": "QE",
+    "area": 250,
+    "price": 100000,
+    "label": "QE-106"
+  },
+  {
+    "lot": 107,
+    "quadra": "QE",
+    "area": 250,
+    "price": 100000,
+    "label": "QE-107"
+  },
+  {
+    "lot": 108,
+    "quadra": "QE",
+    "area": 250,
+    "price": 100000,
+    "label": "QE-108"
+  },
+  {
+    "lot": 109,
+    "quadra": "QE",
+    "area": 250,
+    "price": 100000,
+    "label": "QE-109"
+  },
+  {
+    "lot": 110,
+    "quadra": "QE",
+    "area": 250,
+    "price": 100000,
+    "label": "QE-110"
+  },
+  {
+    "lot": 111,
+    "quadra": "QE",
+    "area": 250,
+    "price": 100000,
+    "label": "QE-111"
+  },
+  {
+    "lot": 112,
+    "quadra": "QE",
+    "area": 250,
+    "price": 100000,
+    "label": "QE-112"
+  },
+  {
+    "lot": 113,
+    "quadra": "QE",
+    "area": 250,
+    "price": 100000,
+    "label": "QE-113"
+  },
+  {
+    "lot": 114,
+    "quadra": "QE",
+    "area": 250,
+    "price": 100000,
+    "label": "QE-114"
+  },
+  {
+    "lot": 115,
+    "quadra": "QE",
+    "area": 250,
+    "price": 100000,
+    "label": "QE-115"
+  },
+  {
+    "lot": 116,
+    "quadra": "QE",
+    "area": 250,
+    "price": 100000,
+    "label": "QE-116"
+  },
+  {
+    "lot": 117,
+    "quadra": "QE",
+    "area": 250,
+    "price": 100000,
+    "label": "QE-117"
+  },
+  {
+    "lot": 118,
+    "quadra": "QE",
+    "area": 250,
+    "price": 100000,
+    "label": "QE-118"
+  },
+  {
+    "lot": 119,
+    "quadra": "QE",
+    "area": 250,
+    "price": 100000,
+    "label": "QE-119"
+  },
+  {
+    "lot": 120,
+    "quadra": "QE",
+    "area": 250,
+    "price": 100000,
+    "label": "QE-120"
+  },
+  {
+    "lot": 121,
+    "quadra": "QE",
+    "area": 250,
+    "price": 100000,
+    "label": "QE-121"
+  },
+  {
+    "lot": 122,
+    "quadra": "QE",
+    "area": 250,
+    "price": 100000,
+    "label": "QE-122"
+  },
+  {
+    "lot": 123,
+    "quadra": "QE",
+    "area": 582.94,
+    "price": 262323,
+    "label": "QE-123"
+  },
+  {
+    "lot": 124,
+    "quadra": "QE",
+    "area": 308.2,
+    "price": 123280,
+    "label": "QE-124"
+  },
+  {
+    "lot": 125,
+    "quadra": "QE",
+    "area": 308.2,
+    "price": 138690,
+    "label": "QE-125"
+  },
+  {
+    "lot": 126,
+    "quadra": "QE",
+    "area": 250,
+    "price": 80000,
+    "label": "QE-126"
+  },
+  {
+    "lot": 127,
+    "quadra": "QE",
+    "area": 250,
+    "price": 80000,
+    "label": "QE-127"
+  },
+  {
+    "lot": 128,
+    "quadra": "QE",
+    "area": 250,
+    "price": 80000,
+    "label": "QE-128"
+  },
+  {
+    "lot": 129,
+    "quadra": "QE",
+    "area": 250,
+    "price": 80000,
+    "label": "QE-129"
+  },
+  {
+    "lot": 130,
+    "quadra": "QE",
+    "area": 250,
+    "price": 80000,
+    "label": "QE-130"
+  },
+  {
+    "lot": 131,
+    "quadra": "QE",
+    "area": 250,
+    "price": 80000,
+    "label": "QE-131"
+  },
+  {
+    "lot": 132,
+    "quadra": "QE",
+    "area": 250,
+    "price": 80000,
+    "label": "QE-132"
+  },
+  {
+    "lot": 133,
+    "quadra": "QE",
+    "area": 250,
+    "price": 80000,
+    "label": "QE-133"
+  },
+  {
+    "lot": 134,
+    "quadra": "QE",
+    "area": 250,
+    "price": 80000,
+    "label": "QE-134"
+  },
+  {
+    "lot": 135,
+    "quadra": "QE",
+    "area": 250,
+    "price": 80000,
+    "label": "QE-135"
+  },
+  {
+    "lot": 136,
+    "quadra": "QE",
+    "area": 250,
+    "price": 80000,
+    "label": "QE-136"
+  },
+  {
+    "lot": 137,
+    "quadra": "QE",
+    "area": 250,
+    "price": 80000,
+    "label": "QE-137"
+  },
+  {
+    "lot": 138,
+    "quadra": "QE",
+    "area": 250,
+    "price": 80000,
+    "label": "QE-138"
+  },
+  {
+    "lot": 139,
+    "quadra": "QE",
+    "area": 250,
+    "price": 80000,
+    "label": "QE-139"
+  },
+  {
+    "lot": 140,
+    "quadra": "QE",
+    "area": 250,
+    "price": 80000,
+    "label": "QE-140"
+  },
+  {
+    "lot": 141,
+    "quadra": "QE",
+    "area": 250,
+    "price": 80000,
+    "label": "QE-141"
+  },
+  {
+    "lot": 142,
+    "quadra": "QE",
+    "area": 250,
+    "price": 80000,
+    "label": "QE-142"
+  },
+  {
+    "lot": 143,
+    "quadra": "QE",
+    "area": 250,
+    "price": 80000,
+    "label": "QE-143"
+  },
+  {
+    "lot": 144,
+    "quadra": "QE",
+    "area": 250,
+    "price": 80000,
+    "label": "QE-144"
+  },
+  {
+    "lot": 145,
+    "quadra": "QE",
+    "area": 572.86,
+    "price": 257787,
+    "label": "QE-145"
+  },
+  {
+    "lot": 146,
+    "quadra": "QF",
+    "area": 441.14,
+    "price": 198513,
+    "label": "QF-146"
+  },
+  {
+    "lot": 147,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-147"
+  },
+  {
+    "lot": 148,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-148"
+  },
+  {
+    "lot": 149,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-149"
+  },
+  {
+    "lot": 150,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-150"
+  },
+  {
+    "lot": 151,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-151"
+  },
+  {
+    "lot": 152,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-152"
+  },
+  {
+    "lot": 153,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-153"
+  },
+  {
+    "lot": 154,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-154"
+  },
+  {
+    "lot": 155,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-155"
+  },
+  {
+    "lot": 156,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-156"
+  },
+  {
+    "lot": 157,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-157"
+  },
+  {
+    "lot": 158,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-158"
+  },
+  {
+    "lot": 159,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-159"
+  },
+  {
+    "lot": 160,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-160"
+  },
+  {
+    "lot": 161,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-161"
+  },
+  {
+    "lot": 162,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-162"
+  },
+  {
+    "lot": 163,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-163"
+  },
+  {
+    "lot": 164,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-164"
+  },
+  {
+    "lot": 165,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-165"
+  },
+  {
+    "lot": 166,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-166"
+  },
+  {
+    "lot": 167,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-167"
+  },
+  {
+    "lot": 168,
+    "quadra": "QF",
+    "area": 250,
+    "price": 100000,
+    "label": "QF-168"
+  },
+  {
+    "lot": 169,
+    "quadra": "QF",
+    "area": 506.19,
+    "price": 227785.5,
+    "label": "QF-169"
+  },
+  {
+    "lot": 170,
+    "quadra": "QF",
+    "area": 361.36,
+    "price": 115635.2,
+    "label": "QF-170"
+  },
+  {
+    "lot": 171,
+    "quadra": "QF",
+    "area": 350.21,
+    "price": 157594.5,
+    "label": "QF-171"
+  },
+  {
+    "lot": 172,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-172"
+  },
+  {
+    "lot": 173,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-173"
+  },
+  {
+    "lot": 174,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-174"
+  },
+  {
+    "lot": 175,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-175"
+  },
+  {
+    "lot": 176,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-176"
+  },
+  {
+    "lot": 177,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-177"
+  },
+  {
+    "lot": 178,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-178"
+  },
+  {
+    "lot": 179,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-179"
+  },
+  {
+    "lot": 180,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-180"
+  },
+  {
+    "lot": 181,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-181"
+  },
+  {
+    "lot": 182,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-182"
+  },
+  {
+    "lot": 183,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-183"
+  },
+  {
+    "lot": 184,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-184"
+  },
+  {
+    "lot": 185,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-185"
+  },
+  {
+    "lot": 186,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-186"
+  },
+  {
+    "lot": 186,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-186"
+  },
+  {
+    "lot": 188,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-188"
+  },
+  {
+    "lot": 198,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-198"
+  },
+  {
+    "lot": 190,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-190"
+  },
+  {
+    "lot": 191,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-191"
+  },
+  {
+    "lot": 192,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-192"
+  },
+  {
+    "lot": 193,
+    "quadra": "QF",
+    "area": 250,
+    "price": 80000,
+    "label": "QF-193"
+  },
+  {
+    "lot": 194,
+    "quadra": "QF",
+    "area": 594.42,
+    "price": 267489,
+    "label": "QF-194"
+  },
+  {
+    "lot": 195,
+    "quadra": "QG",
+    "area": 481.57,
+    "price": 216706.5,
+    "label": "QG-195"
+  },
+  {
+    "lot": 196,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-196"
+  },
+  {
+    "lot": 197,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-197"
+  },
+  {
+    "lot": 198,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-198"
+  },
+  {
+    "lot": 199,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-199"
+  },
+  {
+    "lot": 200,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-200"
+  },
+  {
+    "lot": 201,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-201"
+  },
+  {
+    "lot": 202,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-202"
+  },
+  {
+    "lot": 203,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-203"
+  },
+  {
+    "lot": 204,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-204"
+  },
+  {
+    "lot": 205,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-205"
+  },
+  {
+    "lot": 206,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-206"
+  },
+  {
+    "lot": 207,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-207"
+  },
+  {
+    "lot": 208,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-208"
+  },
+  {
+    "lot": 209,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-209"
+  },
+  {
+    "lot": 210,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-210"
+  },
+  {
+    "lot": 211,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-211"
+  },
+  {
+    "lot": 212,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-212"
+  },
+  {
+    "lot": 213,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-213"
+  },
+  {
+    "lot": 214,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-214"
+  },
+  {
+    "lot": 215,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-215"
+  },
+  {
+    "lot": 216,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-216"
+  },
+  {
+    "lot": 217,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-217"
+  },
+  {
+    "lot": 218,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-218"
+  },
+  {
+    "lot": 219,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-219"
+  },
+  {
+    "lot": 220,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-220"
+  },
+  {
+    "lot": 221,
+    "quadra": "QG",
+    "area": 329.23,
+    "price": 148153.5,
+    "label": "QG-221"
+  },
+  {
+    "lot": 222,
+    "quadra": "QG",
+    "area": 318.08,
+    "price": 127232,
+    "label": "QG-222"
+  },
+  {
+    "lot": 223,
+    "quadra": "QG",
+    "area": 306.92,
+    "price": 122768,
+    "label": "QG-223"
+  },
+  {
+    "lot": 224,
+    "quadra": "QG",
+    "area": 295.77,
+    "price": 133096.5,
+    "label": "QG-224"
+  },
+  {
+    "lot": 225,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-225"
+  },
+  {
+    "lot": 226,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-226"
+  },
+  {
+    "lot": 227,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-227"
+  },
+  {
+    "lot": 228,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-228"
+  },
+  {
+    "lot": 229,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-229"
+  },
+  {
+    "lot": 230,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-230"
+  },
+  {
+    "lot": 231,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-231"
+  },
+  {
+    "lot": 232,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-232"
+  },
+  {
+    "lot": 233,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-233"
+  },
+  {
+    "lot": 234,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-234"
+  },
+  {
+    "lot": 235,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-235"
+  },
+  {
+    "lot": 236,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-236"
+  },
+  {
+    "lot": 237,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-237"
+  },
+  {
+    "lot": 238,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-238"
+  },
+  {
+    "lot": 239,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-239"
+  },
+  {
+    "lot": 340,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-340"
+  },
+  {
+    "lot": 341,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-341"
+  },
+  {
+    "lot": 342,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-342"
+  },
+  {
+    "lot": 243,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-243"
+  },
+  {
+    "lot": 244,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-244"
+  },
+  {
+    "lot": 245,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-245"
+  },
+  {
+    "lot": 246,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-246"
+  },
+  {
+    "lot": 247,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-247"
+  },
+  {
+    "lot": 248,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-248"
+  },
+  {
+    "lot": 249,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-249"
+  },
+  {
+    "lot": 250,
+    "quadra": "QG",
+    "area": 250,
+    "price": 80000,
+    "label": "QG-250"
+  },
+  {
+    "lot": 251,
+    "quadra": "QG",
+    "area": 634.84,
+    "price": 285678,
+    "label": "QG-251"
+  },
+  {
+    "lot": 252,
+    "quadra": "QH",
+    "area": 765.47,
+    "price": 244950.4,
+    "label": "QH-252"
+  },
+  {
+    "lot": 253,
+    "quadra": "QH",
+    "area": 838.27,
+    "price": 268246.4,
+    "label": "QH-253"
+  },
+  {
+    "lot": 254,
+    "quadra": "QH",
+    "area": 1008.69,
+    "price": 322780.8,
+    "label": "QH-254"
+  },
+  {
+    "lot": 255,
+    "quadra": "QH",
+    "area": 1021.45,
+    "price": 326864,
+    "label": "QH-255"
+  },
+  {
+    "lot": 256,
+    "quadra": "QH",
+    "area": 1025.44,
+    "price": 328140.8,
+    "label": "QH-256"
+  },
+  {
+    "lot": 257,
+    "quadra": "QH",
+    "area": 1024.65,
+    "price": 327888,
+    "label": "QH-257"
+  },
+  {
+    "lot": 258,
+    "quadra": "QH",
+    "area": 1027.86,
+    "price": 328915.2,
+    "label": "QH-258"
+  },
+  {
+    "lot": 259,
+    "quadra": "QH",
+    "area": 1038.57,
+    "price": 332342.4,
+    "label": "QH-259"
+  },
+  {
+    "lot": 260,
+    "quadra": "QH",
+    "area": 1047.49,
+    "price": 335196.8,
+    "label": "QH-260"
+  },
+  {
+    "lot": 261,
+    "quadra": "QH",
+    "area": 749.71,
+    "price": 239907.2,
+    "label": "QH-261"
+  },
+  {
+    "lot": 262,
+    "quadra": "QI",
+    "area": 380.04,
+    "price": 171018,
+    "label": "QI-262"
+  },
+  {
+    "lot": 263,
+    "quadra": "QI",
+    "area": 375,
+    "price": 120000,
+    "label": "QI-263"
+  },
+  {
+    "lot": 264,
+    "quadra": "QI",
+    "area": 375,
+    "price": 120000,
+    "label": "QI-264"
+  },
+  {
+    "lot": 265,
+    "quadra": "QI",
+    "area": 375,
+    "price": 120000,
+    "label": "QI-265"
+  },
+  {
+    "lot": 266,
+    "quadra": "QI",
+    "area": 375,
+    "price": 120000,
+    "label": "QI-266"
+  },
+  {
+    "lot": 267,
+    "quadra": "QI",
+    "area": 375,
+    "price": 120000,
+    "label": "QI-267"
+  },
+  {
+    "lot": 268,
+    "quadra": "QI",
+    "area": 375,
+    "price": 120000,
+    "label": "QI-268"
+  },
+  {
+    "lot": 269,
+    "quadra": "QI",
+    "area": 375,
+    "price": 168750,
+    "label": "QI-269"
+  },
+  {
+    "lot": 270,
+    "quadra": "QJ",
+    "area": 725,
+    "price": 326250,
+    "label": "QJ-270"
+  },
+  {
+    "lot": 271,
+    "quadra": "QJ",
+    "area": 375,
+    "price": 120000,
+    "label": "QJ-271"
+  },
+  {
+    "lot": 272,
+    "quadra": "QJ",
+    "area": 587.38,
+    "price": 264321,
+    "label": "QJ-272"
+  },
+  {
+    "lot": 1,
+    "quadra": "QC1",
+    "area": 600,
+    "price": 360000,
+    "label": "QC1-1"
+  },
+  {
+    "lot": 2,
+    "quadra": "QC1",
+    "area": 600,
+    "price": 360000,
+    "label": "QC1-2"
+  },
+  {
+    "lot": 3,
+    "quadra": "QC1",
+    "area": 600,
+    "price": 360000,
+    "label": "QC1-3"
+  },
+  {
+    "lot": 4,
+    "quadra": "QC1",
+    "area": 600,
+    "price": 360000,
+    "label": "QC1-4"
+  },
+  {
+    "lot": 5,
+    "quadra": "QC1",
+    "area": 600,
+    "price": 360000,
+    "label": "QC1-5"
+  },
+  {
+    "lot": 6,
+    "quadra": "QC1",
+    "area": 600,
+    "price": 360000,
+    "label": "QC1-6"
+  },
+  {
+    "lot": 7,
+    "quadra": "QC1",
+    "area": 600,
+    "price": 360000,
+    "label": "QC1-7"
+  },
+  {
+    "lot": 8,
+    "quadra": "QC1",
+    "area": 600,
+    "price": 360000,
+    "label": "QC1-8"
+  },
+  {
+    "lot": 9,
+    "quadra": "QC1",
+    "area": 600,
+    "price": 360000,
+    "label": "QC1-9"
+  },
+  {
+    "lot": 10,
+    "quadra": "QC1",
+    "area": 600,
+    "price": 360000,
+    "label": "QC1-10"
+  },
+  {
+    "lot": 11,
+    "quadra": "QC1",
+    "area": 602.27,
+    "price": 361362,
+    "label": "QC1-11"
+  },
+  {
+    "lot": 12,
+    "quadra": "QC1",
+    "area": 463.83,
+    "price": 278298,
+    "label": "QC1-12"
+  },
+  {
+    "lot": 13,
+    "quadra": "QC2",
+    "area": 600,
+    "price": 360000,
+    "label": "QC2-13"
+  },
+  {
+    "lot": 14,
+    "quadra": "QC2",
+    "area": 553.48,
+    "price": 332088,
+    "label": "QC2-14"
+  },
+  {
+    "lot": 15,
+    "quadra": "QC3",
+    "area": 939,
+    "price": 563400,
+    "label": "QC3-15"
+  },
+  {
+    "lot": 16,
+    "quadra": "QC3",
+    "area": 600,
+    "price": 360000,
+    "label": "QC3-16"
+  },
+  {
+    "lot": 17,
+    "quadra": "QC3",
+    "area": 600,
+    "price": 360000,
+    "label": "QC3-17"
+  },
+  {
+    "lot": 18,
+    "quadra": "QC3",
+    "area": 566,
+    "price": 339600,
+    "label": "QC3-18"
+  },
+  {
+    "lot": 19,
+    "quadra": "QC4",
+    "area": 939.32,
+    "price": 563592,
+    "label": "QC4-19"
+  },
+  {
+    "lot": 20,
+    "quadra": "QC4",
+    "area": 600,
+    "price": 360000,
+    "label": "QC4-20"
+  },
+  {
+    "lot": 21,
+    "quadra": "QC4",
+    "area": 600,
+    "price": 360000,
+    "label": "QC4-21"
+  },
+  {
+    "lot": 22,
+    "quadra": "QC4",
+    "area": 600,
+    "price": 360000,
+    "label": "QC4-22"
+  },
+  {
+    "lot": 23,
+    "quadra": "QC4",
+    "area": 600,
+    "price": 360000,
+    "label": "QC4-23"
+  },
+  {
+    "lot": 24,
+    "quadra": "QC4",
+    "area": 600,
+    "price": 360000,
+    "label": "QC4-24"
+  },
+  {
+    "lot": 25,
+    "quadra": "QC5",
+    "area": 544.91,
+    "price": 326946,
+    "label": "QC5-25"
+  },
+  {
+    "lot": 26,
+    "quadra": "QC5",
+    "area": 500,
+    "price": 300000,
+    "label": "QC5-26"
+  },
+  {
+    "lot": 0,
+    "quadra": "LOTES COMERCIAIS",
+    "area": 0,
+    "price": 0,
+    "label": "LOTES COMERCIAIS-0"
+  },
+  {
+    "lot": 0,
+    "quadra": "LOTES DE ESQUINA",
+    "area": 0,
+    "price": 0,
+    "label": "LOTES DE ESQUINA-0"
+  },
+  {
+    "lot": 0,
+    "quadra": "LOTES DE RUA PRINCIPAL",
+    "area": 0,
+    "price": 0,
+    "label": "LOTES DE RUA PRINCIPAL-0"
+  }
+];

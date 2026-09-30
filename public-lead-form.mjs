@@ -4,6 +4,7 @@ import {uploadPublicLeadFiles} from './firebase.mjs?v=public-runtime-v47';
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const clean=value=>String(value??'').trim();
 const SESSION_KEY='belavista.publicLead.aiSession.v4';
+const PUBLIC_CHAT_IMAGE_MAX_BYTES=6*1024*1024;
 const digits=value=>String(value??'').replace(/\D/g,'');
 const whatsappWebUrl=(phone,message)=>`https://api.whatsapp.com/send?phone=${encodeURIComponent(digits(phone))}&text=${encodeURIComponent(clean(message))}`;
 const initialSession=()=>({
@@ -74,6 +75,9 @@ class PublicLeadChat extends HTMLElement{
   render(){
     this.innerHTML=`<section class="public-chatbox" aria-label="Conversa com a IA do Aliança Park">
       <div class="public-chat-message" data-chat-message aria-live="polite">${esc(WELCOME_MESSAGE)}</div>
+      <div class="public-chat-instagram-handoff" data-instagram-handoff hidden></div>
+      <div class="public-chat-attachment" data-chat-attachment aria-live="polite" hidden></div>
+      <div class="public-chat-media-row"><button type="button" class="public-chat-media-button" data-chat-camera aria-label="Adicionar uma imagem à conversa">＋ Imagem</button><input type="file" data-chat-camera-input accept="image/png,image/jpeg,image/webp" capture="environment" aria-label="Adicionar imagem à conversa"><span>Cole uma imagem · Ctrl+V</span></div>
       <form class="public-chat-input" data-chat-form><textarea name="message" autocomplete="off" placeholder="Pergunte sobre um lote ou peça uma reserva" rows="1"></textarea><button type="submit" aria-label="Enviar">→</button></form>
       <span hidden data-chat-state>conversa assistida</span><small hidden data-chat-foot></small>
     </section>
@@ -81,13 +85,55 @@ class PublicLeadChat extends HTMLElement{
   }
   bind(){
     this.querySelector('[data-chat-form]').addEventListener('submit',async event=>{
-      event.preventDefault();const input=event.currentTarget.elements.message,message=clean(input.value);if(!message)return;input.value='';
-      await this.talk({message});
+      event.preventDefault();const input=event.currentTarget.elements.message,message=clean(input.value);if(!message&&!this.chatAttachment)return;input.value='';
+      const attachment=this.chatAttachment;this.chatAttachment=null;this.renderChatAttachment();
+      await this.talk({message:message||'Analise a imagem enviada e indique como ela se relaciona à escolha do lote ou à reserva.',attachment:attachment?{name:attachment.name,mimeType:attachment.mimeType,dataUrl:attachment.dataUrl}:null});
     });
+    const cameraInput=this.querySelector('[data-chat-camera-input]'),textarea=this.querySelector('[name="message"]');
+    this.querySelector('[data-chat-camera]')?.addEventListener('click',()=>cameraInput?.click());
+    cameraInput?.addEventListener('change',event=>{const file=event.currentTarget.files?.[0];if(file)this.readChatImage(file);});
+    textarea?.addEventListener('paste',event=>{const item=[...(event.clipboardData?.items||[])].find(entry=>entry.kind==='file'&&/^image\/(?:png|jpeg|webp)$/i.test(entry.type));const file=item?.getAsFile?.();if(!file)return;event.preventDefault();this.readChatImage(file);});
+    this.querySelector('[data-instagram-handoff]')?.addEventListener('click',async event=>{const button=event.target.closest('[data-instagram-copy]');if(!button)return;const value=button.dataset.message||'';try{await navigator.clipboard.writeText(value);button.textContent='Mensagem copiada';}catch{button.textContent='Selecione e copie a mensagem';}});
+    this.renderChatAttachment();
   }
   setBusy(busy,label='NVIDIA analisando…'){
     const form=this.querySelector('[data-chat-form]'),state=this.querySelector('[data-chat-state]');
-    const field=form.querySelector('[name=\"message\"]');if(field)field.disabled=busy;form.querySelector('button').disabled=busy;if(state)state.textContent=busy?label:'conversa assistida';this.querySelector('.public-chatbox')?.toggleAttribute('data-busy',busy);
+    const field=form.querySelector('[name=\"message\"]');if(field)field.disabled=busy;form.querySelector('button[type=\"submit\"]').disabled=busy;this.querySelector('[data-chat-camera]')?.toggleAttribute('disabled',busy);if(state)state.textContent=busy?label:'conversa assistida';this.querySelector('.public-chatbox')?.toggleAttribute('data-busy',busy);
+  }
+  readChatImage(file){
+    if(!file)return;
+    const mimeType=String(file.type||'').toLowerCase();
+    if(!/^image\/(?:png|jpeg|webp)$/.test(mimeType)){this.setFoot('Use PNG, JPEG ou WEBP.');return;}
+    if(Number(file.size)>PUBLIC_CHAT_IMAGE_MAX_BYTES){this.setFoot('A imagem precisa ter no máximo 6 MB.');return;}
+    const reader=new FileReader();
+    reader.onload=()=>{const dataUrl=String(reader.result||'');if(!/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/i.test(dataUrl)){this.setFoot('Não foi possível preparar a imagem.');return;}this.chatAttachment={name:String(file.name||'imagem-colada'),mimeType,dataUrl};this.renderChatAttachment();};
+    reader.onerror=()=>this.setFoot('Não foi possível ler a imagem.');
+    reader.readAsDataURL(file);
+  }
+  setFoot(value){const foot=this.querySelector('[data-chat-foot]');if(foot){foot.hidden=false;foot.textContent=value;}}
+  renderChatAttachment(){
+    const slot=this.querySelector('[data-chat-attachment]');if(!slot)return;
+    slot.hidden=!this.chatAttachment;slot.innerHTML=this.chatAttachment?`<img src="${esc(this.chatAttachment.dataUrl)}" alt="Prévia da imagem ${esc(this.chatAttachment.name)}"><span><b>Imagem pronta para a IA</b><small>${esc(this.chatAttachment.name)}</small></span><button type="button" data-chat-attachment-remove aria-label="Remover imagem">×</button>`:'';
+    slot.querySelector('[data-chat-attachment-remove]')?.addEventListener('click',()=>{this.chatAttachment=null;const input=this.querySelector('[data-chat-camera-input]');if(input)input.value='';this.renderChatAttachment();});
+  }
+  renderInstagramHandoff(instagram=null){
+    const slot=this.querySelector('[data-instagram-handoff]');
+    if(!slot)return;
+    if(!instagram?.directUrl){slot.hidden=true;slot.innerHTML='';return;}
+    const message=instagram.copyableMessage||instagram.message||'';
+    slot.hidden=false;
+    slot.innerHTML='<button type="button" class="public-chat-instagram-toggle" data-instagram-toggle aria-expanded="false"><span>CONTINUAR PELO INSTAGRAM</span><b>'+esc(instagram.username||'Instagram')+'</b><i>Opcional · abrir mensagem pronta</i></button><div class="public-chat-instagram-panel" data-instagram-panel hidden><p>Abra o Direct oficial e envie a mensagem pronta abaixo.</p><iframe src="/instagram-message.html" title="Mensagem pronta para o Instagram" data-instagram-frame></iframe><div class="public-chat-instagram-handoff-actions"><a href="'+esc(instagram.directUrl)+'" target="_blank" rel="noopener noreferrer">Abrir Direct</a><button type="button" data-instagram-copy data-message="'+esc(message)+'">Copiar mensagem</button></div></div>';
+    const toggle=slot.querySelector('[data-instagram-toggle]'),panel=slot.querySelector('[data-instagram-panel]');
+    toggle?.addEventListener('click',()=>{
+      const open=panel.hidden;
+      panel.hidden=!open;
+      toggle.setAttribute('aria-expanded',String(open));
+      if(open)panel.querySelector('[data-instagram-frame]')?.contentWindow?.postMessage({type:'instagram-message',payload:instagram},location.origin);
+    });
+    const frame=slot.querySelector('[data-instagram-frame]');
+    const send=()=>frame?.contentWindow?.postMessage({type:'instagram-message',payload:instagram},location.origin);
+    frame?.addEventListener('load',send,{once:true});
+    if(frame?.contentDocument?.readyState==='complete'&&!panel.hidden)send();
   }
   async talk(extra={},options={}){
     this.setBusy(true);const message=this.querySelector('[data-chat-message]');message.dataset.loading='1';message.textContent='Analisando sua intenção e o estado disponível do loteamento…';
@@ -96,9 +142,10 @@ class PublicLeadChat extends HTMLElement{
       const selectedLot=this.closest('public-leads-surface')?.selectedLot()||this.session.selectedLot||null;
       result=await sendConversation({session:this.session,selectedLot,...extra});
       this.session=saveSession({...this.session,...(result.session||{}),contactConfirmed:Boolean(this.session.contactConfirmed||result.session?.contactConfirmed)});
+      this.renderInstagramHandoff(result.contact?.instagram||null);
       delete message.dataset.loading;
       await typeAssistantMessage(message,assistantText(result));
-      const foot=this.querySelector('[data-chat-foot]');if(foot)foot.textContent=result.statusLine||'';
+      const foot=this.querySelector('[data-chat-foot]');if(foot){foot.hidden=!result.statusLine&&!result.attachment;foot.textContent=result.attachment?.stored?'Imagem protegida no Cloudflare R2 e analisada pela NVIDIA.':result.attachment?'Imagem analisada nesta conversa; R2 ainda não está configurado.':result.statusLine||'';}
       const surface=this.closest('public-leads-surface');
       if(result.map?.highlight)surface?.activateHighlight(result.map.highlight,'ai');
       if(result.contact?.confirmRequired&&!this.session.contactConfirmed&&!options.deferContact)this.openContactConfirm(result.contact,result.ui);
@@ -136,7 +183,7 @@ class PublicLeadChat extends HTMLElement{
   }
   openModal(kind,ui={}){
     const dialog=this.querySelector('[data-lead-modal]'),form=this.querySelector('[data-modal-form]');form.dataset.kind=kind;
-    if(kind==='registration')form.innerHTML=this.modalShell('Identificação','Para registrar sua intenção e continuar a reserva, preciso identificar você.',`<div class="public-modal-grid"><label>Nome completo<input name="name" required autocomplete="name" value="${esc(this.session.lead?.name||'')}"></label><label>WhatsApp com DDD<input name="whatsapp" required autocomplete="tel" value="${esc(this.session.lead?.whatsapp||'')}"></label><label>E-mail<input name="email" required type="email" autocomplete="email" value="${esc(this.session.lead?.email||'')}"></label><label>CPF<input name="cpf" required inputmode="numeric" autocomplete="off" placeholder="000.000.000-00"></label></div>`,'Enviar identificação');
+    if(kind==='registration')form.innerHTML=this.modalShell('Identificação','Para registrar sua intenção e continuar a reserva, preciso identificar você.',`<div class="public-modal-grid"><label>Nome completo<input name="name" required autocomplete="name" value="${esc(this.session.lead?.name||'')}"></label><label>WhatsApp com DDD<input name="whatsapp" required autocomplete="tel" value="${esc(this.session.lead?.whatsapp||'')}"></label><label>E-mail<input name="email" required type="email" autocomplete="email" value="${esc(this.session.lead?.email||'')}"></label><label>Instagram @ <small>(opcional)</small><input name="instagramHandle" inputmode="text" autocomplete="off" placeholder="@seuusuario" value="${esc(this.session.lead?.instagramHandle||'')}"></label><label>CPF<input name="cpf" required inputmode="numeric" autocomplete="off" placeholder="000.000.000-00"></label></div>`,'Enviar identificação');
     else if(kind==='documents')form.innerHTML=this.modalShell('Documentos','A IA pediu a documentação como próximo passo da reserva.',`<div class="public-modal-grid"><label>Identidade — frente<input name="identityFront" required type="file" accept="image/*,application/pdf"></label><label>Identidade — verso<input name="identityBack" required type="file" accept="image/*,application/pdf"></label><label>Comprovante de endereço<input name="addressProof" required type="file" accept="image/*,application/pdf"></label></div><p class="public-modal-note">Os arquivos vão para o armazenamento Firebase; a NVIDIA recebe apenas o fato de que os documentos foram enviados e seus metadados, não o conteúdo do documento.</p>`,'Enviar documentos');
     else if(kind==='signal')form.innerHTML=this.modalShell('Sinal da reserva',ui?.signalMessage||'Só falta o sinal com o envio do comprovante para efetivar a reserva no estado comercial.',`<label>Comprovante do sinal<input name="paymentProof" required type="file" accept="image/*,application/pdf"></label><p class="public-modal-note">O lote só será marcado como Reservado depois que a IA receber este evento e retornar a ação de confirmação.</p>`,'Enviar comprovante');
     else return;

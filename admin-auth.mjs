@@ -1,15 +1,17 @@
+import {ADMIN_LOGIN_ROLES,FIELD_PORTAL_ROLES} from './admin-role-policy.mjs?v=admin-role-policy-v1';
+
 const path=String(location.pathname||'');
 const isFieldPortal=/\/encarregados(?:\.html)?(?:\/|$)/i.test(path);
 const isAdminSurface=/\/admin(?:\/|$)/i.test(path)||new URLSearchParams(location.search).get('twa')==='admin';
 const required=isFieldPortal||isAdminSurface;
-const allowedRoles=isFieldPortal?['foreman','admin','developer']:['admin','foreman','owner','developer'];
+const allowedRoles=isFieldPortal?FIELD_PORTAL_ROLES:ADMIN_LOGIN_ROLES;
 globalThis.BELAVISTA_ADMIN_AUTH_REQUIRED=required;
 const loginProfile=globalThis.BELAVISTA_LOGIN_PROFILE;
 const profileMark=(name,detail={})=>loginProfile?.mark(name,detail);
 profileMark('auth.module.start',{required,route:path});
 
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-const roleLabel=role=>role==='foreman'?'Encarregado':role==='admin'?'Administrador':role==='developer'?'TI · Desenvolvimento':'Dono';
+const roleLabel=role=>role==='foreman'?'Encarregado':role==='admin'?'Administrador':role==='developer'?'TI · Desenvolvimento':['sales','commercial','broker','corretor'].includes(role)?'Corretor':'Dono';
 const viewLabel=isFieldPortal?'portal móvel de campo':'painel administrativo';
 const style=document.createElement('style');
 style.textContent=`
@@ -52,7 +54,7 @@ const createGate=()=>{
 
 const finish=(session,gate,resolve)=>{
   const user=session.user;
-  globalThis.BELAVISTA_ADMIN_ACTOR={uid:user.uid,name:user.displayName||user.email||user.uid,email:user.email||'',role:session.role,label:roleLabel(session.role),mode:'firebase'};
+  globalThis.BELAVISTA_ADMIN_ACTOR={uid:user.uid,name:user.displayName||user.email||user.uid,email:user.email||'',role:session.role,label:roleLabel(session.role),commercialProfile:session.claims?.commercialProfile||session.claims?.profileId||'',claims:session.claims||{},mode:'firebase'};
   globalThis.BELAVISTA_GET_ID_TOKEN=()=>user.getIdToken();
   document.documentElement.dataset.belavistaAuth='ready';
   document.documentElement.dataset.belavistaAuthRole=session.role;

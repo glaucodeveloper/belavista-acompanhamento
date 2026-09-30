@@ -10,12 +10,6 @@
       "database_id": "replace-me"
     }
   ],
-  "r2_buckets": [
-    {
-      "binding": "BELAVISTA_UPLOADS",
-      "bucket_name": "belavista-uploads"
-    }
-  ],
   "queues": {
     "producers": [
       {

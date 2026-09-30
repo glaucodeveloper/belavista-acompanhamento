@@ -26,6 +26,11 @@ const loadRuntime=()=>runtimePromise||(runtimePromise=(async()=>{
     import(`https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-storage.js`)
   ]);
   const app=appSdk.initializeApp(FIREBASE_CONFIG);
+  // Prefer RTDB WebSocket in browser/TWA. Firebase long-polling creates a
+  // cross-origin hidden iframe that Chrome reports as an unload policy violation.
+  if(typeof globalThis.WebSocket==='function'&&typeof databaseSdk.forceWebSockets==='function'){
+    databaseSdk.forceWebSockets();
+  }
   const auth=authSdk.getAuth(app);
   // Keep the authenticated operational session across TWA/browser restarts.
   // The fallback is intentionally non-fatal: restricted WebViews can refuse
@@ -35,7 +40,8 @@ const loadRuntime=()=>runtimePromise||(runtimePromise=(async()=>{
     catch(error){console.info('Persistência local do Firebase indisponível neste contexto.',error);}
   }
   import(`https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-analytics.js`).then(sdk=>{try{sdk.getAnalytics(app);}catch(error){console.info('Firebase Analytics indisponível neste contexto.',error);}}).catch(()=>{});
-  return {app,auth,db:databaseSdk.getDatabase(app),storage:storageSdk.getStorage(app),...authSdk,...databaseSdk,...storageSdk};
+  const db=databaseSdk.getDatabase(app);
+  return {app,auth,db,storage:storageSdk.getStorage(app),...authSdk,...storageSdk,...databaseSdk,ref:databaseSdk.ref,storageRef:storageSdk.ref};
 })().catch(error=>{runtimePromise=null;throw error;}));
 
 const text=(value,max=240)=>String(value??'').trim().slice(0,max);
@@ -106,6 +112,7 @@ export async function savePublicLead(input={}){
   const payload={
     name:text(input.name,120),
     whatsapp:text(input.whatsapp,40),
+    instagramHandle:text(input.instagramHandle||input.instagram,60),
     email:text(input.email,160).toLowerCase(),
     objective:text(input.objective,60),
     sun:text(input.sun,30),
@@ -141,7 +148,7 @@ export async function savePublicReservation(input={},files={}){
     const allowed=String(file.type||'').startsWith('image/')||String(file.type||'')==='application/pdf';
     if(!allowed||file.size>12*1024*1024)throw new Error('Cada documento deve ser uma imagem ou PDF de até 12 MB.');
     const safeName=String(file.name||`${kind}.bin`).replace(/[^a-z0-9._-]/gi,'-').slice(-96);
-    const storageRef=runtime.ref(runtime.storage,`publicReservations/${reservationId}/${kind}-${Date.now()}-${safeName}`);
+    const storageRef=runtime.storageRef(runtime.storage,`publicReservations/${reservationId}/${kind}-${Date.now()}-${safeName}`);
     await runtime.uploadBytes(storageRef,file,{contentType:file.type||'application/octet-stream'});
     documents[kind]={name:text(file.name,120),contentType:text(file.type,80),size:Number(file.size)||0,storagePath:storageRef.fullPath,url:await runtime.getDownloadURL(storageRef)};
   }
@@ -179,7 +186,7 @@ export async function savePublicFieldRecord(input={},photoFile=null){
   let photo=null;
   if(photoFile){
     const safeName=String(photoFile.name||'evidencia.jpg').replace(/[^a-z0-9._-]/gi,'-').slice(-96);
-    const storageRef=runtime.ref(runtime.storage,`publicFieldRecords/${recordId}/${Date.now()}-${safeName}`);
+    const storageRef=runtime.storageRef(runtime.storage,`publicFieldRecords/${recordId}/${Date.now()}-${safeName}`);
     await runtime.uploadBytes(storageRef,photoFile,{contentType:photoFile.type||'image/jpeg'});
     photo={
       name:text(photoFile.name,120),
@@ -207,6 +214,20 @@ export async function savePublicFieldRecord(input={},photoFile=null){
   };
   await runtime.set(recordRef,payload);
   return recordId;
+}
+
+// BELAVISTA_OPERATIONAL_PROPOSAL_STORAGE_V1
+export async function saveOperationalProposal(input={},files=[],actor={}){
+  const runtime=await loadRuntime(),proposalRef=runtime.push(runtime.ref(runtime.db,'operationalProposals')),proposalId=proposalRef.key,attachments=[];
+  for(const file of files||[]){
+    if(!file||file.size>12*1024*1024)throw new Error('Cada anexo deve ter no máximo 12 MB.');
+    const safeName=String(file.name||'anexo').replace(/[^a-z0-9._-]/gi,'-').slice(-96),storageRef=runtime.storageRef(runtime.storage,`operationalProposals/${actor.uid||'unknown'}/${proposalId}/${safeName}`);
+    await runtime.uploadBytes(storageRef,file,{contentType:file.type||'application/octet-stream'});
+    attachments.push({name:file.name||safeName,type:file.type||'',size:Number(file.size)||0,storagePath:storageRef.fullPath,url:await runtime.getDownloadURL(storageRef)});
+  }
+const payload={...input,uid:String(actor.uid||''),profile:String(input.profile||''),attachments,inference:input.inference&&typeof input.inference==='object'?input.inference:null,source:'belavista-twa-proposal',createdAt:runtime.serverTimestamp(),updatedAt:runtime.serverTimestamp()};
+  await runtime.set(proposalRef,payload);
+  return {id:proposalId,attachments};
 }
 
 export async function saveFieldConfirmation(input={}){
@@ -286,11 +307,11 @@ export async function registerOperationalDevice(actor={}){
 // ao Worker nunca é escolhida livremente pelo formulário do dispositivo.
 const normalizeAuthRole=value=>{
   const role=String(value||'').trim().toLocaleLowerCase('pt-BR');
-  return role==='administrador'?'admin':role==='encarregado'?'foreman':['developer','desenvolvimento','desenvolvedor','ti','dev'].includes(role)?'developer':role;
+  return role==='administrador'?'admin':role==='encarregado'?'foreman':['developer','desenvolvimento','desenvolvedor','ti','dev'].includes(role)?'developer':['corretor','corretora','vendedor','vendedora','sales'].includes(role)?'sales':role==='comercial'?'commercial':role;
 };
 const LOCAL_DEVELOPER_EMAIL='icaroglaucooliveira@gmail.com';
 const isLocalDeveloper=(email)=>typeof location!=='undefined'&&/^(localhost|127\.0\.0\.1|\[::1\])$/i.test(String(location.hostname||''))&&String(email||'').trim().toLocaleLowerCase('pt-BR')===LOCAL_DEVELOPER_EMAIL;
-export async function signInOperationalUser(email,password,allowedRoles=['admin','foreman','owner','developer']){
+export async function signInOperationalUser(email,password,allowedRoles=['admin','foreman','owner','developer','sales','commercial']){
   const runtime=await loadRuntime();
   const credential=await runtime.signInWithEmailAndPassword(runtime.auth,String(email||'').trim(),String(password||''));
   const tokenResult=await credential.user.getIdTokenResult(true);
@@ -302,7 +323,7 @@ export async function signInOperationalUser(email,password,allowedRoles=['admin'
   }
   return {user:credential.user,role,token:await credential.user.getIdToken(),claims:tokenResult.claims||{}};
 }
-export async function restoreOperationalUser(allowedRoles=['admin','foreman','owner','developer']){
+export async function restoreOperationalUser(allowedRoles=['admin','foreman','owner','developer','sales','commercial']){
   const runtime=await loadRuntime();
   const user=await new Promise(resolve=>{
     let settled=false;
@@ -355,6 +376,10 @@ export function operationalConversationKey(left,right){return conversationKey(le
 
 export async function subscribeOperationalContacts(actor={},onChange=()=>{}){
   const runtime=await loadRuntime();
+  if(!runtime?.db||typeof runtime.ref!=='function'||typeof runtime.onValue!=='function'){
+    console.info('Firebase Realtime Database sem runtime de referência; contatos em tempo real desativados.');
+    return ()=>{};
+  }
   const ownUid=text(actor.uid,160);
   return runtime.onValue(runtime.ref(runtime.db,'metadata'),snapshot=>{
     const contacts=Object.entries(snapshot.val()||{}).map(([uid,value])=>({
@@ -534,7 +559,7 @@ export async function uploadPublicLeadFiles(sessionId,files={},options={}){
       throw new Error('Cada arquivo deve ser imagem ou PDF de até 12 MB.');
     }
     const safeName=String(file.name||`${kind}.bin`).replace(/[^a-z0-9._-]/gi,'-').slice(-96);
-    const storageRef=runtime.ref(runtime.storage,`publicLeadSessions/${id}/${scope}/${kind}-${Date.now()}-${safeName}`);
+    const storageRef=runtime.storageRef(runtime.storage,`publicLeadSessions/${id}/${scope}/${kind}-${Date.now()}-${safeName}`);
     await runtime.uploadBytes(storageRef,file,{contentType:contentType||'application/octet-stream'});
     result[kind]={
       name:text(file.name,120),

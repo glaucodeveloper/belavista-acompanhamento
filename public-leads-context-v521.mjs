@@ -8,7 +8,7 @@
 // Replaces v5.2.1 MutationObserver + 180-frame self-reinstall loop.
 import {runtimeUrlV1} from './runtime-url-v1.mjs?v=ngrok-route-v1';
 
-const BRAND_MARK=runtimeUrlV1('/assets/public/alianca-park-logo-mark-transparent-v551.png');
+const BRAND_MARK=runtimeUrlV1('/assets/public/alianca-park-logo-mark-transparent-v551.png?edited=20260915');
 const PUBLIC_MAP_SELECTOR='map-scene[data-public-map],map-scene[data-public-presentation]';
 const HERO_SELECTOR='[data-hero-letter],.public-hero-letter,.public-map-copy';
 // Nível que corresponde à escala física inferida para o footprint do DWG.

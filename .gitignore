@@ -8,3 +8,8 @@ mobile/twa/android-admin/build/
 mobile/twa/android-admin/app/build/
 mobile/twa/android-admin/*-unsigned*.apk
 mobile/twa/android-admin/app-release*.aab
+vendor/openjev/
+vendor/tools/go/
+.cache/system-model/
+.runtime/system-model/
+.logs/system-model/

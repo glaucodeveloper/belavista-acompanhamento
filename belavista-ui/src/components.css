@@ -10,7 +10,7 @@
 .bv-shell { min-height: 100vh; display: grid; grid-template-columns: var(--bv-sidebar-width) minmax(0, 1fr); }
 .bv-sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; background: #0b1726; border-right: 1px solid var(--bv-border-subtle); }
 .bv-brand { min-height: var(--bv-topbar-height); display: flex; align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid var(--bv-border-subtle); }
-.bv-brand-mark { width: 34px; height: 34px; display: block; background: transparent url('../../assets/public/alianca-park-logo-mark-v5346.png') center/contain no-repeat; font: 0/0 var(--bv-font-mono); color: transparent; }
+.bv-brand-mark { width: 34px; height: 34px; display: block; background: transparent url('../../assets/public/alianca-park-logo-mark-transparent-v551.png?edited=20260915') center/contain no-repeat; font: 0/0 var(--bv-font-mono); color: transparent; }
 .bv-brand strong { display: block; font-size: 15px; }.bv-brand small { display: block; color: var(--bv-text-helper); font: 8px var(--bv-font-mono); letter-spacing: .12em; }
 .bv-nav { display: grid; gap: 2px; padding: 16px 8px; }.bv-nav a { min-height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 12px; color: var(--bv-text-secondary); text-decoration: none; border-left: 3px solid transparent; }.bv-nav a:hover { background: var(--bv-layer-02); color: var(--bv-text-primary); }.bv-nav a.active { border-left-color: var(--bv-blue); background: var(--bv-blue-soft); color: white; }
 .bv-sidebar-meta { margin-top: auto; padding: 16px; border-top: 1px solid var(--bv-border-subtle); color: var(--bv-text-helper); font: 9px/1.5 var(--bv-font-mono); }

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mensagem pronta para o Instagram</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+    *{box-sizing:border-box}
+    body{margin:0;padding:14px;background:#0b1d17;color:#eef8f3;font-size:12px}
+    .card{display:grid;gap:10px}
+    .eyebrow{color:#9bd0bb;font:700 9px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.14em}
+    .profile{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .profile b{font-size:14px}
+    .profile a{color:#bcebdc;text-decoration:none;font-size:11px}
+    textarea{width:100%;min-height:72px;resize:vertical;padding:10px;border:1px solid rgba(193,232,216,.24);border-radius:0;background:#071610;color:#f7fffb;font:inherit;line-height:1.5;outline:0}
+    textarea:focus{border-color:#bcebdc}
+    .actions{display:flex;flex-wrap:wrap;gap:7px}
+    button,.actions a{min-height:34px;padding:8px 11px;border:1px solid rgba(193,232,216,.25);background:#102820;color:#eef8f3;font:700 11px inherit;text-decoration:none;cursor:pointer}
+    .actions a{display:inline-flex;align-items:center;background:#bcebdc;color:#082019;border-color:#bcebdc}
+    .status{min-height:15px;color:#93aa9f;font-size:10px}
+  </style>
+</head>
+<body>
+  <main class="card" aria-live="polite">
+    <span class="eyebrow">MENSAGEM PRONTA · DIRECT OFICIAL</span>
+    <div class="profile"><b data-username>Instagram</b><a data-profile target="_blank" rel="noopener noreferrer" hidden>Ver perfil</a></div>
+    <textarea data-message aria-label="Mensagem pronta para copiar" readonly></textarea>
+    <div class="actions"><button type="button" data-copy>Copiar mensagem</button><a data-direct target="_blank" rel="noopener noreferrer">Abrir Direct</a></div>
+    <div class="status" data-status>Quando o Direct abrir, cole a mensagem e envie.</div>
+  </main>
+  <script>
+    const messageField=document.querySelector('[data-message]');
+    const copyButton=document.querySelector('[data-copy]');
+    const directLink=document.querySelector('[data-direct]');
+    const profileLink=document.querySelector('[data-profile]');
+    const username=document.querySelector('[data-username]');
+    const status=document.querySelector('[data-status]');
+    const setStatus=value=>{status.textContent=value;};
+    async function copyMessage(){
+      const value=messageField.value;
+      try{await navigator.clipboard.writeText(value);setStatus('Mensagem copiada. Cole no Direct e envie.');}
+      catch{messageField.focus();messageField.select();setStatus('Selecione a mensagem e copie manualmente.');}
+    }
+    copyButton.addEventListener('click',copyMessage);
+    window.addEventListener('message',event=>{
+      if(event.origin!==location.origin||event.data?.type!=='instagram-message')return;
+      const payload=event.data.payload||{};
+      username.textContent=payload.username||'Instagram';
+      messageField.value=payload.copyableMessage||payload.message||'';
+      directLink.href=payload.directUrl||'#';
+      if(payload.profileUrl){profileLink.href=payload.profileUrl;profileLink.hidden=false;}
+      setStatus('Quando o Direct abrir, cole a mensagem e envie.');
+    });
+  </script>
+</body>
+</html>

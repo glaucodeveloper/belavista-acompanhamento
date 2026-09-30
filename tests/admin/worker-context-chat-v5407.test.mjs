@@ -12,10 +12,11 @@ const chatCss=read('worker-context-chat.css');
 const components=read('components.js');
 const app=read('app.js');
 const leadForm=read('public-lead-form.mjs');
+const index=read('index.html');
 
 test('monitor de workers carrega o chat fora do shell reconstruído',()=>{
-  assert.match(workers,/worker-context-chat\.css\?v=worker-chat-v5407/);
-  assert.match(workers,/worker-context-chat\.mjs\?v=worker-chat-v5407/);
+  assert.match(workers,/worker-context-chat\.css\?v=worker-chat-image-reasoning-v3/);
+  assert.match(workers,/worker-context-chat\.mjs\?v=worker-chat-image-reasoning-v2/);
   assert.match(chat,/document\.body\.insertAdjacentHTML/);
   assert.match(chat,/data-worker-context-assistant/);
   assert.match(chat,/data-worker-context-fade/);
@@ -23,11 +24,16 @@ test('monitor de workers carrega o chat fora do shell reconstruído',()=>{
   assert.match(chatCss,/position:fixed/);
 });
 
-test('chat dos workers cobre entrada, edição e indisponibilidade explícita do endpoint',()=>{
+test('chat dos workers cobre texto, imagem multimodal, edição e indisponibilidade explícita do endpoint',()=>{
   assert.match(chat,/localStorage/);
   assert.match(chat,/startEdit\(id\)/);
   assert.match(chat,/Entrada editada pelo usuário/);
-  assert.match(chat,/fetch\('\/api\/ai'/);
+  assert.match(chat,/const endpoint = attachment \? '\/api\/ai\/vision-reasoning' : '\/api\/ai'/);
+  assert.match(chat,/data-worker-chat-camera-input accept="image\/png,image\/jpeg,image\/webp"/);
+  assert.match(chat,/worker-context-chat-input-shell/);
+  assert.match(chat,/worker-context-chat-image-button/);
+  assert.match(chat,/this\.root\.addEventListener\('paste'/);
+  assert.match(chat,/attachment: attachment \? \{ name: attachment\.name, mimeType: attachment\.mimeType, dataUrl: attachment\.dataUrl \}/);
   assert.doesNotMatch(chat,/fallbackReply/);
   assert.match(chat,/Nenhuma resposta local foi usada/);
   assert.match(chat,/data-worker-chat-action="cycle"/);
@@ -46,6 +52,12 @@ test('chat observa navegação, workers, ciclo, caixa, registros e eventos de te
   ]) assert.match(chat,pattern);
 });
 
+test('monitor não reentra ao atualizar o próprio texto',()=>{
+  assert.match(index,/worker-context-chat\.mjs\?v=worker-chat-image-loop-break-v1/);
+  assert.match(chat,/const next = `Observando/);
+  assert.match(chat,/monitor\.textContent !== next/);
+});
+
 test('chat administrativo e atendimento público possuem áudio opt-in',()=>{
   assert.match(components,/data-chat-voice-toggle/);
   assert.match(components,/CHAT_VOICE_STORAGE_KEY_V1/);
@@ -56,7 +68,7 @@ test('chat administrativo e atendimento público possuem áudio opt-in',()=>{
 });
 
 test('as superfícies pública e administrativa mantêm conversa contextual',()=>{
-  assert.match(app,/<ai-chat><\/ai-chat>/);
+  assert.doesNotMatch(app,/<ai-chat><\/ai-chat>/);
   assert.match(leadForm,/<public-lead-chat><\/public-lead-chat>/);
   assert.match(leadForm,/Peça disponibilidade ou reserva no chat/);
   assert.match(components,/data-chat-context-fade/);

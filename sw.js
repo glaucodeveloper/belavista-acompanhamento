@@ -1,13 +1,13 @@
 // v11: invalida o shell anterior para que módulos com os novos exports sejam
 // carregados juntos, sem misturar components.js/state.js de versões distintas.
-const SHELL = 'belavista-shell-admin-twa-v25-cash-fiscal';
-const RUNTIME = 'belavista-runtime-admin-twa-v24-cash-fiscal';
+const SHELL = 'belavista-shell-admin-twa-v40-stage-context-chrome';
+const RUNTIME = 'belavista-runtime-admin-twa-v32-central-ai-priorities';
 const APP_SHELL = [
   './public-runtime-polish-v5332.mjs?v=5.3.32',
   './admin-lots-canvas-v1.css',
   './admin-lots-canvas-v1.js?v=admin-lots-canvas-v1',
-   './', './index.html', './styles.css?v=admin-workspace-v76', './map-page-widgets-v5.css?v=operations-v19', './app.js?v=instagram-api-live-v25&full-image-3d-environment-v1&map-aerial-alignment-v76',
-   './components.js?v=instagram-api-live-v25&route=ngrok-route-v1&full-image-3d-environment-v1&foreman-surface-v1&admin-map-static-first-v20-scene-only-168&leads-content-tabs-v1&map-aerial-alignment-v76', './runtime-url-v1.mjs?v=ngrok-route-v1', './public-leads-map-v50.mjs?v=admin-public-map-parity-v1&route=ngrok-route-v1', './admin-public-map-surface-v5352.mjs?v=5.3.53', './admin-brand-style-v1.css?v=alianza-brand-v10-transparent-v552-20260915', './state.js?v=system-metrics-v1-20260919', './map-page-widgets-v5.js?v=operations-v19', './assets/data/dwg-georeference.json?v=dwg-georef-v1', './assets/model/alianca_park_masterplan_preview.glb?v=gpu-staged-5367', './assets/model/vegetation/tree-cc0.glb?v=generated-relief-v5391', './reservation-flow.mjs?v=7', './encarregados.html', './encarregados.css?v=logo-transparent-v552-20260915', './encarregados.js?v=operations-v19', './firebase.mjs?v=operations-v19',
+   './', './index.html', './styles.css?v=admin-workspace-v86', './map-page-widgets-v5.css?v=operations-v19', './app.js?v=instagram-api-live-v25&full-image-3d-environment-v1&map-aerial-alignment-v88&stage-context-chrome-v5',
+   './components.js?v=instagram-api-live-v25&route=ngrok-route-v1&full-image-3d-environment-v1&foreman-surface-v1&admin-map-static-first-v20-scene-only-168&leads-content-tabs-v1&map-aerial-alignment-v88&stage-context-chrome-v5', './runtime-url-v1.mjs?v=ngrok-route-v1', './public-leads-map-v50.mjs?v=admin-public-map-parity-v1&route=ngrok-route-v1', './admin-public-map-surface-v5352.mjs?v=5.3.53', './admin-brand-style-v1.css?v=alianza-brand-v10-transparent-v552-20260915', './state.js?v=system-metrics-v1-20260919', './map-page-widgets-v5.js?v=operations-v19', './assets/data/dwg-georeference.json?v=dwg-georef-v1', './assets/model/alianca_park_masterplan_preview.glb?v=gpu-staged-5367', './assets/model/vegetation/tree-cc0.glb?v=generated-relief-v5391', './reservation-flow.mjs?v=7', './encarregados.html', './encarregados.css?v=logo-transparent-v552-20260915', './encarregados.js?v=operations-v19', './firebase.mjs?v=operations-v19',
   './execution-planning-v8.css?v=8', './execution-planning-v8.js?v=navigation-state-v22', './admin-auth.mjs?v=admin-auth-v3', './admin-twa-runtime.mjs?v=admin-twa-runtime-v1', './admin-twa-manifest.webmanifest',
   './stage-admin-v10.js?v=stage-admin-v10-primary',
   './dashboard-map-tabs-v3.css?v=map-tabs-v3', './dashboard-map-tabs-v3.js?v=map-tabs-v3', './admin-runtime-v11.js?v=admin-runtime-v11', './admin-runtime-v11.css?v=admin-runtime-v11', './manifest.webmanifest'

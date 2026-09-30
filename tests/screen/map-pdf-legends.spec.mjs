@@ -1,0 +1,41 @@
+import {test,expect} from '@playwright/test';
+test.use({serviceWorkers:'block'});
+test('PDF do dashboard mantém mapa integral e legendas na barra em paisagem',async({page},info)=>{
+  await page.addInitScript(()=>{
+    globalThis.BELAVISTA_DISABLE_SERVICE_WORKER=true;
+    globalThis.BELAVISTA_ADMIN_ACTOR={uid:'map-test',name:'Teste mapa',role:'developer'};
+  });
+  await page.route('**/admin-auth.mjs*',route=>route.fulfill({contentType:'text/javascript',body:'globalThis.BELAVISTA_ADMIN_AUTH_REQUIRED=false;globalThis.BELAVISTA_ADMIN_AUTH_READY=Promise.resolve(true);'}));
+  await page.route('**/api/**',route=>route.fulfill({json:{ok:true,records:[],items:[],sales:[],events:[],entries:[],notifications:[],leads:[],attachments:[],stages:[],summary:{balanceCents:0}}}));
+  await page.goto('/admin?demo=1&view=map',{waitUntil:'domcontentloaded'});
+  const map=page.locator('map-scene[data-persistent-map="true"]');
+  await expect(map.locator('[data-scene-print-map]')).toBeVisible({timeout:20000});
+  await expect(map).toHaveAttribute('data-admin-satellite-state', /ready/, {timeout:45000});
+  await map.locator('[data-scene-overlay="pavimentacao"]').click();
+  // Prepare a deterministic selection fixture; PDF must reflect the actual live store.
+  await page.evaluate(()=>globalThis.__belavistaAppStore.set({mapProgressSelection:[{partId:'lot-01',label:'Lote 01',kind:'lot'},{partId:'street-01',label:'Rua 01',kind:'street'}]}));
+  const overlays=await map.evaluate(node=>node.stageOverlayKeys);
+  await map.locator('[data-scene-print-map]').click();
+  await expect(page.locator('[data-map-pdf-legends]')).toContainText('Pavimentação');
+  await expect(page.locator('.map-pdf-interface-toolbar [data-map-pdf-marks]')).toContainText('Áreas selecionadas · 2');
+  await expect(page.locator('.map-pdf-side')).toHaveCount(0);
+  await expect(map.locator('[data-map-3d-loading]')).toBeHidden();
+  await expect(page.locator('.map-pdf-interface-toolbar small')).toHaveCount(0);
+  expect(await map.evaluate(node=>node.getBoundingClientRect().width)).toBe(await page.evaluate(()=>innerWidth));
+  expect(await map.evaluate(node=>node.stageOverlayKeys)).toEqual(overlays);
+  await page.screenshot({path:info.outputPath('mapa-pdf-preview.png')});
+  await info.attach('preview',{path:info.outputPath('mapa-pdf-preview.png'),contentType:'image/png'});
+  await page.emulateMedia({media:'print'});
+  await expect(page.locator('[data-map-pdf-legends]')).toBeVisible();
+  await expect(page.locator('[data-map-pdf-marks]')).toBeVisible();
+  await expect(page.locator('.map-pdf-interface-toolbar')).toBeVisible();
+  await expect(page.locator('[data-map-pdf-print]')).toBeHidden();
+  expect(await page.evaluate(()=>document.querySelector('#map-pdf-legend-styles-v1').textContent)).toContain('size:A4 landscape');
+  await page.screenshot({path:info.outputPath('mapa-pdf-impressao.png')});
+  await info.attach('impressao',{path:info.outputPath('mapa-pdf-impressao.png'),contentType:'image/png'});
+  await page.emulateMedia({media:'screen'});
+  await page.locator('[data-map-pdf-close]').click();
+  await expect(page.locator('[data-map-pdf-interface]')).toHaveCount(0);
+  await expect(page.locator('body')).not.toHaveClass(/map-pdf-interface-open/);
+  expect(await map.evaluate(node=>node.stageOverlayKeys)).toEqual(overlays);
+});

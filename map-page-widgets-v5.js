@@ -47,7 +47,7 @@
     if(!host){
       host=document.createElement('section');
       host.id='belavista-map-widgets-v5';
-      host.innerHTML='<nav class="map-v5-launcher" aria-label="Abrir módulos sobre o mapa"></nav><div class="map-v5-layer"></div>';
+      host.innerHTML='<div class="map-v5-map-smoke" aria-hidden="true"></div><nav class="map-v5-launcher" aria-label="Abrir módulos sobre o mapa"></nav><div class="map-v5-layer"></div>';
       document.body.append(host);
       host.addEventListener('click',onClick,true);
       host.addEventListener('submit',onSubmit,true);
@@ -87,13 +87,29 @@
 
   function positionLauncher(){
     if(!host)return;
-    if(store?.get()?.view!=='map'){host.hidden=true;return;}
+    if(store?.get()?.view!=='map'){positionMapSmoke(null);host.hidden=true;return;}
     const r=mapRect();
-    if(!r){host.hidden=true;return;}
+    if(!r){positionMapSmoke(null);host.hidden=true;return;}
     host.hidden=false;
+    positionMapSmoke(r);
     const nav=host.querySelector('.map-v5-launcher');
     nav.style.left=`${Math.round(r.left+24)}px`;
     nav.style.top=`${Math.round(r.top+18)}px`;
+  }
+
+  function positionMapSmoke(r=mapRect()){
+    const smoke=host?.querySelector('.map-v5-map-smoke');
+    const active=Boolean(r&&openKinds.size);
+    if(!smoke)return;
+    smoke.classList.toggle('is-active',active);
+    smoke.setAttribute('aria-hidden','true');
+    const map=document.querySelector('map-scene[data-persistent-map="true"],map-scene:not([compact])');
+    map?.toggleAttribute('data-map-widgets-open',active);
+    if(!r)return;
+    smoke.style.left=Math.round(r.left)+'px';
+    smoke.style.top=Math.round(r.top)+'px';
+    smoke.style.width=Math.round(r.width)+'px';
+    smoke.style.height=Math.round(r.height)+'px';
   }
 
   function defaultPosition(kind,index,win){
@@ -114,6 +130,7 @@
       const requested=positions.get(kind)||readPosition(kind)||defaultPosition(kind,index,win),saved={left:Math.max(6,Math.min(innerWidth-win.offsetWidth-6,Number(requested.left)||6)),top:Math.max(54,Math.min(innerHeight-win.offsetHeight-6,Number(requested.top)||54))};
       win.style.left=`${saved.left}px`;win.style.top=`${saved.top}px`;win.style.zIndex=String(110+index);
     });
+    positionMapSmoke();
     bindRichEmbedded(layer);
     syncSidebar();
     window.lucide?.createIcons();

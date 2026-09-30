@@ -1,4 +1,4 @@
-import './components.js?v=public-road-alignment-v5573&logo-transparent-v551&route=ngrok-route-v1';
+import './components.js?v=public-road-alignment-v5573&logo-transparent-v552&route=ngrok-route-v1';
 window.addEventListener('DOMContentLoaded',()=>window.lucide?.createIcons?.());
 if('serviceWorker' in navigator&&location.protocol!=='file:'){
   (async()=>{

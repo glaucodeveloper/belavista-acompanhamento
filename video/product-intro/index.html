@@ -1,9 +1,10 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR" data-resolution="landscape">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=1920, height=1080" />
-    <title>Aliança Park · Operação viva do loteamento</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <meta name="description" content="Tour funcional do Aliança Park com telas reais do sistema e apontamentos de uso.">
+    <title>Aliança Park · Tour funcional v3.0</title>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <style>
       :root {
@@ -100,6 +101,28 @@
       .shot-frame::after { content: ""; position: absolute; inset: 0; border: 2px solid rgba(168, 214, 75, 0.23); pointer-events: none; }
       .shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
       .shot-caption { position: absolute; left: 28px; bottom: 26px; z-index: 2; padding: 14px 18px; background: rgba(7, 16, 28, 0.88); border-left: 4px solid var(--green); font-size: 22px; }
+      .feature-pin { position: absolute; z-index: 4; display: grid; grid-template-columns: 38px auto; align-items: center; gap: 10px; max-width: 270px; pointer-events: none; filter: drop-shadow(0 9px 14px rgba(0, 0, 0, 0.42)); }
+      .feature-pin .pin { display: grid; place-items: center; width: 38px; height: 38px; border: 2px solid var(--paper); border-radius: 50%; background: var(--blue); color: var(--ink); font-family: "JetBrains Mono", monospace; font-size: 17px; font-weight: 800; box-shadow: 0 0 0 6px rgba(125, 183, 255, 0.18), 0 0 28px rgba(125, 183, 255, 0.72); }
+      .feature-pin .label { padding: 9px 12px; border: 1px solid rgba(125, 183, 255, 0.65); background: rgba(7, 16, 28, 0.92); color: var(--paper); font-size: 15px; line-height: 1.15; }
+      .feature-pin.gold .pin { background: var(--gold); box-shadow: 0 0 0 6px rgba(246, 188, 54, 0.18), 0 0 28px rgba(246, 188, 54, 0.6); }
+      .feature-pin.gold .label { border-color: rgba(246, 188, 54, 0.7); }
+      .feature-pin.green .pin { background: var(--green); box-shadow: 0 0 0 6px rgba(168, 214, 75, 0.18), 0 0 28px rgba(168, 214, 75, 0.62); }
+      .feature-pin.green .label { border-color: rgba(168, 214, 75, 0.7); }
+      .pin-map-1 { left: 22px; top: 92px; }
+      .pin-map-2 { right: 24px; top: 116px; }
+      .pin-map-3 { right: 26px; bottom: 102px; }
+      .pin-leads-1 { left: 26px; top: 92px; }
+      .pin-leads-2 { right: 22px; top: 45%; }
+      .pin-leads-3 { left: 42%; bottom: 106px; }
+      .pin-workers-1 { left: 24px; top: 90px; }
+      .pin-workers-2 { right: 22px; top: 32%; }
+      .pin-workers-3 { right: 26px; bottom: 98px; }
+      .pin-activity-1 { left: 24px; top: 94px; }
+      .pin-activity-2 { right: 22px; top: 42%; }
+      .pin-control-1 { left: 22px; top: 58px; }
+      .pin-control-2 { right: 22px; bottom: 66px; }
+      .pin-proof-1 { left: 24px; top: 92px; }
+      .system-note { position: absolute; z-index: 4; right: 28px; top: 24px; padding: 9px 12px; color: var(--blue); border: 1px solid rgba(125, 183, 255, 0.56); background: rgba(7, 16, 28, 0.88); font-family: "JetBrains Mono", monospace; font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; }
       .metric-stack { display: grid; grid-template-rows: repeat(3, 1fr); gap: 12px; }
       .metric { display: flex; flex-direction: column; justify-content: space-between; padding: 28px; border: 1px solid var(--line); background: rgba(13, 27, 42, 0.88); }
       .metric strong { color: var(--green); font-size: 58px; font-weight: 500; letter-spacing: -0.05em; }
@@ -184,99 +207,99 @@
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="main" data-start="0" data-duration="48" data-width="1920" data-height="1080">
-      <section id="scene-intro" class="scene clip intro" data-start="0" data-duration="6.6" data-track-index="0">
-        <div class="scene-grid"></div><div class="scene-ring"></div>
-        <div class="scene-inner">
-          <div class="intro-copy">
-            <div class="topline reveal">Aliança Park · Amargosa, Bahia</div>
-            <h1 class="reveal">A obra não precisa ser uma <span class="accent">caixa-preta.</span></h1>
-            <p class="lede reveal">Uma operação viva conecta venda, caixa e execução para o dono decidir com contexto e agir no momento certo.</p>
+    <div data-hf-id="hf-ihoy" id="root" data-composition-id="main" data-start="0" data-duration="48" data-width="1920" data-height="1080">
+      <section data-hf-id="hf-9egx" id="scene-intro" class="scene clip intro" data-start="0" data-duration="6.6" data-track-index="0">
+        <div data-hf-id="hf-kall" class="scene-grid"></div><div data-hf-id="hf-b3rn" class="scene-ring"></div>
+        <div data-hf-id="hf-97sb" class="scene-inner">
+          <div data-hf-id="hf-3wp0" class="intro-copy">
+            <div data-hf-id="hf-j3n2" class="topline reveal">Aliança Park · Amargosa, Bahia</div>
+            <h1 data-hf-id="hf-yfge" class="reveal">A obra não precisa ser uma <span data-hf-id="hf-wwm4" class="accent">caixa-preta.</span></h1>
+            <p data-hf-id="hf-rb69" class="lede reveal">Uma operação viva conecta venda, caixa e execução para o dono decidir com contexto e agir no momento certo.</p>
           </div>
-          <div class="intro-orbit reveal"><img class="brand-mark" src="assets/brand/alianca-park-logo-intro.png" alt="Aliança Park" /><i class="orbit-dot one"></i><i class="orbit-dot two"></i><i class="orbit-dot three"></i></div>
+          <div data-hf-id="hf-4xf4" class="intro-orbit reveal"><img data-hf-id="hf-s5ht" class="brand-mark" src="assets/brand/alianca-park-logo-intro.png" alt="Aliança Park"><i data-hf-id="hf-6a9a" class="orbit-dot one"></i><i data-hf-id="hf-i4ow" class="orbit-dot two"></i><i data-hf-id="hf-hupi" class="orbit-dot three"></i></div>
         </div>
-        <div class="owner-stamp reveal"><i></i><span>Apresentação do produto · <strong>visão do dono</strong></span></div>
+        <div data-hf-id="hf-wx86" class="owner-stamp reveal"><i data-hf-id="hf-wt6k"></i><span data-hf-id="hf-lcja">Apresentação do produto · <strong data-hf-id="hf-knpf">visão do dono</strong></span></div>
       </section>
 
-      <section id="scene-leads" class="scene clip product" data-start="5.9" data-duration="6.7" data-track-index="1">
-        <div class="scene-grid"></div>
-        <div class="scene-inner">
-          <div class="product-header">
-            <div><div class="topline reveal">01 · captação e atendimento</div><h2 class="reveal">Venda começa quando o cliente <span class="accent">enxerga o lugar.</span></h2></div>
-            <div class="product-tag reveal"><strong>Leads de intenções</strong><span>Mapa 3D · chat · reserva assistida</span></div>
+      <section data-hf-id="hf-3ldp" id="scene-leads" class="scene clip product" data-start="5.9" data-duration="6.7" data-track-index="1">
+        <div data-hf-id="hf-ydgd" class="scene-grid"></div>
+        <div data-hf-id="hf-skgb" class="scene-inner">
+          <div data-hf-id="hf-49i5" class="product-header">
+            <div data-hf-id="hf-yeow"><div data-hf-id="hf-43t7" class="topline reveal">01 · captação e atendimento</div><h2 data-hf-id="hf-ahqx" class="reveal">Venda começa quando o cliente <span data-hf-id="hf-7b0d" class="accent">enxerga o lugar.</span></h2></div>
+            <div data-hf-id="hf-yx3p" class="product-tag reveal"><strong data-hf-id="hf-okmq">Leads de intenções</strong><span data-hf-id="hf-c7js">Mapa 3D · chat · reserva assistida</span></div>
           </div>
-          <div class="showcase">
-            <div class="shot-frame reveal"><img class="shot" src="assets/screens/public-leads.jpg" alt="Página pública de leads com mapa 3D e atendimento" /><div class="shot-caption">Mapa, status de lotes e conversa no mesmo contexto.</div></div>
-            <div class="metric-stack">
-              <div class="metric reveal"><strong>3D</strong><span>lotes localizados, marcadores e disponibilidade.</span></div>
-              <div class="metric reveal"><strong>1:1</strong><span>atendimento contextual para cada intenção.</span></div>
-              <div class="metric reveal"><strong>∞</strong><span>histórico que acompanha a decisão até a reserva.</span></div>
+          <div data-hf-id="hf-zgev" class="showcase">
+            <div data-hf-id="hf-pssj" class="shot-frame reveal"><img data-hf-id="hf-6qci" class="shot" src="assets/screens/current-public-leads.png" alt="Página atual de leads com mapa 3D e atendimento"><span data-hf-id="hf-s5zz" class="system-note">captura atual · leads</span><div data-hf-id="hf-91vl" class="feature-pin pin-leads-1"><span data-hf-id="hf-spch" class="pin">1</span><span data-hf-id="hf-m5in" class="label">Mapa 3D e lotes</span></div><div data-hf-id="hf-5i5c" class="feature-pin gold pin-leads-2"><span data-hf-id="hf-tw9k" class="pin">2</span><span data-hf-id="hf-3dyg" class="label">Disponibilidade contextual</span></div><div data-hf-id="hf-sepe" class="feature-pin green pin-leads-3"><span data-hf-id="hf-thyj" class="pin">3</span><span data-hf-id="hf-cebn" class="label">Atendimento 1:1</span></div><div data-hf-id="hf-7jto" class="shot-caption">Mapa, status de lotes e conversa no mesmo contexto.</div></div>
+            <div data-hf-id="hf-xiuv" class="metric-stack">
+              <div data-hf-id="hf-lwer" class="metric reveal"><strong data-hf-id="hf-glf1">3D</strong><span data-hf-id="hf-vwd7">lotes localizados, marcadores e disponibilidade.</span></div>
+              <div data-hf-id="hf-gjhv" class="metric reveal"><strong data-hf-id="hf-nopc">1:1</strong><span data-hf-id="hf-glso">atendimento contextual para cada intenção.</span></div>
+              <div data-hf-id="hf-g56u" class="metric reveal"><strong data-hf-id="hf-uzcs">∞</strong><span data-hf-id="hf-hxfg">histórico que acompanha a decisão até a reserva.</span></div>
             </div>
           </div>
         </div>
       </section>
 
-      <section id="scene-cash" class="scene clip dashboard" data-start="12.0" data-duration="6.6" data-track-index="2">
-        <div class="scene-grid"></div><div class="scene-ring"></div>
-        <div class="scene-inner">
-          <div class="dashboard-copy">
-            <div class="topline reveal">02 · decisão financeira</div>
-            <h2 class="reveal">O <span class="accent-gold">caixa mestre</span> transforma saldo em prioridade.</h2>
-            <p class="lede reveal">Uma visão única mostra o que está ativo, o que trava e qual frente pode avançar com os recursos disponíveis.</p>
-            <div class="dashboard-list">
-              <div class="reveal"><b>01</b><span>frentes e cobertura financeira na mesma leitura.</span></div>
-              <div class="reveal"><b>02</b><span>registros, compras e comprovantes alimentam o contexto.</span></div>
-              <div class="reveal"><b>03</b><span>o próximo passo aparece antes da urgência virar atraso.</span></div>
+      <section data-hf-id="hf-tgh1" id="scene-cash" class="scene clip dashboard" data-start="12.0" data-duration="6.6" data-track-index="2">
+        <div data-hf-id="hf-zkdg" class="scene-grid"></div><div data-hf-id="hf-79df" class="scene-ring"></div>
+        <div data-hf-id="hf-s65a" class="scene-inner">
+          <div data-hf-id="hf-y1ni" class="dashboard-copy">
+            <div data-hf-id="hf-1fd9" class="topline reveal">02 · decisão financeira</div>
+            <h2 data-hf-id="hf-mzlo" class="reveal">O <span data-hf-id="hf-4ys2" class="accent-gold">caixa mestre</span> transforma saldo em prioridade.</h2>
+            <p data-hf-id="hf-r9sc" class="lede reveal">Uma visão única mostra o que está ativo, o que trava e qual frente pode avançar com os recursos disponíveis.</p>
+            <div data-hf-id="hf-mj7t" class="dashboard-list">
+              <div data-hf-id="hf-yrev" class="reveal"><b data-hf-id="hf-27a2">01</b><span data-hf-id="hf-qipe">frentes e cobertura financeira na mesma leitura.</span></div>
+              <div data-hf-id="hf-1s2v" class="reveal"><b data-hf-id="hf-2ll3">02</b><span data-hf-id="hf-5f1j">registros, compras e comprovantes alimentam o contexto.</span></div>
+              <div data-hf-id="hf-1dru" class="reveal"><b data-hf-id="hf-2zw4">03</b><span data-hf-id="hf-kv7g">o próximo passo aparece antes da urgência virar atraso.</span></div>
             </div>
           </div>
-          <div class="dashboard-shot reveal"><img src="assets/screens/admin-dashboard.jpg" alt="Dashboard administrativo do Aliança Park" /><div class="cash-pill"><small>fonte mestre · dono</small><strong>R$ 0,00 · ao vivo</strong></div></div>
+          <div data-hf-id="hf-eb8k" class="dashboard-shot reveal"><img data-hf-id="hf-x7s1" src="assets/maps/alianca-park-map-oblique-v2.png" alt="Vista aérea oblíqua do mapa operacional do Aliança Park"><span data-hf-id="hf-w7l6" class="system-note">mapa 3D · vista oblíqua</span><div data-hf-id="hf-oy4e" class="feature-pin pin-map-1"><span data-hf-id="hf-hv45" class="pin">1</span><span data-hf-id="hf-i7sq" class="label">Mapa de execução</span></div><div data-hf-id="hf-oxxb" class="feature-pin gold pin-map-2"><span data-hf-id="hf-pgc0" class="pin">2</span><span data-hf-id="hf-xjnt" class="label">Widgets por frente</span></div><div data-hf-id="hf-nlvx" class="feature-pin green pin-map-3"><span data-hf-id="hf-zrbf" class="pin">3</span><span data-hf-id="hf-54kk" class="label">Status e próxima ação</span></div><div data-hf-id="hf-j9gv" class="cash-pill"><small data-hf-id="hf-nald">fonte mestre · dono</small><strong data-hf-id="hf-gr5j">R$ 0,00 · ao vivo</strong></div></div>
         </div>
       </section>
 
-      <section id="scene-workers" class="scene clip workers" data-start="18.1" data-duration="6.6" data-track-index="3">
-        <div class="scene-grid"></div>
-        <div class="scene-inner">
-          <div class="workers-header"><div><div class="topline reveal">03 · automação responsável</div><h2 class="reveal">A IA observa. O worker <span class="accent">organiza.</span></h2></div><p class="workers-copy reveal">Entradas, edições, inferências e notificações ficam explicadas no próprio fluxo.</p></div>
-          <div class="worker-stage">
-            <div class="shot-frame reveal"><img class="shot" src="assets/screens/workers-monitor.jpg" alt="Monitor de workers operacionais" /><div class="shot-caption">Ciclo vivo · agenda · cronograma · notificações</div></div>
-            <div class="worker-side">
-              <div class="worker-card reveal"><div class="status-line"><i></i> ciclo operacional</div><h3>Contexto preservado</h3><p>O agente reage à mudança sem apagar a trilha do que aconteceu.</p><strong>24/7</strong></div>
-              <div class="worker-card warn reveal"><div class="status-line"><i></i> ação condicionada</div><h3>Humano no comando</h3><p>Sugestões e alertas aguardam a confirmação responsável.</p><strong>auditável</strong></div>
+      <section data-hf-id="hf-cgfw" id="scene-workers" class="scene clip workers" data-start="18.1" data-duration="6.6" data-track-index="3">
+        <div data-hf-id="hf-z62f" class="scene-grid"></div>
+        <div data-hf-id="hf-rru9" class="scene-inner">
+          <div data-hf-id="hf-n99p" class="workers-header"><div data-hf-id="hf-y7yw"><div data-hf-id="hf-a8lg" class="topline reveal">03 · automação responsável</div><h2 data-hf-id="hf-4f1k" class="reveal">A IA observa. O worker <span data-hf-id="hf-j5go" class="accent">organiza.</span></h2></div><p data-hf-id="hf-y73h" class="workers-copy reveal">Entradas, edições, inferências e notificações ficam explicadas no próprio fluxo.</p></div>
+          <div data-hf-id="hf-hpmj" class="worker-stage">
+            <div data-hf-id="hf-2rgj" class="shot-frame reveal"><img data-hf-id="hf-2tt7" class="shot" src="assets/screens/current-admin-stages.png" alt="Central atual de etapas e monitoramento operacional"><span data-hf-id="hf-x0vy" class="system-note">captura atual · operação</span><div data-hf-id="hf-y4dp" class="feature-pin pin-workers-1"><span data-hf-id="hf-j218" class="pin">1</span><span data-hf-id="hf-t49x" class="label">Worker conectado</span></div><div data-hf-id="hf-x7jc" class="feature-pin gold pin-workers-2"><span data-hf-id="hf-o9ex" class="pin">2</span><span data-hf-id="hf-acv5" class="label">Eventos observados</span></div><div data-hf-id="hf-03am" class="feature-pin green pin-workers-3"><span data-hf-id="hf-zd0e" class="pin">3</span><span data-hf-id="hf-3vax" class="label">Agenda gerada</span></div><div data-hf-id="hf-3z26" class="shot-caption">Ciclo vivo · agenda · cronograma · notificações</div></div>
+            <div data-hf-id="hf-hp0e" class="worker-side">
+              <div data-hf-id="hf-w91g" class="worker-card reveal"><div data-hf-id="hf-ofak" class="status-line"><i data-hf-id="hf-zeb8"></i> ciclo operacional</div><h3 data-hf-id="hf-ds5x">Contexto preservado</h3><p data-hf-id="hf-pwhs">O agente reage à mudança sem apagar a trilha do que aconteceu.</p><strong data-hf-id="hf-2qqq">24/7</strong></div>
+              <div data-hf-id="hf-gi9q" class="worker-card warn reveal"><div data-hf-id="hf-fm53" class="status-line"><i data-hf-id="hf-y7e5"></i> ação condicionada</div><h3 data-hf-id="hf-8ps2">Humano no comando</h3><p data-hf-id="hf-j5uj">Sugestões e alertas aguardam a confirmação responsável.</p><strong data-hf-id="hf-rtvb">auditável</strong></div>
             </div>
           </div>
         </div>
       </section>
 
-      <section id="scene-activity" class="scene clip activity" data-start="24.2" data-duration="6.6" data-track-index="4">
-        <div class="scene-grid"></div><div class="scene-ring"></div>
-        <div class="scene-inner">
-          <div class="activity-copy"><div class="topline reveal">04 · execução no mapa</div><h2 class="reveal">Cada atividade tem <span class="accent">lugar, ritmo e prova.</span></h2><p class="lede reveal">A equipe seleciona os polígonos no loteamento 3D e registra produção, materiais, pessoal, data e evidência.</p><div class="activity-tags"><span class="reveal">Unidade de produção</span><span class="reveal">Materiais</span><span class="reveal">Responsável</span><span class="reveal">Comprovantes</span></div></div>
-          <div class="activity-workbench reveal"><img src="assets/screens/activity-road-opening.jpg" alt="Atividade de abertura de ruas com mapa 3D" /><div class="activity-callout"><strong>Seleção física no 3D</strong><span>Pinte trecho por trecho. A marcação volta para o mapa operacional, para o calendário e para os registros.</span></div></div>
+      <section data-hf-id="hf-oyjf" id="scene-activity" class="scene clip activity" data-start="24.2" data-duration="6.6" data-track-index="4">
+        <div data-hf-id="hf-0czi" class="scene-grid"></div><div data-hf-id="hf-6v2e" class="scene-ring"></div>
+        <div data-hf-id="hf-rdj8" class="scene-inner">
+          <div data-hf-id="hf-o3fj" class="activity-copy"><div data-hf-id="hf-tl0m" class="topline reveal">04 · execução no mapa</div><h2 data-hf-id="hf-5hco" class="reveal">Cada atividade tem <span data-hf-id="hf-ywyu" class="accent">lugar, ritmo e prova.</span></h2><p data-hf-id="hf-00fi" class="lede reveal">A equipe seleciona os polígonos no loteamento 3D e registra produção, materiais, pessoal, data e evidência.</p><div data-hf-id="hf-njcj" class="activity-tags"><span data-hf-id="hf-magq" class="reveal">Unidade de produção</span><span data-hf-id="hf-e579" class="reveal">Materiais</span><span data-hf-id="hf-zrco" class="reveal">Responsável</span><span data-hf-id="hf-ohod" class="reveal">Comprovantes</span></div></div>
+          <div data-hf-id="hf-rwiq" class="activity-workbench reveal"><img data-hf-id="hf-dz9p" src="assets/screens/current-admin-activities.png" alt="Atividades atuais da etapa no Aliança Park"><span data-hf-id="hf-6fe9" class="system-note">captura atual · atividades</span><div data-hf-id="hf-tgsr" class="feature-pin pin-activity-1"><span data-hf-id="hf-inq7" class="pin">1</span><span data-hf-id="hf-rtx9" class="label">Frente no mapa</span></div><div data-hf-id="hf-5s3i" class="feature-pin gold pin-activity-2"><span data-hf-id="hf-onpy" class="pin">2</span><span data-hf-id="hf-oauc" class="label">Produção e evidência</span></div><div data-hf-id="hf-r018" class="activity-callout"><strong data-hf-id="hf-m4w3">Seleção física no 3D</strong><span data-hf-id="hf-io4j">Pinte trecho por trecho. A marcação volta para o mapa operacional, para o calendário e para os registros.</span></div></div>
         </div>
       </section>
 
-      <section id="scene-control" class="scene clip control" data-start="30.3" data-duration="6.6" data-track-index="5">
-        <div class="scene-grid"></div>
-        <div class="scene-inner">
-          <div class="control-copy"><div class="topline reveal">05 · operação integrada</div><h2 class="reveal">Da compra ao pessoal, <span class="accent-gold">tudo conversa.</span></h2><p class="lede reveal">Registros financeiros, materiais, corretores e equipes vivem em superfícies próprias, mas obedecem ao mesmo contexto operacional.</p><div class="control-grid"><div class="reveal"><b>Financeiro</b><span>caixa, recibos, assinatura e repasse.</span></div><div class="reveal"><b>Pessoal</b><span>formação de equipe e ritmo de produção.</span></div><div class="reveal"><b>Corretores</b><span>comissões mensais, anuais e acumuladas.</span></div><div class="reveal"><b>Registros</b><span>histórico completo sem perder o fato original.</span></div></div></div>
-          <div class="dual-shots"><div class="shot-frame reveal"><img class="shot" src="assets/screens/admin-personnel.jpg" alt="Tela de pessoal" /><div class="shot-caption">Equipe dimensionada pelo ritmo.</div></div><div class="shot-frame reveal"><img class="shot" src="assets/screens/admin-finance.jpg" alt="Tela financeira" /><div class="shot-caption">Comprovante que vira decisão.</div></div></div>
+      <section data-hf-id="hf-dhju" id="scene-control" class="scene clip control" data-start="30.3" data-duration="6.6" data-track-index="5">
+        <div data-hf-id="hf-zyoh" class="scene-grid"></div>
+        <div data-hf-id="hf-qz87" class="scene-inner">
+          <div data-hf-id="hf-tw5b" class="control-copy"><div data-hf-id="hf-1c2h" class="topline reveal">05 · operação integrada</div><h2 data-hf-id="hf-vkcu" class="reveal">Da compra ao pessoal, <span data-hf-id="hf-cirx" class="accent-gold">tudo conversa.</span></h2><p data-hf-id="hf-i6sp" class="lede reveal">Registros financeiros, materiais, corretores e equipes vivem em superfícies próprias, mas obedecem ao mesmo contexto operacional.</p><div data-hf-id="hf-q9co" class="control-grid"><div data-hf-id="hf-0zgt" class="reveal"><b data-hf-id="hf-6gxb">Financeiro</b><span data-hf-id="hf-zvhh">caixa, recibos, assinatura e repasse.</span></div><div data-hf-id="hf-3rm0" class="reveal"><b data-hf-id="hf-vedo">Pessoal</b><span data-hf-id="hf-2pgd">formação de equipe e ritmo de produção.</span></div><div data-hf-id="hf-3daz" class="reveal"><b data-hf-id="hf-barf">Corretores</b><span data-hf-id="hf-k3bo">comissões mensais, anuais e acumuladas.</span></div><div data-hf-id="hf-2yzy" class="reveal"><b data-hf-id="hf-c0d1">Registros</b><span data-hf-id="hf-ywdb">histórico completo sem perder o fato original.</span></div></div></div>
+          <div data-hf-id="hf-0r1m" class="dual-shots"><div data-hf-id="hf-2d5i" class="shot-frame reveal"><img data-hf-id="hf-k2h0" class="shot" src="assets/screens/current-admin-personnel.png" alt="Tela atual de pessoal"><span data-hf-id="hf-2aur" class="system-note">captura atual · pessoal</span><div data-hf-id="hf-jrdf" class="feature-pin pin-control-1"><span data-hf-id="hf-juna" class="pin">1</span><span data-hf-id="hf-pz01" class="label">Equipe e responsáveis</span></div><div data-hf-id="hf-wsfn" class="shot-caption">Equipe dimensionada pelo ritmo.</div></div><div data-hf-id="hf-1yuh" class="shot-frame reveal"><img data-hf-id="hf-shgy" class="shot" src="assets/screens/current-admin-finance.png" alt="Tela financeira atual"><span data-hf-id="hf-6cli" class="system-note">captura atual · financeiro</span><div data-hf-id="hf-3zg6" class="feature-pin gold pin-control-2"><span data-hf-id="hf-ngsv" class="pin">2</span><span data-hf-id="hf-45lz" class="label">Caixa e comprovantes</span></div><div data-hf-id="hf-9i24" class="shot-caption">Comprovante que vira decisão.</div></div></div>
         </div>
       </section>
 
-      <section id="scene-proof" class="scene clip proof" data-start="36.4" data-duration="6.6" data-track-index="6">
-        <div class="scene-grid"></div><div class="scene-ring"></div>
-        <div class="scene-inner">
-          <div class="proof-copy"><div class="topline reveal">06 · governança do ciclo</div><h2 class="reveal">Organizar é deixar cada decisão <span class="accent">explicável.</span></h2><p class="lede reveal">O chat permanente acompanha a navegação, reage às mudanças e traduz a operação em próximos passos claros.</p><div class="proof-rail"><div class="reveal"><i></i><span>Fato registrado no local correto.</span></div><div class="reveal"><i></i><span>Inferência transforma sinais em agenda.</span></div><div class="reveal"><i></i><span>Notificação orienta quem precisa agir.</span></div></div></div>
-          <div class="proof-panel reveal"><img src="assets/screens/stage-drainage.jpg" alt="Etapa de drenagem com fluxograma operacional" /></div>
+      <section data-hf-id="hf-t31m" id="scene-proof" class="scene clip proof" data-start="36.4" data-duration="6.6" data-track-index="6">
+        <div data-hf-id="hf-15lk" class="scene-grid"></div><div data-hf-id="hf-6grd" class="scene-ring"></div>
+        <div data-hf-id="hf-qkx6" class="scene-inner">
+          <div data-hf-id="hf-5ozc" class="proof-copy"><div data-hf-id="hf-r5d0" class="topline reveal">06 · governança do ciclo</div><h2 data-hf-id="hf-uij4" class="reveal">Organizar é deixar cada decisão <span data-hf-id="hf-u966" class="accent">explicável.</span></h2><p data-hf-id="hf-hzd1" class="lede reveal">O chat permanente acompanha a navegação, reage às mudanças e traduz a operação em próximos passos claros.</p><div data-hf-id="hf-btvz" class="proof-rail"><div data-hf-id="hf-2kox" class="reveal"><i data-hf-id="hf-ylp6"></i><span data-hf-id="hf-sx2b">Fato registrado no local correto.</span></div><div data-hf-id="hf-5cu4" class="reveal"><i data-hf-id="hf-0l8b"></i><span data-hf-id="hf-89cu">Inferência transforma sinais em agenda.</span></div><div data-hf-id="hf-4yj3" class="reveal"><i data-hf-id="hf-0zjc"></i><span data-hf-id="hf-2s5f">Notificação orienta quem precisa agir.</span></div></div></div>
+          <div data-hf-id="hf-h9ze" class="proof-panel reveal"><img data-hf-id="hf-2c9y" src="assets/screens/current-admin-records.png" alt="Registros operacionais atuais"><span data-hf-id="hf-4mcp" class="system-note">captura atual · registros</span><div data-hf-id="hf-qlum" class="feature-pin pin-proof-1"><span data-hf-id="hf-jgc9" class="pin">1</span><span data-hf-id="hf-7x0u" class="label">Dependências e prova</span></div></div>
         </div>
       </section>
 
-      <section id="scene-closing" class="scene clip closing" data-start="42.5" data-duration="5.5" data-track-index="7">
-        <div class="scene-grid"></div>
-        <div class="scene-inner">
-          <div class="closing-copy"><img class="brand-mark reveal" src="assets/brand/alianca-park-logo-closing.png" alt="Aliança Park" /><h1 class="reveal">Acompanhe. <span class="accent">Decida.</span> Execute.</h1><p class="lede reveal">Aliança Park · uma plataforma para transformar informação de obra em ação coordenada.</p><div class="closing-cta reveal">Demonstração para o dono · desktop e celular</div></div>
+      <section data-hf-id="hf-z6sd" id="scene-closing" class="scene clip closing" data-start="42.5" data-duration="5.5" data-track-index="7">
+        <div data-hf-id="hf-0raj" class="scene-grid"></div>
+        <div data-hf-id="hf-q6m5" class="scene-inner">
+          <div data-hf-id="hf-ennd" class="closing-copy"><img data-hf-id="hf-e9kj" class="brand-mark reveal" src="assets/brand/alianca-park-logo-closing.png" alt="Aliança Park"><h1 data-hf-id="hf-klc8" class="reveal">Acompanhe. <span data-hf-id="hf-vq9z" class="accent">Decida.</span> Execute.</h1><p data-hf-id="hf-uewd" class="lede reveal">Aliança Park · uma plataforma para transformar informação de obra em ação coordenada.</p><div data-hf-id="hf-cbl8" class="closing-cta reveal">Demonstração para o dono · desktop e celular</div></div>
         </div>
-        <div class="footer-note reveal"><span>ALIANÇA PARK · OPERAÇÃO VIVA</span><span>CAIXA · MAPA · WORKERS · EVIDÊNCIAS</span></div>
+        <div data-hf-id="hf-gxel" class="footer-note reveal"><span data-hf-id="hf-atkn">ALIANÇA PARK · OPERAÇÃO VIVA</span><span data-hf-id="hf-42ou">CAIXA · MAPA · WORKERS · EVIDÊNCIAS</span></div>
       </section>
     </div>
 

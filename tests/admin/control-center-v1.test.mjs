@@ -15,6 +15,10 @@ test('Central administrativa reúne as tabelas operacionais',()=>{
   assert.match(components,/Finanças, materiais, etapas e comissões/);
   assert.match(components,/data-control-material-field/);
   assert.match(components,/data-control-commission-field/);
+  assert.match(components,/controlStageUnifiedFormMarkupV1/);
+  assert.match(components,/controlStagePropertyGridMarkupV1/);
+  assert.match(components,/data-front-stage-tab/);
+  assert.match(components,/data-control-stage-context-form/);
   assert.match(components,/controlChangeLog/);
 });
 
@@ -32,9 +36,11 @@ test('alterações de materiais e comissões publicam eventos auditáveis',()=>{
 test('dashboard expõe o atalho da Central e o layout é responsivo',()=>{
   const components=read('components.js');
   const css=read('styles.css');
-  assert.match(components,/\['control','table-properties','Central'\]/);
+   assert.match(components,/\["control", "table-properties", "Central operacional"\],\s*\["materials", "package-check", "Materiais"\]/);
   assert.match(components,/data-view=\"\$\{view\}\"/);
   assert.match(css,/view-layer\[data-view="control"\]/);
   assert.match(css,/\.control-center-kpis\{/);
+  assert.match(css,/\.control-stage-unified-section\{/);
+  assert.match(css,/\.control-stage-property-grid\{/);
   assert.match(css,/@media\(max-width:760px\)[\s\S]*control-center-head/);
 });

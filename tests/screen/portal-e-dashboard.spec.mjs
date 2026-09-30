@@ -66,22 +66,16 @@ test.describe('telas operacionais Aliança Park',()=>{
     await expect(page.locator('map-scene[data-persistent-map="true"]')).toBeVisible();
   });
 
-  test('corretores, financeiro e calibrações mantêm as fronteiras de autoridade',async({page})=>{
+  test('comercial e configurações de uso preservam a navegação administrativa',async({page})=>{
     await page.goto('/',{waitUntil:'domcontentloaded'});
     await enterDemo(page);
     await page.locator('app-sidebar [data-view="brokers"]').click();
-    await expect(page.getByRole('heading',{name:'Corretores e repasses'})).toBeVisible();
-    await expect(page.locator('.broker-control-grid')).toBeVisible();
-    await expect(page.locator('.control-period-tabs')).toContainText('Mensal');
-    await expect(page.locator('.control-period-tabs')).toContainText('Acumulado');
-    await page.locator('app-sidebar [data-view="finance"]').click();
-    await expect(page.getByText('CAIXA MESTRE · DONO')).toBeVisible();
-    await expect(page.getByRole('heading',{name:'Movimentar fluxo de caixa'})).toBeVisible();
+    await expect(page.locator('[data-commission-record-open]').first()).toBeVisible();
+    await expect(page.locator('app-sidebar [data-view="finance"]')).toHaveCount(0);
     await page.locator('app-sidebar [data-view="settings"]').click();
-    await expect(page.getByRole('heading',{name:'Governança do agente'})).toBeVisible();
-    await expect(page.getByRole('heading',{name:/Relações que governam/})).toBeVisible();
-    await expect(page.getByLabel('Nome do segredo NVIDIA')).toBeVisible();
-    await expect(page.locator('[data-calibration-form] button[type="submit"]')).toBeDisabled();
+    await expect(page.getByRole('heading',{name:'Configurações de uso'})).toBeVisible();
+    await expect(page.locator('[data-usage-settings-form]')).toBeVisible();
+    await expect(page.locator('[data-calibration-form]')).toHaveCount(0);
   });
 
   test('página dedicada da etapa preserva o portão de autenticação',async({page})=>{
@@ -92,7 +86,7 @@ test.describe('telas operacionais Aliança Park',()=>{
     await expect(page.getByRole('heading',{name:'Preparação e projeto'})).not.toBeVisible();
   });
 
-  test('financeiro reflete novo lançamento e recálculo operacional',async({page,request})=>{
+  test('caixa recalcula via API sem reintroduzir a página Financeiro',async({page,request})=>{
     const beforeState=await request.get('/api/cash-flow').then(response=>response.json());
     const beforeBalance=Number(beforeState.summary.balanceCents||0)/100;
     const amountCents=43210;
@@ -118,15 +112,9 @@ test.describe('telas operacionais Aliança Park',()=>{
 
     await page.goto('/',{waitUntil:'domcontentloaded'});
     await enterDemo(page);
-    await page.locator('app-sidebar [data-view="finance"]').click();
-    await expect(page.getByRole('heading',{name:'Movimentar fluxo de caixa'})).toBeVisible();
-    await expect(page.locator('.finance-master-balance strong')).toContainText(
-      (beforeBalance-(amountCents/100)).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})
-    );
-    const visibleBalance=parseMoney(await page.locator('.finance-master-balance strong').textContent());
-    expect(visibleBalance).toBeCloseTo(beforeBalance-(amountCents/100),2);
-    await expect(page.locator('.finance-notification-list')).toContainText('Caixa e frentes recalculados');
-    await expect(page.locator('.finance-control-page')).toContainText('INFERÊNCIA OPERACIONAL CENTRAL');
+    await expect(page.locator('app-sidebar [data-view="finance"]')).toHaveCount(0);
+    await page.locator('app-sidebar [data-view="control"]').click();
+    await expect(page.locator('[data-control-general-event]')).toBeVisible();
   });
 
   test('ciclo operacional único consolida caixa, cronograma, agenda e notificações',async({request})=>{

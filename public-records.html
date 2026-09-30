@@ -12,13 +12,16 @@
   <link rel="icon" href="./assets/icons/icon-192.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <link rel="stylesheet" href="./styles.css?v=109">
-  <link rel="stylesheet" href="./public-records.css?v=street-paver-map-layout-v5378">
+  <link rel="stylesheet" href="./public-records.css?v=logo-edited-mark-v551-20260915">
+  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
   <title>Aliança Park · Registros de campo</title>
 </head>
 <body>
   <main class="field-records-app" data-step="capture">
     <header class="field-header"><span class="field-mark" aria-hidden="true">◢</span><div><strong>Aliança Park</strong><small>CAMPO · REGISTROS</small></div><span class="field-online"><i></i> online</span></header>
     <form class="field-record-form" novalidate>
+      <input type="hidden" name="mapArea" value="">
+      <input type="hidden" name="partIds" value="">
       <section class="record-step record-capture" data-record-step="capture">
         <div class="step-heading"><div><p class="eyebrow">EVIDÊNCIA DE CAMPO</p><h1>Mapa e câmera</h1></div><span>Toque em uma área ou registre uma foto</span></div>
         <div class="capture-tabs" role="tablist" aria-label="Origem da evidência"><button type="button" role="tab" aria-selected="true" data-capture-tab="map">Mapa</button><button type="button" role="tab" aria-selected="false" data-capture-tab="camera">Câmera</button></div>
@@ -39,6 +42,6 @@
     <footer>Os registros são enviados ao sistema operacional Aliança Park.</footer>
   </main>
   <script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script type="module" src="./public-records.js?v=6"></script>
+<script type="module" src="./public-records.js?v=map-area-three-importmap-v5"></script>
 </body>
 </html>

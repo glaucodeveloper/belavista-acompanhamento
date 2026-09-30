@@ -15,7 +15,8 @@ export default {
     };
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
     const pathname=new URL(request.url).pathname.replace(/\/+$/,'')||'/';
-    const authManagedByRoute=pathname==='/api/public/lead-chat'||pathname==='/api/operational-loop'||pathname.startsWith('/api/admin/')||pathname.startsWith('/api/live-tests');
+    // BELAVISTA_RECORD_OCR_AUTH_ROUTE_V22
+    const authManagedByRoute=pathname==='/api/public/lead-chat'||pathname==='/api/public/lead-register'||pathname==='/api/operational-loop'||pathname==='/api/ai'||pathname==='/api/ai/vision-reasoning'||pathname==='/api/gemini'||pathname.startsWith('/api/admin/')||pathname.startsWith('/api/live-tests')||pathname==='/instagram/webhook'||pathname==='/whatsapp/webhook'||pathname==='/api/records/ocr';
     if(env.BELAVISTA_API_TOKEN&&request.method!=='GET'&&!authManagedByRoute){
       const bearer=request.headers.get('authorization')?.replace(/^Bearer\s+/i,'');
       const token=request.headers.get('x-belavista-token')||bearer;

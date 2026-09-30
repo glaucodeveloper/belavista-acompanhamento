@@ -1,4 +1,4 @@
-﻿// BELAVISTA_ORIGINAL_ADMIN_NAV_TRIM_V5350
+// BELAVISTA_ORIGINAL_ADMIN_NAV_TRIM_V5350
 import {
   appStore,
   demoData,
@@ -17,7 +17,11 @@ import {
   findWorkbenchActivity,
 } from "./stage-workbench-data.mjs";
 import { renderActivityFormGroupsV1 } from "./activity-form-groups-v1.mjs?v=activity-form-groups-v1";
-import { renderStageHomePageV1 } from "./stage-home-page-v1.mjs?v=stage-home-page-v1";
+import { REPASSE_PRICE_CATALOG } from "./repasse-price-catalog.mjs";
+import { parseLotStatusCommand, applyLotStatusCommand } from "./lot-status-command.mjs";
+import { renderStageHomePageV1, renderOperationalAiPrioritiesV1 } from "./stage-home-page-v1.mjs?v=stage-home-page-v5";
+import { installUsageSettings } from "./usage-settings-v1.mjs?v=1";
+import { renderMapPdfLegends, ensureMapPdfLegendStyles } from "./map-pdf-legends-v1.mjs?v=1";
 import {
   FOREMAN_EXTENSION_VIEWS,
   navigationItemsForRole,
@@ -242,17 +246,9 @@ const preloadClientModelV14 = async () => {
   return globalThis.__BELAVISTA_MODEL_CLIENT_PRELOAD_V14__;
 };
 
-// Faz o download em idle para o mapa abrir do storage local nas visitas seguintes.
-if (
-  typeof globalThis.window !== "undefined" &&
-  typeof globalThis.document !== "undefined"
-) {
-  const scheduleModelPreloadV14 = () => preloadClientModelV14().catch(() => {});
-
-  if ("requestIdleCallback" in globalThis)
-    globalThis.requestIdleCallback(scheduleModelPreloadV14, { timeout: 4000 });
-  else globalThis.setTimeout(scheduleModelPreloadV14, 1200);
-}
+// O modelo 3D tem cerca de 22 MB. Não faça download durante a inicialização
+// do administrativo; o map-scene dispara o carregamento sob demanda quando a
+// superfície do mapa é aberta, mantendo a primeira tela responsiva.
 // Toda atividade do administrativo precisa terminar no mesmo editor físico.
 // As interfaces antigas ainda usam IDs de etapa, nomes de catálogo e cards de
 // agenda diferentes; este adaptador os normaliza sem alterar os dados legados.
@@ -655,7 +651,7 @@ const syncCompactMapMirrors = () => {
 const DEFAULT_SCENE_ZOOM = 1.12,
   INITIAL_SCENE_ZOOM = 1.68,
   MIN_SCENE_ZOOM = 0.16,
-  MAX_SCENE_ZOOM = 10,
+  MAX_SCENE_ZOOM = 20,
   MIN_SCENE_TILT = 0,
   MAX_SCENE_TILT = 72,
   SCENE_TILT_ADJUST_LIMIT = 72,
@@ -713,7 +709,7 @@ const ADMIN_REFERENCE_AERIAL_GEO_WARP_VERSION_V1 =
 const ADMIN_REFERENCE_AERIAL_LOT_TRACE_URL_V1 =
   "/assets/data/aerial-lot-trace-v1.json?v=2";
 const ADMIN_REFERENCE_AERIAL_ROAD_TRACE_URL_V1 =
-  "/assets/data/aerial-road-trace-v1.json?v=2";
+  "/assets/data/aerial-road-trace-v1.json?v=18-vector-curb-normalized";
 const ADMIN_REFERENCE_AERIAL_RASTER_MASK_MODEL_ENABLED_V1 = false;
 const ADMIN_REFERENCE_AERIAL_RASTER_MASK_MODEL_VERSION_V1 =
   "aerial-site-mask-extrusion-v1";
@@ -1035,6 +1031,85 @@ const cloneAdminMaterialWithoutTexturesV1 = (THREE, material) => {
   return clean;
 };
 
+// A malha principal das ruas é vetorial e usa os contornos dos meio-fios como
+// limites. A máscara raster fica somente como recurso auxiliar/fallback.
+const appendAdminReferenceAerialCurbPathV1 = (path, points, toPoint) => {
+  if (!Array.isArray(points) || points.length < 3) return false;
+  const vertices = points.map(toPoint),
+    signedArea = vertices.reduce(
+      (sum, current, index) => {
+        const next = vertices[(index + 1) % vertices.length];
+        return sum + current[0] * next[1] - next[0] * current[1];
+      },
+      0,
+    ) / 2,
+    orientation = signedArea >= 0 ? 1 : -1,
+    corners = vertices.map((current, index) => {
+      const previous = vertices[(index - 1 + vertices.length) % vertices.length],
+        next = vertices[(index + 1) % vertices.length],
+        incoming = Math.hypot(
+          current[0] - previous[0],
+          current[1] - previous[1],
+        ),
+        outgoing = Math.hypot(next[0] - current[0], next[1] - current[1]),
+        cross =
+          (current[0] - previous[0]) * (next[1] - current[1]) -
+          (current[1] - previous[1]) * (next[0] - current[0]),
+        dot =
+          (previous[0] - current[0]) * (next[0] - current[0]) +
+          (previous[1] - current[1]) * (next[1] - current[1]),
+        turn =
+          incoming > 0.001 && outgoing > 0.001
+            ? Math.PI -
+              Math.acos(
+                Math.max(-1, Math.min(1, dot / (incoming * outgoing))),
+              )
+            : 0,
+        convex = cross * orientation > 0,
+        smooth =
+          convex &&
+          incoming >= 8 &&
+          outgoing >= 8 &&
+          turn >= (28 * Math.PI) / 180,
+        trim = smooth ? Math.min(9, incoming * 0.24, outgoing * 0.24) : 0;
+      return {
+        current,
+        before: smooth
+          ? [
+              current[0] + ((previous[0] - current[0]) * trim) / incoming,
+              current[1] + ((previous[1] - current[1]) * trim) / incoming,
+            ]
+          : current,
+        after: smooth
+          ? [
+              current[0] + ((next[0] - current[0]) * trim) / outgoing,
+              current[1] + ((next[1] - current[1]) * trim) / outgoing,
+            ]
+          : current,
+        smooth,
+      };
+    });
+  const start = corners[corners.length - 1].smooth
+    ? corners[corners.length - 1].after
+    : corners[corners.length - 1].current;
+  path.moveTo(start[0], start[1]);
+  corners.forEach((corner) => {
+    if (corner.smooth) {
+      path.lineTo(corner.before[0], corner.before[1]);
+      path.quadraticCurveTo(
+        corner.current[0],
+        corner.current[1],
+        corner.after[0],
+        corner.after[1],
+      );
+    } else {
+      path.lineTo(corner.current[0], corner.current[1]);
+    }
+  });
+  path.closePath();
+  return true;
+};
+
 const createAdminReferenceAerialRoadGeometryV1 = (
   THREE,
   roadTrace,
@@ -1048,23 +1123,15 @@ const createAdminReferenceAerialRoadGeometryV1 = (
     ((Number(point[0]) || 0) / imageWidth - 0.5) * worldWidth,
     (0.5 - (Number(point[1]) || 0) / imageHeight) * worldHeight,
   ];
-  const appendPath = (path, points) => {
-    if (!Array.isArray(points) || points.length < 3) return false;
-    points.forEach((point, index) => {
-      const [x, y] = toWorld(point);
-      if (index === 0) path.moveTo(x, y);
-      else path.lineTo(x, y);
-    });
-    path.closePath();
-    return true;
-  };
   const shapes = [];
   for (const road of roadTrace.roads) {
     const shape = new THREE.Shape();
-    if (!appendPath(shape, road.outer)) continue;
+    if (!appendAdminReferenceAerialCurbPathV1(shape, road.outer, toWorld))
+      continue;
     for (const holePoints of road.holes || []) {
       const hole = new THREE.Path();
-      if (appendPath(hole, holePoints)) shape.holes.push(hole);
+      if (appendAdminReferenceAerialCurbPathV1(hole, holePoints, toWorld))
+        shape.holes.push(hole);
     }
     shapes.push(shape);
   }
@@ -1074,6 +1141,225 @@ const createAdminReferenceAerialRoadGeometryV1 = (
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
   return geometry;
+};
+
+// A máscara UV continua disponível para diagnóstico e fallback de segmentos
+// especiais; não é usada como limite principal das retas do loteamento.
+const createAdminReferenceAerialRoadUvMaskGeometryV1 = (
+  THREE,
+  roadTrace,
+  worldWidth,
+  worldHeight,
+  z = 0.03,
+) => {
+  const mask = roadTrace?.uvMask,
+    imageWidth = Math.max(1, Number(roadTrace.imageSize?.[0]) || 1672),
+    imageHeight = Math.max(1, Number(roadTrace.imageSize?.[1]) || 941),
+    cellSize = Math.max(1, Number(mask?.cellSize) || 2),
+    rows = Array.isArray(mask?.rows) ? mask.rows : [],
+    positions = [],
+    uvs = [],
+    indices = [];
+  if (!rows.length) return null;
+  const addVertex = (x, y) => {
+    positions.push(
+      (x / imageWidth - 0.5) * worldWidth,
+      (0.5 - y / imageHeight) * worldHeight,
+      z,
+    );
+    uvs.push(x / imageWidth, 1 - y / imageHeight);
+    return positions.length / 3 - 1;
+  };
+  rows.forEach((spans, gridY) => {
+    if (!Array.isArray(spans)) return;
+    const y0 = Math.min(imageHeight, gridY * cellSize),
+      y1 = Math.min(imageHeight, y0 + cellSize);
+    if (y1 <= y0) return;
+    spans.forEach((span) => {
+      if (!Array.isArray(span) || span.length < 2) return;
+      const x0 = Math.max(0, Math.min(imageWidth, Number(span[0]) * cellSize)),
+        x1 = Math.max(0, Math.min(imageWidth, Number(span[1]) * cellSize));
+      if (x1 <= x0) return;
+      const bottomLeft = addVertex(x0, y1),
+        bottomRight = addVertex(x1, y1),
+        topRight = addVertex(x1, y0),
+        topLeft = addVertex(x0, y0);
+      indices.push(
+        bottomLeft, bottomRight, topRight,
+        bottomLeft, topRight, topLeft,
+      );
+    });
+  });
+  if (!positions.length) return null;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(positions, 3),
+  );
+  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  geometry.userData = {
+    uvRoadMask: true,
+    uvRoadMaskCellSize: cellSize,
+    uvRoadMaskFaces: indices.length / 3,
+  };
+  return geometry;
+};
+
+// O contorno principal continua sendo o meio-fio vetorial. Estas guias são
+// somente a leitura visual das mudanças de direção: ruas longas continuam
+// sendo segmentos retos e fechados pelo mesmo polígono, enquanto os cantos
+// recebem uma curva Bézier curta, sem transformar a vegetação em asfalto.
+const createAdminReferenceAerialBezierCurbGuidesV1 = (
+  THREE,
+  roadTrace,
+  worldWidth,
+  worldHeight,
+  z = 0.06,
+) => {
+  if (!THREE || !Array.isArray(roadTrace?.roads)) return null;
+  const imageWidth = Math.max(1, Number(roadTrace.imageSize?.[0]) || 1672),
+    imageHeight = Math.max(1, Number(roadTrace.imageSize?.[1]) || 941),
+    toPlane = (point) => [
+      (Number(point?.[0]) || 0) / imageWidth - 0.5,
+      0.5 - (Number(point?.[1]) || 0) / imageHeight,
+    ],
+    guides = [];
+  const distance = (a, b) => Math.hypot(
+    (Number(a?.[0]) || 0) - (Number(b?.[0]) || 0),
+    (Number(a?.[1]) || 0) - (Number(b?.[1]) || 0),
+  );
+  const angleAt = (previous, current, next) => {
+    const ax = (Number(previous?.[0]) || 0) - (Number(current?.[0]) || 0),
+      ay = (Number(previous?.[1]) || 0) - (Number(current?.[1]) || 0),
+      bx = (Number(next?.[0]) || 0) - (Number(current?.[0]) || 0),
+      by = (Number(next?.[1]) || 0) - (Number(current?.[1]) || 0),
+      aLength = Math.hypot(ax, ay),
+      bLength = Math.hypot(bx, by);
+    if (aLength < 0.001 || bLength < 0.001) return 0;
+    return Math.PI - Math.acos(
+      Math.max(-1, Math.min(1, (ax * bx + ay * by) / (aLength * bLength))),
+    );
+  };
+  const addRingGuides = (points, roadIndex, ringType) => {
+    if (!Array.isArray(points) || points.length < 3) return;
+    for (let index = 0; index < points.length; index++) {
+      const previous = points[(index - 1 + points.length) % points.length],
+        current = points[index],
+        next = points[(index + 1) % points.length],
+        incoming = distance(previous, current),
+        outgoing = distance(current, next),
+        turn = angleAt(previous, current, next);
+      // Segmentos menores que meia frente de lote são ruído do trace. Uma
+      // esquina só vira Bézier quando as duas retas que a sustentam são
+      // realmente longas; isso conserva as ruas extensas perfeitamente retas.
+      if (incoming < 8 || outgoing < 8 || turn < (28 * Math.PI) / 180)
+        continue;
+      const trim = Math.min(9, incoming * 0.24, outgoing * 0.24),
+        before = [
+          (Number(current[0]) || 0) +
+            (((Number(previous[0]) || 0) - (Number(current[0]) || 0)) * trim) /
+              incoming,
+          (Number(current[1]) || 0) +
+            (((Number(previous[1]) || 0) - (Number(current[1]) || 0)) * trim) /
+              incoming,
+        ],
+        after = [
+          (Number(current[0]) || 0) +
+            (((Number(next[0]) || 0) - (Number(current[0]) || 0)) * trim) /
+              outgoing,
+          (Number(current[1]) || 0) +
+            (((Number(next[1]) || 0) - (Number(current[1]) || 0)) * trim) /
+              outgoing,
+        ];
+      // A cubic with handles tangentes às retas é estável na curva e deixa
+      // os trechos de entrada/saída alinhados ao meio-fio fotografado.
+      guides.push({
+        roadIndex,
+        ringType,
+        corner: index,
+        turn,
+        points: [
+          before,
+          [
+            before[0] + (Number(current[0]) - before[0]) * 0.72,
+            before[1] + (Number(current[1]) - before[1]) * 0.72,
+          ],
+          [
+            after[0] + (Number(current[0]) - after[0]) * 0.72,
+            after[1] + (Number(current[1]) - after[1]) * 0.72,
+          ],
+          after,
+        ],
+      });
+    }
+  };
+  roadTrace.roads.forEach((road, roadIndex) => {
+    addRingGuides(road.outer, roadIndex, "outer-curb");
+    (road.holes || []).forEach((hole, holeIndex) =>
+      addRingGuides(hole, roadIndex, `inner-curb-${holeIndex + 1}`),
+    );
+  });
+  guides.sort((a, b) => b.turn - a.turn);
+  const selected = guides.slice(0, 48),
+    positions = [],
+    sampleCount = 12;
+  selected.forEach((guide) => {
+    for (let step = 0; step <= sampleCount; step++) {
+      const t = step / sampleCount,
+        inverse = 1 - t,
+        p0 = guide.points[0],
+        p1 = guide.points[1],
+        p2 = guide.points[2],
+        p3 = guide.points[3],
+        x =
+          inverse ** 3 * p0[0] +
+          3 * inverse ** 2 * t * p1[0] +
+          3 * inverse * t ** 2 * p2[0] +
+          t ** 3 * p3[0],
+        y =
+          inverse ** 3 * p0[1] +
+          3 * inverse ** 2 * t * p1[1] +
+          3 * inverse * t ** 2 * p2[1] +
+          t ** 3 * p3[1],
+        [planeX, planeY] = toPlane([x, y]);
+      positions.push(planeX, planeY, z);
+    }
+  });
+  if (!positions.length) return null;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(positions, 3),
+  );
+  geometry.computeBoundingSphere();
+  geometry.computeLineDistances?.();
+  const material = new THREE.LineDashedMaterial({
+    color: 0xd9e0e3,
+    dashSize: 0.006,
+    gapSize: 0.004,
+    transparent: true,
+    opacity: 0.82,
+    depthTest: false,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  const lines = new THREE.LineSegments(geometry, material);
+  lines.name = "Asfalto_tracado_da_imagem__curvas-bezier-meio-fio";
+  lines.frustumCulled = false;
+  lines.renderOrder = 31;
+  lines.userData = {
+    publicRoadSurface: true,
+    bezierCurbGuides: true,
+    bezierGuideCount: selected.length,
+    bezierSampling: sampleCount,
+    curvePolicy: "somente esquinas; trechos longos permanecem retos",
+    curbPolicy: "guias ancoradas nos dois lados do meio-fio vetorial",
+    socialAreaBoundary: "limite lateral preservado pela face vetorial do asfalto",
+  };
+  return lines;
 };
 
 // Versão em UV do mesmo traçado. Ela é aplicada diretamente sobre o plano
@@ -1087,23 +1373,15 @@ const createAdminReferenceAerialRoadPlaneGeometryV1 = (THREE, roadTrace) => {
       (Number(point?.[0]) || 0) / imageWidth - 0.5,
       0.5 - (Number(point?.[1]) || 0) / imageHeight,
     ],
-    appendPath = (path, points) => {
-      if (!Array.isArray(points) || points.length < 3) return false;
-      points.forEach((point, index) => {
-        const [x, y] = toPlane(point);
-        if (index === 0) path.moveTo(x, y);
-        else path.lineTo(x, y);
-      });
-      path.closePath();
-      return true;
-    },
     shapes = [];
   for (const road of roadTrace.roads) {
     const shape = new THREE.Shape();
-    if (!appendPath(shape, road.outer)) continue;
+    if (!appendAdminReferenceAerialCurbPathV1(shape, road.outer, toPlane))
+      continue;
     for (const holePoints of road.holes || []) {
       const hole = new THREE.Path();
-      if (appendPath(hole, holePoints)) shape.holes.push(hole);
+      if (appendAdminReferenceAerialCurbPathV1(hole, holePoints, toPlane))
+        shape.holes.push(hole);
     }
     shapes.push(shape);
   }
@@ -1113,6 +1391,39 @@ const createAdminReferenceAerialRoadPlaneGeometryV1 = (THREE, roadTrace) => {
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
   return { geometry, imageWidth, imageHeight };
+};
+
+// A seleção de pavimentação usa a própria malha `Asfalto_tracado_do_PDF` já
+// projetada no referencial aéreo. Reutilizar seus vértices no modelo escuro
+// elimina a segunda triangulação que podia deixar a borda alguns pixels fora
+// do contorno selecionado.
+const createAdminReferenceAerialNativeRoadGeometryV1 = (
+  THREE,
+  roadSource,
+  surface,
+) => {
+  if (
+    !THREE ||
+    !roadSource?.geometry?.getAttribute?.("position") ||
+    !surface?.matrixWorld?.clone
+  )
+    return null;
+  roadSource.updateMatrixWorld?.(true);
+  surface.updateMatrixWorld?.(true);
+  const transform = surface.matrixWorld
+    .clone()
+    .invert()
+    .multiply(roadSource.matrixWorld);
+  const geometry = roadSource.geometry.clone();
+  geometry.applyMatrix4(transform);
+  geometry.computeBoundingBox?.();
+  geometry.computeBoundingSphere?.();
+  geometry.userData = {
+    ...(geometry.userData || {}),
+    nativeRoadContour: true,
+    nativeRoadSource: roadSource.name || "Asfalto_tracado_do_PDF",
+  };
+  return geometry;
 };
 
 const warpAdminGlbToFixedAerialV1 = ({ THREE, source, georef, image, trace, roadTrace }) => {
@@ -1127,6 +1438,12 @@ const warpAdminGlbToFixedAerialV1 = ({ THREE, source, georef, image, trace, road
       1,
       Number(image?.naturalHeight || image?.height) || 941,
     ),
+    // Os traçados foram medidos na referência de 1672×941. A prévia 4K
+    // mantém o mesmo enquadramento UV, mas não as mesmas coordenadas em pixels.
+    traceWidth = Math.max(1, Number(trace?.imageSize?.[0]) || imageWidth),
+    traceHeight = Math.max(1, Number(trace?.imageSize?.[1]) || imageHeight),
+    roadWidth = Math.max(1, Number(roadTrace?.imageSize?.[0]) || traceWidth),
+    roadHeight = Math.max(1, Number(roadTrace?.imageSize?.[1]) || traceHeight),
     imageAspect = imageWidth / imageHeight,
     worldHeight = ADMIN_REFERENCE_AERIAL_GEO_WORLD_HEIGHT_V1,
     worldWidth = worldHeight * imageAspect,
@@ -1154,7 +1471,7 @@ const warpAdminGlbToFixedAerialV1 = ({ THREE, source, georef, image, trace, road
     const imageRoadGeometry =
         roadTrace && node.name === "Asfalto_tracado_do_PDF"
           ? createAdminReferenceAerialRoadGeometryV1(
-              THREE, roadTrace, imageWidth, imageHeight, worldWidth, worldHeight,
+              THREE, roadTrace, roadWidth, roadHeight, worldWidth, worldHeight,
             )
           : null,
       geometry = imageRoadGeometry || node.geometry.clone(),
@@ -1189,10 +1506,10 @@ const warpAdminGlbToFixedAerialV1 = ({ THREE, source, georef, image, trace, road
       if (useTracedPolygon) {
         const point = tracedPolygon[index];
         if (Array.isArray(point) && Number.isFinite(point[0]) && Number.isFinite(point[1])) {
-          uv.u = point[0] / imageWidth;
-          uv.v = point[1] / imageHeight;
-        } else applyAdminReferenceAerialImageTraceV1(uv, trace, imageWidth, imageHeight);
-      } else if (trace) applyAdminReferenceAerialImageTraceV1(uv, trace, imageWidth, imageHeight);
+          uv.u = point[0] / traceWidth;
+          uv.v = point[1] / traceHeight;
+        } else applyAdminReferenceAerialImageTraceV1(uv, trace, traceWidth, traceHeight);
+      } else if (trace) applyAdminReferenceAerialImageTraceV1(uv, trace, traceWidth, traceHeight);
       else applyAdminReferenceAerialResidualWarpV2(uv);
       position.setXYZ(
         index,
@@ -1245,10 +1562,17 @@ const PDF_MODEL_TEXTURE_BRIGHTNESS = 1.35;
 // Referência aérea aprovada pelo usuário. Ela é a única imagem de implantação
 // usada no dashboard: lotes e ruas não recebem uma segunda cópia texturizada.
 const ADMIN_REFERENCE_AERIAL_ASSET_V1 =
-  "/assets/public/alianca-park-aerial-reference-expanded-v1.png";
+  "/assets/public/alianca-park-aerial-realistic-preview-v2.jpg";
+const ADMIN_AERIAL_ZOOM_TILE_ROOT_V1 =
+  "/assets/public/alianca-park-aerial-realistic-tiles-v2";
+const ADMIN_AERIAL_ZOOM_TILE_GRID_V1 = { cols: 5, rows: 3 };
+const ADMIN_AERIAL_ZOOM_TILE_PIXELS_V1 = { width: 19200, height: 10805 };
+const ADMIN_AERIAL_TILE_PREFETCH_RATIO_V2 = 1.3;
+const ADMIN_AERIAL_TILE_SWAP_RATIO_V2 = 1.5;
 const ADMIN_REFERENCE_AERIAL_SEMANTIC_COORDINATE_SYSTEM_V1 =
   "aerial-image UV 0..1 · origin top-left · world XY projected to the same base plane";
-const ADMIN_REFERENCE_AERIAL_VERSION_V1 = "admin-reference-aerial-expanded-v1";
+const ADMIN_REFERENCE_AERIAL_VERSION_V1 =
+  "admin-reference-aerial-realistic-preview-v2";
 const ADMIN_SEMANTIC_3D_LAYER_VERSION_V1 = "semantic-elements-only-v2";
 const ADMIN_REFERENCE_AERIAL_ENVIRONMENT_VERSION_V1 =
   "full-image-3d-environment-v2";
@@ -1518,7 +1842,9 @@ const ADMIN_PDF_DISPLAY_Y_ROTATION_RAD =
 // Edição permanente: altere somente este bloco para definir o padrão do
 // modelo. A rotação no plano do mapa é `rotation.z`.
 const ADMIN_MODEL_CALIBRATION_DEFAULTS_V1 = {
-  rotation: { x: 0, y: 0, z: 70 },
+  // A orientação georreferenciada já resolve o giro do GLB em relação ao
+  // raster. Um giro padrão adicional desloca toda a implantação no mapa.
+  rotation: { x: 0, y: 0, z: 0 },
   shift: { x: 0, y: 0, z: 0 },
   scale: 1,
 };
@@ -2098,40 +2424,33 @@ export class AppSidebar extends HTMLElement {
           ["map", "house", "Dashboard inicial"],
           ["control", "table-properties", "Central operacional"],
           ["stages", "workflow", "Etapas e Cronograma"],
-          ["personnel", "users-round", "Encarregados"],
           ["records", "clipboard-pen-line", "Registros"],
-          ["leads", "users", "Leads"],
           ["contracts", "file-signature", "Contratos"],
           ["brokers", "badge-dollar-sign", "Comissões"],
-          ["brokers-board", "users-round", "Corretores"],
+          ["brokers-board", "map-pinned", "Lotes"],
           ["finance", "wallet-cards", "Financeiro"],
-          ["reports", "chart-no-axes-combined", "Relatórios"],
           ["settings", "settings", "Configurações"],
         ],
         commercial: [
           ["map", "house", "Dashboard inicial"],
-          ["leads", "users-round", "Leads"],
           ["contracts", "file-signature", "Contratos"],
           ["brokers", "badge-dollar-sign", "Comissões"],
-          ["brokers-board", "users-round", "Corretores"],
+          ["brokers-board", "map-pinned", "Lotes"],
           ["control", "table-properties", "Central operacional"],
           ["stages", "workflow", "Etapas e Cronograma"],
           ["records", "clipboard-pen-line", "Registros"],
           ["finance", "wallet-cards", "Financeiro"],
-          ["reports", "chart-no-axes-combined", "Relatórios"],
           ["settings", "settings", "Configurações"],
         ],
         social: [
           ["map", "house", "Dashboard inicial"],
           ["messages", "messages-square", "Mensagens", "messages"],
-          ["leads", "users-round", "Leads"],
-          ["personnel", "users-round", "Encarregados"],
           ["control", "table-properties", "Central operacional"],
           ["stages", "workflow", "Etapas e Cronograma"],
           ["records", "clipboard-pen-line", "Registros"],
           ["contracts", "file-signature", "Contratos"],
           ["brokers", "badge-dollar-sign", "Comissões"],
-          ["brokers-board", "users-round", "Corretores"],
+          ["brokers-board", "map-pinned", "Lotes"],
           ["settings", "settings", "Configurações"],
         ],
       },
@@ -2151,10 +2470,7 @@ export class AppSidebar extends HTMLElement {
       "agenda",
       "activities",
       "progress",
-      "pert",
       "actions",
-      "raci",
-      "raid",
       ...(state.localSqlState?.clean === true ? ["activity-installation"] : []),
     ];
     const reportFamilies = [
@@ -2168,6 +2484,7 @@ export class AppSidebar extends HTMLElement {
       Governança: "shield-check",
     };
     const nav = items
+      .filter(([id]) => !["records", "finance"].includes(id))
       .map(([id, icon, label, action]) => {
         const active =
           id === "stages"
@@ -2183,13 +2500,8 @@ export class AppSidebar extends HTMLElement {
               ? [["activity-installation", "wand-sparkles", "Instalação"]]
               : []),
             ["agenda", "calendar-days", "Agenda"],
-            ["pert", "git-branch", "PERT"],
             ["actions", "sparkles", "Ações IA"],
-            ["raci", "users-round", "Responsáveis"],
-            ["raid", "shield-alert", "Pendências RAID"],
             ["activities", "list-checks", "Atividades"],
-            ["records", "clipboard-pen-line", "Registros"],
-            ["progress", "clipboard-check", "Andamento"],
           ];
           const hasStageContext = Boolean(
             state.stageSelected ||
@@ -2207,7 +2519,17 @@ export class AppSidebar extends HTMLElement {
         return button;
       })
       .join("");
+    const previousNav = this.querySelector('.sidebar nav');
+    const navScrollTop = previousNav?.scrollTop ?? this._navScrollTop ?? 0;
+    const navScrollLeft = previousNav?.scrollLeft ?? this._navScrollLeft ?? 0;
+    this._navScrollTop = navScrollTop;
+    this._navScrollLeft = navScrollLeft;
     this.innerHTML = `<aside class="sidebar"><div class="brand"><div class="brand-mark">◢</div><div><strong>Aliança Park</strong><span>LOTEAMENTO</span></div></div><button class="sidebar-toggle" id="sidebarToggle" aria-label="Recolher menu">${ico("panel-left-close")}<span>Recolher menu</span></button><nav aria-label="Navegação principal"><div class="sidebar-mode-label"><span>MODO DA SUPERFÍCIE</span><b>${esc(modeLabels[mode])}</b></div>${nav}</nav><a class="field-portal-link" href="./encarregados.html" target="_blank" rel="noopener">${ico("hard-hat")}<span>Portal do encarregado</span>${ico("external-link")}</a><a class="field-portal-link site-manual-link" href="./assets/docs/manual-usuario-planejamento-inteligente.html" target="_blank" rel="noopener">${ico("book-open-check")}<span>Manual de operação</span>${ico("external-link")}</a><div class="sidebar-foot"><button class="profile profile-trigger" id="adminTrigger"><span class="avatar">${esc(actor.name?.[0] || "W")}</span><div><strong>${esc(actor.name || "Warley")}</strong><small>${esc(actor.label || "Dono")}</small></div>${ico("chevron-up")}</button><div class="admin-menu ${appStore.get().adminMenu ? "open" : ""}"><button>Preferências</button><button>Auditoria da sessão</button><button>Encerrar sessão</button></div><div class="integration"><span></span>Integração ativa</div></div></aside>`;
+    const nextNav = this.querySelector('.sidebar nav');
+    if (nextNav) {
+      nextNav.scrollTop = navScrollTop;
+      nextNav.scrollLeft = navScrollLeft;
+    }
     this.dataset.sidebarReady = "true";
     if (foremanSurface) {
       this.querySelectorAll(".admin-menu button:not(:last-child)").forEach(
@@ -2274,16 +2596,17 @@ export class AppSidebar extends HTMLElement {
     );
     this.querySelectorAll("[data-view]").forEach((btn) =>
       btn.addEventListener("click", () => {
-        const next =
+        const requestedNext =
             btn.dataset.view === "inventory" || btn.dataset.view === "assistant"
               ? "map"
               : btn.dataset.view,
+          next = ["materials", "documents", "personnel", "leads", "reports"].includes(requestedNext) ? "map" : requestedNext,
           patch = {
             view: next,
             activityDedicated: false,
             selectedActivity: null,
             sidebarCollapsed: false,
-            lastAction: `Abriu ${btn.textContent.trim()}`,
+            lastAction: requestedNext === next ? `Abriu ${btn.textContent.trim()}` : "Área removida da navegação; retornou ao mapa",
           };
         if (next === "contracts" || next === "proposals") {
           patch.proposalFormOpen = false;
@@ -2567,6 +2890,8 @@ export class AppTopbar extends HTMLElement {
 }
 if (!customElements.get("app-topbar"))
   customElements.define("app-topbar", AppTopbar);
+
+const CHAT_OPERATIONAL_EXECUTION_INSTRUCTION_V1 = `Trate pedidos operacionais como intenção de execução, não apenas como perguntas. Use somente as ferramentas permitidas e faça no sistema tudo que for seguro e representável sem inventar fatos. Quando houver compreensão suficiente de etapa ou atividade, mas faltarem dados para concluir a ação, crie ou prepare um apontamento pendente no cronograma com o que já é conhecido e pergunte somente os detalhes faltantes. Quando a ação depender de evidência, comprovante, nota, projeto, autorização ou outro documento, peça o documento e abra o fluxo de documentos quando isso ajudar. Se a compreensão indicar algo completamente externo ao sistema e não houver ação interna segura a executar, não fabrique registro, conclusão, compra ou agenda: peça apenas o documento ou evidência necessária para incorporar o fato. Nunca diga que executou algo que nenhuma ferramenta confirmou. Preserve a distinção entre fato observado, inferência e dado a confirmar.`;
 
 export class AiChat extends HTMLElement {
   connectedCallback() {
@@ -3296,10 +3621,10 @@ export class AiChat extends HTMLElement {
     if (!log) return;
     const wrap = document.createElement("div");
     wrap.className = "chat-attachment-actions";
-    if (!ref.stored) {
+    if (!ref.stored && !payload?.recordOcr) {
       wrap.innerHTML = `<span>${ico("shield-alert")} A imagem foi analisada, mas ainda não pode virar evidência permanente.</span><small>Configure o binding privado BELAVISTA_UPLOADS (Cloudflare R2) para liberar o aceite no registro.</small>`;
     } else {
-      wrap.innerHTML = `<b>${ico("shield-check")} Imagem protegida e pronta para revisão humana</b><span>Escolha o destino; nada será gravado até você confirmar o formulário.</span><div><button type="button" data-chat-apply="record">${ico("clipboard-pen-line")} Usar em registro</button><button type="button" data-chat-apply="proof">${ico("badge-check")} Usar como comprovação</button></div>`;
+      wrap.innerHTML = `<b>${ico(ref.stored ? "shield-check" : "scan-line")} ${ref.stored ? "Imagem protegida e pronta para revisão humana" : "OCR concluído; imagem temporária"}</b><span>Escolha o destino; nada será gravado até você confirmar o formulário.</span><div><button type="button" data-chat-apply="record">${ico("clipboard-pen-line")} Usar em registro</button><button type="button" data-chat-apply="proof">${ico("badge-check")} Usar como comprovação</button></div>`;
       wrap.querySelectorAll("[data-chat-apply]").forEach((button) =>
         button.addEventListener("click", () => {
           const state = appStore.get(),
@@ -3369,6 +3694,8 @@ export class AiChat extends HTMLElement {
         "map-view",
         "map-tiles",
         "record-form",
+        "agenda-pending-entry",
+        "document-form",
         "report-selection",
         "commission-filter",
         "print-confirmation",
@@ -3525,6 +3852,121 @@ export class AiChat extends HTMLElement {
         executed.push("Abriu a ficha de evento geral para revisão, sem gravar dados.");
         continue;
       }
+      if (name === "agenda.create_pending") {
+        const state = appStore.get(),
+          stages = executionModel.stages || [],
+          stageKey = String(args.stageKey || "").trim(),
+          stageName = String(args.stageName || args.relation || "").trim(),
+          normalizedStageName = normalizeActivityRouteTextV1(stageName),
+          selectedKey = String(state.selectedStageV9 || state.selectedStage || ""),
+          stage =
+            stages.find((item) => String(item.key) === stageKey) ||
+            stages.find((item) =>
+              normalizedStageName &&
+              normalizeActivityRouteTextV1(item.name) === normalizedStageName,
+            ) ||
+            stages.find((item) => String(item.key) === selectedKey);
+        if (!stage) {
+          this.addToolFeedback(
+            "A IA precisa confirmar a etapa antes de criar o apontamento no cronograma.",
+            "warning",
+          );
+          continue;
+        }
+        const data = agendaCalendarReadV3(),
+          events = [...(data.events || [])],
+          requestedDate = String(args.date || "").trim(),
+          baseWeek = agendaCalendarWeekKeyV8(
+            agendaCalendarParseDateV3(requestedDate) || new Date(),
+          ),
+          slot = agendaCalendarLastAvailableSlotV8(events, baseWeek),
+          date = agendaCalendarParseDateV3(requestedDate)
+            ? requestedDate
+            : slot.date,
+          requestedStart = String(args.start || "").trim(),
+          start = /^\d{2}:\d{2}$/.test(requestedStart)
+            ? requestedStart
+            : slot.start,
+          id = `agenda-ai-${Date.now().toString(36)}`,
+          title =
+            String(args.title || args.activityName || "Apontamento pendente da IA")
+              .trim()
+              .slice(0, 160),
+          owner = String(args.owner || "").trim().slice(0, 120),
+          event = {
+            id,
+            title,
+            stageKey: stage.key,
+            stageName: stage.name,
+            activityId: String(args.activityId || "").trim(),
+            activityName: String(args.activityName || title).trim().slice(0, 160),
+            owner,
+            date,
+            start,
+            durationHours: Math.max(0.5, Math.min(24, Number(args.durationHours) || 1.5)),
+            spanDays: Math.max(1, Math.min(7, Number(args.spanDays) || 1)),
+            status: "Pendente",
+            aiPending: true,
+            notes: String(args.notes || "").trim().slice(0, 1200),
+            detailsNeeded: String(args.detailsNeeded || "").trim().slice(0, 800),
+            evidenceRequired: Boolean(args.evidenceRequired),
+          };
+        agendaCalendarWriteV3({
+          version: 3,
+          initialized: true,
+          events: [...events, event],
+        });
+        const agendaItem = {
+          id,
+          title,
+          name: title,
+          stageKey: stage.key,
+          stageName: stage.name,
+          activityId: event.activityId,
+          activity: event.activityName,
+          owner,
+          responsible: owner,
+          status: "Pendente",
+          date,
+          start,
+          time: start,
+          durationHours: event.durationHours,
+          spanDays: event.spanDays,
+          plannedStart: `${date}T${start}:00`,
+          aiPending: true,
+          detailsNeeded: event.detailsNeeded,
+          evidenceRequired: event.evidenceRequired,
+        };
+        appStore.set({
+          view: "agenda",
+          selectedStageV9: stage.key,
+          selectedStage: stage.key,
+          selectedAgendaEventV3: id,
+          operationalAgenda: [
+            ...(state.operationalAgenda || []).filter(
+              (item) => String(item?.id || "") !== id,
+            ),
+            agendaItem,
+          ],
+          agendaCalendarRevisionV3: Date.now(),
+          agendaCalendarRevisionV7: Date.now(),
+          agendaCalendarWeekV8: agendaCalendarWeekKeyV8(date),
+          lastAction: `IA criou apontamento pendente ${title} em ${stage.name}`,
+        });
+        executed.push(
+          `Criou apontamento pendente no cronograma de ${stage.name} e abriu para completar os dados.`,
+        );
+        continue;
+      }
+      if (name === "documents.open_form") {
+        appStore.set({
+          view: "documents",
+          documentsEditId: "new",
+          lastAction: `IA solicitou documento${args.reason ? `: ${String(args.reason).slice(0, 120)}` : ""}`,
+        });
+        executed.push("Abriu a inclusão de documento para anexar a evidência solicitada.");
+        continue;
+      }
       if (name === "reports.select") {
         const family = [
           "Financeiro",
@@ -3567,7 +4009,15 @@ export class AiChat extends HTMLElement {
     executed.forEach((message) => this.addToolFeedback(message));
     return executed;
   }
-  async respond(text, attachment = null) {
+  async respond(text, attachment = null, options = {}) {
+    const lotCommand = !attachment ? parseLotStatusCommand(text) : null;
+    if (lotCommand) {
+      this.appendConversationMessage("user", text);
+      const answerText = lotCommand.error ? lotCommand.error : applyLotStatusCommand(appStore, lotCommand);
+      this.appendConversationMessage("assistant", answerText);
+      this.persistChatMessage("assistant", answerText);
+      return;
+    }
     appStore.set({ lastAction: `Consulta IA: ${text.slice(0, 48)}` });
     const userMessage = [
       text,
@@ -3589,6 +4039,11 @@ export class AiChat extends HTMLElement {
           message: text,
           view: appStore.get().view,
           mapContext: this.chatMapContext,
+          instruction: CHAT_OPERATIONAL_EXECUTION_INSTRUCTION_V1,
+          requestContext:
+            options?.requestContext && typeof options.requestContext === "object"
+              ? options.requestContext
+              : null,
           context: this.buildToolContext(),
           attachment: attachment
             ? {
@@ -4382,7 +4837,7 @@ export class MapScene extends HTMLElement {
     }
 
     const run = async () => {
-      this.dataset.roadSurfacePatchVersion = "integral-asphalt-slices-v14";
+      this.dataset.roadSurfacePatchVersion = "integral-asphalt-slices-v16-curb-subtraction";
       this._adminStandaloneActivatedV5370 = true;
       this.persistAdminStandalonePhaseV5370("import-three");
 
@@ -4778,7 +5233,7 @@ export class MapScene extends HTMLElement {
           side: THREE.DoubleSide,
         }),
         streets: new THREE.MeshBasicMaterial({
-          color: 0x858b89,
+          color: 0x30363a,
           side: THREE.DoubleSide,
         }),
         landscape: new THREE.MeshBasicMaterial({
@@ -4836,6 +5291,12 @@ export class MapScene extends HTMLElement {
           kind === "lots" || kind === "streets" ? kind : "other";
         activityPartOrdinals[physicalKind]++;
         node.userData.partKind = physicalKind;
+        const commonAreaFilterOnly =
+          kind === "leisure" ||
+          /area.?de.?lazer|court|gym|pavilhao|play|praca|paisag|social/i.test(
+            String(node.name || ""),
+          );
+        node.userData.commonAreaFilterOnly = commonAreaFilterOnly;
         node.userData.partId =
           physicalKind === "lots"
             ? node.name
@@ -4871,6 +5332,12 @@ export class MapScene extends HTMLElement {
       );
 
       stage.add(wrapper);
+      // O mapa administrativo usa este renderer isolado, portanto a base
+      // viária é instalada mais adiante diretamente sobre `surface`, o mesmo
+      // plano UV da fotografia. O GLB permanece apenas como fonte semântica;
+      // eixos/centros técnicos não entram na cena renderizada.
+      this.dataset.modelOperationalGeometry = "waiting · asfalto integral georreferenciado";
+      this.dataset.modelHeavyGeometry = "integral-asphalt-road-surface";
 
       // BELAVISTA_ADMIN_3D_CAMERA_FIT_V5372
       // Centraliza no plano e calcula câmera a partir do bounding sphere real.
@@ -5011,7 +5478,10 @@ export class MapScene extends HTMLElement {
           error,
         );
       });
-      this.ensureAdminStandaloneRoadSurfaceV1();
+      const nativeRoadSource = meshes.find(
+        (node) => String(node?.name || "") === "Asfalto_tracado_do_PDF",
+      );
+      this.ensureAdminStandaloneRoadSurfaceV1(nativeRoadSource);
 
       // O GLB mantém sua geometria semântica integrada ao sistema.
       // V13 preserva UV/imageBounds apenas como metadados de seleção;
@@ -5065,9 +5535,12 @@ export class MapScene extends HTMLElement {
           this._adminStandaloneRasterMaskModelV1,
         );
         const dividerGuide = /^divisa(?:[_\s-]|$)/i.test(stagingName);
-        node.visible = !dividerGuide && (rasterMaskIsPrimary
-          ? true
-          : !(publicRoadSource || publicDividerSource));
+        node.visible =
+          !dividerGuide &&
+          !node.userData.commonAreaFilterOnly &&
+          (rasterMaskIsPrimary
+            ? true
+            : !(publicRoadSource || publicDividerSource));
         if (dividerGuide) {
           node.userData.referenceDividerHidden = true;
           node.raycast = () => {};
@@ -5151,11 +5624,12 @@ export class MapScene extends HTMLElement {
       canvas.addEventListener(
         "wheel",
         (event) => {
-          if (!event.ctrlKey) return;
           event.preventDefault();
           const source = this;
+          const factor = event.ctrlKey ? 1.06 : 1.12;
           source.setSceneZoomAt(
-            source.sceneManualZoom * (event.deltaY < 0 ? 1.1 : 0.91),
+            source.sceneManualZoom *
+              (event.deltaY < 0 ? factor : 1 / factor),
             event.clientX,
             event.clientY,
             false,
@@ -5352,11 +5826,16 @@ export class MapScene extends HTMLElement {
         texture.generateMipmaps = false;
         texture.minFilter = THREE.LinearFilter;
         texture.magFilter = THREE.LinearFilter;
-        texture.needsUpdate = true;
       } else {
         texture.image = image;
-        texture.needsUpdate = true;
       }
+      const textureRenderer =
+        this._adminStandaloneRendererV5370 || this.renderer;
+      texture.anisotropy = Math.max(
+        1,
+        Number(textureRenderer?.capabilities?.getMaxAnisotropy?.()) || 1,
+      );
+      texture.needsUpdate = true;
       this.adminReferenceAerialImageV1 = image;
       this.adminReferenceAerialTextureV1 = texture;
 
@@ -5512,11 +5991,21 @@ export class MapScene extends HTMLElement {
         texture.generateMipmaps = false;
         texture.minFilter = THREE.LinearFilter;
         texture.magFilter = THREE.LinearFilter;
-        texture.needsUpdate = true;
       } else {
         texture.image = image;
-        texture.needsUpdate = true;
       }
+      const textureRenderer =
+        this._adminStandaloneRendererV5370 || this.renderer;
+      texture.anisotropy = Math.max(
+        1,
+        Number(textureRenderer?.capabilities?.getMaxAnisotropy?.()) || 1,
+      );
+      texture.needsUpdate = true;
+
+      this.dataset.adminSatelliteTextureSource =
+        ADMIN_REFERENCE_AERIAL_ASSET_V1;
+      this.dataset.adminSatelliteTextureResolution =
+        `${image.naturalWidth || image.width || 0}x${image.naturalHeight || image.height || 0} · prévia realista da cena · base 4K`;
 
       const frame = this.adminReferenceAerialFrameV1();
       let aerialAnchorFitBox = fitBox.clone();
@@ -6641,6 +7130,7 @@ export class MapScene extends HTMLElement {
     canvas?.addEventListener("pointercancel", release);
   }
   disconnectedCallback() {
+    this.clearAdminAerialZoomTilesV1?.();
     if (!this.hasAttribute("compact")) return;
     compactMapMirrors.delete(this);
     this._compactResizeObserver?.disconnect();
@@ -7263,6 +7753,8 @@ export class MapScene extends HTMLElement {
       color = stageOverlayColors[targetKey] || 0x2fe6ae;
     all.forEach((item) => {
       if (!item?.material) return;
+      if (item.userData?.commonAreaFilterOnly)
+        item.visible = targetKey === "urbanizacao";
       item.material = this.stageBaseMaterial(item);
       delete item.userData.overlayMaterial;
       if (targetKey && targets.has(item)) {
@@ -7896,13 +8388,10 @@ export class MapScene extends HTMLElement {
         zooming = false,
         selecting = false;
       canvas.addEventListener("contextmenu", (event) => event.preventDefault());
-      /* BELAVISTA_CTRL_WHEEL_ZOOM_V5560
-       * O evento é ouvido no host em fase de captura, não somente no canvas:
-       * a cena também possui camadas WebGL/Leaflet que podem ser o alvo da
-       * roda. Assim Ctrl + roda sempre aproxima ou afasta pelo ponto sob o
-       * cursor sem acionar o zoom nativo do navegador. */
+      /* A roda aproxima o mapa; Ctrl + roda usa passos menores para ajuste
+       * preciso. O host captura o evento sobre todas as camadas da cena. */
       const zoomSceneAtCursorByCtrlWheel = (event) => {
-        if (!event.ctrlKey || event.defaultPrevented) return;
+        if (event.defaultPrevented) return;
         const target = event.target;
         if (
           target?.closest?.(
@@ -7922,16 +8411,21 @@ export class MapScene extends HTMLElement {
         event.preventDefault();
         event.stopPropagation();
         const wheelMagnitude = Math.max(
-          0.055,
-          Math.min(0.18, Math.abs(Number(event.deltaY) || 0) * 0.0008),
+          event.ctrlKey ? 0.025 : 0.055,
+          Math.min(
+            event.ctrlKey ? 0.08 : 0.18,
+            Math.abs(Number(event.deltaY) || 0) * (event.ctrlKey ? 0.00035 : 0.0008),
+          ),
         );
         const nextZoom =
           this.sceneManualZoom +
           (event.deltaY < 0 ? wheelMagnitude : -wheelMagnitude);
         this.setSceneZoomAt(nextZoom, event.clientX, event.clientY, false);
-        this.dataset.mapGesture = "ctrl-wheel-zoom";
-        this.dataset.sceneWheelZoom = "ctrl-wheel · cursor-ground";
-        this.queueSceneBoundsCommit("ctrl-wheel-zoom");
+        this.dataset.mapGesture = event.ctrlKey ? "ctrl-wheel-zoom" : "wheel-zoom";
+        this.dataset.sceneWheelZoom = event.ctrlKey
+          ? "ctrl-wheel · cursor-ground · precise"
+          : "wheel · cursor-ground";
+        this.queueSceneBoundsCommit("wheel-zoom");
       };
       this.addEventListener("wheel", zoomSceneAtCursorByCtrlWheel, {
         capture: true,
@@ -12263,6 +12757,12 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
         texture.minFilter = THREE.LinearFilter;
         texture.magFilter = THREE.LinearFilter;
         texture.generateMipmaps = false;
+        const textureRenderer =
+          this._adminStandaloneRendererV5370 || this.renderer;
+        texture.anisotropy = Math.max(
+          1,
+          Number(textureRenderer?.capabilities?.getMaxAnisotropy?.()) || 1,
+        );
         texture.needsUpdate = true;
         texture.userData = {
           source: ADMIN_REFERENCE_AERIAL_ASSET_V1,
@@ -12284,6 +12784,8 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
         this.dataset.adminPdfUnderlayPlacement =
           "single surface · contain · no duplicate PDF/image plane";
         this.dataset.adminPdfUnderlayImage = `${imageWidth}x${imageHeight}`;
+        this.dataset.adminPdfUnderlayResolution =
+          `${imageWidth}x${imageHeight} · textura usada pelo modelo · anisotropia ${texture.anisotropy}`;
         this.dataset.adminPdfUnderlayFrame =
           "full image · UV 0..1 · original aspect ratio · no crop";
         this.dataset.adminPdfUnderlaySiteFrame = `${pageFrame.left.toFixed(3)},${pageFrame.top.toFixed(3)} → ${pageFrame.right.toFixed(3)},${pageFrame.bottom.toFixed(3)}`;
@@ -13586,6 +14088,18 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
 
       await nextFrame();
       this.applyPublicPresentationStyle(THREE);
+      // No mapa administrativo, a malha viária precisa nascer junto da cena:
+      // superfície integral primeiro, divisões transversais de meio lote por
+      // cima. A versão pública continua usando apenas a fotografia aérea.
+      if (
+        !this.isPublicMapVisual() ||
+        this.hasAttribute("data-admin-shared-public-map")
+      ) {
+        // A apresentação pública marca esta flag como pronta ao esconder seus
+        // overlays. No mapa compartilhado do admin, reabra a construção.
+        this._streetOperationalGeometryReady = false;
+        this.ensureOperationalStreetGeometry();
+      }
       this.buildPdfMasterplan3DLayerV1(
         THREE,
         this.adminPdfMasterplanUnderlayTextureV1,
@@ -13638,7 +14152,10 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
   }
 
   ensureOperationalStreetGeometry() {
-    if (this.isPublicMapVisual()) {
+    if (
+      this.isPublicMapVisual() &&
+      !this.hasAttribute("data-admin-shared-public-map")
+    ) {
       // O recorte de ruas é útil para registros e progresso no painel
       // operacional, mas não pertence à apresentação pública. Nela, a
       // fotografia aérea já contém a orientação e as ruas de referência.
@@ -13669,7 +14186,19 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
     return false;
   }
 
-  ensureAdminStandaloneRoadSurfaceV1() {
+  ensureAdminStandaloneRoadSurfaceV1(nativeRoadSource = null) {
+    const filterOnlyAdminMap =
+      this.isAdminStandalone3DV5370?.() &&
+      !this.isPublicCustomerExperience?.();
+    if (filterOnlyAdminMap) {
+      if (this._adminStandaloneRoadSurfaceGroupV1)
+        this._adminStandaloneRoadSurfaceGroupV1.visible = false;
+      this.dataset.publicRoadSurfaceState = "disabled-filter-only";
+      this.dataset.publicRoadSurfaceMode =
+        "somente filtro sobre a imagem · preenchimento 3D removido";
+      this.dataset.publicRoadFill = "removed";
+      return null;
+    }
     if (
       this._adminStandaloneRoadSurfaceGroupV1 ||
       this._adminStandaloneRoadSurfacePromiseV1 ||
@@ -13691,9 +14220,10 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
         stage,
         surface,
         roadTrace,
+        nativeRoadSource,
       });
       if (!group) throw new Error("A malha de asfalto não foi construída.");
-      this.dataset.roadSurfacePatchVersion = "integral-asphalt-slices-v10";
+      this.dataset.roadSurfacePatchVersion = "integral-asphalt-slices-v16-curb-subtraction";
       this.dataset.publicRoadSurfaceState = "ready";
       this.dataset.publicRoadTraceCount = String(roadTrace.roads.length);
       this._adminStandaloneRendererV5370?.render?.(
@@ -13737,7 +14267,13 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
     return null;
   }
 
-  buildAdminStandaloneRoadSurfaceV1({ THREE, stage, surface, roadTrace }) {
+  buildAdminStandaloneRoadSurfaceV1({
+    THREE,
+    stage,
+    surface,
+    roadTrace,
+    nativeRoadSource = null,
+  }) {
     if (!THREE || !stage || !surface || !Array.isArray(roadTrace?.roads))
       return null;
     const plane = createAdminReferenceAerialRoadPlaneGeometryV1(
@@ -13745,7 +14281,19 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
       roadTrace,
     );
     if (!plane) return null;
-    const worldWidth = Math.max(1, Number(surface.scale?.x) || 1),
+    stage.updateMatrixWorld?.(true);
+    surface.updateMatrixWorld?.(true);
+    nativeRoadSource?.updateMatrixWorld?.(true);
+    const nativeRoadGeometry = createAdminReferenceAerialNativeRoadGeometryV1(
+        THREE,
+        nativeRoadSource,
+        surface,
+      ),
+      roadGeometry = nativeRoadGeometry || plane.geometry,
+      geometrySource = nativeRoadGeometry
+        ? "malha nativa selecionável Asfalto_tracado_do_PDF"
+        : "polígonos vetoriais internos dos meio-fios",
+      worldWidth = Math.max(1, Number(surface.scale?.x) || 1),
       worldHeight = Math.max(1, Number(surface.scale?.y) || 1),
       asphaltMaterial = new THREE.MeshBasicMaterial({
         color: 0x363a3d,
@@ -13756,7 +14304,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
         depthWrite: false,
         toneMapped: false,
       }),
-      asphalt = new THREE.Mesh(plane.geometry, asphaltMaterial),
+      asphalt = new THREE.Mesh(roadGeometry, asphaltMaterial),
       group = new THREE.Group();
     group.name = "AliançaPark__asfalto-integral-tracado-aereo";
     group.position.copy(surface.position);
@@ -13767,12 +14315,28 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
     asphalt.frustumCulled = false;
     asphalt.userData = {
       publicRoadSurface: true,
-      publicRoadSurfaceMode: "asfalto integral opaco por contorno da imagem",
+      publicRoadSurfaceMode: "asfalto integral opaco por polígonos internos dos meio-fios",
       publicRoadCenterlineIgnored: true,
       publicRoadTraceSource: roadTrace.source || ADMIN_REFERENCE_AERIAL_ASSET_V1,
       publicRoadCoverage: "contornos completos das ruas",
+      publicRoadUvMask: false,
+      publicRoadVegetationFociIgnored: true,
+      publicRoadGeometrySource: geometrySource,
+      publicRoadSelectedContourParity: Boolean(nativeRoadGeometry),
     };
     group.add(asphalt);
+
+    // A rua lateral direita já está contida no polígono vetorial acima. Não
+    // reaplicamos sua antiga máscara UV: a grade rasterizada criava bordas
+    // serrilhadas e quebras justamente nos trechos longos.
+    const bezierGuides = createAdminReferenceAerialBezierCurbGuidesV1(
+      THREE,
+      roadTrace,
+      worldWidth,
+      worldHeight,
+      0.06,
+    );
+    if (bezierGuides) group.add(bezierGuides);
 
     const dividerPositions = [],
       sliceSurfacePositions = [],
@@ -13796,6 +14360,77 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
       }
       return output;
     };
+    const nativePosition = nativeRoadGeometry?.getAttribute?.("position"),
+      nativeIndex = nativeRoadGeometry?.getIndex?.(),
+      pointInRing = (point, ring) => {
+        let inside = false;
+        for (
+          let index = 0, previous = ring.length - 1;
+          index < ring.length;
+          previous = index++
+        ) {
+          const currentPoint = ring[index],
+            previousPoint = ring[previous],
+            intersects =
+              currentPoint.z > point.z !== previousPoint.z > point.z &&
+              point.x <
+                ((previousPoint.x - currentPoint.x) *
+                  (point.z - currentPoint.z)) /
+                  (previousPoint.z - currentPoint.z || 1e-9) +
+                  currentPoint.x;
+          if (intersects) inside = !inside;
+        }
+        return inside;
+      },
+      nativeTrianglesForRoad = (road, sourcePoints) => {
+        if (!nativePosition?.count || !sourcePoints?.length) return [];
+        const holes = (road.holes || [])
+            .map((ring) =>
+              Array.isArray(ring)
+                ? ring
+                    .map((point) => ({
+                      x:
+                        ((Number(point?.[0]) || 0) / plane.imageWidth - 0.5) *
+                        worldWidth,
+                      z:
+                        (0.5 - (Number(point?.[1]) || 0) / plane.imageHeight) *
+                        worldHeight,
+                    }))
+                    .filter(
+                      (point) =>
+                        Number.isFinite(point.x) && Number.isFinite(point.z),
+                    )
+                : [],
+            )
+            .filter((ring) => ring.length >= 3),
+          triangles = [],
+          triangleCount = nativeIndex
+            ? Math.floor(nativeIndex.count / 3)
+            : Math.floor(nativePosition.count / 3),
+          pointAt = (vertexIndex) => ({
+            x: nativePosition.getX(vertexIndex) * worldWidth,
+            z: nativePosition.getY(vertexIndex) * worldHeight,
+          });
+        for (let triangle = 0; triangle < triangleCount; triangle++) {
+          const points = [];
+          for (let corner = 0; corner < 3; corner++) {
+            const vertexIndex = nativeIndex
+              ? nativeIndex.getX(triangle * 3 + corner)
+              : triangle * 3 + corner;
+            points.push(pointAt(vertexIndex));
+          }
+          const centroid = {
+            x: points.reduce((sum, point) => sum + point.x, 0) / points.length,
+            z: points.reduce((sum, point) => sum + point.z, 0) / points.length,
+          };
+          if (
+            pointInRing(centroid, sourcePoints) &&
+            !holes.some((ring) => pointInRing(centroid, ring))
+          )
+            triangles.push(points);
+        }
+        return triangles;
+      };
     for (const [roadIndex, road] of roadTrace.roads.entries()) {
       const sourcePoints = Array.isArray(road.outer)
         ? road.outer
@@ -13822,54 +14457,62 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
         u: (point.x - center.x) * axisCos + (point.z - center.z) * axisSin,
         v: -(point.x - center.x) * axisSin + (point.z - center.z) * axisCos,
       }));
+      const nativeTriangles = nativeTrianglesForRoad(road, sourcePoints),
+        nativeLocalTriangles = nativeTriangles.map((triangle) =>
+          triangle.map((point) => ({
+            u: (point.x - center.x) * axisCos + (point.z - center.z) * axisSin,
+            v: -(point.x - center.x) * axisSin + (point.z - center.z) * axisCos,
+          })),
+        );
       const minU = Math.min(...local.map((point) => point.u)),
         maxU = Math.max(...local.map((point) => point.u));
       const bandCount = Math.max(1, Math.ceil((maxU - minU) / halfLot)),
-        roadShape = new THREE.Shape(),
-        toPlane = (point) => [
-          (Number(point?.[0]) || 0) / plane.imageWidth - 0.5,
-          0.5 - (Number(point?.[1]) || 0) / plane.imageHeight,
-        ],
-        appendShapePath = (path, points) => {
-          if (!Array.isArray(points) || points.length < 3) return false;
-          points.forEach((point, index) => {
-            const [x, y] = toPlane(point);
-            if (index === 0) path.moveTo(x, y);
-            else path.lineTo(x, y);
-          });
-          path.closePath();
-          return true;
-        };
-      if (!appendShapePath(roadShape, road.outer)) continue;
-      for (const holePoints of road.holes || []) {
-        const hole = new THREE.Path();
-        if (appendShapePath(hole, holePoints)) roadShape.holes.push(hole);
-      }
-
-      // Recorta los triángulos de la cara trazada en bandas de media frente.
-      // Cada banda resultante es una cara rellena; al partir la triangulación
-      // existente se conservan curvas, uniones, huecos y todo el perímetro.
-      const roadGeometry = new THREE.ShapeGeometry(roadShape),
-        roadVertices = roadGeometry.getAttribute("position"),
-        roadIndex = roadGeometry.getIndex(),
-        triangleCount = roadIndex ? roadIndex.count / 3 : roadVertices.count / 3,
         roadSlices = new Set(),
-        asphaltColor = new THREE.Color();
-      for (let triangle = 0; triangle < triangleCount; triangle++) {
-        const trianglePoints = [];
-        for (let corner = 0; corner < 3; corner++) {
-          const vertexIndex = roadIndex
-              ? roadIndex.getX(triangle * 3 + corner)
-              : triangle * 3 + corner,
-            planeX = roadVertices.getX(vertexIndex),
-            planeY = roadVertices.getY(vertexIndex),
-            worldX = planeX * worldWidth,
-            worldZ = planeY * worldHeight;
-          trianglePoints.push({
-            u: (worldX - center.x) * axisCos + (worldZ - center.z) * axisSin,
-            v: -(worldX - center.x) * axisSin + (worldZ - center.z) * axisCos,
-          });
+        asphaltColor = new THREE.Color(),
+        sourceTriangles = nativeLocalTriangles;
+      if (!sourceTriangles.length) {
+        const roadShape = new THREE.Shape(),
+          toPlane = (point) => [
+            (Number(point?.[0]) || 0) / plane.imageWidth - 0.5,
+            0.5 - (Number(point?.[1]) || 0) / plane.imageHeight,
+          ];
+        if (!appendAdminReferenceAerialCurbPathV1(roadShape, road.outer, toPlane))
+          continue;
+        for (const holePoints of road.holes || []) {
+          const hole = new THREE.Path();
+          if (appendAdminReferenceAerialCurbPathV1(hole, holePoints, toPlane))
+            roadShape.holes.push(hole);
         }
+        const traceRoadGeometry = new THREE.ShapeGeometry(roadShape),
+          traceVertices = traceRoadGeometry.getAttribute("position"),
+          traceIndex = traceRoadGeometry.getIndex(),
+          traceTriangleCount = traceIndex
+            ? traceIndex.count / 3
+            : traceVertices.count / 3;
+        sourceTriangles = [];
+        for (let triangle = 0; triangle < traceTriangleCount; triangle++) {
+          const trianglePoints = [];
+          for (let corner = 0; corner < 3; corner++) {
+            const vertexIndex = traceIndex
+                ? traceIndex.getX(triangle * 3 + corner)
+                : triangle * 3 + corner,
+              planeX = traceVertices.getX(vertexIndex),
+              planeY = traceVertices.getY(vertexIndex),
+              worldX = planeX * worldWidth,
+              worldZ = planeY * worldHeight;
+            trianglePoints.push({
+              u: (worldX - center.x) * axisCos + (worldZ - center.z) * axisSin,
+              v: -(worldX - center.x) * axisSin + (worldZ - center.z) * axisCos,
+            });
+          }
+          sourceTriangles.push(trianglePoints);
+        }
+        traceRoadGeometry.dispose();
+      }
+      // As faixas são recortadas pelos triângulos da própria malha selecionável
+      // quando ela existe. O traçado vetorial só é fallback, nunca uma camada
+      // que possa ultrapassar a seleção azul do asfalto.
+      for (const trianglePoints of sourceTriangles) {
         const triangleMinU = Math.min(...trianglePoints.map((point) => point.u)),
           triangleMaxU = Math.max(...trianglePoints.map((point) => point.u)),
           firstBand = Math.max(0, Math.floor((triangleMinU - minU) / halfLot)),
@@ -13906,26 +14549,43 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
           }
         }
       }
-      roadGeometry.dispose();
       filledSliceCount += roadSlices.size;
 
       // Os cortes ficam exatamente a meia frente do início da via; assim
       // cada faixa cheia tem 5 m (e não uma meia-faixa inicial de 2,5 m).
       for (let targetU = minU + halfLot; targetU < maxU; targetU += halfLot) {
         const intersections = [];
-        for (let index = 0; index < local.length; index++) {
-          const a = local[index],
-            b = local[(index + 1) % local.length],
-            delta = b.u - a.u;
-          if (Math.abs(delta) < 0.000001) {
-            if (Math.abs(targetU - a.u) < 0.0005) {
-              intersections.push(a.v, b.v);
+        if (nativeLocalTriangles.length) {
+          nativeLocalTriangles.forEach((triangle) => {
+            for (let index = 0; index < triangle.length; index++) {
+              const a = triangle[index],
+                b = triangle[(index + 1) % triangle.length],
+                delta = b.u - a.u;
+              if (Math.abs(delta) < 0.000001) {
+                if (Math.abs(targetU - a.u) < 0.0005)
+                  intersections.push(a.v, b.v);
+                continue;
+              }
+              const ratio = (targetU - a.u) / delta;
+              if (ratio >= -0.000001 && ratio <= 1.000001)
+                intersections.push(a.v + (b.v - a.v) * ratio);
             }
-            continue;
+          });
+        } else {
+          for (let index = 0; index < local.length; index++) {
+            const a = local[index],
+              b = local[(index + 1) % local.length],
+              delta = b.u - a.u;
+            if (Math.abs(delta) < 0.000001) {
+              if (Math.abs(targetU - a.u) < 0.0005) {
+                intersections.push(a.v, b.v);
+              }
+              continue;
+            }
+            const ratio = (targetU - a.u) / delta;
+            if (ratio >= -0.000001 && ratio <= 1.000001)
+              intersections.push(a.v + (b.v - a.v) * ratio);
           }
-          const ratio = (targetU - a.u) / delta;
-          if (ratio >= -0.000001 && ratio <= 1.000001)
-            intersections.push(a.v + (b.v - a.v) * ratio);
         }
         intersections.sort((a, b) => a - b);
         for (let index = 0; index + 1 < intersections.length; index += 2) {
@@ -14019,9 +14679,15 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
     }
     group.userData = {
       publicRoadSurface: true,
-      publicRoadSurfaceMode: "asfalto integral opaco por contorno da imagem",
+      publicRoadSurfaceMode: "asfalto integral opaco por polígonos internos dos meio-fios",
       publicRoadCenterlineIgnored: true,
       publicRoadTraceCount: roadTrace.roads.length,
+      publicRoadUvMask: false,
+      publicRoadVegetationFociIgnored: true,
+      publicRoadStraightRuns: "segmentos longos contínuos, sem arestas quebradas",
+      publicRoadCornerGuides: Boolean(bezierGuides),
+      publicRoadGeometrySource: geometrySource,
+      publicRoadSelectedContourParity: Boolean(nativeRoadGeometry),
       publicRoadSliceCount: filledSliceCount,
       publicRoadFaceTriangleCount: filledFaceTriangleCount,
       publicRoadSliceDividerCount: dividerCount,
@@ -14032,9 +14698,9 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
     stage.add(group);
     this._adminStandaloneRoadSurfaceGroupV1 = group;
     this.dataset.modelOperationalGeometry =
-      "ready · asfalto integral georreferenciado · centros ignorados";
+      "ready · polígonos vetoriais de asfalto georreferenciados · focos ignorados";
     this.dataset.publicRoadSurfaceMode =
-      "asfalto integral por contorno da imagem · centros ignorados";
+      "asfalto integral por contornos internos dos meio-fios · focos de vegetação ignorados";
     this.dataset.publicRoadCoverage = "contornos completos das ruas preenchidos";
     this.dataset.publicRoadSliceSurface =
       "faces contíguas · juntas discretas · asfalto sem vãos";
@@ -14044,6 +14710,18 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
     this.dataset.publicRoadHalfLotSlice = halfLot.toFixed(2);
     this.dataset.publicRoadCenterlinePolicy =
       "centros ignorados · fatias calculadas no perímetro da rua";
+    this.dataset.publicRoadUvPolicy =
+      "polígonos vetoriais internos aos meio-fios · pequenos vazios vegetais ignorados · lazer preservado";
+    this.dataset.publicRoadGeometrySource = geometrySource;
+    this.dataset.publicRoadSelectedContourParity = nativeRoadGeometry
+      ? "same-native-mesh-as-selected-road"
+      : "vector-curb-fallback";
+    this.dataset.publicRoadStraightPolicy =
+      "trechos longos contínuos e retos · nenhuma cobertura UV rasterizada";
+    this.dataset.publicRoadBezierPolicy =
+      bezierGuides
+        ? "tracejado Bézier somente nas esquinas · limite lateral da área social preservado"
+        : "sem guias Bézier";
     return group;
   }
 
@@ -14120,8 +14798,28 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
       position = geometry?.getAttribute?.("position");
     if (!geometry || !position) return null;
     if (!geometry.boundingBox) geometry.computeBoundingBox();
-    const bounds = geometry.boundingBox;
-    if (!bounds) return null;
+    const rawBounds = geometry.boundingBox;
+    if (!rawBounds) return null;
+    // O GLB legado usa XZ/Y-up; o modelo georreferenciado sobre a fotografia
+    // usa XY/Z-up. Normalizamos ambos para XZ/Y-up durante a rasterização e
+    // reconvertemos apenas ao emitir os vértices/linhas da cena.
+    const groundInXY =
+      rawBounds.max.z - rawBounds.min.z <
+      Math.max(0.01, Math.min(rawBounds.max.x - rawBounds.min.x, rawBounds.max.y - rawBounds.min.y) * 0.12);
+    const bounds = groundInXY
+      ? {
+          min: { x: rawBounds.min.x, y: rawBounds.min.z, z: rawBounds.min.y },
+          max: { x: rawBounds.max.x, y: rawBounds.max.z, z: rawBounds.max.y },
+        }
+      : rawBounds;
+    const readSurfacePoint = (vertexIndex) => {
+      const px = position.getX(vertexIndex),
+        py = position.getY(vertexIndex),
+        pz = position.getZ(vertexIndex);
+      return groundInXY
+        ? { x: px, y: pz, z: py }
+        : { x: px, y: py, z: pz };
+    };
     const index = geometry.getIndex?.(),
       indexedCount = index?.count || position.count;
     const readIndex = (offset) => (index?.getX ? index.getX(offset) : offset);
@@ -14130,15 +14828,18 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
       const ia = readIndex(offset),
         ib = readIndex(offset + 1),
         ic = readIndex(offset + 2);
-      const ax = position.getX(ia),
-        ay = position.getY(ia),
-        az = position.getZ(ia);
-      const bx = position.getX(ib),
-        by = position.getY(ib),
-        bz = position.getZ(ib);
-      const cx = position.getX(ic),
-        cy = position.getY(ic),
-        cz = position.getZ(ic);
+      const pointA = readSurfacePoint(ia),
+        pointB = readSurfacePoint(ib),
+        pointC = readSurfacePoint(ic),
+        ax = pointA.x,
+        ay = pointA.y,
+        az = pointA.z,
+        bx = pointB.x,
+        by = pointB.y,
+        bz = pointB.z,
+        cx = pointC.x,
+        cy = pointC.y,
+        cz = pointC.z;
       const abx = bx - ax,
         aby = by - ay,
         abz = bz - az,
@@ -14149,12 +14850,14 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
         ny = abz * acx - abx * acz,
         nz = abx * acy - aby * acx,
         normalLength = Math.hypot(nx, ny, nz);
-      // A rua canônica é uma malha muito triangulada. Só a face horizontal
-      // participa da rasterização; laterais e paredes não podem gerar pavers.
+      // A rua canônica é uma malha muito triangulada. Só as faces do plano
+      // viário participam do asfalto; eixos/centros de rua não são usados
+      // como linha-guia nem como fonte de cobertura. Abs aceita as duas
+      // orientações de winding presentes nos contornos georreferenciados.
       if (
         !Number.isFinite(normalLength) ||
         normalLength < 0.00001 ||
-        Math.abs(ny) / normalLength < 0.72
+        Math.abs(ny) / normalLength < 0.35
       )
         continue;
       triangles.push({
@@ -14392,28 +15095,30 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
     // Mais seções por via, com dimensão menor e controlada. A largura útil de
     // cada seção é ampliada pela quantidade de células contíguas, enquanto o
     // comprimento permanece compacto para não invadir os lotes nas pontas.
-    let tileSize = Math.max(
-        1.15,
-        Math.min(1.85, Math.sqrt(roadArea / 18000) * 0.55),
-      ),
+    let tileSize = ROAD_HALF_LOT_SLICE_WORLD_V1,
       cells = [];
     for (let attempt = 0; attempt < 5; attempt++) {
       cells = rasterize(tileSize);
       if (cells.length && cells.length <= 16000) break;
       tileSize *= 1.16;
     }
-    if (!cells.length) return null;
+    // A cobertura integral não depende da rasterização das fatias. Se uma
+    // rua estreita ou curva não gerar células suficientes, ainda assim sua
+    // malha superior completa deve ser desenhada e receber as divisões que
+    // forem possíveis.
 
     const paverHeight = Math.max(
       0.055,
       Math.min(0.14, (bounds.max.y - bounds.min.y) * 0.18 || 0.08),
     );
     const paverMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
+      // Asfalto integral: a geometria abaixo é formada por todas as faces
+      // superiores da rua, não por um eixo central nem por um retângulo.
+      color: 0x30363a,
       side: THREE.DoubleSide,
       transparent: false,
-      // A superfície é formada pelos próprios triângulos horizontais da rua.
-      // Desenhar sem teste de profundidade faz o asfalto social não vencer
+      // A superfície é formada pelos próprios triângulos superiores da rua.
+      // Desenhar sem teste de profundidade faz o asfalto integral vencer
       // quando o piso verde do GLB ficou alguns milímetros acima da via.
       depthTest: false,
       depthWrite: false,
@@ -14442,7 +15147,8 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
         [triangle.bx, triangle.bz],
         [triangle.cx, triangle.cz],
       ].forEach(([x, z]) => {
-        surfacePositions.push(x, surfaceElevation, z);
+        if (groundInXY) surfacePositions.push(x, z, surfaceElevation);
+        else surfacePositions.push(x, surfaceElevation, z);
         const along =
           (x - roadCenterX) * roadAxisCos + (z - roadCenterZ) * roadAxisSin;
         const across =
@@ -14486,18 +15192,20 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
     });
     pavers.frustumCulled = false;
     pavers.renderOrder = 30;
-    pavers.name = `${source.name || "Rua"}__paralelepipedos-recortados`;
+    pavers.name = `${source.name || "Rua"}__asfalto-integral-com-fatias`;
     pavers.userData = {
       streetSegment: true,
       streetPaver: true,
-      streetPaverSurface: "exact-road-top-triangles",
+      streetPaverSurface: "integral-asphalt-all-upward-road-faces",
+      streetPaverIgnoresCenters: true,
+      streetGroundPlane: groundInXY ? "xy/z-up" : "xz/y-up",
       streetHorizontalSlices: true,
       streetPaverCount: cells.length,
       streetSourceOrdinal: streetNo,
       streetSourceName: source.name || "Rua de asfalto",
       streetAlignment: "eixo local da via + 45deg de assentamento",
       streetPaverLayout:
-        "fatias horizontais contínuas · seção transversal da rua",
+        "asfalto integral · fatias horizontais contínuas · seção transversal da rua",
       streetAngle: globalRoadAngle,
       partKind: "streets",
       partId: `street-${String(streetNo).padStart(2, "0")}-paver-grid`,
@@ -14508,7 +15216,10 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
       publicRoadSurface: true,
       publicRoadOcclusionPolicy: "exact-road-triangles-over-social-floor",
       defaultMaterial: paverMaterial,
-      paverDefaultColor: 0xffffff,
+      paverDefaultColor: 0x30363a,
+      publicRoadBase: "asfalto integral da malha viária",
+      publicRoadCenterlineIgnored: true,
+      publicRoadGroundPlane: groundInXY ? "xy/z-up" : "xz/y-up",
       cobbleWorldCycle,
     };
 
@@ -14535,7 +15246,70 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
       source.parent.add(overlay);
     } else this.sceneStage?.add(overlay);
     overlay.add(pavers);
+    // A rua permanece preenchida pela superfície triangulada integral acima.
+    // As linhas abaixo materializam a paginação que antes existia somente nos
+    // metadados: cada linha cruza a via perpendicularmente ao eixo local e as
+    // seções consecutivas têm espessura longitudinal de meia frente de lote.
+    const dividerCells = cells.filter(
+      (cell) =>
+        cell.horizontalSlice &&
+        Number.isFinite(cell.width) &&
+        cell.width > tileSize * 0.5,
+    );
     this._streetPaverMeshes = this._streetPaverMeshes || [];
+    if (dividerCells.length) {
+      const dividerGeometry = new THREE.BoxGeometry(1, 1, 1);
+      const dividerMaterial = new THREE.MeshBasicMaterial({
+        color: 0x17324d,
+        transparent: true,
+        opacity: 0.82,
+        depthTest: false,
+        depthWrite: false,
+      });
+      const dividers = new THREE.InstancedMesh(
+        dividerGeometry,
+        dividerMaterial,
+        dividerCells.length,
+      );
+      const dividerMatrix = new THREE.Matrix4(),
+        dividerPosition = new THREE.Vector3(),
+        dividerQuaternion = new THREE.Quaternion(),
+        dividerScale = new THREE.Vector3(),
+        dividerUp = groundInXY
+          ? new THREE.Vector3(0, 0, 1)
+          : new THREE.Vector3(0, 1, 0);
+      dividerCells.forEach((cell, index) => {
+        // O BoxGeometry cresce em X; +90° coloca a barra na seção transversal
+        // da rua, enquanto cell.angle mantém o alinhamento local em curvas.
+        if (groundInXY)
+          dividerPosition.set(cell.x, cell.z, surfaceElevation + 0.012);
+        else dividerPosition.set(cell.x, surfaceElevation + 0.012, cell.z);
+        dividerQuaternion.setFromAxisAngle(
+          dividerUp,
+          -(cell.angle || globalRoadAngle) + Math.PI / 2,
+        );
+        dividerScale.set(Math.max(0.4, cell.width * 0.96), 0.018, 0.1);
+        dividerMatrix.compose(
+          dividerPosition,
+          dividerQuaternion,
+          dividerScale,
+        );
+        dividers.setMatrixAt(index, dividerMatrix);
+      });
+      dividers.instanceMatrix.needsUpdate = true;
+      dividers.frustumCulled = false;
+      dividers.renderOrder = 31;
+      dividers.name = `${source.name || "Rua"}__divisoes-meio-lote`;
+      dividers.userData = {
+        streetSliceDividers: true,
+        streetSliceThickness: ROAD_HALF_LOT_SLICE_WORLD_V1,
+        streetSliceOrientation: "transversal ao eixo local da rua",
+        streetSourceOrdinal: streetNo,
+        publicRoadSurface: true,
+      };
+      overlay.add(dividers);
+      this._streetPaverMeshes.push(dividers);
+    }
     this._streetPaverMeshes.push(pavers);
     // A superfície original pode trazer paredes/tons escuros e fica por baixo
     // das fatias. Ocultá-la evita que as juntas revelem a malha preta, sem
@@ -14544,7 +15318,10 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
     source.userData.publicRoadBaseHidden = true;
     source.visible = false;
     source.raycast = () => {};
-    this.dataset.publicStreetPaverRaster = `${cells.length} fatias horizontais · malha nativa · seção ${tileSize.toFixed(2)}`;
+    this.dataset.publicStreetPaverRaster = `${cells.length} fatias horizontais · malha nativa integral · meia frente de lote ${tileSize.toFixed(2)}`;
+    this.dataset.publicRoadCoverage = "todas as faces superiores das ruas preenchidas";
+    this.dataset.publicRoadSurfaceMode = "asfalto integral · faces superiores completas · centros ignorados";
+    this.dataset.publicRoadHalfLotSlice = tileSize.toFixed(2);
     this.dataset.publicRoadAlignment = `PCA local · eixo ${globalRoadAngle.toFixed(3)} rad · pedra +45deg`;
     return pavers;
   }
@@ -14566,6 +15343,16 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
         source.userData.publicRoadBaseHidden = false;
         source.userData.publicRoadCompositeExcluded = false;
         source.visible = true;
+        if (/centro|center|eixo.?rua|street.?center/i.test(String(source.name || ""))) {
+          // O eixo/centro é apenas referência técnica. A cobertura deve vir
+          // da área superior integral da rua, sem transformar o centro em
+          // uma faixa independente.
+          source.userData.publicRoadCenterlineIgnored = true;
+          source.userData.publicRoadBaseHidden = true;
+          source.visible = false;
+          source.raycast = () => {};
+          return;
+        }
         if (/meio.?fio|guia|curb/i.test(String(source.name || ""))) {
           // As linhas Meio_fio_* do GLB são fontes técnicas castanhas, não a
           // apresentação do meio-fio. Se permanecerem visíveis junto do
@@ -14601,6 +15388,8 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
       this.dataset.publicCurbRows = String(curbRowCount);
       this.dataset.publicRoadEdgeTreatment =
         "blocos recortados na malha real + meios-fios nativos";
+      this.dataset.publicRoadCenterlinePolicy =
+        "centros ignorados · cobertura pela área integral da rua";
       return paverSegments.length
         ? paverSegments
         : nativeSources.filter(
@@ -17809,6 +18598,218 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
     };
   }
 
+  clearAdminAerialZoomTilesV1() {
+    if (this._adminAerialTileFadeFrameV2) {
+      cancelAnimationFrame(this._adminAerialTileFadeFrameV2);
+      this._adminAerialTileFadeFrameV2 = 0;
+    }
+    this._adminAerialTileFadeV2 = { opacity: 0, target: 0 };
+    const entries = this._adminAerialZoomTilesV1;
+    if (!entries) return;
+    entries.forEach((entry) => {
+      entry.cancelled = true;
+      entry.mesh?.removeFromParent?.();
+      entry.mesh?.geometry?.dispose?.();
+      entry.mesh?.material?.dispose?.();
+      entry.texture?.dispose?.();
+    });
+    entries.clear();
+  }
+
+  setAdminAerialTileOpacityV2(target, visibleKeys, clearAfter = false) {
+    const state = (this._adminAerialTileFadeV2 ??= { opacity: 0, target: 0 });
+    state.visibleKeys = visibleKeys;
+    const renderer = this._adminStandaloneRendererV5370;
+    const camera = this._adminStandaloneCameraV5370;
+    const scene = this._adminStandaloneSceneV5370;
+    const paint = () => {
+      for (const [key, entry] of this._adminAerialZoomTilesV1 || []) {
+        if (!entry.mesh) continue;
+        entry.mesh.visible = state.opacity > 0.001 && state.visibleKeys.has(key);
+        entry.mesh.material.opacity = state.opacity;
+      }
+      renderer?.render?.(scene, camera);
+    };
+    if (state.target === target && !this._adminAerialTileFadeFrameV2) {
+      paint();
+      if (clearAfter && state.opacity <= 0.001) this.clearAdminAerialZoomTilesV1();
+      return;
+    }
+    if (state.target === target) {
+      paint();
+      return;
+    }
+    if (this._adminAerialTileFadeFrameV2)
+      cancelAnimationFrame(this._adminAerialTileFadeFrameV2);
+    const from = state.opacity;
+    const started = performance.now();
+    state.target = target;
+    const tick = (now) => {
+      const progress = Math.min(1, Math.max(0, (now - started) / 320));
+      const eased = progress * progress * (3 - 2 * progress);
+      state.opacity = from + (target - from) * eased;
+      paint();
+      if (progress < 1) {
+        this._adminAerialTileFadeFrameV2 = requestAnimationFrame(tick);
+      } else {
+        this._adminAerialTileFadeFrameV2 = 0;
+        if (clearAfter && target === 0) this.clearAdminAerialZoomTilesV1();
+      }
+    };
+    this._adminAerialTileFadeFrameV2 = requestAnimationFrame(tick);
+  }
+
+  updateAdminAerialZoomTilesV1() {
+    const THREE = this.THREE,
+      plane = this._adminStandaloneAerialBasePlaneV5380,
+      camera = this._adminStandaloneCameraV5370,
+      renderer = this._adminStandaloneRendererV5370,
+      rect = this.querySelector(".three-overlay")?.getBoundingClientRect?.();
+    if (!THREE || !plane || !camera || !renderer || !rect?.width || !rect?.height)
+      return;
+
+    const entries = (this._adminAerialZoomTilesV1 ??= new Map());
+    const { cols, rows } = ADMIN_AERIAL_ZOOM_TILE_GRID_V1;
+    const { width, height } = ADMIN_AERIAL_ZOOM_TILE_PIXELS_V1;
+    const fitZoom = (this._adminAerialFitZoomV2 ??= Math.max(0.001, Number(camera.zoom) || 1));
+    const zoomRatio = (Number(camera.zoom) || fitZoom) / fitZoom;
+    this.dataset.adminAerialZoomRatio = zoomRatio.toFixed(2);
+    this.dataset.adminAerialZoomTileThreshold = "pré-carregar 130% · detalhe 150%";
+    const maxTextureSize = renderer.capabilities?.maxTextureSize || 0;
+    if (maxTextureSize < Math.max(Math.ceil(width / cols), Math.ceil(height / rows))) {
+      this.clearAdminAerialZoomTilesV1();
+      this.dataset.adminAerialZoomTiles = "unsupported-gpu";
+      this.dataset.adminAerialZoomTileStage = "preview";
+      return;
+    }
+    if (zoomRatio < ADMIN_AERIAL_TILE_PREFETCH_RATIO_V2) {
+      const visibleKeys = new Set(this._adminAerialZoomTilesV1?.keys?.() || []);
+      this.setAdminAerialTileOpacityV2(0, visibleKeys, true);
+      this.dataset.adminAerialZoomTileStage = "preview";
+      this.dataset.adminAerialZoomTileVisible = "0";
+      this.dataset.adminAerialZoomTiles = "base-4k";
+      return;
+    }
+
+    plane.updateWorldMatrix(true, false);
+    camera.updateMatrixWorld(true);
+    const project = (u, v) => {
+      const point = new THREE.Vector3(u - 0.5, 0.5 - v, 0)
+        .applyMatrix4(plane.matrixWorld)
+        .project(camera);
+      return {
+        x: (point.x * 0.5 + 0.5) * rect.width,
+        y: (-point.y * 0.5 + 0.5) * rect.height,
+      };
+    };
+    const desired = [];
+    const visibleKeys = new Set();
+    const preloadMarginX = rect.width * 0.25;
+    const preloadMarginY = rect.height * 0.25;
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const left = Math.floor(width * col / (cols * 5)) * 5,
+          top = Math.floor(height * row / (rows * 5)) * 5,
+          right = Math.floor(width * (col + 1) / (cols * 5)) * 5,
+          bottom = Math.floor(height * (row + 1) / (rows * 5)) * 5,
+          u0 = left / width,
+          v0 = top / height,
+          u1 = right / width,
+          v1 = bottom / height,
+          points = [project(u0, v0), project(u1, v0), project(u1, v1), project(u0, v1)],
+          xs = points.map((point) => point.x),
+          ys = points.map((point) => point.y),
+          x0 = Math.min(...xs),
+          x1 = Math.max(...xs),
+          y0 = Math.min(...ys),
+          y1 = Math.max(...ys);
+        // Keep a ring of nearby tiles ready before they enter the viewport.
+        if (
+          x1 < -preloadMarginX || x0 > rect.width + preloadMarginX ||
+          y1 < -preloadMarginY || y0 > rect.height + preloadMarginY
+        ) continue;
+        const key = `${row}-${col}`;
+        if (x1 >= 0 && x0 <= rect.width && y1 >= 0 && y0 <= rect.height)
+          visibleKeys.add(key);
+        desired.push({
+          key, row, col, u0, v0, u1, v1,
+          distance: Math.hypot((x0 + x1) / 2 - rect.width / 2, (y0 + y1) / 2 - rect.height / 2),
+        });
+      }
+    }
+    const desiredKeys = new Set(desired.map((tile) => tile.key));
+    for (const [key, entry] of entries) {
+      if (desiredKeys.has(key)) continue;
+      entry.cancelled = true;
+      entry.mesh?.removeFromParent?.();
+      entry.mesh?.geometry?.dispose?.();
+      entry.mesh?.material?.dispose?.();
+      entry.texture?.dispose?.();
+      entries.delete(key);
+    }
+    desired.sort((a, b) => a.distance - b.distance);
+    let loading = [...entries.values()].filter((entry) => entry.state === "loading").length;
+    for (const tile of desired) {
+      if (entries.has(tile.key) || loading >= 4) continue;
+      loading++;
+      const entry = { state: "loading", cancelled: false };
+      entries.set(tile.key, entry);
+      const image = new Image();
+      image.decoding = "async";
+      image.onload = () => {
+        if (entry.cancelled || !this.isConnected) return;
+        const texture = new THREE.Texture(image);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.generateMipmaps = false;
+        texture.minFilter = THREE.LinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        texture.anisotropy = Math.max(1, renderer.capabilities?.getMaxAnisotropy?.() || 1);
+        texture.needsUpdate = true;
+        const mesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(tile.u1 - tile.u0, tile.v1 - tile.v0),
+          new THREE.MeshBasicMaterial({
+            map: texture, side: THREE.DoubleSide, depthTest: true,
+            depthWrite: false, toneMapped: false, transparent: true, opacity: 0,
+            polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
+          }),
+        );
+        mesh.name = `AdminAerialZoomTile-r${tile.row + 1}-c${tile.col + 1}`;
+        mesh.position.set((tile.u0 + tile.u1) / 2 - 0.5, 0.5 - (tile.v0 + tile.v1) / 2, 0.01);
+        mesh.renderOrder = -29;
+        mesh.raycast = () => {};
+        mesh.visible = false;
+        plane.add(mesh);
+        entry.state = "ready";
+        entry.texture = texture;
+        entry.mesh = mesh;
+        this.dataset.adminAerialZoomTiles = `${[...entries.values()].filter((item) => item.state === "ready").length}/15 ready`;
+        this.updateAdminAerialZoomTilesV1();
+        renderer.render(this._adminStandaloneSceneV5370, camera);
+      };
+      image.onerror = () => {
+        if (entries.get(tile.key) === entry) entries.delete(tile.key);
+        this.dataset.adminAerialZoomTiles = "load-error";
+      };
+      image.src = runtimeRouteV1(
+        `${ADMIN_AERIAL_ZOOM_TILE_ROOT_V1}/r${tile.row + 1}-c${tile.col + 1}.webp`,
+        "v=2",
+      );
+    }
+    this.dataset.adminAerialZoomTileGrid = "5x3";
+    this.dataset.adminAerialZoomTileSource = ADMIN_AERIAL_ZOOM_TILE_ROOT_V1;
+    const allVisibleReady = visibleKeys.size > 0 &&
+      [...visibleKeys].every((key) => entries.get(key)?.state === "ready");
+    const showDetail = zoomRatio >= ADMIN_AERIAL_TILE_SWAP_RATIO_V2 && allVisibleReady;
+    this.setAdminAerialTileOpacityV2(showDetail ? 1 : 0, visibleKeys);
+    this.dataset.adminAerialZoomTileStage = showDetail
+      ? "detail"
+      : zoomRatio >= ADMIN_AERIAL_TILE_SWAP_RATIO_V2 ? "waiting-detail" : "preloading";
+    this.dataset.adminAerialZoomTileVisible = String(visibleKeys.size);
+    this.dataset.adminAerialZoomTiles = desired.length
+      ? `${[...entries.values()].filter((entry) => entry.state === "ready").length}/15 ready`
+      : "base-4k";
+  }
+
   ensureAdminStandaloneAerialCoverV9({
     overscan = 1.025,
     clampPan = true,
@@ -17842,7 +18843,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
     if (requiredScale > 1.0005) {
       camera.zoom = Math.max(
         MIN_SCENE_ZOOM,
-        Math.min(10, (Number(camera.zoom) || 1) * requiredScale),
+        Math.min(MAX_SCENE_ZOOM, (Number(camera.zoom) || 1) * requiredScale),
       );
       camera.updateProjectionMatrix();
       bounds = this.adminStandaloneAerialScreenBoundsV9() || bounds;
@@ -17933,6 +18934,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
       bounds.top,
     )} → ${Math.round(bounds.right)},${Math.round(bounds.bottom)}`;
 
+    this.updateAdminAerialZoomTilesV1();
     if (render) renderer.render(scene, camera);
     return {
       zoom: this.sceneManualZoom,
@@ -18194,7 +19196,7 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
 
         liveCamera.zoom = Math.max(
           MIN_SCENE_ZOOM,
-          Math.min(4.5, Number(zoom) || zoomFrom),
+          Math.min(MAX_SCENE_ZOOM, Number(zoom) || zoomFrom),
         );
         liveCamera.updateProjectionMatrix();
 
@@ -18383,13 +19385,13 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
   setAdminStandaloneZoomV5370(value, animate = true) {
     const camera = this._adminStandaloneCameraV5370;
     if (!camera) return;
-    const target = Math.max(MIN_SCENE_ZOOM, Math.min(4.5, Number(value) || 1));
+    const target = Math.max(MIN_SCENE_ZOOM, Math.min(MAX_SCENE_ZOOM, Number(value) || 1));
     const from = Math.max(
       MIN_SCENE_ZOOM,
-      Math.min(4.5, Number(camera.zoom) || 1),
+      Math.min(MAX_SCENE_ZOOM, Number(camera.zoom) || 1),
     );
     const apply = (zoom) => {
-      camera.zoom = Math.max(MIN_SCENE_ZOOM, Math.min(4.5, Number(zoom) || 1));
+      camera.zoom = Math.max(MIN_SCENE_ZOOM, Math.min(MAX_SCENE_ZOOM, Number(zoom) || 1));
       camera.updateProjectionMatrix();
       this.ensureAdminStandaloneAerialCoverV9?.({
         clampPan: true,
@@ -19280,7 +20282,10 @@ roughnessFactor=clamp(${rough},0.0,1.0);`,
     interfaceNode.setAttribute("role", "dialog");
     interfaceNode.setAttribute("aria-modal", "true");
     interfaceNode.setAttribute("aria-label", "Interface PDF do mapa");
+    ensureMapPdfLegendStyles();
     interfaceNode.innerHTML = `<header class="map-pdf-interface-toolbar"><div><span>INTERFACE PDF · MAPA CONFIGURADO</span><strong>Mapa operacional</strong><small>${esc(this.dataset.mapPrintViewport)} · ${esc(this.dataset.mapPrintCamera)}</small></div><div><button type="button" class="map-pdf-interface-print" data-map-pdf-print>${ico("printer")} Imprimir PDF</button><button type="button" class="map-pdf-interface-close" data-map-pdf-close aria-label="Fechar interface PDF">${ico("x")} Fechar</button></div></header>`;
+    interfaceNode.querySelector('.map-pdf-interface-toolbar small')?.remove();
+    interfaceNode.querySelector('.map-pdf-interface-toolbar>div:first-child').insertAdjacentHTML('beforeend', renderMapPdfLegends({map:this,state:appStore.get(),labels:stageOverlayLabels,colors:stageOverlayColors}));
     document.body.append(interfaceNode);
     let closed = false;
     const restore = () => {
@@ -19441,6 +20446,403 @@ MapScene.prototype.setTheme = function (view) {
   }
   return result;
 };
+
+// A carteira do corretor conserva anexos próprios e imprime apenas a
+// competência selecionada; anexos de cliente/contrato permanecem no negócio.
+const brokerPeriodKeyV2 = (value) => {
+  const raw = String(value || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 7);
+  const br = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  return br ? `${br[3]}-${br[2].padStart(2, "0")}` : "";
+};
+const brokerProfileAttachmentKeyV2 = "belavista.broker-profile-attachments.v2";
+const brokerProfileAttachmentsV2 = () => {
+  try {
+    const data = JSON.parse(localStorage.getItem(brokerProfileAttachmentKeyV2) || "{}");
+    return data && typeof data === "object" ? data : {};
+  } catch { return {}; }
+};
+const installBrokerProfileV2 = () => {
+ViewLayer.prototype.commissionProfile = function (profile) {
+  const state = appStore.get();
+  const all = brokerProfileRowsV9(profile, state);
+  const latest = all.map((row) => brokerPeriodKeyV2(row.date)).filter(Boolean).sort().at(-1) || new Date().toISOString().slice(0, 7);
+  const mode = state.brokerPrintMode === "monthly" ? "monthly" : "annual";
+  const month = /^\d{4}-\d{2}$/.test(state.brokerPrintMonth || "") ? state.brokerPrintMonth : latest;
+  const year = /^\d{4}$/.test(state.brokerPrintYear || "") ? state.brokerPrintYear : latest.slice(0, 4);
+  const rows = all.filter((row) => {
+    const key = brokerPeriodKeyV2(row.date);
+    return key && (mode === "monthly" ? key === month : key.startsWith(year));
+  });
+  const sum = (key) => rows.reduce((total, row) => total + Number(row[key] || 0), 0);
+  const attachments = brokerProfileAttachmentsV2()[profile.id] || [];
+  const periodLabel = mode === "monthly" ? new Date(`${month}-01T12:00:00`).toLocaleDateString("pt-BR", {month:"long",year:"numeric"}) : `Ano ${year}`;
+  return `<section class="commission-profile-page broker-profile-dedicated broker-profile-v2" data-broker-id="${esc(profile.id)}"><div class="broker-profile-toolbar no-print"><button type="button" class="commission-back" data-commission-back>${ico("arrow-left")} Corretores</button><div class="broker-profile-toolbar-actions"><button type="button" data-broker-apply-rules>${ico("refresh-cw")} Aplicar regras</button><button type="button" data-broker-print-v2>${ico("printer")} Imprimir / PDF</button></div></div><header class="commission-profile-header broker-profile-header-v2"><div class="commission-avatar commission-avatar-large" style="background:${esc(profile.avatar)}">${esc(profile.initials)}</div><div><span class="activity-kind">CARTEIRA DEDICADA · ${esc(profile.creci)}</span><h1>${esc(profile.name)}</h1><p>${esc(profile.role)}</p><dl class="broker-profile-properties-v2"><div><dt>Telefone</dt><dd>${esc(profile.phone || "Não informado")}</dd></div><div><dt>E-mail</dt><dd>${esc((profile.emails || []).join(", ") || "Não informado")}</dd></div><div><dt>Conversão</dt><dd>${esc(profile.conversion || "—")}</dd></div></dl></div><aside class="broker-profile-attachments-v2"><header><span class="activity-kind">ANEXOS DO PERFIL</span><small>${attachments.length} arquivo(s)</small></header><ul>${attachments.map((item, index) => `<li><a href="${esc(item.dataUrl)}" download="${esc(item.name)}">${ico("paperclip")} ${esc(item.name)}</a><button type="button" data-broker-attachment-remove="${index}" aria-label="Remover ${esc(item.name)}">×</button></li>`).join("") || '<li class="empty-data">Nenhum anexo de perfil.</li>'}</ul><label class="no-print">${ico("plus")} Adicionar anexo<input type="file" data-broker-attachment multiple accept="application/pdf,image/jpeg,image/png,image/webp"></label><small class="no-print">PDF ou imagem · até 2 MB por arquivo</small></aside></header><div class="broker-print-period-v2 no-print"><fieldset><legend>Competência da comissão</legend><label><input type="radio" name="brokerPrintMode" value="monthly" ${mode === "monthly" ? "checked" : ""}> Mensal</label><label><input type="radio" name="brokerPrintMode" value="annual" ${mode === "annual" ? "checked" : ""}> Anual</label></fieldset><label>Mês<input type="month" data-broker-print-month value="${esc(month)}" ${mode === "annual" ? "disabled" : ""}></label><label>Ano<input type="number" min="2000" max="2100" data-broker-print-year value="${esc(year)}" ${mode === "monthly" ? "disabled" : ""}></label></div><div class="broker-print-heading-v2"><span>RELATÓRIO DE COMISSÕES · ${esc(periodLabel)}</span><small>${rows.length} lançamento(s) com data na competência</small></div><div class="commission-profile-summary"><div><small>Valor da carteira</small><b>${formatBRL(sum("numberValue"))}</b></div><div><small>Comissão</small><b>${formatBRL(sum("numberCommission"))}</b></div><div><small>Repasse</small><b>${formatBRL(sum("warley"))} / ${formatBRL(sum("partner"))}</b><span>Warley / contraparte</span></div></div><section class="commission-deal-section broker-profile-ledger"><header><div><span class="activity-kind">LANÇAMENTOS DA COMPETÊNCIA</span><h2>Negócios e comissões</h2></div><small>Registros sem data ficam fora dos totais mensal e anual.</small></header><div class="control-table-wrap"><table class="commission-ledger-table"><thead><tr><th>Data / contrato</th><th>Lote / cliente</th><th>Razão</th><th>Venda</th><th>Comissão</th><th>Warley</th><th>Contraparte</th><th>Situação</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${esc(row.date)}<small>${esc(row.id)}</small></td><td>${esc(row.lot)}<small>${esc(row.client)}</small></td><td>${esc(row.reason.label)}</td><td>${formatBRL(row.numberValue)}</td><td>${formatBRL(row.numberCommission)}</td><td>${formatBRL(row.warley)}</td><td>${formatBRL(row.partner)}</td><td>${esc(row.status || row.stage || "—")}</td></tr>`).join("") || '<tr><td colspan="8">Nenhuma comissão nesta competência.</td></tr>'}</tbody><tfoot><tr><th colspan="3">TOTAL · ${esc(periodLabel)}</th><th>${formatBRL(sum("numberValue"))}</th><th>${formatBRL(sum("numberCommission"))}</th><th>${formatBRL(sum("warley"))}</th><th>${formatBRL(sum("partner"))}</th><th>${rows.length} negócio(s)</th></tr></tfoot></table></div></section><section class="broker-profile-deals no-print"><h2>Negociações do corretor</h2><div class="commission-deal-grid">${all.map((row) => `<button type="button" class="commission-deal-card" data-commission-contract="${esc(row.id)}"><b>${esc(row.lot)}</b><span>${esc(row.client)}</span><small>${esc(row.date || "Sem data")}</small></button>`).join("")}</div></section></section>`;
+};
+const bindBeforeBrokerProfileV2 = ViewLayer.prototype.bind;
+ViewLayer.prototype.bind = function (...args) {
+  const result = bindBeforeBrokerProfileV2.apply(this, args);
+  const page = this.querySelector(".broker-profile-v2");
+  if (!page || page.dataset.brokerV2Bound) return result;
+  page.dataset.brokerV2Bound = "1";
+  page.querySelectorAll('[name="brokerPrintMode"]').forEach((input) => input.addEventListener("change", () => { appStore.set({brokerPrintMode:input.value}); this.render(); }));
+  page.querySelector("[data-broker-print-month]")?.addEventListener("change", (event) => { appStore.set({brokerPrintMonth:event.target.value}); this.render(); });
+  page.querySelector("[data-broker-print-year]")?.addEventListener("change", (event) => { appStore.set({brokerPrintYear:event.target.value}); this.render(); });
+  page.querySelector("[data-broker-print-v2]")?.addEventListener("click", () => window.print());
+  page.querySelector("[data-broker-attachment]")?.addEventListener("change", async (event) => {
+    const files = [...(event.target.files || [])];
+    const stored = Object.values(brokerProfileAttachmentsV2()).flat();
+    if (files.some((file) => file.size > 2 * 1024 * 1024 || !/^(application\/pdf|image\/(jpeg|png|webp))$/.test(file.type)) || stored.reduce((sum, item) => sum + Number(item.size || 0), 0) + files.reduce((sum, file) => sum + file.size, 0) > 2 * 1024 * 1024) {
+      notify("Use PDF ou imagem; limite de 2 MB para os anexos de perfil nesta sessão.", "warning");
+      event.target.value = "";
+      return;
+    }
+    const id = page.dataset.brokerId;
+    const added = await Promise.all(files.map(async (file) => ({name:file.name, type:file.type, size:file.size, dataUrl:await commissionFileToDataUrlV1(file)})));
+    const current = brokerProfileAttachmentsV2();
+    try {
+      localStorage.setItem(brokerProfileAttachmentKeyV2, JSON.stringify({...current, [id]:[...(current[id] || []), ...added]}));
+      this.render();
+    } catch { notify("Não foi possível salvar os anexos neste dispositivo. Libere espaço local.", "warning"); }
+  });
+  page.querySelectorAll("[data-broker-attachment-remove]").forEach((button) => button.addEventListener("click", () => {
+    const id = page.dataset.brokerId, index = Number(button.dataset.brokerAttachmentRemove);
+    const current = brokerProfileAttachmentsV2();
+    try {
+      localStorage.setItem(brokerProfileAttachmentKeyV2, JSON.stringify({...current, [id]:(current[id] || []).filter((_, i) => i !== index)}));
+      this.render();
+    } catch { notify("Não foi possível atualizar os anexos neste dispositivo.", "warning"); }
+  }));
+  return result;
+};
+
+// Acervo exclusivo do loteamento. Os binários ficam no IndexedDB deste
+// navegador; o estado administrativo guarda apenas metadados, sem base64.
+const ADMIN_DOCUMENT_CATEGORIES_V1 = [
+  "Projeto e planta", "Memorial descritivo", "Licença e aprovação",
+  "Topografia e levantamento", "Infraestrutura", "Institucional", "Outro",
+];
+const ADMIN_DOCUMENT_COLUMNS_V2 = [
+  ["title", "Título"], ["category", "Categoria"], ["code", "Código / revisão"],
+  ["issuer", "Emissor / órgão"], ["documentDate", "Data do documento"],
+  ["fileName", "Arquivo"], ["description", "Descrição"],
+  ["createdAt", "Adicionado em"], ["updatedAt", "Última alteração"],
+];
+const adminDocumentDateV2 = (value) => value ? new Date(value).toLocaleString("pt-BR") : "—";
+const adminDocumentProtectedV2 = (item) => ["doc-proj-exec", "doc-proj-licenses", "doc-presentation-v3"].includes(item.id) || item.builtIn || item.sourceMaterialId;
+const adminDocumentBlobV1 = (operation, id, blob) => new Promise((resolve, reject) => {
+  if (!globalThis.indexedDB) {
+    reject(new Error("O armazenamento local de arquivos não está disponível neste navegador."));
+    return;
+  }
+  const opening = indexedDB.open("alianca-park-project-documents-v1", 1);
+  opening.onupgradeneeded = () => opening.result.createObjectStore("files", { keyPath: "id" });
+  opening.onerror = () => reject(opening.error || new Error("Falha ao abrir documentos."));
+  opening.onsuccess = () => {
+    const db = opening.result;
+    const transaction = db.transaction("files", operation === "get" ? "readonly" : "readwrite");
+    const store = transaction.objectStore("files");
+    const request = operation === "put"
+      ? store.put({ id, blob })
+      : operation === "delete" ? store.delete(id) : store.get(id);
+    let value;
+    request.onsuccess = () => { value = request.result; };
+    transaction.oncomplete = () => { db.close(); resolve(value?.blob || value || null); };
+    transaction.onerror = () => { db.close(); reject(transaction.error || new Error("Falha ao acessar o arquivo.")); };
+    transaction.onabort = () => { db.close(); reject(transaction.error || new Error("Operação cancelada.")); };
+  };
+});
+
+ViewLayer.prototype.documents = function () {
+  const state = appStore.get();
+  const catalog = Array.isArray(state.documentCatalog) ? state.documentCatalog : [];
+  const query = String(state.documentsQuery || "").trim().toLocaleLowerCase("pt-BR");
+  const category = String(state.documentsCategory || "all");
+  const shown = catalog.filter((item) =>
+    (category === "all" || item.category === category) &&
+    ((state.documentsFileFilter || "all") === "all" || ((state.documentsFileFilter === "attached") === Boolean(item.fileName))) &&
+    (!query || [item.title, item.code, item.category, item.issuer, item.description, item.fileName]
+      .concat(Object.values(item.properties || {})).some((value) => String(value || "").toLocaleLowerCase("pt-BR").includes(query))))
+    .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+  const editing = catalog.find((item) => item.id === state.documentsEditId);
+  const openForm = state.documentsEditId === "new" || Boolean(editing);
+  const customColumns = Array.isArray(state.documentsCustomColumns) ? state.documentsCustomColumns : [];
+  const columns = [...ADMIN_DOCUMENT_COLUMNS_V2, ...customColumns.map((entry) => [entry.id, entry.label])];
+  const hidden = Array.isArray(state.documentsHiddenColumns) ? state.documentsHiddenColumns : [];
+  const visible = columns.filter(([id]) => !hidden.includes(id));
+  const opt = (value, label, selected) => `<option value="${esc(value)}" ${value === selected ? "selected" : ""}>${esc(label)}</option>`;
+  return `<section class="project-documents-page" data-project-documents-page>
+    <header class="project-documents-head"><div><span class="activity-kind">ALIANÇA PARK · ACERVO DO EMPREENDIMENTO</span><h1>Documentos do loteamento</h1><p>Projetos, plantas, memoriais, licenças e arquivos institucionais do loteamento. Anexos de contratos e registros permanecem em suas próprias páginas.</p></div><button type="button" class="toolbar-primary" data-document-new>${ico("file-plus-2")} Adicionar documento</button></header>
+    <div class="project-documents-summary"><div><small>DOCUMENTOS</small><b>${catalog.length}</b></div><div><small>CATEGORIAS</small><b>${new Set(catalog.map((item) => item.category)).size}</b></div><div><small>ARMAZENAMENTO</small><b>Local neste navegador</b></div></div>
+    <div class="project-documents-toolbar"><label>Pesquisar<input type="search" data-document-query value="${esc(state.documentsQuery || "")}" placeholder="Título, código, órgão, arquivo…"></label><label>Categoria<select data-document-category>${opt("all", "Todas as categorias", category)}${ADMIN_DOCUMENT_CATEGORIES_V1.map((item) => opt(item, item, category)).join("")}</select></label><label>Arquivo<select data-document-file-filter>${opt("all", "Todos", state.documentsFileFilter || "all")}${opt("attached", "Com arquivo", state.documentsFileFilter || "all")}${opt("pending", "Pendentes", state.documentsFileFilter || "all")}</select></label><details class="project-document-columns"><summary>Configurar colunas</summary>${columns.map(([id, label]) => `<div><label><input type="checkbox" data-document-column-toggle="${esc(id)}" ${hidden.includes(id) ? "" : "checked"}>${esc(label)}</label>${customColumns.some((entry) => entry.id === id) ? `<button type="button" data-document-column-delete="${esc(id)}" title="Excluir propriedade e seus valores">Excluir</button>` : ""}</div>`).join("")}<form data-document-column-form><input name="label" required maxlength="50" placeholder="Nova propriedade"><button type="submit">Adicionar coluna</button></form></details><span>${shown.length} de ${catalog.length} documentos</span></div>
+    ${openForm ? `<form class="project-document-editor" data-document-form><header><div><span class="activity-kind">${editing ? "EDITAR DOCUMENTO" : "NOVO DOCUMENTO"}</span><h2>${editing ? esc(editing.title) : "Adicionar ao acervo"}</h2></div><button type="button" data-document-cancel>Fechar</button></header><div class="project-document-fields"><label>Título<input name="title" required maxlength="140" value="${esc(editing?.title || "")}" placeholder="Ex.: Planta geral aprovada"></label><label>Categoria<select name="category">${ADMIN_DOCUMENT_CATEGORIES_V1.map((item) => opt(item, item, editing?.category || "Projeto e planta")).join("")}</select></label><label>Código / revisão<input name="code" maxlength="60" value="${esc(editing?.code || "")}" placeholder="Ex.: AP-PL-001 · Rev. B"></label><label>Emissor / órgão<input name="issuer" maxlength="100" value="${esc(editing?.issuer || "")}" placeholder="Projetista, prefeitura, concessionária…"></label><label>Data do documento<input name="documentDate" type="date" value="${esc(editing?.documentDate || "")}"></label><label>Item documental em Materiais<select name="sourceMaterialId">${opt("", "Sem vínculo", editing?.sourceMaterialId || "")}${opt("proj-exec", "Projeto executivo", editing?.sourceMaterialId || "")}${opt("proj-licenses", "Liberações / licenças", editing?.sourceMaterialId || "")}</select></label><label>Arquivo PDF, DWG ou outro formato<input name="file" type="file" accept=".pdf,.dwg,.dxf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp" ${editing?.fileName ? "" : "required"}><small>${editing?.fileName ? `Atual: ${esc(editing.fileName)} · deixe vazio para manter` : "PDF, DWG, DXF, Office ou imagem · até 25 MB"}</small></label><label class="wide">Descrição<textarea name="description" rows="3" maxlength="800" placeholder="Conteúdo, abrangência e observações relevantes">${esc(editing?.description || "")}</textarea></label>${customColumns.map((entry) => `<label>${esc(entry.label)}<input name="property:${esc(entry.id)}" maxlength="500" value="${esc(editing?.properties?.[entry.id] || "")}"></label>`).join("")}</div><footer><span>O arquivo fica somente neste navegador; não é enviado ao servidor.</span><button type="submit" class="toolbar-primary">${ico("save")} Salvar documento</button></footer></form>` : ""}
+    <div class="project-documents-sheet-tools"><span data-document-selection-label>Selecione uma célula · Enter edita · Delete limpa · setas navegam</span><button type="button" data-document-selected-open data-document-open hidden>Abrir arquivo</button><button type="button" data-document-selected-edit data-document-edit hidden>Editar documento</button><button type="button" data-document-selected-clear hidden>Limpar célula</button><button type="button" data-document-selected-row-delete data-document-delete hidden>Excluir linha</button><button type="button" data-document-selected-column-delete hidden>Excluir coluna</button></div>
+    <div class="project-documents-table-wrap"><table class="project-documents-table"><thead><tr><th scope="col" class="project-document-row-number">#</th>${visible.map(([id, label]) => `<th scope="col" data-document-column-header="${esc(id)}" tabindex="0" title="Clique para selecionar a coluna">${esc(label)}</th>`).join("")}</tr></thead><tbody>${shown.map((item, index) => `<tr data-document-row="${esc(item.id)}"><th scope="row" class="project-document-row-number" data-document-row-header="${esc(item.id)}" tabindex="0" title="Clique para selecionar a linha">${index + 1}</th>${visible.map(([id]) => { const raw = id === "createdAt" || id === "updatedAt" ? adminDocumentDateV2(item[id]) : customColumns.some((entry) => entry.id === id) ? item.properties?.[id] : item[id]; return `<td><button type="button" class="project-document-cell" data-document-cell="${esc(item.id)}" data-document-field="${esc(id)}" title="Clique para selecionar; Enter para editar">${esc(raw || "—")}</button></td>`; }).join("")}</tr>`).join("") || `<tr><td colspan="${visible.length + 1}">Nenhum documento encontrado.</td></tr>`}</tbody></table></div>
+    <dialog class="project-document-cell-dialog" data-document-cell-dialog><form method="dialog" data-document-cell-form><h2>Editar célula</h2><p data-document-cell-caption></p><div data-document-cell-control></div><footer><button value="cancel">Cancelar</button><button value="save" class="toolbar-primary">Confirmar alteração</button></footer></form></dialog>
+  </section>`;
+};
+
+const bindBeforeProjectDocumentsV1 = ViewLayer.prototype.bind;
+ViewLayer.prototype.bind = function (...args) {
+  const result = bindBeforeProjectDocumentsV1?.apply(this, args);
+  const root = this.querySelector("[data-project-documents-page]");
+  if (!root || root.dataset.documentsBound) return result;
+  root.dataset.documentsBound = "true";
+  root.querySelectorAll('[data-document-delete="doc-proj-exec"],[data-document-delete="doc-proj-licenses"],[data-document-delete="doc-presentation-v3"]').forEach((button) => button.remove());
+  if (appStore.get().documentsEditId !== "new")
+    root.querySelector('input[name="file"]')?.removeAttribute("required");
+  const patch = (value) => appStore.set({ ...value, lastAction: "Atualizou documentos do loteamento" });
+  root.querySelector("[data-document-new]")?.addEventListener("click", () => patch({ documentsEditId: "new" }));
+  root.querySelector("[data-document-cancel]")?.addEventListener("click", () => patch({ documentsEditId: null }));
+  root.querySelector("[data-document-query]")?.addEventListener("input", (event) => {
+    const value = event.currentTarget.value;
+    const cursor = event.currentTarget.selectionStart;
+    patch({ documentsQuery: value });
+    requestAnimationFrame(() => {
+      const input = this.querySelector("[data-document-query]");
+      input?.focus();
+      input?.setSelectionRange(cursor, cursor);
+    });
+  });
+  root.querySelector("[data-document-category]")?.addEventListener("change", (event) => patch({ documentsCategory: event.currentTarget.value }));
+  root.querySelector("[data-document-file-filter]")?.addEventListener("change", (event) => patch({ documentsFileFilter: event.currentTarget.value }));
+  root.querySelectorAll("[data-document-column-toggle]").forEach((input) => input.addEventListener("change", () => {
+    const hidden = new Set(appStore.get().documentsHiddenColumns || []);
+    if (input.checked) hidden.delete(input.dataset.documentColumnToggle);
+    else hidden.add(input.dataset.documentColumnToggle);
+    patch({ documentsHiddenColumns: [...hidden] });
+  }));
+  root.querySelector("[data-document-column-form]")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const label = String(new FormData(event.currentTarget).get("label") || "").trim();
+    if (!label) return;
+    const prior = appStore.get().documentsCustomColumns || [];
+    if (prior.some((entry) => entry.label.toLocaleLowerCase("pt-BR") === label.toLocaleLowerCase("pt-BR"))) return notify("Essa propriedade já existe.", "warning");
+    patch({ documentsCustomColumns: [...prior, { id: `custom-${globalThis.crypto?.randomUUID?.() || Date.now().toString(36)}`, label }] });
+  });
+  root.querySelectorAll("[data-document-column-delete]").forEach((button) => button.addEventListener("click", () => {
+    const id = button.dataset.documentColumnDelete;
+    const entry = (appStore.get().documentsCustomColumns || []).find((column) => column.id === id);
+    if (!entry || !confirm(`Excluir a coluna ${entry.label} e todos os valores desta propriedade?`)) return;
+    appStore.update((current) => ({
+      ...current,
+      documentsCustomColumns: (current.documentsCustomColumns || []).filter((column) => column.id !== id),
+      documentsHiddenColumns: (current.documentsHiddenColumns || []).filter((column) => column !== id),
+      documentCatalog: (current.documentCatalog || []).map((item) => {
+        const properties = { ...(item.properties || {}) };
+        delete properties[id];
+        return { ...item, properties, updatedAt: new Date().toISOString() };
+      }),
+      lastAction: `Excluiu a propriedade documental ${entry.label}`,
+    }));
+  }));
+  const saveCell = (id, field, value) => {
+    const custom = (appStore.get().documentsCustomColumns || []).some((entry) => entry.id === field);
+    appStore.update((current) => ({
+      ...current,
+      documentCatalog: (current.documentCatalog || []).map((item) => item.id !== id ? item : {
+        ...item,
+        ...(custom ? { properties: { ...(item.properties || {}), [field]: value } } : { [field]: value }),
+        updatedAt: new Date().toISOString(),
+      }),
+      lastAction: "Editou uma célula do acervo documental",
+    }));
+  };
+  const cellDialog = root.querySelector("[data-document-cell-dialog]");
+  const openCell = (button) => {
+    const item = (appStore.get().documentCatalog || []).find((row) => row.id === button?.dataset.documentCell);
+    if (!item) return;
+    const field = button.dataset.documentField;
+    if (["createdAt", "updatedAt", "fileName"].includes(field)) {
+      if (field === "fileName" && item.fileName) root.querySelector("[data-document-selected-open]")?.click();
+      return;
+    }
+    const label = [...ADMIN_DOCUMENT_COLUMNS_V2, ...(appStore.get().documentsCustomColumns || []).map((entry) => [entry.id, entry.label])].find(([id]) => id === field)?.[1] || field;
+    cellDialog.dataset.id = item.id;
+    cellDialog.dataset.field = field;
+    cellDialog.querySelector("[data-document-cell-caption]").textContent = `${item.title} · ${label}`;
+    const control = cellDialog.querySelector("[data-document-cell-control]");
+    control.replaceChildren();
+    const input = field === "category" ? document.createElement("select") : document.createElement(field === "description" ? "textarea" : "input");
+    if (field === "category") ADMIN_DOCUMENT_CATEGORIES_V1.forEach((category) => input.add(new Option(category, category)));
+    if (field === "documentDate") input.type = "date";
+    input.name = "value";
+    input.required = field === "title" || field === "category";
+    input.value = field.startsWith("custom-") ? item.properties?.[field] || "" : item[field] || "";
+    control.append(input);
+    cellDialog.showModal();
+  };
+  let selection = null;
+  const selectSheet = (type, id, field, target) => {
+    root.querySelectorAll(".is-selected").forEach((node) => node.classList.remove("is-selected"));
+    target.classList.add("is-selected");
+    if (type === "cell") target.closest("td")?.classList.add("is-selected");
+    selection = { type, id, field };
+    const item = (appStore.get().documentCatalog || []).find((row) => row.id === id);
+    const custom = (appStore.get().documentsCustomColumns || []).find((entry) => entry.id === field);
+    const label = custom?.label || ADMIN_DOCUMENT_COLUMNS_V2.find(([key]) => key === field)?.[1] || field;
+    root.querySelector("[data-document-selection-label]").textContent = type === "row" ? `Linha: ${item?.title || id}` : type === "column" ? `Coluna: ${label}` : `${item?.title || id} · ${label}`;
+    const show = (name, visible) => { const button = root.querySelector(`[data-document-selected-${name}]`); if (button) button.hidden = !visible; return button; };
+    const open = show("open", type === "cell" && field === "fileName" && Boolean(item?.fileName));
+    if (open) open.dataset.documentOpen = id || "";
+    const edit = show("edit", type === "row" || type === "cell");
+    if (edit) edit.dataset.documentEdit = id || "";
+    show("clear", type === "cell" && !["title", "category", "createdAt", "updatedAt", "fileName"].includes(field));
+    const rowDelete = show("row-delete", type === "row" && item && !adminDocumentProtectedV2(item));
+    if (rowDelete) rowDelete.dataset.documentDelete = id || "";
+    const columnDelete = show("column-delete", type === "column");
+    if (columnDelete) columnDelete.textContent = custom ? "Excluir coluna" : "Ocultar coluna";
+  };
+  root.querySelectorAll("[data-document-cell]").forEach((button) => {
+    button.addEventListener("click", () => selectSheet("cell", button.dataset.documentCell, button.dataset.documentField, button));
+    button.addEventListener("dblclick", () => openCell(button));
+  });
+  root.querySelectorAll("[data-document-row-header]").forEach((header) => header.addEventListener("click", () => selectSheet("row", header.dataset.documentRowHeader, "", header)));
+  root.querySelectorAll("[data-document-column-header]").forEach((header) => header.addEventListener("click", () => selectSheet("column", "", header.dataset.documentColumnHeader, header)));
+  const clearSelectedCell = () => {
+    if (selection?.type !== "cell" || ["title", "category", "createdAt", "updatedAt", "fileName"].includes(selection.field)) return;
+    const item = (appStore.get().documentCatalog || []).find((row) => row.id === selection.id);
+    if (item && confirm(`Limpar esta célula de ${item.title}?`)) saveCell(item.id, selection.field, "");
+  };
+  root.querySelector("[data-document-selected-clear]")?.addEventListener("click", clearSelectedCell);
+  root.querySelector("[data-document-selected-column-delete]")?.addEventListener("click", () => {
+    if (selection?.type !== "column") return;
+    const button = root.querySelector(`[data-document-column-delete="${selection.field}"]`);
+    if (button) button.click();
+    else {
+      if (!confirm("Ocultar esta coluna da tabela? Os dados serão preservados.")) return;
+      patch({ documentsHiddenColumns: [...new Set([...(appStore.get().documentsHiddenColumns || []), selection.field])] });
+    }
+  });
+  root.querySelector(".project-documents-table")?.addEventListener("keydown", (event) => {
+    if (!selection || !["Enter", "Delete", "Backspace", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Escape"].includes(event.key)) return;
+    if (event.key === "Escape") { selection = null; root.querySelectorAll(".is-selected").forEach((node) => node.classList.remove("is-selected")); return; }
+    if (event.key === "Enter") {
+      if (selection.type === "cell") { event.preventDefault(); openCell(root.querySelector(`[data-document-cell="${CSS.escape(selection.id)}"][data-document-field="${CSS.escape(selection.field)}"]`)); }
+      else if (selection.type === "row") root.querySelector("[data-document-selected-edit]")?.click();
+      return;
+    }
+    if (event.key === "Delete" || event.key === "Backspace") {
+      event.preventDefault();
+      if (selection.type === "cell") clearSelectedCell();
+      else if (selection.type === "row") root.querySelector("[data-document-selected-row-delete]:not([hidden])")?.click();
+      else root.querySelector("[data-document-selected-column-delete]:not([hidden])")?.click();
+      return;
+    }
+    if (selection.type !== "cell") return;
+    event.preventDefault();
+    const cells = [...root.querySelectorAll(".project-documents-table tbody tr")].map((row) => [...row.querySelectorAll("[data-document-cell]")]);
+    const row = cells.findIndex((entries) => entries.some((button) => button.dataset.documentCell === selection.id));
+    const column = cells[row]?.findIndex((button) => button.dataset.documentField === selection.field) ?? -1;
+    const nextRow = Math.max(0, Math.min(cells.length - 1, row + (event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0)));
+    const nextColumn = Math.max(0, Math.min((cells[nextRow]?.length || 1) - 1, column + (event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0)));
+    const next = cells[nextRow]?.[nextColumn];
+    if (next) { next.focus(); selectSheet("cell", next.dataset.documentCell, next.dataset.documentField, next); }
+  });
+  cellDialog?.querySelector("form")?.addEventListener("submit", (event) => {
+    if (event.submitter?.value !== "save") return;
+    const input = cellDialog.querySelector('[name="value"]');
+    if (!input.reportValidity()) { event.preventDefault(); return; }
+    const item = (appStore.get().documentCatalog || []).find((row) => row.id === cellDialog.dataset.id);
+    if (!item || !confirm(`Salvar a alteração em ${item.title}?`)) { event.preventDefault(); return; }
+    saveCell(item.id, cellDialog.dataset.field, input.value.trim());
+  });
+  root.querySelectorAll("[data-document-edit]").forEach((button) => button.addEventListener("click", () => patch({ documentsEditId: button.dataset.documentEdit })));
+  root.querySelector("[data-document-form]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const values = new FormData(form);
+    const file = form.elements.namedItem("file")?.files?.[0];
+    const prior = (appStore.get().documentCatalog || []).find((item) => item.id === appStore.get().documentsEditId);
+    if (!file && !prior) return;
+    if (file && (file.size > 25 * 1024 * 1024 || !/\.(pdf|docx?|xlsx?|dwg|dxf|png|jpe?g|webp)$/i.test(file.name))) {
+      notify("Selecione PDF, Office, CAD ou imagem de até 25 MB.", "error");
+      return;
+    }
+    const id = prior?.id || `doc-${globalThis.crypto?.randomUUID?.() || Date.now().toString(36)}`;
+    const saveButton = form.querySelector('button[type="submit"]');
+    saveButton.disabled = true;
+    try {
+      if (file) await adminDocumentBlobV1("put", id, file);
+      const record = {
+        id, title: String(values.get("title") || "").trim(),
+        category: String(values.get("category") || "Outro"),
+        code: String(values.get("code") || "").trim(),
+        issuer: String(values.get("issuer") || "").trim(),
+        documentDate: String(values.get("documentDate") || ""),
+        description: String(values.get("description") || "").trim(),
+        sourceMaterialId: String(values.get("sourceMaterialId") || ""),
+        fileName: file?.name || prior?.fileName || "",
+        fileSize: file?.size ?? prior?.fileSize ?? 0,
+        fileType: file?.type || prior?.fileType || "",
+        sourceUrl: file ? "" : prior?.sourceUrl || "",
+        builtIn: Boolean(prior?.builtIn),
+        properties: Object.fromEntries((appStore.get().documentsCustomColumns || []).map((entry) => [entry.id, String(values.get(`property:${entry.id}`) || "").trim()])),
+        createdAt: prior?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      appStore.update((current) => ({
+        ...current,
+        documentCatalog: [...(current.documentCatalog || []).filter((item) => item.id !== id), record],
+        documentsEditId: null,
+        lastAction: `Salvou documento do loteamento: ${record.title}`,
+      }));
+      notify("Documento salvo no acervo local do loteamento.", "success");
+    } catch (error) {
+      saveButton.disabled = false;
+      notify(error?.message || "Não foi possível salvar o documento.", "error");
+    }
+  });
+  root.querySelectorAll("[data-document-open]").forEach((button) => button.addEventListener("click", async () => {
+    const item = (appStore.get().documentCatalog || []).find((row) => row.id === button.dataset.documentOpen);
+    if (!item) return;
+    try {
+      if (item.sourceUrl) {
+        window.open(runtimeRouteV1(item.sourceUrl), "_blank", "noopener");
+        return;
+      }
+      const file = await adminDocumentBlobV1("get", item.id);
+      if (!file) throw new Error("Arquivo indisponível neste navegador.");
+      const url = URL.createObjectURL(file);
+      const link = document.createElement("a");
+      link.href = url;
+      if (/^(application\/pdf|image\/)/.test(item.fileType || "")) link.target = "_blank";
+      else link.download = item.fileName || "documento";
+      link.rel = "noopener";
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      notify(error?.message || "Não foi possível abrir o arquivo.", "error");
+    }
+  }));
+  root.querySelectorAll("[data-document-delete]").forEach((button) => button.addEventListener("click", async () => {
+    const item = (appStore.get().documentCatalog || []).find((row) => row.id === button.dataset.documentDelete);
+    if (!item || ["doc-proj-exec", "doc-proj-licenses", "doc-presentation-v3"].includes(item.id) || item.builtIn || item.sourceMaterialId || !confirm(`Excluir permanentemente ${item.title} deste navegador?`)) return;
+    try {
+      await adminDocumentBlobV1("delete", item.id);
+      appStore.update((current) => ({
+        ...current,
+        documentCatalog: (current.documentCatalog || []).filter((row) => row.id !== item.id),
+        lastAction: `Excluiu documento do loteamento: ${item.title}`,
+      }));
+      notify("Documento removido do acervo local.", "success");
+    } catch (error) {
+      notify(error?.message || "Não foi possível excluir o documento.", "error");
+    }
+  }));
+  return result;
+};
+
+// O roteador interno pode trocar a view sem recriar o módulo. Reaplicar o
+// chrome no bind mantém Agenda, Ações, Registros e Por encarregados idênticos
+// também nessa navegação quente.
+const bindStageContextChromeFinalV1 = ViewLayer.prototype.bind;
+ViewLayer.prototype.bind = function (...args) {
+  const result = bindStageContextChromeFinalV1?.apply(this, args);
+  stageContextChromeV1(this);
+  return result;
+};
+};
 MapScene.prototype.setMapContext = function (view) {
   this.dataset.mapContext = view;
   this.dataset.dashboardProgressMap =
@@ -19468,7 +20870,7 @@ MapScene.prototype.setMapContext = function (view) {
   // de inclinação, zoom, pan e rotação. A interface de impressão o esconde via
   // CSS; vistas sem mapa interativo apenas o deixam oculto.
   const controls = this.querySelector(".map-rotation-controls");
-  const interactiveMapViews = new Set(["assistant", "map", "records"]);
+  const interactiveMapViews = new Set(["assistant", "map", "records", "leads"]);
   if (controls) controls.hidden = !interactiveMapViews.has(view);
   if (solar)
     solar.hidden = !["assistant", "map", "records", "leads"].includes(view);
@@ -19478,8 +20880,7 @@ MapScene.prototype.setMapContext = function (view) {
   if (badge) {
     badge.hidden = !["assistant", "map", "records", "leads"].includes(view);
     const label = badge.querySelector("span");
-    if (label)
-      label.textContent =
+    const contextLabel =
         view === "records"
           ? "Pintura de progresso · use o formulário do registro"
           : view === "leads"
@@ -19487,6 +20888,9 @@ MapScene.prototype.setMapContext = function (view) {
             : view === "assistant" || view === "map"
               ? "Consulta de status · arraste para selecionar"
               : "Mapa contextual";
+    // O observer legado reaplica o contexto após alterações do DOM.
+    // Evite produzir outra mutação quando a legenda já está sincronizada.
+    if (label && label.textContent !== contextLabel) label.textContent = contextLabel;
   }
 };
 MapScene.prototype.centerSceneInContext = function () {
@@ -21156,11 +22560,27 @@ export class ViewLayer extends HTMLElement {
     const renderKey = (state) =>
       [
         state.view,
+        state.reportFamily,
+        state.reportType,
+        state.reportPeriod,
+        state.reportBuilderOpen,
+        state.customReports?.length,
+        state.view === "reports" ? JSON.stringify(state.reportDocumentLinks) : "",
+        state.view === "reports" ? JSON.stringify(state.cashSummary) : "",
+        state.view === "reports" ? state.cashFlowLocal?.length : "",
+        state.view === "reports" ? (state.cashFlowLocal || []).map((entry) => `${entry.id}:${(entry.attachments || []).map((file) => file.id).join("+")}:${entry.fiscalStatus || ""}`).join(",") : "",
+        state.view === "reports" ? state.publicLeads?.length : "",
+        state.view === "reports" ? state.publicReservations?.length : "",
+        state.view === "reports" ? state.operationalNotifications?.length : "",
         state.activityDedicated,
         state.stageActivityDedicatedV9,
+        state.stageHomeCalendarWeekV1,
         state.selectedStage,
         state.selectedStageV9,
         state.selectedActivity,
+        state.selectedAiAction,
+        state.view === "actions" ? JSON.stringify(state.aiActions || []) : "",
+        state.view === "actions" ? JSON.stringify(state.aiActionPositionChanges || {}) : "",
         state.selectedStageDetailTab,
         state.selectedActivityDetailTabV1,
         state.activityRecordModalOpenV1,
@@ -21175,6 +22595,8 @@ export class ViewLayer extends HTMLElement {
         state.controlEventTab,
         state.controlEventDraft && JSON.stringify(state.controlEventDraft),
         state.records?.length,
+        state.view === "personnel" ? JSON.stringify(state.foremenContacts || []) : "",
+        state.editingForemanId,
         state.commissionEntries?.length,
         state.selectedCommissionProfile,
         state.selectedCommissionContract,
@@ -21195,8 +22617,37 @@ export class ViewLayer extends HTMLElement {
         state.instagramReplyDraft,
         state.dashboardStageFocus,
         state.dashboardStageFocusTab,
+        state.materialsPageTab,
+        state.materialsPageQuery,
+        state.materialsPageStage,
+        state.materialsPageStatus,
+        state.materialsPageNumber,
+        state.materialsEditId,
+        state.materialTransitionId,
+        state.materialsNewStage,
+        state.view === "materials"
+          ? JSON.stringify(state.operationalAgenda || [])
+          : "",
+        state.view === "materials"
+          ? JSON.stringify(state.operationalGuidance || null)
+          : "",
+        state.view === "materials"
+          ? JSON.stringify(state.operationalState?.stages || [])
+          : "",
+        state.materialCatalogAdditions && JSON.stringify(state.materialCatalogAdditions),
+        state.controlMaterialOverrides && JSON.stringify(state.controlMaterialOverrides),
+        state.materialSheetCustomColumns && JSON.stringify(state.materialSheetCustomColumns),
+        state.materialSheetHiddenColumns && JSON.stringify(state.materialSheetHiddenColumns),
+        state.documentCatalog && JSON.stringify(state.documentCatalog),
+        state.documentsCustomColumns && JSON.stringify(state.documentsCustomColumns),
+        state.documentsHiddenColumns && JSON.stringify(state.documentsHiddenColumns),
+        state.documentsFileFilter,
+        state.documentsQuery,
+        state.documentsCategory,
+        state.documentsEditId,
       ].join("|");
     this.render();
+    stageContextChromeV1?.(this);
     this._renderStateKey = renderKey(appStore.get());
     this.loadPersistentRecords();
     this.loadPublicLeads();
@@ -21212,6 +22663,7 @@ export class ViewLayer extends HTMLElement {
       if (nextKey === this._renderStateKey) return;
       this._renderStateKey = nextKey;
       this.render();
+      stageContextChromeV1?.(this);
     });
   }
   disconnectedCallback() {
@@ -21453,6 +22905,8 @@ export class ViewLayer extends HTMLElement {
       ],
       purchases: ["Compras", "Compromissos, prazos e fornecedores"],
       inventory: ["Inventário", "Materiais, reservas e consumo"],
+      materials: ["Materiais", "Alocação por etapa e catálogo geral"],
+      documents: ["Documentos do loteamento", "Projetos, plantas, memoriais e licenças do Aliança Park"],
       leads: ["Leads", "Captação pública e intenção de compra"],
       contracts: [
         "Contratos",
@@ -21466,7 +22920,7 @@ export class ViewLayer extends HTMLElement {
       collaborators: ["Colaboradores", "Alocação e presença em campo"],
       personnel: ["Pessoal", "Formação de equipes e unidades de produção"],
       brokers: ["Corretores", "Situação comercial, carteira e contatos"],
-      "brokers-board": ["Corretores", "Quadro de corretores e carteiras"],
+      "brokers-board": ["Lotes", "Valores, status, pagamentos e repasses por lote"],
       "commission-deal": ["Negociação", "Cliente, lote, comissão e anexos"],
       finance: [
         "Financeiro",
@@ -21682,10 +23136,10 @@ export class ViewLayer extends HTMLElement {
           ),
           link = document.createElement("a");
         link.href = url;
-        link.download = `${report.id}-${s.reportPeriod || "2024-06"}.csv`;
+        link.download = `${report.id}-${["system-live", "cash-evidence-live"].includes(report.id) ? "sessao-atual" : report.id.startsWith("custom-") ? "modelo-sem-dados" : "dados-demonstrativos"}.csv`;
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-        notify(`${report.label} exportado em CSV.`, "success");
+        notify(`${report.label} exportado em CSV${["system-live", "cash-evidence-live"].includes(report.id) ? " (estado da sessão)" : " (dados demonstrativos/modelo)"}.`, "success");
         appStore.set({ lastAction: `Exportou ${report.label}` });
       }),
     );
@@ -21755,7 +23209,6 @@ export class ViewLayer extends HTMLElement {
             .filter(Boolean)
             .join("\n");
         if (
-          e.currentTarget.matches("[data-activity-record-form]") &&
           attachments.length
         ) {
           const summary = attachments
@@ -22341,7 +23794,11 @@ export class ViewLayer extends HTMLElement {
         2024: "Ano de 2024",
         all: "Todo o projeto",
       },
-      period = selected.id === "system-live" ? "Estado atual do sistema" : periodLabels[s.reportPeriod] || periodLabels["2024-06"];
+      period = ["system-live", "cash-evidence-live"].includes(selected.id)
+        ? "Estado atual do sistema"
+        : selected.id.startsWith("custom-")
+          ? "Modelo sem dados vinculados"
+          : "Dados demonstrativos de referência";
     const signalClass = (value) =>
       /crít|risco|atras|atenção|ação|vencid|acima/i.test(String(value))
         ? "warning"
@@ -22373,7 +23830,7 @@ export class ViewLayer extends HTMLElement {
     const rowDetails = selected.rows
       .map(
         (row, index) =>
-          `<tr class="report-detail-row" data-report-detail="${index}" hidden><td colspan="${selected.columns.length + 1}"><div><b>${esc(row[0])}</b><span>Origem: ${esc(selected.source)} · período ${esc(period)}.</span><span>Composição: ${selected.columns.map((column, col) => `${column}: ${row[col] ?? "—"}`).join(" · ")}.</span><span>Ação administrativa: conferir lançamento, vínculo da etapa e evidências antes do fechamento.</span></div></td></tr>`,
+          `<tr class="report-detail-row" data-report-detail="${index}" hidden><td colspan="${selected.columns.length + 1}"><div><b>${esc(row[0])}</b><span>Origem: ${esc(selected.source)} · período ${esc(period)}.</span><span>Composição: ${esc(selected.columns.map((column, col) => `${column}: ${row[col] ?? "—"}`).join(" · "))}.</span><span>Ação administrativa: conferir lançamento, vínculo da etapa e evidências antes do fechamento.</span></div></td></tr>`,
       )
       .join("");
     return `<div class="reports-workspace"><div class="reports-toolbar" aria-label="Toolbar de relatórios"><div class="report-toolbar-title"><span class="activity-kind">CENTRAL ADMINISTRATIVA</span><strong>Central de métricas</strong><small>${reportCatalog.length} leituras administrativas, operacionais e comerciais</small></div><label>Família<select data-report-family>${families.map((value) => `<option value="${esc(value)}" ${value === family ? "selected" : ""}>${esc(value)}</option>`).join("")}</select></label><label>Relatório<select data-report-type>${types.map((report) => `<option value="${esc(report.id)}" ${report.id === selected.id ? "selected" : ""}>${esc(report.label)}</option>`).join("")}</select></label><label>Período<select data-report-period><option value="2024-06" ${s.reportPeriod === "2024-06" ? "selected" : ""}>Junho de 2024</option><option value="2024-Q2" ${s.reportPeriod === "2024-Q2" ? "selected" : ""}>2º trimestre de 2024</option><option value="2024" ${s.reportPeriod === "2024" ? "selected" : ""}>Ano de 2024</option><option value="all" ${s.reportPeriod === "all" ? "selected" : ""}>Todo o projeto</option></select></label><button type="button" class="report-toolbar-button report-export" data-report-export>${ico("file-down")} Exportar CSV</button><button type="button" class="report-toolbar-button report-print" data-report-print>${ico("printer")} Imprimir</button></div><nav class="report-family-tabs" aria-label="Abas de família de métricas">${families.map((value) => `<button type="button" class="${value === family ? "active" : ""}" data-report-family-tab="${esc(value)}">${esc(value)}<small>${reportCatalog.filter((item) => item.family === value).length} métricas</small></button>`).join("")}</nav><section class="report-type-tabs" aria-label="Subitens explicativos da família">${types.map((report) => `<button type="button" class="${report.id === selected.id ? "active" : ""}" data-report-type-tab="${esc(report.id)}"><strong>${esc(report.label)}</strong><small>${esc(explanations[report.id] || report.description)}</small><span>${ico(report.icon)} ${esc(report.source)}</span></button>`).join("")}</section><glass-card class="float-card reports-main"><div class="card-head"><div><h3>${ico(selected.icon)} ${esc(selected.label)}</h3><small>${esc(selected.description)}</small></div><span class="chip violet">${esc(period)} · Atualizado agora</span></div><div class="report-context"><span>${ico("database")} Fonte: ${esc(selected.source)}</span><span>${esc(selected.family)} · relatório gerencial</span></div><div class="report-explainer"><b>${ico("circle-help")} Como interpretar</b><span>${esc(explanation)}</span><small>Planilha disponível: ${workbookSheets.join(" · ")}.</small></div><div class="report-grid">${selected.metrics.map((metric) => `<div class="report-metric"><small>${esc(metric[0])}</small><strong>${esc(metric[1])}</strong><span>${esc(metric[2])}</span></div>`).join("")}</div><div class="report-table-wrap"><table class="report-table"><thead><tr>${selected.columns.map((column) => `<th>${esc(column)}</th>`).join("")}<th>Desdobrar</th></tr></thead><tbody>${selected.rows.map((row, index) => `<tr class="report-data-row" data-report-row="${index}">${row.map((cell, col) => `<td>${col === row.length - 1 ? `<span class="report-signal ${signalClass(cell)}">${esc(cell)}</span>` : esc(cell)}</td>`).join("")}<td><button type="button" class="report-row-toggle" data-report-row-toggle="${index}" aria-expanded="false">Ver itens</button></td></tr>`).join("")}${rowDetails}</tbody></table></div><div class="report-footer"><span>${ico("link-2")} Relacionado às tabelas do projeto e ao período selecionado.</span><button type="button" class="report-inline-export" data-report-export>${ico("download")} Baixar relatório</button></div></glass-card></div>`;
@@ -22427,7 +23884,7 @@ export class ViewLayer extends HTMLElement {
       <section class="audit-grid"><glass-card class="audit-card audit-distribution"><div class="card-head"><div><h3>${ico("chart-no-axes-combined")} Distribuição por área</h3><small>Classificação automática a partir da ação executada.</small></div><span class="chip violet">${s.sessionId}</span></div><div class="audit-bars">${groups.length ? groups.map(([name, count]) => `<div class="audit-bar"><span>${esc(name)}</span><b>${count}</b><i style="--audit-size:${Math.max(12, Math.round((count / audit.length) * 100))}%"></i></div>`).join("") : '<p class="audit-empty">As ações aparecerão aqui conforme a equipe utilizar os módulos.</p>'}</div></glass-card>
       <glass-card class="audit-card audit-session"><div class="card-head"><div><h3>${ico("shield-check")} Contexto da sessão</h3><small>Rastreabilidade local de operação.</small></div></div><dl><div><dt>Ator</dt><dd>${esc(actor.name)} · ${esc(actor.label)}</dd></div><div><dt>ID da sessão</dt><dd><code>${esc(s.sessionId)}</code></dd></div><div><dt>Início</dt><dd>${new Date(s.sessionStarted).toLocaleString("pt-BR")}</dd></div><div><dt>Último módulo</dt><dd>${esc(audit[0]?.view || s.view)}</dd></div></dl><p class="audit-note">Esta métrica resume uso e navegação; não substitui uma trilha de auditoria imutável de servidor.</p></glass-card></section>
       <glass-card class="audit-card audit-timeline"><div class="card-head"><div><h3>${ico("list-checks")} Linha do tempo de interações</h3><small>${audit.length} eventos capturados · mais recente primeiro</small></div></div><div class="audit-events">${audit.length ? audit.map((item) => `<article><time>${formatTime(item.at)}</time><div><b>${esc(item.label)}</b><small>${esc(category(item.label))} · ${esc(item.view || "dashboard")} · ${esc(item.actor || "Warley")}</small></div><span>${ico("circle-check")}</span></article>`).join("") : '<p class="audit-empty">Nenhuma ação registrada nesta sessão.</p>'}</div></glass-card>
-      <footer class="settings-tools"><button id="reinstall">${ico("refresh-cw")} Reabrir instalação</button><button id="clearPat">${ico("key-round")} Limpar PAT local</button></footer>
+      <footer class="settings-tools"><span>Configuração de repositório e segredos gerenciada pelo Cloudflare Worker.</span></footer>
     </section>`;
   }
 }
@@ -23719,24 +25176,43 @@ ViewLayer.prototype.assistant = function () {
 };
 
 const extensionStage = () =>
-  demoData.activities.find(
-    (item) => item.id === appStore.get().selectedStage,
-  ) || demoData.activities[1];
+  stageContextV1().record || demoData.activities[1];
+const stageContextV1 = (state = appStore.get()) => {
+  const stages = Array.isArray(executionModel.stages)
+    ? executionModel.stages
+    : [];
+  const selectedModel =
+    stages.find(
+      (item) => String(item.key) === String(state.selectedStageV9 || ""),
+    ) ||
+    stages.find(
+      (item) => String(item.key) === String(state.selectedStage || ""),
+    ) ||
+    stages.find(
+      (item) => String(item.id) === String(state.selectedStage || ""),
+    ) ||
+    stages.find((item) => String(item.name) === String(state.selectedStage || "")) ||
+    stages[0];
+  const record =
+    demoData.activities.find(
+      (item) =>
+        String(item.id) === String(selectedModel?.id || "") ||
+        String(item.name).toLocaleLowerCase("pt-BR") ===
+          String(selectedModel?.name || "").toLocaleLowerCase("pt-BR"),
+    ) || demoData.activities[1];
+  return { state, model: selectedModel, record };
+};
 const stageViewTabs = (active) => {
-  const stage = extensionStage();
+  const { model, record } = stageContextV1();
+  const stage = record || model || demoData.activities[1];
   const tabs = [
     ["stages", "gantt-chart", "Gantt"],
-    ["pert", "git-branch", "PERT"],
     ["actions", "sparkles", "Ações IA"],
-    ["raci", "users-round", "RACI"],
-    ["raid", "shield-alert", "RAID"],
     ["agenda", "calendar-days", "Agenda"],
     ["activities", "list-checks", "Atividades"],
-    ["records", "clipboard-pen-line", "Registros"],
-    ["progress", "clipboard-check", "Andamento"],
     ["foremen", "users-round", "Por encarregados"],
   ];
-  return `<nav class="stage-view-tabs" aria-label="Exibições da etapa"><div class="stage-view-context"><span class="activity-kind">ETAPA EM FOCO</span><strong>${esc(stage.name)}</strong><small>${esc(stage.week)} · ${stage.progress}% · ${esc(stage.owner)}</small></div><div class="stage-view-links">${tabs.map(([view, icon, label]) => `<button type="button" class="${active === view ? "active" : ""}" data-stage-view="${view}" data-view="${view}">${ico(icon)} ${label}</button>`).join("")}</div></nav>`;
+  return `<nav class="stage-view-tabs" aria-label="Exibições da etapa" data-stage-context-key="${esc(model?.key || "")}"><div class="stage-view-context"><span class="activity-kind">ETAPA EM FOCO</span><strong>${esc(stage.name)}</strong><small>${esc(stage.week)} · ${stage.progress}% · ${esc(stage.owner)}</small></div><div class="stage-view-links">${tabs.map(([view, icon, label]) => `<button type="button" class="${active === view ? "active" : ""}" data-stage-view="${view}" data-view="${view}">${ico(icon)} ${label}</button>`).join("")}</div></nav>`;
 };
 
 // BELAVISTA_OPERATIONAL_INTELLIGENCE_V1
@@ -23799,18 +25275,6 @@ const OPERATIONAL_ACTIONS = [
     relation: "Drenagem",
   },
   {
-    id: "AI-A05",
-    label: "Revisar praça central",
-    impact: 54,
-    readiness: 36,
-    phase: 0,
-    track: "Risco",
-    owner: "Paula Nascimento",
-    eta: "Próximos 3 dias",
-    blocker: "Projeto paisagístico pendente",
-    relation: "Urbanização",
-  },
-  {
     id: "AI-A06",
     label: "Conferir estoque de brita",
     impact: 61,
@@ -23844,13 +25308,6 @@ const ACTION_TRACK_STEPS = {
     "Confirmar agenda e contrato",
     "Executar atribuição",
     "Confirmar entrega e evidência",
-  ],
-  Risco: [
-    "Identificar sinal",
-    "Qualificar impacto",
-    "Definir mitigação",
-    "Executar contenção",
-    "Reavaliar e encerrar",
   ],
 };
 const RAID_DEFAULTS = [
@@ -24054,7 +25511,43 @@ const raciMeaning = {
 };
 
 const operationalActions = () => {
-  const saved = appStore.get().aiActions;
+  const state = appStore.get();
+  const agenda = Array.isArray(state.operationalAgenda)
+    ? state.operationalAgenda
+    : [];
+  if (agenda.length) {
+    return agenda.slice(0, 18).map((item, index) => {
+      const blocked = Array.isArray(item.logicalRequirements)
+        ? item.logicalRequirements.filter(Boolean)
+        : [];
+      const shortages = Array.isArray(item.materialShortfalls)
+        ? item.materialShortfalls.map((entry) => entry?.name || entry?.description).filter(Boolean)
+        : [];
+      const ready = !/bloqueado|aguardando/i.test(String(item.status || ""));
+      const progress = Math.max(0, Math.min(100, Number(item.stageProgress) || 0));
+      const kind = item.kind || item.properties?.kind || "execution";
+      return {
+        id: item.id || `agenda-action-${index + 1}`,
+        label: item.title || "Ação operacional",
+        impact: Math.max(35, Math.min(98, 92 - index * 3)),
+        readiness: ready ? Math.max(55, Math.min(96, 70 + progress * 0.25)) : Math.max(15, 48 - blocked.length * 8 - shortages.length * 5),
+        phase: /governance|evidence/i.test(kind) ? 4 : /planning/i.test(kind) ? 1 : ready ? 3 : 2,
+        track: item.decisionBand === "execute"
+          ? "Frente de execução"
+          : item.decisionBand === "material-block"
+            ? "Suprimento"
+          : "Responsabilidade",
+        owner: item.owner || "Responsável a definir",
+        eta: item.plannedStart || "A programar",
+        blocker: blocked.concat(shortages).join(" · ") || item.nextStep || "Sem bloqueio operacional",
+        relation: item.stageName || "Etapa operacional",
+        referenceDescription: item.referenceDescription || "",
+        requirements: item.requirements || [],
+        materialRequirements: item.materialRequirements || [],
+      };
+    });
+  }
+  const saved = state.aiActions;
   return Array.isArray(saved) && saved.length
     ? saved.map((item) => ({ ...item }))
     : OPERATIONAL_ACTIONS.map((item) => ({ ...item }));
@@ -24067,7 +25560,7 @@ const operationalRaid = () => {
 };
 const currentPertNodes = () => {
   const overrides = appStore.get().pertOverrides || {};
-  const base = PERT_GRAPH.nodes.map((node) => ({
+  const base = [...PERT_GRAPH.nodes, ...(appStore.get().pertCustomNodes || [])].map((node) => ({
     ...node,
     ...(overrides[node.id] || {}),
   }));
@@ -24075,7 +25568,7 @@ const currentPertNodes = () => {
     base.filter((node) => node.progress >= 100).map((node) => node.id),
   );
   return base.map((node) => {
-    const incoming = PERT_GRAPH.edges
+    const incoming = [...PERT_GRAPH.edges, ...(appStore.get().pertRelations || []).map((item) => [item.from, item.to])]
       .filter(([, to]) => to === node.id)
       .map(([from]) => from);
     const unlocked =
@@ -24149,7 +25642,7 @@ ViewLayer.prototype.actions = function () {
   const highNow = actions.filter(
     (item) => item.impact >= 75 && item.readiness >= 75,
   ).length;
-  return `<div class="stage-extension-page ai-actions-page"><div class="extension-head"><div><span class="activity-kind">IA · ACTION MATRIX · ${esc(stage.name)}</span><h1>Ações por impacto e prontidão</h1><p>A IA distribui atitudes no plano operacional e transforma cada recomendação em uma caminhada de preparação → liberação → execução → verificação.</p></div><div class="extension-head-actions"><span class="ai-ready-count">${highNow} ações em “executar agora”</span><button class="ghost" data-view="pert">${ico("git-branch")} Ver dependências</button></div></div><div class="action-workspace"><section class="action-matrix" data-action-matrix><div class="matrix-quadrant q-now"><b>EXECUTAR AGORA</b><small>alto impacto · alta prontidão</small></div><div class="matrix-quadrant q-prepare"><b>PREPARAR</b><small>alto impacto · baixa prontidão</small></div><div class="matrix-quadrant q-opportunity"><b>OPORTUNIDADES</b><small>prontas · menor impacto</small></div><div class="matrix-axis axis-y"><span>IMPACTO</span><b>alto</b><small>baixo</small></div><div class="matrix-axis axis-x"><span>PRONTIDÃO</span><small>preparar</small><b>pronto</b></div>${points}</section><aside class="action-inspector"><span class="activity-kind">${esc(selected.track).toUpperCase()} · ${esc(OPERATIONAL_PHASES[selected.phase])}</span><h2>${esc(selected.label)}</h2><div class="action-score"><div><small>IMPACTO</small><b>${selected.impact}</b></div><div><small>PRONTIDÃO</small><b>${selected.readiness}%</b></div></div><dl><dt>Responsável</dt><dd>${esc(selected.owner)}</dd><dt>Próxima janela</dt><dd>${esc(selected.eta)}</dd><dt>Bloqueio atual</dt><dd>${esc(selected.blocker)}</dd><dt>Entidade ligada</dt><dd>${esc(selected.relation)}</dd></dl><div class="action-inspector-buttons"><button class="ghost" data-view="raci">${ico("users-round")} Conferir RACI</button><button class="primary" data-ai-advance="${selected.id}">${selected.phase >= 4 ? ico("check-circle") + " Encerrada" : ico("arrow-right") + " Adiantar atitude"}</button></div></aside></div><section class="attitude-walk"><header><div><span class="activity-kind">CAMINHADA DE ADIANTAMENTO</span><h2>${esc(selected.track)}</h2><p>Cada passo transforma intenção em pré-condição verificável; a IA só promove a ação quando a etapa anterior fica satisfeita.</p></div><div class="attitude-track-tabs">${Object.keys(
+  return `<div class="stage-extension-page ai-actions-page"><div class="extension-head"><div><span class="activity-kind">IA · AGENDA GERAL · ${esc(stage.name)}</span><h1>Ações por evolução e prontidão</h1><p>As ações são propagadas da agenda geral conforme avanço confirmado, dependências lógicas, materiais e descrição operacional de referência.</p></div><div class="extension-head-actions"><span class="ai-ready-count">${highNow} ações em “executar agora”</span></div></div><div class="action-workspace"><section class="action-matrix" data-action-matrix><div class="matrix-quadrant q-now"><b>EXECUTAR AGORA</b><small>alto impacto · alta prontidão</small></div><div class="matrix-quadrant q-prepare"><b>PREPARAR</b><small>alto impacto · baixa prontidão</small></div><div class="matrix-quadrant q-opportunity"><b>OPORTUNIDADES</b><small>prontas · menor impacto</small></div><div class="matrix-axis axis-y"><span>IMPACTO</span><b>alto</b><small>baixo</small></div><div class="matrix-axis axis-x"><span>PRONTIDÃO</span><small>preparar</small><b>pronto</b></div>${points}</section><aside class="action-inspector"><span class="activity-kind">${esc(selected.track).toUpperCase()} · ${esc(OPERATIONAL_PHASES[selected.phase])}</span><h2>${esc(selected.label)}</h2><div class="action-score"><div><small>IMPACTO</small><b>${selected.impact}</b></div><div><small>PRONTIDÃO</small><b>${selected.readiness}%</b></div></div><dl><dt>Responsável</dt><dd>${esc(selected.owner)}</dd><dt>Próxima janela</dt><dd>${esc(selected.eta)}</dd><dt>Bloqueio atual</dt><dd>${esc(selected.blocker)}</dd><dt>Entidade ligada</dt><dd>${esc(selected.relation)}</dd><dt>Referência de execução</dt><dd>${esc(selected.referenceDescription || "Descrição operacional da etapa")}</dd><dt>Requisitos materiais</dt><dd>${esc((selected.materialRequirements || []).join(" · ") || "Sem falta material registrada")}</dd></dl><div class="action-inspector-buttons"><button class="primary" data-ai-advance="${selected.id}">${selected.phase >= 4 ? ico("check-circle") + " Encerrada" : ico("arrow-right") + " Adiantar atitude"}</button></div></aside></div><section class="attitude-walk"><header><div><span class="activity-kind">CAMINHADA DE ADIANTAMENTO</span><h2>${esc(selected.track)}</h2><p>Cada passo transforma intenção em pré-condição verificável; a IA só promove a ação quando a etapa anterior fica satisfeita.</p></div><div class="attitude-track-tabs">${Object.keys(
     ACTION_TRACK_STEPS,
   )
     .map(
@@ -25221,14 +26714,16 @@ ViewLayer.prototype.render = function () {
   if (!anchor) return;
   anchor.insertAdjacentHTML("afterend", stageViewTabs(view));
   host.querySelectorAll("[data-stage-view]").forEach((button) =>
-    button.addEventListener("click", (event) => {
-      event.preventDefault();
-      const next = button.dataset.stageView,
-        stage = extensionStage();
-      appStore.set({
-        view: next,
-        selectedStage: stage.id || appStore.get().selectedStage,
-        activityDedicated: false,
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        const next = button.dataset.stageView,
+          { model, record: stage } = stageContextV1(),
+          current = appStore.get();
+        appStore.set({
+          view: next,
+          selectedStage: stage?.id || current.selectedStage,
+          selectedStageV9: model?.key || current.selectedStageV9,
+          activityDedicated: false,
         stageActivityDedicatedV9: false,
         selectedActivity: null,
         activityRecordModalOpenV1: false,
@@ -25935,14 +27430,14 @@ ViewLayer.prototype.render = function (...args) {
         control.style.setProperty("pointer-events", "auto", "important"),
       );
   }
-  this.style.setProperty("position", isStages ? "relative" : "", "important");
-  this.style.setProperty("inset", isStages ? "auto" : "", "important");
-  this.style.setProperty("z-index", isStages ? "20" : "", "important");
-  this.style.setProperty("height", isStages ? "100%" : "", "important");
-  this.style.setProperty("overflow", isStages ? "auto" : "", "important");
+  // The stage route now reuses the persistent dashboard map. Its viewport is
+  // laid out by stage-map-transition-v1.css; inline !important styles here
+  // would hide the map and place the page over it.
+  for (const property of ["position", "inset", "z-index", "height", "overflow"])
+    this.style.removeProperty(property);
   document.querySelectorAll("main.scene>map-scene").forEach((map) => {
-    map.style.setProperty("display", isStages ? "none" : "", "important");
-    map.style.setProperty("visibility", isStages ? "hidden" : "", "important");
+    map.style.removeProperty("display");
+    map.style.removeProperty("visibility");
   });
 };
 
@@ -27601,13 +29096,104 @@ ViewLayer.prototype.bind = function () {
 
 // Modelos criados pelo usuário são serializáveis e entram no mesmo catálogo
 // dos relatórios oficiais, preservando a escolha no armazenamento local.
+function syncCashEvidenceReportV1(state) {
+  const entries = Array.isArray(state.cashFlowLocal) ? state.cashFlowLocal : [];
+  const report = {
+    id: "cash-evidence-live",
+    family: "Financeiro",
+    label: "Lançamentos e comprovantes",
+    icon: "receipt-text",
+    description: "Cada lançamento do caixa com situação fiscal e documentos efetivamente vinculados.",
+    source: "Caixa operacional · anexos e controle fiscal",
+    metrics: [
+      ["Lançamentos", String(entries.length), "Registros carregados"],
+      ["Com arquivo", String(entries.filter((entry) => (entry.attachments || (entry.attachment ? [entry.attachment] : [])).length).length), "Comprovante anexado"],
+      ["Conferidos", String(entries.filter((entry) => entry.fiscalStatus === "conferido").length), "Conferência fiscal"],
+      ["Sem arquivo", String(entries.filter((entry) => !(entry.attachments || (entry.attachment ? [entry.attachment] : [])).length).length), "Exigem acompanhamento"],
+    ],
+    columns: ["Data / ID", "Lançamento", "Etapa", "Valor", "Situação fiscal"],
+    rows: entries.map((entry) => [
+      `${entry.date || "Sem data"} · ${entry.id}`,
+      entry.category || entry.description || "Sem descrição",
+      entry.stage || "Geral",
+      formatBRL(Number(entry.amountCents || 0) / 100),
+      entry.fiscalStatus || "Pendente",
+    ]),
+    entries,
+  };
+  const index = reportCatalog.findIndex((item) => item.id === report.id);
+  if (index < 0) reportCatalog.push(report);
+  else reportCatalog[index] = report;
+}
 const reportsWithCustomModels = ViewLayer.prototype.reports;
 ViewLayer.prototype.reports = function () {
+  syncCashEvidenceReportV1(appStore.get());
   (appStore.get().customReports || []).forEach((model) => {
     if (!reportCatalog.some((report) => report.id === model.id))
       reportCatalog.push(model);
   });
-  return reportsWithCustomModels.call(this);
+  const markup = reportsWithCustomModels.call(this);
+  const state = appStore.get();
+  const selected = reportCatalog.find((report) => report.id === state.reportType && report.family === state.reportFamily)
+    || reportCatalog.find((report) => report.family === state.reportFamily);
+  const live = ["system-live", "cash-evidence-live"].includes(selected?.id);
+  const custom = selected?.id?.startsWith("custom-");
+  const nature = live
+    ? "Dados da sessão atual"
+    : custom
+      ? "Modelo configurado · sem dados vinculados"
+      : "Dados demonstrativos · não atualizados automaticamente";
+  const annotatedMarkup = markup
+    .replace(/<label>Período<select data-report-period>[\s\S]*?<\/select><\/label>/, "")
+    .replace(/<span class="chip violet">[^<]* · Atualizado agora<\/span>/, `<span class="chip violet">${esc(nature)}</span>`)
+    .replace(/<small>Planilha disponível: [^<]*<\/small>/, `<small>${esc(nature)}. Consulte a fonte indicada antes de tomar decisões.</small>`)
+    .replace(
+      "Relacionado às tabelas do projeto e ao período selecionado.",
+      live
+        ? "Valores carregados nesta sessão; confirme na fonte operacional antes do fechamento."
+        : custom
+          ? "Este modelo define a estrutura do relatório; ainda não executa consultas às fontes selecionadas."
+          : "Exemplo de apresentação; valores não representam o estado atual do projeto.",
+    );
+  const fragment = document.createElement("template");
+  fragment.innerHTML = annotatedMarkup;
+  fragment.content.querySelectorAll(".report-data-row").forEach((dataRow, index) => {
+    const detail = fragment.content.querySelector(`[data-report-detail="${index}"]`);
+    if (!detail) return;
+    dataRow.after(detail);
+    detail.id = `report-detail-${index}`;
+    dataRow.querySelector("[data-report-row-toggle]")?.setAttribute("aria-controls", detail.id);
+    const values = selected?.rows?.[index] || [];
+    const fields = (selected?.columns || []).map((column, columnIndex) =>
+      `<li><small>${esc(column)}</small><strong>${esc(values[columnIndex] ?? "—")}</strong></li>`,
+    ).join("");
+    const entry = selected?.id === "cash-evidence-live" ? selected.entries?.[index] : null;
+    const linkedDocuments = entry ? (state.documentCatalog || []).filter((document) =>
+      document.properties?.cashFlowId === entry.id ||
+      document.properties?.reportItemId === entry.id ||
+      (Array.isArray(entry.documentIds) && entry.documentIds.includes(document.id)) ||
+      (state.reportDocumentLinks?.[entry.id] || []).includes(document.id),
+    ) : [];
+    const attachments = entry?.attachments || (entry?.attachment ? [entry.attachment] : []);
+    const documentItems = [
+      ...attachments.filter((file) => file.fileName).map((file) => `<li><span class="report-document-icon">${ico("paperclip")}</span><span><strong>${esc(file.fileName)}</strong><small>Comprovante do lançamento ${esc(entry.id)}</small></span><button type="button" data-report-cash-file="${esc(entry.id)}" data-report-cash-attachment="${esc(file.id)}">Baixar arquivo</button></li>`),
+      ...linkedDocuments.map((document) => `<li><span class="report-document-icon">${ico("file-text")}</span><span><strong>${esc(document.title || document.fileName || "Documento")}</strong><small>${esc(document.code || document.category || "Acervo do loteamento")}${document.fileName ? ` · ${esc(document.fileName)}` : " · arquivo pendente"}</small></span><button type="button" data-report-project-document="${esc(document.id)}">Ver no acervo</button></li>`),
+    ].join("");
+    const fiscal = entry?.fiscalDocumentNumber || entry?.fiscalDocumentType
+      ? `<p class="report-document-fiscal"><b>Documento fiscal:</b> ${esc([entry.fiscalDocumentType, entry.fiscalDocumentNumber, entry.fiscalIssuer, entry.fiscalIssueDate].filter(Boolean).join(" · "))} <em>${esc(entry.fiscalStatus || "Pendente")}</em></p>`
+      : "";
+    const linkableDocuments = entry ? (state.documentCatalog || []).filter((document) =>
+      (document.fileName || document.sourceUrl) && !linkedDocuments.some((linked) => linked.id === document.id),
+    ) : [];
+    const evidenceActions = entry ? `<div class="report-document-actions"><label>Anexar recibo ou documento<input type="file" data-report-cash-upload="${esc(entry.id)}" accept="application/pdf,image/jpeg,image/png,image/webp"></label>${linkableDocuments.length ? `<label>Documento do acervo<select data-report-document-choice="${esc(entry.id)}"><option value="">Selecione um documento</option>${linkableDocuments.map((document) => `<option value="${esc(document.id)}">${esc(document.title || document.fileName)}</option>`).join("")}</select></label><button type="button" data-report-document-link="${esc(entry.id)}">Vincular</button>` : ""}</div>` : "";
+    const evidenceMarkup = `<section class="report-expanded-documents" aria-label="Recibos e documentos do item"><header><h5>Recibos e documentos relacionados</h5><small>${documentItems ? `${attachments.length + linkedDocuments.length} arquivo(s) vinculado(s)` : "Nenhum arquivo vinculado"}</small></header>${fiscal}${documentItems ? `<ul>${documentItems}</ul>` : `<p class="report-document-empty">${custom ? "Este modelo ainda não consulta documentos." : live ? "Não há recibo ou documento vinculado diretamente a este item." : "Item demonstrativo: não há recibo real associado a esta linha."}</p>`}${evidenceActions}${selected?.id === "system-live" && /caixa|entradas|saídas/i.test(String(values[0])) ? '<button type="button" class="report-document-related" data-report-linked-report="cash-evidence-live">Ver lançamentos e comprovantes de caixa</button>' : ""}</section>`;
+    detail.querySelector("td").innerHTML = `<section class="report-expanded-panel" aria-label="Detalhes da linha ${index + 1}"><header class="report-expanded-head"><span class="report-expanded-index">ITEM ${String(index + 1).padStart(2, "0")}</span><span class="report-expanded-title"><h4>${esc(values[0] ?? "Item sem identificação")}</h4><p>Desdobramento da linha selecionada</p></span><span class="report-expanded-nature">${esc(nature)}</span></header><ul class="report-expanded-fields">${fields}</ul>${evidenceMarkup}<footer class="report-expanded-footer"><span>Fonte: ${esc(selected?.source || "Não informada")}</span><span>${live ? "Dados carregados na sessão; confirme antes do fechamento." : custom ? "Modelo sem consulta ativa às fontes." : "Valores ilustrativos; não usar como apuração real."}</span></footer></section>`;
+  });
+  if (selected?.id === "cash-evidence-live" && !selected.rows.length) {
+    const tbody = fragment.content.querySelector(".report-table tbody");
+    if (tbody) tbody.innerHTML = `<tr><td colspan="${selected.columns.length + 1}">Nenhum lançamento de caixa carregado nesta sessão.</td></tr>`;
+  }
+  return fragment.innerHTML;
 };
 
 const viewLayerBindReportBuilder = ViewLayer.prototype.bind;
@@ -27615,6 +29201,76 @@ ViewLayer.prototype.bind = function () {
   viewLayerBindReportBuilder.call(this);
   const workspace = this.querySelector(".reports-workspace");
   if (!workspace) return;
+  workspace.addEventListener("change", async (event) => {
+    const input = event.target?.closest?.("input[data-report-cash-upload]");
+    if (!input?.files?.[0]) return;
+    const file = input.files[0];
+    if (file.size > 6 * 1024 * 1024 || !["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      notify("Use PDF ou imagem de até 6 MB.", "warning");
+      input.value = "";
+      return;
+    }
+    input.disabled = true;
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error("Falha ao ler o arquivo."));
+        reader.readAsDataURL(file);
+      });
+      const response = await apiFetch(`/api/cash-flow/${encodeURIComponent(input.dataset.reportCashUpload)}/attachments`, {
+        method: "POST", headers: operationalHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ attachment: { fileName: file.name, dataUrl } }),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.entry) throw new Error(payload.error || `HTTP ${response.status}`);
+      appStore.set({ cashFlowLocal: (appStore.get().cashFlowLocal || []).map((entry) => entry.id === payload.entry.id ? payload.entry : entry), lastAction: `Anexou comprovante ao lançamento ${payload.entry.id}` });
+      notify("Comprovante anexado ao lançamento.", "success");
+    } catch (error) {
+      notify(error.message || "Não foi possível anexar o comprovante.", "error");
+      input.disabled = false;
+      input.value = "";
+    }
+  });
+  workspace.addEventListener("click", async (event) => {
+    const button = event.target?.closest?.("button[data-report-cash-file],button[data-report-project-document],button[data-report-linked-report],button[data-report-document-link]");
+    if (!button) return;
+    if (button.dataset.reportDocumentLink) {
+      const id = button.dataset.reportDocumentLink;
+      const documentId = workspace.querySelector(`select[data-report-document-choice="${CSS.escape(id)}"]`)?.value;
+      if (!documentId) { notify("Selecione um documento do acervo.", "warning"); return; }
+      const current = appStore.get().reportDocumentLinks || {};
+      appStore.set({ reportDocumentLinks: { ...current, [id]: [...new Set([...(current[id] || []), documentId])] }, lastAction: `Vinculou documento ao lançamento ${id}` });
+      return;
+    }
+    if (button.dataset.reportLinkedReport) {
+      appStore.set({ reportFamily: "Financeiro", reportType: button.dataset.reportLinkedReport, lastAction: "Abriu lançamentos e comprovantes" });
+      return;
+    }
+    if (button.dataset.reportProjectDocument) {
+      appStore.set({ view: "documents", documentsEditId: button.dataset.reportProjectDocument, lastAction: "Abriu documento vinculado ao relatório" });
+      return;
+    }
+    const id = button.dataset.reportCashFile;
+    const entry = (appStore.get().cashFlowLocal || []).find((item) => item.id === id);
+    const file = (entry?.attachments || (entry?.attachment ? [entry.attachment] : [])).find((item) => item.id === button.dataset.reportCashAttachment);
+    if (!file?.fileName) return;
+    button.disabled = true;
+    try {
+      const response = await apiFetch(`/api/cash-flow/${encodeURIComponent(id)}/attachments/${encodeURIComponent(file.id)}/file`, { headers: operationalHeaders() });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = file.fileName;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      notify("Não foi possível abrir o comprovante deste lançamento.", "error");
+    } finally {
+      button.disabled = false;
+    }
+  });
   const state = appStore.get(),
     toolbar = workspace.querySelector(".reports-toolbar"),
     types = workspace.querySelector(".report-type-tabs");
@@ -28059,14 +29715,15 @@ ViewLayer.prototype.bindOperationalIntelligence = function () {
         const action = operationalActions().find(
           (item) => item.id === event.currentTarget.dataset.aiOpenChat,
         );
-        const chat = document.querySelector("ai-chat");
-        if (action && chat?.respond) {
-          chat.classList.remove("collapsed");
-          chat.respond(
+        const chat = globalThis.belavistaWorkerAssistant;
+        if (action && chat?.submit) {
+          chat.root?.classList.remove("is-collapsed");
+          chat.submit(
             `Prepare o próximo passo operacional para: ${action.label}. Considere o bloqueio: ${action.blocker}.`,
+            null, null, [], {mode:"priority", requestContext:{source:"ai-action-next-step",priority:action}},
           );
           notify("Contexto da ação enviado para a IA.", "success");
-        } else notify("Ação preparada para o chat da IA.", "success");
+        } else notify("Assistente operacional indisponível. Tente novamente em instantes.", "warning");
       },
     );
   }
@@ -28544,7 +30201,7 @@ ViewLayer.prototype.settings = function () {
   };
   const governance = `<section class="operational-governance"><header><div><span class="activity-kind">AUTORIDADE, CIÊNCIA E PROPAGAÇÃO</span><h2>Governança do agente</h2><p>Cloudflare concentra a lógica operacional; o Firebase só espelha mudanças em tempo real para avisar os apps das pontas.</p></div><button type="button" data-register-device>${ico("bell-ring")} Ativar neste dispositivo</button></header><div class="role-governance-grid"><article class="${["owner", "developer"].includes(actor.role) ? "current" : ""}"><span>DONO</span><b>Fluxo de caixa</b><p>Cria entradas, saídas, ajustes e estornos. Também pode registrar fatos.</p></article><article class="${["admin", "developer"].includes(actor.role) ? "current" : ""}"><span>ADMINISTRADOR</span><b>Calibrações do sistema</b><p>Define reserva, prioridade, orçamento e relações. Também pode registrar fatos.</p></article><article class="${["foreman", "developer"].includes(actor.role) ? "current" : ""}"><span>ENCARREGADO</span><b>Registros de campo</b><p>Confirma produção, serviço, evidência e completude; não altera caixa nem regra.</p></article></div><small data-device-status>Perfil atual: ${esc(actor.label || actor.role)} · O canal em tempo real usa Firebase Realtime Database; a automação e a decisão continuam na camada operacional.</small></section>`;
   const calibrationPanel = `<section class="calibration-settings"><header><div><span class="activity-kind">CALIBRAÇÃO OPERACIONAL · VERSÃO ${calibration?.version || "—"}</span><h2>Relações que governam a distribuição do caixa</h2><p>Somente Administrador salva. Dono e Encarregado têm leitura integral da regra.</p></div><span>Atualizado por ${esc(calibration?.updatedBy || "bootstrap")}</span></header><form data-calibration-form><div class="calibration-master"><label>Reserva mínima (R$)<input name="reserve" inputmode="decimal" value="${esc(Number(config.reserveCents || 0) / 100)}" ${["admin", "developer"].includes(actor.role) ? "" : "disabled"}></label><label>Dependência concluída em (%)<input name="dependencyProgress" type="number" min="1" max="100" value="${esc(config.dependencyProgress || 100)}" ${["admin", "developer"].includes(actor.role) ? "" : "disabled"}></label><label>Intervalo entre alertas (min)<input name="notificationCooldownMinutes" type="number" min="5" max="10080" value="${esc(config.notificationCooldownMinutes || 240)}" ${["admin", "developer"].includes(actor.role) ? "" : "disabled"}></label></div><div class="calibration-stage-list">${stages.map((stage, index) => `<article data-calibration-stage="${esc(stage.key)}"><span>${String(index + 1).padStart(2, "0")}</span><div><b>${esc(stage.name)}</b><small>Depende de ${(stage.dependsOn || []).join(", ") || "nenhuma etapa"}</small></div><label>Orçamento (R$)<input name="budgetCents" inputmode="decimal" value="${esc(Number(stage.budgetCents || 0) / 100)}" ${["admin", "developer"].includes(actor.role) ? "" : "disabled"}></label><label>Prioridade<input name="priority" type="number" min="0" max="100" value="${esc(stage.priority || 0)}" ${["admin", "developer"].includes(actor.role) ? "" : "disabled"}></label><input type="hidden" name="dependsOn" value="${esc((stage.dependsOn || []).join(","))}"></article>`).join("") || "<p>Carregando calibrações do servidor…</p>"}</div><footer><span data-calibration-status>${["admin", "developer"].includes(actor.role) ? "Cada versão fica registrada na auditoria." : "Seu perfil possui acesso somente para leitura."}</span><button type="submit" ${["admin", "developer"].includes(actor.role) ? "" : "disabled"}>${ico("save")} Salvar nova versão</button></footer></form></section>`;
-  const integrations = `<section class="integration-settings"><header><div><span class="activity-kind">ATENDIMENTO, PIX E NOTIFICAÇÕES</span><h2>Integrações operacionais</h2><p>O desktop e as páginas publicadas funcionam como clientes. A automação vive no Cloudflare Worker; o Firebase só entrega mudanças em tempo real.</p></div><div class="integration-status-list"><span class="active">Cloudflare · cliente</span><span>Firebase Realtime · escuta</span><span>WhatsApp · preparado</span></div></header><form data-integration-form><fieldset><legend>Camada operacional</legend><label>Base pública da API<input name="apiBase" value="${esc(saved.apiBase || "")}" placeholder="https://seu-worker.workers.dev"></label><label>Base pública dos uploads do Worker<input name="workerPublicBaseUrl" value="${esc(saved.workerPublicBaseUrl || "")}" placeholder="https://seu-worker.workers.dev"></label><label>Chave pública VAPID<input name="firebaseMessagingVapidKey" value="${esc(saved.firebaseMessagingVapidKey || "")}" placeholder="Para push opcional do Firebase"></label></fieldset><fieldset><legend>Destinos e realtime</legend><label>UID do canal Dono<input name="ownerNotificationUid" value="${esc(saved.ownerNotificationUid || "")}" placeholder="owner-root"></label><label>UID do canal Administrador<input name="adminNotificationUid" value="${esc(saved.adminNotificationUid || "")}" placeholder="admin-ops"></label><label>UID do canal Encarregado<input name="foremanNotificationUid" value="${esc(saved.foremanNotificationUid || "")}" placeholder="foreman-front-1"></label><label>Áreas extras de chegada<textarea name="notificationAreas" rows="2" placeholder="desktop-supplies, rtdb/commercial, mobile-foreman">${esc(saved.notificationAreas || "")}</textarea></label></fieldset><fieldset><legend>Segredos do Worker · somente nomes</legend><label>Nome do segredo NVIDIA<input name="workerSecretNvidiaApiKey" value="${esc(saved.workerSecretNvidiaApiKey || "NVIDIA_API_KEY")}" placeholder="NVIDIA_API_KEY"></label><label>Nome do segredo Firebase RTDB<input name="workerSecretFirebaseDatabaseUrl" value="${esc(saved.workerSecretFirebaseDatabaseUrl || "FIREBASE_DATABASE_URL")}" placeholder="FIREBASE_DATABASE_URL"></label><label>Nome do segredo Service Account<input name="workerSecretFirebaseServiceAccountJson" value="${esc(saved.workerSecretFirebaseServiceAccountJson || "FIREBASE_SERVICE_ACCOUNT_JSON")}" placeholder="FIREBASE_SERVICE_ACCOUNT_JSON"></label><div class="worker-secret-fixed-v5364"><span>PAT GitHub</span><b>GITHUB_PAT · configurado no Worker</b><small>O valor do PAT não é inserido no navegador.</small></div></fieldset><fieldset><legend>Propagação para GitHub</legend><label>Repositório<input name="githubRepo" value="${esc(saved.githubRepo || saved.repo || "")}" placeholder="usuario/belavista-ai-monitor"></label><label>Branch de propagação<input name="githubBranch" value="${esc(saved.githubBranch || "main")}" placeholder="main"></label><label>Workflow / hook de deploy<input name="githubWorkflow" value="${esc(saved.githubWorkflow || "")}" placeholder="deploy-belavista"></label></fieldset><fieldset><legend>WhatsApp operacional</legend><label>Número para notificações<input name="whatsappNumber" value="${esc(saved.whatsappNumber || "")}" placeholder="5571999999999"></label><label>Webhook do serviço operacional<input name="whatsappWebhook" value="${esc(saved.whatsappWebhook || "")}" placeholder="https://servico.externo/webhook"></label><label class="check"><input type="checkbox" name="autoNotify" ${saved.autoNotify ? "checked" : ""}> Enfileirar alertas de caixa e materiais</label></fieldset><fieldset><legend>Instagram · preparação</legend><label>Conta / identificador<input name="instagramAccount" value="${esc(saved.instagramAccount || "")}" placeholder="@aliancapark"></label><label>Webhook do serviço operacional<input name="instagramWebhook" value="${esc(saved.instagramWebhook || "")}" placeholder="URL do receptor"></label></fieldset><fieldset><legend>Sinal da reserva · Pix</legend><label>Chave Pix<input name="pixKey" value="${esc(saved.pixKey || "")}" placeholder="CPF, CNPJ, e-mail, telefone ou aleatória"></label><label>Valor do sinal<input name="signalAmount" type="number" min="0" step="0.01" value="${esc(saved.signalAmount || "1000")}"></label><label>Recebedor<input name="pixReceiver" maxlength="25" value="${esc(saved.pixReceiver || "ALIANCA PARK")}"></label><label>Cidade<input name="pixCity" maxlength="15" value="${esc(saved.pixCity || "SENADOR CANEDO")}"></label></fieldset><footer><small>Liquidação do Pix deve ser confirmada pelo PSP. OCR é triagem; validade documental exige conferência humana/serviço autorizado.</small><button type="submit">Salvar configurações</button></footer></form></section>`;
+  const integrations = `<section class="integration-settings"><header><div><span class="activity-kind">ATENDIMENTO, PIX E NOTIFICAÇÕES</span><h2>Integrações operacionais</h2><p>O desktop e as páginas publicadas funcionam como clientes. A automação vive no Cloudflare Worker; o Firebase só entrega mudanças em tempo real.</p></div><div class="integration-status-list"><span class="active">Cloudflare · cliente</span><span>Firebase Realtime · escuta</span><span>WhatsApp · preparado</span></div></header><form data-integration-form><fieldset><legend>Camada operacional</legend><label>Base pública da API<input name="apiBase" value="${esc(saved.apiBase || "")}" placeholder="https://seu-worker.workers.dev"></label><label>Base pública dos uploads do Worker<input name="workerPublicBaseUrl" value="${esc(saved.workerPublicBaseUrl || "")}" placeholder="https://seu-worker.workers.dev"></label><label>Chave pública VAPID<input name="firebaseMessagingVapidKey" value="${esc(saved.firebaseMessagingVapidKey || "")}" placeholder="Para push opcional do Firebase"></label></fieldset><fieldset><legend>Destinos e realtime</legend><label>UID do canal Dono<input name="ownerNotificationUid" value="${esc(saved.ownerNotificationUid || "")}" placeholder="owner-root"></label><label>UID do canal Administrador<input name="adminNotificationUid" value="${esc(saved.adminNotificationUid || "")}" placeholder="admin-ops"></label><label>UID do canal Encarregado<input name="foremanNotificationUid" value="${esc(saved.foremanNotificationUid || "")}" placeholder="foreman-front-1"></label><label>Áreas extras de chegada<textarea name="notificationAreas" rows="2" placeholder="desktop-supplies, rtdb/commercial, mobile-foreman">${esc(saved.notificationAreas || "")}</textarea></label></fieldset><fieldset><legend>Segredos do Worker · somente nomes</legend><label>Nome do segredo NVIDIA<input name="workerSecretNvidiaApiKey" value="${esc(saved.workerSecretNvidiaApiKey || "NVIDIA_API_KEY")}" placeholder="NVIDIA_API_KEY"></label><label>Nome do segredo Firebase RTDB<input name="workerSecretFirebaseDatabaseUrl" value="${esc(saved.workerSecretFirebaseDatabaseUrl || "FIREBASE_DATABASE_URL")}" placeholder="FIREBASE_DATABASE_URL"></label><label>Nome do segredo Service Account<input name="workerSecretFirebaseServiceAccountJson" value="${esc(saved.workerSecretFirebaseServiceAccountJson || "FIREBASE_SERVICE_ACCOUNT_JSON")}" placeholder="FIREBASE_SERVICE_ACCOUNT_JSON"></label><div class="worker-secret-fixed-v5364"><span>PAT GitHub</span><b>GITHUB_PAT · configurado no Worker</b><small>O valor do PAT não é inserido no navegador.</small></div></fieldset><fieldset><legend>Propagação para GitHub</legend><div class="worker-secret-fixed-v5364"><span>Repositório operacional</span><b>${esc(state.config?.github?.repo || "GITHUB_REPO · configurado no Worker")}</b><small>${state.config?.github?.branch ? `Branch ${esc(state.config.github.branch)}` : "Repo, branch e PAT são lidos exclusivamente do ambiente do Cloudflare Worker."}</small></div></fieldset><fieldset><legend>WhatsApp operacional</legend><label>Número para notificações<input name="whatsappNumber" value="${esc(saved.whatsappNumber || "")}" placeholder="5571999999999"></label><label>Webhook do serviço operacional<input name="whatsappWebhook" value="${esc(saved.whatsappWebhook || "")}" placeholder="https://servico.externo/webhook"></label><label class="check"><input type="checkbox" name="autoNotify" ${saved.autoNotify ? "checked" : ""}> Enfileirar alertas de caixa e materiais</label></fieldset><fieldset><legend>Instagram · preparação</legend><label>Conta / identificador<input name="instagramAccount" value="${esc(saved.instagramAccount || "")}" placeholder="@aliancapark"></label><label>Webhook do serviço operacional<input name="instagramWebhook" value="${esc(saved.instagramWebhook || "")}" placeholder="URL do receptor"></label></fieldset><fieldset><legend>Sinal da reserva · Pix</legend><label>Chave Pix<input name="pixKey" value="${esc(saved.pixKey || "")}" placeholder="CPF, CNPJ, e-mail, telefone ou aleatória"></label><label>Valor do sinal<input name="signalAmount" type="number" min="0" step="0.01" value="${esc(saved.signalAmount || "1000")}"></label><label>Recebedor<input name="pixReceiver" maxlength="25" value="${esc(saved.pixReceiver || "ALIANCA PARK")}"></label><label>Cidade<input name="pixCity" maxlength="15" value="${esc(saved.pixCity || "SENADOR CANEDO")}"></label></fieldset><footer><small>Liquidação do Pix deve ser confirmada pelo PSP. OCR é triagem; validade documental exige conferência humana/serviço autorizado.</small><button type="submit">Salvar configurações</button></footer></form></section>`;
   return settingsAuditTemplate
     .call(this)
     .replace(
@@ -28572,7 +30229,9 @@ ViewLayer.prototype.bind = function () {
         );
       }),
     );
+    for (const key of ["repo", "githubRepo", "githubBranch", "githubWorkflow"]) delete data[key];
     data.workerSecretGithubPat = "GITHUB_PAT";
+    data.workerGitHubSource = "cloudflare-env";
     data.autoNotify = form.elements.autoNotify.checked;
     data.stageProfiles = {
       ...(readIntegrationSettings().stageProfiles || {}),
@@ -28880,23 +30539,15 @@ ViewLayer.prototype["commission-deal"] = function () {
 };
 
 ViewLayer.prototype["brokers-board"] = function () {
-  const state = appStore.get(),
-    profile = commissionNegotiationProfileV1(state.selectedCommissionProfile);
-  if (state.selectedCommissionProfile) return this.commissionProfile(profile);
-  const deals = commissionNegotiationDealsV1(state),
-    cards = commissionProfiles
-      .map((person) => {
-        const own = deals
-            .filter((item) => item.profile === person.id)
-            .slice(0, 3),
-          total = own.reduce(
-            (sum, item) => sum + brlToNumber(item.commission),
-            0,
-          );
-        return `<article class="broker-board-card"><header><span class="commission-avatar" style="background:${esc(person.avatar)}">${esc(person.initials)}</span><div><h2>${esc(person.name)}</h2><p>${esc(person.role)} · ${esc(person.creci)}</p></div><b>${esc(person.conversion || "—")}</b></header><dl><div><dt>Telefone</dt><dd>${esc(person.phone || "—")}</dd></div><div><dt>Carteira</dt><dd>${person.sales || 0} vendas · ${esc(person.commission || "—")}</dd></div></dl><section><small>ÚLTIMAS NEGOCIAÇÕES</small>${own.map((item) => `<p><span>${esc(item.lot || "Lote")}</span><b>${esc(item.client || "Cliente")}</b><em>${esc(item.commission || "—")}</em></p>`).join("") || '<p class="empty-data">Sem negociações registradas.</p>'}</section><footer><span>${own.length} negociações recentes · ${formatBRL(total)}</span><button type="button" data-broker-board-profile="${esc(person.id)}">Abrir perfil ${ico("arrow-up-right")}</button></footer></article>`;
-      })
-      .join("");
-  return `<section class="brokers-board-page"><header class="brokers-board-head"><div><span class="activity-kind">02 · CARTEIRAS COMERCIAIS</span><h1>Corretores</h1><p>Quadro separado para consultar responsáveis, contatos, carteiras e as últimas negociações registradas.</p></div><button type="button" class="toolbar-action" data-view="brokers">${ico("badge-dollar-sign")} Ver comissões</button></header><section class="brokers-board-summary"><b>${commissionProfiles.length}</b><span>carteiras ativas<br>com negociações vinculadas</span></section><div class="brokers-board-grid">${cards}</div></section>`;
+  // brokers-board permanece como marcador de compatibilidade da rota legada;
+  // a superfície exibida agora é a visualização e o controle de lotes.
+  const state = appStore.get();
+  const partners = state.repassePartners || commissionProfiles.map((person) => ({ id: person.id, name: person.name, document: person.creci || "", contact: person.phone || "", active: true }));
+  const entries = state.repasseEntries || [];
+  const total = entries.reduce((sum, item) => sum + Number(item.gross || 0), 0);
+  const net = entries.reduce((sum, item) => sum + Number(item.net || 0), 0);
+  const rows = entries.map((item) => `<tr data-repasse-entry="${esc(item.id)}"><td><b>${esc(item.lot)}</b><small>${esc(item.client || "Cliente não informado")}</small></td><td>${esc(item.partnerName || "—")}</td><td>${esc(item.description || "—")}</td><td>${formatBRL(item.gross)}</td><td>${formatBRL(item.discount)}</td><td><b>${formatBRL(item.net)}</b></td><td><button type="button" data-repasse-edit="${esc(item.id)}">Editar</button><button type="button" data-repasse-delete="${esc(item.id)}">Excluir</button></td></tr>`).join("");
+  return `<section class="repasse-page brokers-board-page"><header class="repasse-page-head"><div><span class="activity-kind">OPERAÇÃO COMERCIAL · REPASSE DE ENTRADA</span><h1>Repasse de entrada dos lotes</h1><p>Cadastre sócios, registre entradas por lote e divida os valores com abatimento fixo de 6%.</p></div><button type="button" class="toolbar-action" data-view="brokers">${ico("arrow-left")} Comissões</button></header><section class="repasse-kpis"><article><small>ENTRADAS</small><b>${entries.length}</b><span>lotes cadastrados</span></article><article><small>VALOR BRUTO</small><b>${formatBRL(total)}</b><span>entradas lançadas</span></article><article><small>ABATIMENTO</small><b>6%</b><span>regra aplicada</span></article><article><small>VALOR FINAL</small><b>${formatBRL(net)}</b><span>após abatimento</span></article></section><div class="repasse-layout"><section class="repasse-card"><header><div><span class="activity-kind">01 · NOVA ENTRADA</span><h2>Adicionar repasse</h2></div></header><form data-repasse-entry-form><input type="hidden" name="id"><label>Lote<input name="lot" required placeholder="Quadra 04 · Lote 08"></label><label>Cliente / comprador<input name="client" placeholder="Nome do comprador"></label><label>Sócio / destinatário<select name="partnerId"><option value="">Selecionar sócio</option>${partners.map((person) => `<option value="${esc(person.id)}">${esc(person.name)}</option>`).join("")}</select></label><label>Valor bruto da entrada<input name="gross" required type="number" min="0" step="0.01" placeholder="0,00"></label><label class="wide">Descrição do repasse<textarea name="description" rows="3" placeholder="Ex.: entrada referente à reserva e primeira parcela do lote"></textarea></label><div class="repasse-calculation"><span>Abatimento fixo <b>6%</b></span><strong data-repasse-preview>Valor final: R$ 0,00</strong></div><footer><button type="reset" data-repasse-cancel>Limpar</button><button type="submit">${ico("save")} Salvar repasse</button></footer></form></section><section class="repasse-card"><header><div><span class="activity-kind">02 · CRUD DE SÓCIOS</span><h2>Sócios</h2></div></header><form data-repasse-partner-form><input type="hidden" name="id"><label>Nome<input name="name" required placeholder="Nome do sócio"></label><label>Documento<input name="document" placeholder="CPF / CNPJ"></label><label>Contato<input name="contact" placeholder="Telefone ou e-mail"></label><footer><button type="reset">Limpar</button><button type="submit">${ico("user-plus")} Salvar sócio</button></footer></form><div class="repasse-partner-list">${partners.map((person) => `<div><span><b>${esc(person.name)}</b><small>${esc(person.document || "Sem documento")} · ${esc(person.contact || "Sem contato")}</small></span><button type="button" data-repasse-partner-edit="${esc(person.id)}">Editar</button><button type="button" data-repasse-partner-delete="${esc(person.id)}">Excluir</button></div>`).join("")}</div></section></div><section class="repasse-card repasse-table-card"><header><div><span class="activity-kind">03 · ENTRADAS POR LOTE</span><h2>Tabela de repasses</h2><p>Todos os campos podem ser editados ou excluídos.</p></div><small>${entries.length} lançamento(s)</small></header><div class="repasse-table-wrap"><table><thead><tr><th>Lote / cliente</th><th>Sócio</th><th>Descrição</th><th>Bruto</th><th>Abatimento 6%</th><th>Valor final</th><th>Ações</th></tr></thead><tbody>${rows || '<tr><td colspan="7" class="empty-data">Nenhum repasse cadastrado.</td></tr>'}</tbody></table></div></section></section>`;
 };
 
 const commissionFileToDataUrlV1 = (file) =>
@@ -29015,6 +30666,192 @@ ViewLayer.prototype.bind = function (...args) {
   dealPage
     ?.querySelector("[data-commission-deal-print]")
     ?.addEventListener("click", () => window.print());
+  const repassePage = this.querySelector(".repasse-page");
+  if (!repassePage) {
+    document.querySelectorAll(".lot-status-modal[data-lot-floating-control]").forEach((modal) => modal.remove());
+    document.body.classList.remove("lot-control-open");
+  }
+  if (repassePage && !repassePage.querySelector("[data-lot-price-catalog]")) {
+    const head = repassePage.querySelector(".repasse-page-head");
+    if (head) {
+      const title = head.querySelector("h1"), label = head.querySelector(".activity-kind"), copy = head.querySelector("p");
+      if (title) title.textContent = "Lotes";
+      if (label) label.textContent = "LOTEAMENTO · VISUALIZAÇÃO E CONTROLE";
+      if (copy) copy.textContent = "Consulte os valores de cada lote e controle entradas, abatimentos, comissões e repasses aos sócios.";
+    }
+    const catalog = document.createElement("section");
+    catalog.className = "repasse-card lot-price-catalog-card";
+    catalog.dataset.lotPriceCatalog = "true";
+    catalog.innerHTML = `<header><div><span class="activity-kind">01 · TABELA DE LOTES</span><h2>Valores por lote</h2><p>Valores de referência importados da planilha de preços do empreendimento.</p></div><small>${REPASSE_PRICE_CATALOG.length} lotes</small></header><div class="lot-catalog-toolbar"><label class="lot-catalog-filter">Localizar lote ou quadra<input type="search" data-lot-catalog-filter placeholder="Ex.: QA 12"></label><label>Quadra<select data-lot-catalog-quadra><option value="">Todas</option>${[...new Set(REPASSE_PRICE_CATALOG.map(item => item.quadra))].sort().map(quadra => `<option value="${esc(quadra)}">${esc(quadra)}</option>`).join("")}</select></label><label>Status<select data-lot-catalog-status><option value="">Todos</option><option>Disponível</option><option>Reservado</option><option>Em negociação</option><option>Vendido</option><option>Repasse programado</option><option>Quitado</option><option>Bloqueado</option></select></label><label>Pagamento<select data-lot-catalog-payment><option value="">Todos</option><option>Pendente</option><option>Parcial</option><option>Pago</option><option>Cancelado</option></select></label><label>Vendedor<select data-lot-catalog-seller><option value="">Todos</option>${commissionProfiles.map(person => `<option value="${esc(person.name)}">${esc(person.name)}</option>`).join("")}</select></label></div><div class="repasse-table-wrap"><table><thead><tr><th>Lote</th><th>Quadra</th><th>Área</th><th>Valor à vista</th><th>Status</th><th>Pagamento</th><th>Iteração</th></tr></thead><tbody>${REPASSE_PRICE_CATALOG.map(item => { const lotKey = String(item.label || `${item.quadra}-${item.lot}`), lotState = appStore.get().lotStatuses?.[lotKey] || {}, status = lotState.status || "Disponível", paymentStatus = lotState.payment?.status || "Pendente", sellerName = lotState.sellerName || ""; return `<tr data-lot-catalog-row data-lot-key="${esc(lotKey)}" data-lot-quadra="${esc(item.quadra)}" data-lot-status="${esc(status)}" data-lot-payment="${esc(paymentStatus)}" data-lot-seller="${esc(sellerName)}" data-lot-search="${esc(`${item.label} ${item.lot} ${item.quadra}`.toLocaleLowerCase())}"><td><b>${esc(item.lot)}</b></td><td>${esc(item.quadra)}</td><td>${esc(item.area)} m²</td><td><b>${formatBRL(item.price)}</b></td><td><span class="lot-status-pill" data-lot-status-cell>${esc(status)}</span></td><td><span class="lot-payment-pill" data-lot-payment-cell>${esc(paymentStatus)}</span></td><td><button type="button" class="lot-catalog-action" data-lot-select data-lot-label="${esc(item.label)}" data-lot-price="${esc(item.price)}">Usar no repasse</button></td></tr>`; }).join("")}</tbody></table></div><footer class="lot-catalog-feedback" data-lot-catalog-feedback>Selecione um lote para preencher a entrada automaticamente ou clique em uma linha para alterar status, vendedor, repasse e pagamento.</footer>`;
+    repassePage.querySelector(".repasse-layout")?.before(catalog);
+  }
+  const repasseEntryForm = repassePage?.querySelector("[data-repasse-entry-form]");
+  const repassePartnerForm = repassePage?.querySelector("[data-repasse-partner-form]");
+  const repasseState = () => appStore.get();
+  const lotInput = repasseEntryForm?.elements.namedItem("lot");
+  if (lotInput && !lotInput.dataset.repasseCatalogBound) {
+    lotInput.dataset.repasseCatalogBound = "true";
+    const listId = "repasse-price-lots";
+    lotInput.setAttribute("list", listId);
+    lotInput.insertAdjacentHTML("afterend", `<datalist id="${listId}">${REPASSE_PRICE_CATALOG.map((item) => `<option value="${esc(item.label)}">${esc(item.quadra)} · lote ${esc(item.lot)} · ${formatBRL(item.price)}</option>`).join("")}</datalist>`);
+    lotInput.addEventListener("change", () => { const selected = REPASSE_PRICE_CATALOG.find((item) => item.label.toLocaleLowerCase() === String(lotInput.value || "").trim().toLocaleLowerCase()); const gross = repasseEntryForm.elements.namedItem("gross"); if (selected && gross && !Number(gross.value)) { gross.value = selected.price; gross.dispatchEvent(new Event("input")); } });
+  }
+  const lotCatalog = repassePage?.querySelector("[data-lot-price-catalog]");
+  const catalogToolbar = lotCatalog?.querySelector(".lot-catalog-toolbar");
+  if (catalogToolbar) catalogToolbar.innerHTML = `<div class="lot-catalog-toolbar-main"><label class="lot-catalog-filter">Buscar lote ou quadra<input type="search" data-lot-catalog-filter placeholder="Ex.: QA 12"></label><div class="lot-catalog-crud" role="group" aria-label="Controle dos lotes"><button type="button" data-lot-control-new>Novo controle</button><button type="button" data-lot-control-edit disabled>Editar selecionado</button><button type="button" data-lot-control-delete disabled>Excluir controle</button><button type="button" data-lot-control-repasse disabled>Registrar entrada/repasse</button></div></div><div class="lot-catalog-toolbar-filters"><label>Quadra<select data-lot-catalog-quadra><option value="">Todas</option>${[...new Set(REPASSE_PRICE_CATALOG.map(item => item.quadra))].sort().map(quadra => `<option value="${esc(quadra)}">${esc(quadra)}</option>`).join("")}</select></label><label>Status<select data-lot-catalog-status><option value="">Todos</option><option>Disponível</option><option>Reservado</option><option>Em negociação</option><option>Vendido</option><option>Repasse programado</option><option>Quitado</option><option>Bloqueado</option></select></label><label>Pagamento<select data-lot-catalog-payment><option value="">Todos</option><option>Pendente</option><option>Parcial</option><option>Pago</option><option>Cancelado</option></select></label><label>Vendedor<select data-lot-catalog-seller><option value="">Todos</option>${commissionProfiles.map(person => `<option value="${esc(person.name)}">${esc(person.name)}</option>`).join("")}</select></label><button type="button" data-lot-filter-clear>Limpar filtros</button></div>`;
+  if (lotCatalog) {
+    const controlHeading = lotCatalog.querySelector("thead th:last-child");
+    if (controlHeading) controlHeading.textContent = "Controle";
+    const feedback = lotCatalog.querySelector("[data-lot-catalog-feedback]");
+    if (feedback) feedback.textContent = "Clique em um lote para abrir o controle em modal. A toolbar gerencia os controles sem alterar a tabela de preços.";
+  }
+  const lotCatalogFilter = lotCatalog?.querySelector("[data-lot-catalog-filter]");
+  const lotCatalogFilterQuadra = lotCatalog?.querySelector("[data-lot-catalog-quadra]"), lotCatalogFilterStatus = lotCatalog?.querySelector("[data-lot-catalog-status]"), lotCatalogFilterPayment = lotCatalog?.querySelector("[data-lot-catalog-payment]"), lotCatalogFilterSeller = lotCatalog?.querySelector("[data-lot-catalog-seller]");
+  const applyLotCatalogFilters = () => {
+    const query = String(lotCatalogFilter?.value || "").trim().toLocaleLowerCase(), quadra = String(lotCatalogFilterQuadra?.value || ""), status = String(lotCatalogFilterStatus?.value || ""), payment = String(lotCatalogFilterPayment?.value || ""), seller = String(lotCatalogFilterSeller?.value || "");
+    lotCatalog?.querySelectorAll("[data-lot-catalog-row]").forEach((row) => {
+      row.hidden = Boolean((query && !String(row.dataset.lotSearch || "").includes(query)) || (quadra && row.dataset.lotQuadra !== quadra) || (status && row.dataset.lotStatus !== status) || (payment && row.dataset.lotPayment !== payment) || (seller && row.dataset.lotSeller !== seller));
+    });
+    const visible = [...(lotCatalog?.querySelectorAll("[data-lot-catalog-row]") || [])].filter(row => !row.hidden).length;
+    const feedback = lotCatalog?.querySelector("[data-lot-catalog-feedback]"); if (feedback) feedback.textContent = `${visible} lote(s) encontrados. Clique em uma linha para controlar status, vendedor, repasse e pagamento.`;
+  };
+  [lotCatalogFilter, lotCatalogFilterQuadra, lotCatalogFilterStatus, lotCatalogFilterPayment, lotCatalogFilterSeller].forEach((control) => control?.addEventListener(control === lotCatalogFilter ? "input" : "change", applyLotCatalogFilters));
+  lotCatalog?.querySelectorAll("[data-lot-select]").forEach((button) => {
+    button.textContent = "Abrir controle";
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      button.closest("[data-lot-catalog-row]")?.click();
+    });
+  });
+  if (lotCatalog) {
+    const lotStatusModal = document.createElement("div");
+    const partners = repasseState().repassePartners || commissionProfiles.map((person) => ({ id: person.id, name: person.name }));
+    lotStatusModal.className = "lot-status-modal";
+    lotStatusModal.hidden = true;
+    lotStatusModal.innerHTML = `<div class="lot-status-modal-backdrop" data-lot-status-close></div><section class="lot-status-dialog" role="dialog" aria-modal="true" aria-labelledby="lot-status-title"><header><div><span class="activity-kind">CONTROLE DO LOTE</span><h2 id="lot-status-title">Status, repasse e pagamento</h2><p data-lot-status-summary></p></div><button type="button" class="lot-status-close" data-lot-status-close aria-label="Fechar">×</button></header><form data-lot-status-form><input type="hidden" name="lotKey"><section class="lot-status-form-section"><span class="activity-kind">01 · COMERCIAL</span><label>Status do lote<select name="status"><option>Disponível</option><option>Reservado</option><option>Em negociação</option><option>Vendido</option><option>Repasse programado</option><option>Quitado</option><option>Bloqueado</option></select></label><label>Vendedor<select name="sellerId"><option value="">Selecionar vendedor</option>${commissionProfiles.map((person) => `<option value="${esc(person.id)}">${esc(person.name)}</option>`).join("")}</select></label></section><section class="lot-status-form-section"><span class="activity-kind">02 · REPASSE E PAGAMENTO</span><label>Repasse previsto / responsável<select name="repassePartnerId"><option value="">Selecionar sócio</option>${partners.map((person) => `<option value="${esc(person.id)}">${esc(person.name)}</option>`).join("")}</select></label><label>Status do pagamento<select name="paymentStatus"><option>Pendente</option><option>Parcial</option><option>Pago</option><option>Cancelado</option></select></label><label>Valor pago<input name="paymentAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00"></label><label>Data do pagamento<input name="paymentDate" type="date"></label><label class="wide">Observação<textarea name="note" rows="3" placeholder="Ex.: aguardando documentação, entrada ou confirmação do repasse"></textarea></label></section><footer><button type="button" class="toolbar-action" data-lot-status-close>Cancelar</button><button type="submit" class="toolbar-primary">Salvar controle do lote</button></footer></form></section>`;
+    // Keep the floating layer outside scrollable/transformed page containers.
+    document.querySelectorAll(".lot-status-modal[data-lot-floating-control]").forEach((oldModal) => oldModal.remove());
+    document.body.classList.remove("lot-control-open");
+    lotStatusModal.dataset.lotFloatingControl = "true";
+    document.body.append(lotStatusModal);
+    const statusForm = lotStatusModal.querySelector("[data-lot-status-form]"), summary = lotStatusModal.querySelector("[data-lot-status-summary]");
+    const lotPicker = document.createElement("label");
+    lotPicker.className = "lot-status-picker";
+    lotPicker.innerHTML = `Lote<select data-lot-status-picker>${REPASSE_PRICE_CATALOG.map((item) => `<option value="${esc(item.label)}">${esc(item.label)} · ${formatBRL(item.price)}</option>`).join("")}</select>`;
+    statusForm.querySelector('[name="lotKey"]')?.after(lotPicker);
+    const picker = lotPicker.querySelector("select");
+    const selectedRow = () => lotCatalog.querySelector("[data-lot-catalog-row].is-selected");
+    const updateCrudButtons = () => {
+      const selected = selectedRow();
+      ["edit", "repasse"].forEach((action) => { const button = catalogToolbar?.querySelector(`[data-lot-control-${action}]`); if (button) button.disabled = !selected; });
+      const deleteButton = catalogToolbar?.querySelector("[data-lot-control-delete]");
+      if (deleteButton) deleteButton.disabled = !selected || !repasseState().lotStatuses?.[selected.dataset.lotKey];
+    };
+    let focusBeforeModal = null;
+    const closeLotStatus = () => { lotStatusModal.hidden = true; document.body.classList.remove("lot-control-open"); focusBeforeModal?.focus?.(); };
+    lotStatusModal.querySelectorAll("[data-lot-status-close]").forEach((button) => button.addEventListener("click", closeLotStatus));
+    lotStatusModal.addEventListener("keydown", (event) => { if (event.key === "Escape") { event.preventDefault(); closeLotStatus(); } });
+    const openLotStatus = (lotKey, focusPicker = false) => {
+      const item = REPASSE_PRICE_CATALOG.find((candidate) => String(candidate.label) === String(lotKey));
+      if (!item) return;
+      const stored = repasseState().lotStatuses?.[lotKey] || {}, formValues = statusForm.elements;
+      const payment = stored.payment || {};
+      formValues.lotKey.value = lotKey; formValues.status.value = stored.status || "Disponível"; formValues.sellerId.value = stored.sellerId || ""; formValues.repassePartnerId.value = stored.repasse?.partnerId || ""; formValues.paymentStatus.value = payment.status || "Pendente"; formValues.paymentAmount.value = payment.amount ?? ""; formValues.paymentDate.value = payment.date || ""; formValues.note.value = stored.note || "";
+      picker.value = lotKey;
+      if (summary) summary.textContent = `${item?.label || lotKey} · ${item ? formatBRL(item.price) : "valor de referência"}`;
+      lotCatalog.querySelectorAll("[data-lot-catalog-row]").forEach((row) => row.classList.toggle("is-selected", row.dataset.lotKey === lotKey));
+      updateCrudButtons();
+      if (lotStatusModal.hidden) focusBeforeModal = document.activeElement;
+      lotStatusModal.hidden = false;
+      document.body.classList.add("lot-control-open");
+      (focusPicker ? picker : formValues.status).focus();
+    };
+    picker.addEventListener("change", () => openLotStatus(picker.value, true));
+    lotCatalog.querySelectorAll("[data-lot-catalog-row]").forEach((row) => {
+      row.tabIndex = 0;
+      row.setAttribute("aria-label", `Abrir controle do lote ${row.dataset.lotKey}`);
+      row.addEventListener("click", () => openLotStatus(row.dataset.lotKey));
+      row.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openLotStatus(row.dataset.lotKey); } });
+    });
+    catalogToolbar?.querySelector("[data-lot-control-new]")?.addEventListener("click", () => openLotStatus(selectedRow()?.dataset.lotKey || lotCatalog.querySelector("[data-lot-catalog-row]:not([hidden])")?.dataset.lotKey, true));
+    catalogToolbar?.querySelector("[data-lot-control-edit]")?.addEventListener("click", () => openLotStatus(selectedRow()?.dataset.lotKey));
+    catalogToolbar?.querySelector("[data-lot-control-delete]")?.addEventListener("click", () => {
+      const lotKey = selectedRow()?.dataset.lotKey;
+      if (!lotKey || !confirm(`Excluir o controle de ${lotKey}? O lote e seu preço permanecerão na tabela.`)) return;
+      const next = { ...(repasseState().lotStatuses || {}) };
+      delete next[lotKey];
+      appStore.set({ lotStatuses: next, lastAction: `Excluiu controle do lote ${lotKey}` });
+      const row = selectedRow();
+      if (row) { row.dataset.lotStatus = "Disponível"; row.dataset.lotPayment = "Pendente"; row.dataset.lotSeller = ""; row.querySelector("[data-lot-status-cell]").textContent = "Disponível"; row.querySelector("[data-lot-payment-cell]").textContent = "Pendente"; }
+      updateCrudButtons(); applyLotCatalogFilters();
+    });
+    catalogToolbar?.querySelector("[data-lot-control-repasse]")?.addEventListener("click", () => {
+      const item = REPASSE_PRICE_CATALOG.find((candidate) => candidate.label === selectedRow()?.dataset.lotKey);
+      if (!item) return;
+      if (lotInput) { lotInput.value = item.label; lotInput.dispatchEvent(new Event("change")); }
+      const gross = repasseEntryForm?.elements.namedItem("gross");
+      if (gross) { gross.value = String(item.price); gross.dispatchEvent(new Event("input")); }
+      repasseEntryForm?.scrollIntoView({ behavior: "smooth", block: "center" });
+      gross?.focus();
+    });
+    catalogToolbar?.querySelector("[data-lot-filter-clear]")?.addEventListener("click", () => { [lotCatalogFilter, lotCatalogFilterQuadra, lotCatalogFilterStatus, lotCatalogFilterPayment, lotCatalogFilterSeller].forEach((control) => { if (control) control.value = ""; }); applyLotCatalogFilters(); });
+    statusForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const values = Object.fromEntries(new FormData(statusForm)), current = repasseState().lotStatuses || {}, seller = commissionProfiles.find((person) => person.id === values.sellerId), partner = partners.find((person) => person.id === values.repassePartnerId), lotState = { status: values.status, sellerId: values.sellerId, sellerName: seller?.name || "", repasse: { partnerId: values.repassePartnerId, partnerName: partner?.name || "" }, payment: { status: values.paymentStatus, amount: Math.max(0, Number(values.paymentAmount) || 0), date: values.paymentDate || "" }, note: values.note, updatedAt: new Date().toISOString() };
+      appStore.set({ lotStatuses: { ...current, [values.lotKey]: lotState }, lastAction: `Atualizou controle do lote ${values.lotKey}` });
+      const row = [...lotCatalog.querySelectorAll("[data-lot-catalog-row]")].find((candidate) => candidate.dataset.lotKey === values.lotKey), cell = row?.querySelector("[data-lot-status-cell]");
+      if (cell) cell.textContent = values.status;
+      const paymentCell = row?.querySelector("[data-lot-payment-cell]"); if (paymentCell) paymentCell.textContent = values.paymentStatus;
+      if (row) { row.dataset.lotStatus = values.status; row.dataset.lotPayment = values.paymentStatus; row.dataset.lotSeller = seller?.name || ""; }
+      const feedback = lotCatalog.querySelector("[data-lot-catalog-feedback]"); if (feedback) feedback.textContent = `${values.lotKey} atualizado para “${values.status}”.`;
+      updateCrudButtons(); applyLotCatalogFilters(); closeLotStatus();
+    });
+  }
+  if (repassePage && !repassePage.querySelector("[data-repasse-config]")) repassePage.querySelector(".repasse-page-head")?.insertAdjacentHTML("afterend", `<section class="repasse-config" data-repasse-config><header><div><span class="activity-kind">CENTRAL OPERACIONAL · PARÂMETROS DE REPASSE</span><h2>Regras ajustáveis</h2></div><small>Aplicadas a novas entradas e parcelas</small></header><label>Abatimento / imposto (%)<input data-repasse-config-field="taxPercent" type="number" min="0" max="100" step="0.1" value="${esc(repasseState().repasseConfig?.taxPercent ?? 6)}"></label><label>Comissão (%)<input data-repasse-config-field="commissionPercent" type="number" min="0" max="100" step="0.1" value="${esc(repasseState().repasseConfig?.commissionPercent ?? 10)}"></label><label>Divisão sócio A (%)<input data-repasse-config-field="splitA" type="number" min="0" max="100" step="1" value="${esc(repasseState().repasseConfig?.splitA ?? 40)}"></label><label>Divisão sócio B (%)<input data-repasse-config-field="splitB" type="number" min="0" max="100" step="1" value="${esc(repasseState().repasseConfig?.splitB ?? 60)}"></label><label>Arredondar para múltiplo de (R$)<input data-repasse-config-field="roundTo" type="number" min="0" step="10" value="${esc(repasseState().repasseConfig?.roundTo ?? 100)}"></label><span data-repasse-config-status>Parâmetros salvos localmente.</span></section>`);
+  const repasseConfig = () => ({ taxPercent: Number(repasseState().repasseConfig?.taxPercent ?? 6), commissionPercent: Number(repasseState().repasseConfig?.commissionPercent ?? 10), splitA: Number(repasseState().repasseConfig?.splitA ?? 40), splitB: Number(repasseState().repasseConfig?.splitB ?? 60), roundTo: Number(repasseState().repasseConfig?.roundTo ?? 100) });
+  const calculateRepasse = (gross) => { const config = repasseConfig(); const tax = gross * config.taxPercent / 100; const afterTax = gross - tax; const commission = afterTax * config.commissionPercent / 100; const base = afterTax - commission; const rounded = config.roundTo > 0 ? Math.floor(base / config.roundTo) * config.roundTo : base; return { ...config, gross, tax, afterTax, commission, net: Math.max(0, rounded), rounding: base - rounded }; };
+  repassePage?.querySelectorAll("[data-repasse-config-field]").forEach((input) => input.addEventListener("change", () => { const current = repasseConfig(); current[input.dataset.repasseConfigField] = Number(input.value) || 0; appStore.set({ repasseConfig: current, lastAction: "Atualizou parâmetros do repasse" }); const status = repassePage.querySelector("[data-repasse-config-status]"); if (status) status.textContent = "Parâmetros salvos na Central Operacional."; repasseEntryForm?.querySelector('[name="gross"]')?.dispatchEvent(new Event("input")); }));
+  const refreshRepasse = (lastAction) => appStore.set({ lastAction });
+  repasseEntryForm?.querySelector('[name="gross"]')?.addEventListener("input", (event) => {
+    const gross = Math.max(0, Number(event.target.value) || 0);
+    const calc = calculateRepasse(gross);
+    const preview = repasseEntryForm.querySelector("[data-repasse-preview]");
+    if (preview) preview.textContent = `Imposto: ${formatBRL(calc.tax)} · Comissão: ${formatBRL(calc.commission)} · Valor final: ${formatBRL(calc.net)} · Arredondamento: ${formatBRL(calc.rounding)}`;
+  });
+  repasseEntryForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const values = Object.fromEntries(new FormData(event.currentTarget).entries());
+    const gross = Math.max(0, Number(values.gross) || 0);
+    const id = values.id || `RP-${Date.now().toString().slice(-8)}`;
+    const calc = calculateRepasse(gross);
+    const activePartners = (repasseState().repassePartners || []).filter((item) => item.active !== false);
+    const splitA = calc.splitA / Math.max(1, calc.splitA + calc.splitB), splitB = 1 - splitA;
+    const distributions = activePartners.slice(0, 2).map((item, index) => ({ partnerId: item.id, partnerName: item.name, sharePercent: index === 0 ? calc.splitA : calc.splitB, amount: Math.round(calc.net * (index === 0 ? splitA : splitB) * 100) / 100 }));
+    const entry = { id, lot: String(values.lot || "").trim().toUpperCase(), client: String(values.client || "").trim(), partnerId: "all", partnerName: distributions.map((item) => `${item.partnerName} (${item.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })})`).join(" · ") || "Sócios a cadastrar", distributions, description: String(values.description || "").trim(), gross, discount: Math.round(calc.tax * 100) / 100, tax: Math.round(calc.tax * 100) / 100, commission: Math.round(calc.commission * 100) / 100, rounding: Math.round(calc.rounding * 100) / 100, net: calc.net, updatedAt: new Date().toISOString() };
+    const current = repasseState().repasseEntries || [];
+    refreshRepasse(`Salvou repasse ${id}`);
+    appStore.set({ repasseEntries: [...current.filter((item) => item.id !== id), entry], lastAction: `Salvou repasse ${id}` });
+    notify(`Entrada salva. ${formatBRL(calc.net)} programados aos sócios após imposto, comissão e arredondamento.`, "success");
+  });
+  repasseEntryForm?.addEventListener("reset", () => { setTimeout(() => { const preview = repasseEntryForm.querySelector("[data-repasse-preview]"); if (preview) preview.textContent = "Valor final: R$ 0,00"; }, 0); });
+  repassePartnerForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const values = Object.fromEntries(new FormData(event.currentTarget).entries());
+    const id = values.id || `SOC-${Date.now().toString().slice(-8)}`;
+    const partner = { id, name: String(values.name || "").trim(), document: String(values.document || "").trim(), contact: String(values.contact || "").trim(), active: true };
+    const current = repasseState().repassePartners || [];
+    appStore.set({ repassePartners: [...current.filter((item) => item.id !== id), partner], lastAction: `Salvou sócio ${id}` });
+    notify("Sócio salvo.", "success");
+  });
+  repassePage?.querySelectorAll("[data-repasse-edit]").forEach((button) => button.addEventListener("click", () => {
+    const item = (repasseState().repasseEntries || []).find((entry) => entry.id === button.dataset.repasseEdit);
+    if (!item || !repasseEntryForm) return;
+    Object.entries(item).forEach(([key, value]) => { const input = repasseEntryForm.elements.namedItem(key); if (input && key !== "discount" && key !== "net") input.value = value ?? ""; });
+    repasseEntryForm.querySelector('[name="gross"]')?.dispatchEvent(new Event("input"));
+  }));
+  repassePage?.querySelectorAll("[data-repasse-delete]").forEach((button) => button.addEventListener("click", () => { if (!confirm("Excluir este repasse?")) return; appStore.set({ repasseEntries: (repasseState().repasseEntries || []).filter((entry) => entry.id !== button.dataset.repasseDelete), lastAction: "Excluiu repasse" }); notify("Repasse excluído.", "success"); }));
+  repassePage?.querySelectorAll("[data-repasse-partner-edit]").forEach((button) => button.addEventListener("click", () => { const item = (repasseState().repassePartners || []).find((entry) => entry.id === button.dataset.repassePartnerEdit); if (!item || !repassePartnerForm) return; Object.entries(item).forEach(([key, value]) => { const input = repassePartnerForm.elements.namedItem(key); if (input) input.value = value ?? ""; }); }));
+  repassePage?.querySelectorAll("[data-repasse-partner-delete]").forEach((button) => button.addEventListener("click", () => { if (!confirm("Excluir este sócio?")) return; appStore.set({ repassePartners: (repasseState().repassePartners || []).filter((entry) => entry.id !== button.dataset.repassePartnerDelete), lastAction: "Excluiu sócio" }); notify("Sócio excluído.", "success"); }));
   boardPage?.querySelectorAll("[data-broker-board-profile]").forEach((button) =>
     button.addEventListener("click", () =>
       appStore.set({
@@ -29089,7 +30926,7 @@ ViewLayer.prototype.bind = function (...args) {
           ...deal,
           ...data,
           id,
-          commission: deal.commission || "R$ 0,00",
+          commission: formatBRL((brlToNumber(data.value) * brlToNumber(data.rate)) / 100),
           date: deal.date || new Date().toLocaleDateString("pt-BR"),
         },
         previousAttachments = current.commissionDealAttachments?.[id] || {};
@@ -29124,14 +30961,14 @@ ViewLayer.prototype.bind = function (...args) {
               broker: commissionNegotiationProfileV1(data.profile)?.name || "",
               status: data.status,
               valueCents:
-                Math.round(
+                Math.round((
                   Number(
                     String(data.value || "")
                       .replace(/[^\d,]/g, "")
                       .replace(/\./g, "")
                       .replace(",", "."),
-                  ) || 0,
-                ) * 100,
+                  ) || 0
+                ) * 100),
               notes: data.notes || "",
               files,
             }),
@@ -31075,6 +32912,161 @@ ViewLayer.prototype.activityDedicatedPage = function () {
   return `<section class="stage-v9-dedicated-page"><header class="stage-v9-dedicated-head"><button type="button" class="stage-v9-back" data-view="stages">${ico("arrow-left")} Todas as etapas</button><div><span class="activity-kind">ETAPA DEDICADA · ${esc(stage.key.toUpperCase())}</span><h1>${esc(stage.name)}</h1><p>${esc(live.week || "Cronograma operacional")} · ${esc(live.owner || "Responsável a definir")} · unidade ${esc(stage.production?.unit || "produção")}</p></div><aside><small>AVANÇO REGISTRADO</small><b>${Number(live.progress) || 0}%</b><span>${esc(stageV9StatusFor(live))}</span></aside></header><section class="stage-v9-status-lines"><div><small>STATUS DA RELAÇÃO</small><b>${deps.length ? `Aguardando ${deps.join(", ")}` : "Liberada para início"}</b></div><div><small>CAIXA / ORÇAMENTO</small><b>${formatBRL(budget)}</b><span>peso ${Number(stage.cashWeight || 0) * 100}% no caixa</span></div><div><small>PRODUÇÃO</small><b>${esc(stageV9ProductionFor(stage))}</b><span>medida validada no diário</span></div><div><small>NOTIFICAÇÕES</small><b>${Object.values(targets).flat().length || 0} destinos</b><span>eventos auditáveis</span></div></section><section class="stage-v9-flow-section"><header><div><span class="activity-kind">FLUXOGRAMA ATUAL DE EXECUÇÃO</span><h2>Atividades e linhagens de requisito</h2><p>Clique em qualquer card para abrir o cabeçalho estrutural da atividade e seu diário de obra.</p></div><span class="stage-v9-flow-note">${stage.dependsOn?.length ? `↳ depende de ${stage.dependsOn.join(" · ")}` : "↳ início do encadeamento"}</span></header><div class="stage-v9-flow">${flow}</div></section><section class="stage-v9-detail-grid"><article class="stage-v9-detail-card"><span class="activity-kind">DIRETRIZ ATIVA</span><h2>O que dispara esta etapa</h2><p>${esc(stageV9DirectiveText(stage, profile))}</p><h3>Requisitos de evidência</h3><ul>${stageV9EscList(profile.evidenceFocus)}</ul><h3>Pedidos e materiais</h3><ul>${stageV9EscList(profile.procurementFocus || materials.map((item) => item.name))}</ul></article><article class="stage-v9-detail-card"><span class="activity-kind">MATERIAIS PRINCIPAIS</span><h2>Composição da frente</h2><div class="stage-v9-material-list">${materials.map((item) => `<div><b>${esc(item.name)}</b><span>${item.quantity == null ? "Quantidade a medir" : `${esc(item.quantity)} ${esc(item.unit || "un.")}`}</span><small>${esc(item.status || "Planejado")} · ${esc(item.scope || "Requisito da etapa")}</small></div>`).join("")}</div></article></section><section class="stage-v9-diary"><header><div><span class="activity-kind">DIÁRIO DE OBRA · HISTÓRICO DA ETAPA</span><h2>Registros, medições e comprovantes</h2></div><button type="button" data-view="records">Abrir histórico completo ${ico("arrow-up-right")}</button></header><div class="stage-v9-diary-table-wrap"><table class="stage-v9-diary-table"><thead><tr><th>Data / hora</th><th>Atividade</th><th>Responsável</th><th>Apontamento</th><th>Status</th><th>Comprovante</th></tr></thead><tbody>${diary}</tbody></table></div></section></section>`;
 };
 
+const stageV9DedicatedAgendaBase = ViewLayer.prototype.activityDedicatedPage;
+const stageAgendaNextSlotV1 = (events, durationHours = 1.5, from = new Date()) => {
+  const minutes = Math.max(30, Math.min(8 * 60, Math.ceil(Number(durationHours || 1.5) * 2) * 30));
+  const beginning = new Date(from);
+  beginning.setMinutes(Math.ceil(beginning.getMinutes() / 30) * 30, 0, 0);
+  for (let dayOffset = 0; dayOffset < 90; dayOffset++) {
+    const day = new Date(beginning.getFullYear(), beginning.getMonth(), beginning.getDate() + dayOffset);
+    if (day.getDay() === 0 || day.getDay() === 6) continue;
+    const date = agendaCalendarIsoV3(day);
+    for (let startMinute = 8 * 60; startMinute + minutes <= 18 * 60; startMinute += 30) {
+      const candidate = new Date(day.getFullYear(), day.getMonth(), day.getDate(), Math.floor(startMinute / 60), startMinute % 60);
+      if (candidate < beginning) continue;
+      const end = candidate.getTime() + minutes * 60000;
+      const conflict = (events || []).some((event) => {
+        const eventDay = agendaCalendarParseDateV3(event.date);
+        if (!eventDay) return false;
+        const start = new Date(eventDay.getFullYear(), eventDay.getMonth(), eventDay.getDate(), Math.floor(agendaCalendarTimeToHoursV3(event.start)), Math.round(agendaCalendarTimeToHoursV3(event.start) % 1 * 60)).getTime();
+        return candidate.getTime() < agendaCalendarEventEndV3(event) && end > start;
+      });
+      if (!conflict) return { date, start: `${String(Math.floor(startMinute / 60)).padStart(2, "0")}:${String(startMinute % 60).padStart(2, "0")}` };
+    }
+  }
+  return null;
+};
+const stageAgendaMaterialSidebarV1 = (stage, state) => {
+  const materials = controlCenterMaterialRowsV1(state).filter((item) => String(item.stageKey) === String(stage.key));
+  const records = (state.records || []).filter((record) => String(stageOf(record) || "").toLocaleLowerCase("pt-BR") === stage.name.toLocaleLowerCase("pt-BR"));
+  return `<aside class="stage-agenda-material-sidebar" data-stage-agenda-material-sidebar><header><span class="activity-kind">MATERIAIS DA ETAPA</span><h2>Materiais por atividade</h2><p>Passe sobre uma atividade para destacar seus materiais. Expanda um item para ver todos os dados e o comprovante.</p><button type="button" data-stage-material-show-all>Mostrar todos</button></header><div class="stage-agenda-material-accordions">${materials.length ? materials.map((material) => {
+    const proof = records.find((record) => {
+      const relation = `${record.detalhes || ""} ${record.materialId || ""} ${record.materialName || ""} ${JSON.stringify(record.properties || [])}`.toLocaleLowerCase("pt-BR");
+      return Boolean(record.evidenceUri || record.comprovante || record.evidencias?.length || record.attachments?.length) && (relation.includes(String(material.id || "").toLocaleLowerCase("pt-BR")) || relation.includes(String(material.name || "").toLocaleLowerCase("pt-BR")));
+    });
+    const source = proof?.attachments?.[0]?.fileName || proof?.evidencias?.[0]?.fileName || proof?.comprovante || proof?.evidenceUri || "";
+    const proofName = typeof source === "string" && !/^(data:|blob:)/i.test(source) ? source.split(/[\\/]/).pop()?.slice(0, 90) : "Arquivo anexado";
+    return `<details class="stage-agenda-material-item" data-stage-material-id="${esc(material.id || "")}" data-stage-material-activity="${esc(material.activityName || "")}"><summary><b>${esc(material.name)}</b><small>${esc(material.status || "Planejado")}</small></summary><div class="stage-agenda-material-details"><dl><div><dt>ID</dt><dd>${esc(material.id || "Não informado")}</dd></div><div><dt>Atividade</dt><dd>${esc(material.activityName || "Sem vínculo direto")}</dd></div><div><dt>Quantidade</dt><dd>${material.quantity == null ? "A dimensionar" : `${esc(material.quantity)} ${esc(material.unit || "un.")}`}</dd></div><div><dt>Descrição / escopo</dt><dd>${esc(material.description || material.scope || "Não informado")}</dd></div><div><dt>Etapa</dt><dd>${esc(stage.name)}</dd></div><div><dt>Comprovante</dt><dd>${proof ? `${esc(proofName || "Arquivo anexado")} · Diário da etapa, registro ${esc(proof.id || "sem ID")}` : "Sem comprovante vinculado"}</dd></div></dl></div></details>`;
+  }).join("") : '<p class="stage-agenda-material-empty">Nenhum material configurado para esta etapa.</p>'}</div></aside>`;
+};
+ViewLayer.prototype.activityDedicatedPage = function (...args) {
+  const state = appStore.get();
+  const stage = stageV9ByState(state) || executionModel.stages[0];
+  const packets = stageV9FlowPackets(stage);
+  const agendaData = agendaCalendarReadV3();
+  const storedEvents = agendaData.initialized ? agendaData.events : agendaCalendarOperationalEventsV3(state);
+  const agenda = [...storedEvents, ...(state.operationalAgenda || []), ...(state.stageAgendaItems || [])];
+  const materials = controlCenterMaterialRowsV1(state).filter((item) => String(item.stageKey) === String(stage.key));
+  const suggested = stageAgendaNextSlotV1(agenda);
+  const list = packets.map((packet, index) => {
+    const appointment = agenda.find((item) =>
+      String(item.stageKey || item.stage || "").toLocaleLowerCase("pt-BR") === stage.key.toLocaleLowerCase("pt-BR") &&
+      String(item.activityName || item.activity || item.title || "").toLocaleLowerCase("pt-BR") === packet.label.toLocaleLowerCase("pt-BR"),
+    );
+    const date = appointment?.date || appointment?.plannedStart?.slice?.(0, 10);
+    const when = date ? `${esc(date)}${appointment.start || appointment.time ? ` · ${esc(appointment.start || appointment.time)}` : ""}` : "Sem agendamento";
+    const status = appointment?.status || (index === 0 && Number(stageV9LiveFor(stage).progress) > 0 ? "Em andamento" : "Planejada");
+    return `<button type="button" class="stage-agenda-activity-row" data-activity-v9="${esc(`${stage.key}:${packet.key}`)}" data-stage-activity-focus="${esc(packet.label)}"><span class="stage-agenda-activity-index">${String(index + 1).padStart(2, "0")}</span><span class="stage-agenda-activity-main"><strong>${esc(packet.label)}</strong><small>${esc(packet.detail)}</small><em>${when} · ${esc(packet.unit)}</em></span><span class="stage-agenda-activity-status">${esc(status)}</span><span class="stage-agenda-activity-open">Abrir atividade ↗</span></button>`;
+  }).join("");
+  const customEvents = storedEvents.filter((item) => String(item.stageKey) === String(stage.key) && item.stageAgendaCustomV1);
+  const customList = customEvents.map((item, index) => `<button type="button" class="stage-agenda-activity-row stage-agenda-custom-row" data-stage-agenda-event-open="${esc(item.id)}" data-stage-material-ids="${esc((item.materialIds || []).join(","))}"><span class="stage-agenda-activity-index">${String(packets.length + index + 1).padStart(2, "0")}</span><span class="stage-agenda-activity-main"><strong>${esc(item.title)}</strong><small>${esc(item.notes || "Atividade adicionada à agenda da etapa")}</small><em>${esc(item.date)} · ${esc(item.start)} · ${esc(item.durationHours)} h</em></span><span class="stage-agenda-activity-status">${esc(item.status || "Planejado")}</span><span class="stage-agenda-activity-open">Abrir agenda ↗</span></button>`).join("");
+  const section = `<section class="stage-v9-flow-section stage-agenda-activities" aria-labelledby="stage-agenda-activities-title"><header><div><span class="activity-kind">AGENDA DA ETAPA · ${esc(stage.key.toUpperCase())}</span><h2 id="stage-agenda-activities-title">Lista de atividades</h2><p>Selecione uma atividade. À esquerda, os materiais relacionados aparecem em accordions com detalhes e comprovantes.</p></div><span class="stage-v9-flow-note">${packets.length + customEvents.length} atividades</span></header><div class="stage-agenda-activity-list">${list}${customList}</div></section>`;
+  const dependency = (stage.dependsOn || []).filter((key) => {
+    const preceding = executionModel.stages.find((item) => item.key === key);
+    return preceding && Number(stageV9LiveFor(preceding).progress) < 100;
+  });
+  const form = `<aside class="stage-agenda-create-sidebar"><header><span class="activity-kind">NOVA ATIVIDADE · ${esc(stage.name)}</span><h2>Adicionar à agenda</h2><p>O encaixe sugere a primeira janela útil livre e preserva o vínculo com esta etapa.</p></header><form data-stage-agenda-create-form data-stage-key="${esc(stage.key)}"><label>Nome da atividade<input name="title" required maxlength="160" placeholder="Ex.: Conferir compactação"></label><label>Descrição / entrega<textarea name="notes" rows="3" maxlength="1200" placeholder="O que deve ser feito e comprovado"></textarea></label><label>Vincular ao fluxo<select name="relatedPacket"><option value="">Atividade independente</option>${packets.map((packet) => `<option value="${esc(packet.key)}">${esc(packet.label)}</option>`).join("")}</select></label><label>Responsável<input name="owner" value="${esc(stageV9LiveFor(stage).owner || "")}" placeholder="Equipe ou encarregado"></label><div class="stage-agenda-form-pair"><label>Duração (h)<input name="durationHours" type="number" min="0.5" max="8" step="0.5" value="1.5" required></label><label>Status<select name="status"><option>Planejado</option><option>Pendente</option><option>Em andamento</option></select></label></div><div class="stage-agenda-form-pair"><label>Data<input name="date" type="date" value="${esc(suggested?.date || "")}" required></label><label>Hora<input name="start" type="time" step="1800" value="${esc(suggested?.start || "08:00")}" required></label></div><button type="button" class="stage-agenda-suggest-button" data-stage-agenda-suggest>Recalcular encaixe livre</button><fieldset><legend>Materiais relacionados</legend><div class="stage-agenda-form-materials">${materials.map((item) => `<label><input type="checkbox" name="materialIds" value="${esc(item.id || "")}"> ${esc(item.name)}</label>`).join("") || "<small>Nenhum material cadastrado.</small>"}</div></fieldset><div class="stage-agenda-fit" data-stage-agenda-fit role="status"><b>Encaixe sugerido</b><span>${suggested ? `${esc(suggested.date)} · ${esc(suggested.start)} · sem conflito na agenda` : "Sem janela livre nos próximos 90 dias"}</span><small>${dependency.length ? `Dependências a confirmar: ${esc(dependency.join(", "))}.` : "Etapa sem dependência pendente identificada."}</small></div><button type="submit" class="stage-agenda-create-submit">Adicionar atividade</button></form></aside>`;
+  const workspace = `<div class="stage-agenda-workspace">${stageAgendaMaterialSidebarV1(stage, state)}${section}${form}</div>`;
+  let html = stageV9DedicatedAgendaBase?.apply(this, args) || "";
+  const start = html.indexOf('<section class="stage-v9-flow-section">');
+  const end = start < 0 ? -1 : html.indexOf("</section>", start);
+  if (start >= 0 && end >= 0) html = html.slice(0, start) + workspace + html.slice(end + "</section>".length);
+  return html
+    .replace('<section class="stage-v9-dedicated-page">', '<section class="stage-v9-dedicated-page stage-agenda-page">')
+    .replace(`<h1>${esc(stage.name)}</h1>`, `<h1>Agenda de atividades</h1><p class="stage-v9-agenda-stage-name">${esc(stage.name)}</p>`);
+};
+
+const bindBeforeStageAgendaWorkspaceV1 = ViewLayer.prototype.bind;
+ViewLayer.prototype.bind = function (...args) {
+  const result = bindBeforeStageAgendaWorkspaceV1?.apply(this, args);
+  const page = this.querySelector(".stage-agenda-page");
+  if (!page) return result;
+  const sidebar = page.querySelector("[data-stage-agenda-material-sidebar]");
+  const materialCards = [...(sidebar?.querySelectorAll(".stage-agenda-material-item") || [])];
+  page.querySelectorAll(".stage-agenda-activity-row").forEach((row) => {
+    const focusMaterials = () => {
+      const activity = row.dataset.stageActivityFocus || "";
+      const ids = new Set(String(row.dataset.stageMaterialIds || "").split(",").filter(Boolean));
+      let first = true;
+      materialCards.forEach((card) => {
+        const matches = ids.size ? ids.has(card.dataset.stageMaterialId) : card.dataset.stageMaterialActivity === activity;
+        card.hidden = !matches;
+        if (matches && first) { card.open = true; first = false; }
+      });
+      sidebar?.classList.toggle("is-filtered", Boolean(activity || ids.size));
+    };
+    row.addEventListener("mouseenter", focusMaterials);
+    row.addEventListener("focus", focusMaterials);
+  });
+  sidebar?.querySelector("[data-stage-material-show-all]")?.addEventListener("click", () => {
+    materialCards.forEach((card) => { card.hidden = false; });
+    sidebar.classList.remove("is-filtered");
+  });
+  page.querySelectorAll("[data-stage-agenda-event-open]").forEach((button) => button.addEventListener("click", (event) => {
+    event.preventDefault(); event.stopPropagation();
+    appStore.set({ view: "agenda", selectedAgendaEventV3: button.dataset.stageAgendaEventOpen, lastAction: "Abriu atividade na agenda" });
+  }));
+  const form = page.querySelector("[data-stage-agenda-create-form]");
+  if (!form) return result;
+  const feedback = page.querySelector("[data-stage-agenda-fit]");
+  const suggest = () => {
+    const data = agendaCalendarReadV3();
+    const events = data.initialized ? data.events : agendaCalendarOperationalEventsV3(appStore.get());
+    const slot = stageAgendaNextSlotV1(events, Number(form.elements.durationHours.value) || 1.5);
+    if (slot) { form.elements.date.value = slot.date; form.elements.start.value = slot.start; }
+    const label = feedback?.querySelector("span");
+    if (label) label.textContent = slot ? `${slot.date} · ${slot.start} · sem conflito na agenda` : "Sem janela livre nos próximos 90 dias";
+  };
+  form.querySelector("[data-stage-agenda-suggest]")?.addEventListener("click", suggest);
+  form.elements.durationHours?.addEventListener("change", suggest);
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const values = Object.fromEntries(new FormData(form));
+    const stage = executionModel.stages.find((item) => item.key === form.dataset.stageKey);
+    const date = String(values.date || ""), start = String(values.start || "");
+    const durationHours = Number(values.durationHours);
+    const day = agendaCalendarParseDateV3(date);
+    const startHour = agendaCalendarTimeToHoursV3(start);
+    const label = feedback?.querySelector("span");
+    if (!stage || !day || day.getDay() === 0 || day.getDay() === 6 || !Number.isFinite(durationHours) || durationHours < 0.5 || durationHours > 8 || startHour < 8 || startHour + durationHours > 18) {
+      if (label) label.textContent = "Escolha um dia útil entre 08:00 e 18:00, com duração de 0,5 a 8 horas.";
+      return;
+    }
+    const stored = agendaCalendarReadV3();
+    const data = stored.initialized ? stored : { ...stored, events: agendaCalendarOperationalEventsV3(appStore.get()) };
+    const slotStart = new Date(day.getFullYear(), day.getMonth(), day.getDate(), Math.floor(startHour), Math.round(startHour % 1 * 60)).getTime();
+    const slotEnd = slotStart + durationHours * 3600000;
+    const conflict = (data.events || []).some((item) => {
+      const eventDay = agendaCalendarParseDateV3(item.date);
+      if (!eventDay) return false;
+      const hour = agendaCalendarTimeToHoursV3(item.start);
+      const otherStart = new Date(eventDay.getFullYear(), eventDay.getMonth(), eventDay.getDate(), Math.floor(hour), Math.round(hour % 1 * 60)).getTime();
+      return slotStart < agendaCalendarEventEndV3(item) && slotEnd > otherStart;
+    });
+    if (conflict) { if (label) label.textContent = "Horário ocupado. Use “Recalcular encaixe livre”."; return; }
+    const title = String(values.title || "").trim();
+    if (!title) return;
+    const packet = stageV9FlowPackets(stage).find((item) => item.key === values.relatedPacket);
+    const id = `agenda-stage-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const next = { id, title, stageKey: stage.key, stageName: stage.name, activityId: packet ? `${stage.key}:${packet.key}` : id, activityName: title, relatedPacket: packet?.key || "", owner: String(values.owner || "").trim(), date, start, durationHours, spanDays: 1, status: String(values.status || "Planejado"), notes: String(values.notes || "").trim(), materialIds: new FormData(form).getAll("materialIds").map(String).filter(Boolean), stageAgendaCustomV1: true };
+    agendaCalendarWriteV3({ ...data, events: [...(data.events || []), next] });
+    if (!agendaCalendarReadV3().events.some((item) => item.id === id)) { if (label) label.textContent = "Não foi possível salvar na agenda deste navegador."; return; }
+    appStore.set({ stageAgendaItems: [...(appStore.get().stageAgendaItems || []), next], agendaCalendarWeekV8: agendaCalendarWeekKeyV8(date), lastAction: `Adicionou atividade ${title} à agenda de ${stage.name}` });
+    this.render();
+  });
+  return result;
+};
+
 const stageV9ActivityRecordModalV1 = ({ stage, packet, live }) =>
   `<div class="activity-record-modal-v1" data-activity-record-modal role="dialog" aria-modal="true" aria-labelledby="activity-record-modal-title"><div class="activity-record-modal-card"><header><div><span class="activity-kind">NOVO REGISTRO · ATIVIDADE</span><h2 id="activity-record-modal-title">Novo registro</h2><p>${esc(packet.label)} · ${esc(stage.name)} · responsável ${esc(live.owner || "A definir")}</p></div><button type="button" class="activity-record-modal-close" data-activity-record-close aria-label="Fechar novo registro">×</button></header><form class="record-form activity-record-modal-form" data-activity-record-form><input type="hidden" name="obra" value="Aliança Park"><input type="hidden" name="etapa" value="${esc(stage.name)}"><input type="hidden" name="categoria" value="${esc(stage.name)}"><div class="activity-record-modal-grid"><label>Atividade<input name="atividade" value="${esc(packet.label)}" readonly></label><label>Data<input name="data" type="date" value="${new Date().toISOString().slice(0, 10)}" required></label><label>Hora<input name="hora" type="time" value="08:30" required></label><label>Responsável<input name="responsavel" value="${esc(live.owner || "")}" placeholder="Encarregado ou equipe" required></label><label class="wide">Detalhes / medição<textarea name="detalhes" placeholder="Quantidade, ocorrência, medição ou evidência" required></textarea></label><label class="wide">Foto / evidência<input name="evidenceUri" placeholder="URL local ou referência do comprovante"></label><section class="activity-record-attachments-v1"><header><span class="activity-kind">ANEXOS · REGISTRO</span><small>Imagem ou documento</small></header><label class="activity-record-dropzone-v1"><span>${ico("paperclip")}<b>Adicionar foto ou documento</b><small>JPG, PNG, WEBP, PDF ou Office · imagem até 6 MB · documento até 12 MB</small></span><input name="attachments" type="file" data-activity-record-attachments multiple accept="image/*,application/pdf,text/plain,.doc,.docx,.xls,.xlsx"></label><div class="activity-record-attachment-list-v1" data-activity-record-attachment-list hidden></div><button type="button" class="activity-record-attachments-clear-v1" data-activity-record-attachments-clear hidden>Limpar anexos</button><p class="activity-record-attachments-note-v1">Os anexos acompanham a revisão deste registro e ficam identificados no Diário.</p></section><input type="hidden" name="mapArea" value=""><label>Status<select name="status"><option>Pendente</option><option>Concluído</option></select></label></div><footer class="activity-record-modal-actions"><button type="button" class="button button-secondary" data-activity-record-close>Cancelar</button><button type="submit" class="button button-primary record-confirm">Confirmar registro</button></footer></form></div></div>`;
 const activitiesBeforeStagesV9 = ViewLayer.prototype.activities;
@@ -31181,8 +33173,9 @@ ViewLayer.prototype.bind = function () {
         });
         const targets = {
           andamento: ".stage-v9-status-lines",
-          agenda: ".stage-v9-diary",
-          atividades: ".stage-v9-flow-section,materiais:.stage-v9-detail-grid",
+          agenda: ".stage-agenda-activities",
+          atividades: ".stage-agenda-activities",
+          materiais: ".stage-v9-detail-grid",
           diario: ".stage-v9-diary",
         };
         const selector = targets[key];
@@ -31210,7 +33203,7 @@ ViewLayer.prototype.bind = function () {
     dedicated
       .querySelector(".stage-v9-dedicated-head")
       ?.insertAdjacentElement("afterend", tabs);
-    const active = appStore.get().selectedStageDetailTab || "andamento";
+    const active = appStore.get().selectedStageDetailTab || "agenda";
     tabs
       .querySelector(`[data-stage-detail-tab="${active}"]`)
       ?.classList.add("active");
@@ -31593,7 +33586,7 @@ const labelForActivityTabV1 = (key) =>
 // e publica um evento no RTDB para que os workers possam ouvi-la.
 const controlCenterMaterialRowsV1 = (state) => {
   const overrides = state.controlMaterialOverrides || {};
-  return (executionModel.stages || []).flatMap((stage) => {
+  const configuredRows = (executionModel.stages || []).flatMap((stage) => {
     const configured = stageMaterialsFor(stage.name).length
       ? stageMaterialsFor(stage.name)
       : (stage.materials || []).map((name, index) => ({
@@ -31617,6 +33610,9 @@ const controlCenterMaterialRowsV1 = (state) => {
       };
     });
   });
+  return [...configuredRows, ...(state.materialCatalogAdditions || [])]
+    .map((item) => ({ ...item, ...(overrides[item.id] || {}) }))
+    .filter((item) => !overrides[item.id]?.deleted);
 };
 const controlCenterFinanceRowsV1 = (state) => {
   const rows = Array.isArray(state.cashFlowLocal) ? state.cashFlowLocal : [];
@@ -31646,8 +33642,9 @@ function syncLiveSystemReportV1(state) {
     ["Registros operacionais", String((state.records || []).length), "records", "Atual"],
     ["Etapas", String((state.operationalState?.stages || []).length), "operationalState", "Atual"],
     ["Materiais monitorados", String(controlCenterMaterialRowsV1(state).length), "catálogo operacional", "Atual"],
-    ["Leads captados", String((state.publicLeads || []).length + (state.publicReservations || []).length), "captação pública", "Atual"],
-    ["Contratos registrados", String((state.commissionEntries || []).length), "carteira comercial", "Atual"],
+    ["Leads captados", String((state.publicLeads || []).length), "captação pública", "Atual"],
+    ["Reservas públicas", String((state.publicReservations || []).length), "reservas públicas", "Atual"],
+    ["Lançamentos comerciais", String((state.commissionEntries || []).length), "carteira comercial", "Atual"],
     ["Alertas do agente", String((state.operationalNotifications || []).length), "operationalNotifications", "Atual"],
   ];
   const report = {
@@ -31658,7 +33655,7 @@ function syncLiveSystemReportV1(state) {
       ["Saldo de caixa", rows[0][1], "caixa mestre"],
       ["Registros", rows[4][1], "histórico operacional"],
       ["Leads", rows[7][1], "captação pública"],
-      ["Contratos", rows[8][1], "carteira comercial"],
+      ["Lançamentos comerciais", rows[9][1], "carteira comercial"],
     ],
     columns: ["Indicador", "Valor", "Origem", "Situação"], rows,
   };
@@ -32097,10 +34094,12 @@ const bindControlStageUnifiedFormV1 = (layer) => {
         ),
         now = new Date(),
         pad = (value) => String(value).padStart(2, "0"),
-        date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(
+        defaultDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(
           now.getDate(),
         )}`,
-        time = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+        defaultTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+        date = inlineStageRecord.querySelector('[data-inline-record-date]')?.value || defaultDate,
+        time = inlineStageRecord.querySelector('[data-inline-record-time]')?.value || defaultTime;
 
       if (!details) {
         if (statusNode)
@@ -32912,161 +34911,6 @@ ViewLayer.prototype.bind = function (...args) {
         personnelInferenceOverrides: {
           ...(appStore.get().personnelInferenceOverrides || {}),
           [stageKey]: { calibration },
-const stageV9DedicatedAgendaBase = ViewLayer.prototype.activityDedicatedPage;
-const stageAgendaNextSlotV1 = (events, durationHours = 1.5, from = new Date()) => {
-  const minutes = Math.max(30, Math.min(8 * 60, Math.ceil(Number(durationHours || 1.5) * 2) * 30));
-  const beginning = new Date(from);
-  beginning.setMinutes(Math.ceil(beginning.getMinutes() / 30) * 30, 0, 0);
-  for (let dayOffset = 0; dayOffset < 90; dayOffset++) {
-    const day = new Date(beginning.getFullYear(), beginning.getMonth(), beginning.getDate() + dayOffset);
-    if (day.getDay() === 0 || day.getDay() === 6) continue;
-    const date = agendaCalendarIsoV3(day);
-    for (let startMinute = 8 * 60; startMinute + minutes <= 18 * 60; startMinute += 30) {
-      const candidate = new Date(day.getFullYear(), day.getMonth(), day.getDate(), Math.floor(startMinute / 60), startMinute % 60);
-      if (candidate < beginning) continue;
-      const end = candidate.getTime() + minutes * 60000;
-      const conflict = (events || []).some((event) => {
-        const eventDay = agendaCalendarParseDateV3(event.date);
-        if (!eventDay) return false;
-        const start = new Date(eventDay.getFullYear(), eventDay.getMonth(), eventDay.getDate(), Math.floor(agendaCalendarTimeToHoursV3(event.start)), Math.round(agendaCalendarTimeToHoursV3(event.start) % 1 * 60)).getTime();
-        return candidate.getTime() < agendaCalendarEventEndV3(event) && end > start;
-      });
-      if (!conflict) return { date, start: `${String(Math.floor(startMinute / 60)).padStart(2, "0")}:${String(startMinute % 60).padStart(2, "0")}` };
-    }
-  }
-  return null;
-};
-const stageAgendaMaterialSidebarV1 = (stage, state) => {
-  const materials = controlCenterMaterialRowsV1(state).filter((item) => String(item.stageKey) === String(stage.key));
-  const records = (state.records || []).filter((record) => String(stageOf(record) || "").toLocaleLowerCase("pt-BR") === stage.name.toLocaleLowerCase("pt-BR"));
-  return `<aside class="stage-agenda-material-sidebar" data-stage-agenda-material-sidebar><header><span class="activity-kind">MATERIAIS DA ETAPA</span><h2>Materiais por atividade</h2><p>Passe sobre uma atividade para destacar seus materiais. Expanda um item para ver todos os dados e o comprovante.</p><button type="button" data-stage-material-show-all>Mostrar todos</button></header><div class="stage-agenda-material-accordions">${materials.length ? materials.map((material) => {
-    const proof = records.find((record) => {
-      const relation = `${record.detalhes || ""} ${record.materialId || ""} ${record.materialName || ""} ${JSON.stringify(record.properties || [])}`.toLocaleLowerCase("pt-BR");
-      return Boolean(record.evidenceUri || record.comprovante || record.evidencias?.length || record.attachments?.length) && (relation.includes(String(material.id || "").toLocaleLowerCase("pt-BR")) || relation.includes(String(material.name || "").toLocaleLowerCase("pt-BR")));
-    });
-    const source = proof?.attachments?.[0]?.fileName || proof?.evidencias?.[0]?.fileName || proof?.comprovante || proof?.evidenceUri || "";
-    const proofName = typeof source === "string" && !/^(data:|blob:)/i.test(source) ? source.split(/[\\/]/).pop()?.slice(0, 90) : "Arquivo anexado";
-    return `<details class="stage-agenda-material-item" data-stage-material-id="${esc(material.id || "")}" data-stage-material-activity="${esc(material.activityName || "")}"><summary><b>${esc(material.name)}</b><small>${esc(material.status || "Planejado")}</small></summary><div class="stage-agenda-material-details"><dl><div><dt>ID</dt><dd>${esc(material.id || "N�o informado")}</dd></div><div><dt>Atividade</dt><dd>${esc(material.activityName || "Sem v�nculo direto")}</dd></div><div><dt>Quantidade</dt><dd>${material.quantity == null ? "A dimensionar" : `${esc(material.quantity)} ${esc(material.unit || "un.")}`}</dd></div><div><dt>Descri��o / escopo</dt><dd>${esc(material.description || material.scope || "N�o informado")}</dd></div><div><dt>Etapa</dt><dd>${esc(stage.name)}</dd></div><div><dt>Comprovante</dt><dd>${proof ? `${esc(proofName || "Arquivo anexado")} � Di�rio da etapa, registro ${esc(proof.id || "sem ID")}` : "Sem comprovante vinculado"}</dd></div></dl></div></details>`;
-  }).join("") : '<p class="stage-agenda-material-empty">Nenhum material configurado para esta etapa.</p>'}</div></aside>`;
-};
-ViewLayer.prototype.activityDedicatedPage = function (...args) {
-  const state = appStore.get();
-  const stage = stageV9ByState(state) || executionModel.stages[0];
-  const packets = stageV9FlowPackets(stage);
-  const agendaData = agendaCalendarReadV3();
-  const storedEvents = agendaData.initialized ? agendaData.events : agendaCalendarOperationalEventsV3(state);
-  const agenda = [...storedEvents, ...(state.operationalAgenda || []), ...(state.stageAgendaItems || [])];
-  const materials = controlCenterMaterialRowsV1(state).filter((item) => String(item.stageKey) === String(stage.key));
-  const suggested = stageAgendaNextSlotV1(agenda);
-  const list = packets.map((packet, index) => {
-    const appointment = agenda.find((item) =>
-      String(item.stageKey || item.stage || "").toLocaleLowerCase("pt-BR") === stage.key.toLocaleLowerCase("pt-BR") &&
-      String(item.activityName || item.activity || item.title || "").toLocaleLowerCase("pt-BR") === packet.label.toLocaleLowerCase("pt-BR"),
-    );
-    const date = appointment?.date || appointment?.plannedStart?.slice?.(0, 10);
-    const when = date ? `${esc(date)}${appointment.start || appointment.time ? ` � ${esc(appointment.start || appointment.time)}` : ""}` : "Sem agendamento";
-    const status = appointment?.status || (index === 0 && Number(stageV9LiveFor(stage).progress) > 0 ? "Em andamento" : "Planejada");
-    return `<button type="button" class="stage-agenda-activity-row" data-activity-v9="${esc(`${stage.key}:${packet.key}`)}" data-stage-activity-focus="${esc(packet.label)}"><span class="stage-agenda-activity-index">${String(index + 1).padStart(2, "0")}</span><span class="stage-agenda-activity-main"><strong>${esc(packet.label)}</strong><small>${esc(packet.detail)}</small><em>${when} � ${esc(packet.unit)}</em></span><span class="stage-agenda-activity-status">${esc(status)}</span><span class="stage-agenda-activity-open">Abrir atividade ?</span></button>`;
-  }).join("");
-  const customEvents = storedEvents.filter((item) => String(item.stageKey) === String(stage.key) && item.stageAgendaCustomV1);
-  const customList = customEvents.map((item, index) => `<button type="button" class="stage-agenda-activity-row stage-agenda-custom-row" data-stage-agenda-event-open="${esc(item.id)}" data-stage-material-ids="${esc((item.materialIds || []).join(","))}"><span class="stage-agenda-activity-index">${String(packets.length + index + 1).padStart(2, "0")}</span><span class="stage-agenda-activity-main"><strong>${esc(item.title)}</strong><small>${esc(item.notes || "Atividade adicionada � agenda da etapa")}</small><em>${esc(item.date)} � ${esc(item.start)} � ${esc(item.durationHours)} h</em></span><span class="stage-agenda-activity-status">${esc(item.status || "Planejado")}</span><span class="stage-agenda-activity-open">Abrir agenda ?</span></button>`).join("");
-  const section = `<section class="stage-v9-flow-section stage-agenda-activities" aria-labelledby="stage-agenda-activities-title"><header><div><span class="activity-kind">AGENDA DA ETAPA � ${esc(stage.key.toUpperCase())}</span><h2 id="stage-agenda-activities-title">Lista de atividades</h2><p>Selecione uma atividade. � esquerda, os materiais relacionados aparecem em accordions com detalhes e comprovantes.</p></div><span class="stage-v9-flow-note">${packets.length + customEvents.length} atividades</span></header><div class="stage-agenda-activity-list">${list}${customList}</div></section>`;
-  const dependency = (stage.dependsOn || []).filter((key) => {
-    const preceding = executionModel.stages.find((item) => item.key === key);
-    return preceding && Number(stageV9LiveFor(preceding).progress) < 100;
-  });
-  const form = `<aside class="stage-agenda-create-sidebar"><header><span class="activity-kind">NOVA ATIVIDADE � ${esc(stage.name)}</span><h2>Adicionar � agenda</h2><p>O encaixe sugere a primeira janela �til livre e preserva o v�nculo com esta etapa.</p></header><form data-stage-agenda-create-form data-stage-key="${esc(stage.key)}"><label>Nome da atividade<input name="title" required maxlength="160" placeholder="Ex.: Conferir compacta��o"></label><label>Descri��o / entrega<textarea name="notes" rows="3" maxlength="1200" placeholder="O que deve ser feito e comprovado"></textarea></label><label>Vincular ao fluxo<select name="relatedPacket"><option value="">Atividade independente</option>${packets.map((packet) => `<option value="${esc(packet.key)}">${esc(packet.label)}</option>`).join("")}</select></label><label>Respons�vel<input name="owner" value="${esc(stageV9LiveFor(stage).owner || "")}" placeholder="Equipe ou encarregado"></label><div class="stage-agenda-form-pair"><label>Dura��o (h)<input name="durationHours" type="number" min="0.5" max="8" step="0.5" value="1.5" required></label><label>Status<select name="status"><option>Planejado</option><option>Pendente</option><option>Em andamento</option></select></label></div><div class="stage-agenda-form-pair"><label>Data<input name="date" type="date" value="${esc(suggested?.date || "")}" required></label><label>Hora<input name="start" type="time" step="1800" value="${esc(suggested?.start || "08:00")}" required></label></div><button type="button" class="stage-agenda-suggest-button" data-stage-agenda-suggest>Recalcular encaixe livre</button><fieldset><legend>Materiais relacionados</legend><div class="stage-agenda-form-materials">${materials.map((item) => `<label><input type="checkbox" name="materialIds" value="${esc(item.id || "")}"> ${esc(item.name)}</label>`).join("") || "<small>Nenhum material cadastrado.</small>"}</div></fieldset><div class="stage-agenda-fit" data-stage-agenda-fit role="status"><b>Encaixe sugerido</b><span>${suggested ? `${esc(suggested.date)} � ${esc(suggested.start)} � sem conflito na agenda` : "Sem janela livre nos pr�ximos 90 dias"}</span><small>${dependency.length ? `Depend�ncias a confirmar: ${esc(dependency.join(", "))}.` : "Etapa sem depend�ncia pendente identificada."}</small></div><button type="submit" class="stage-agenda-create-submit">Adicionar atividade</button></form></aside>`;
-  const workspace = `<div class="stage-agenda-workspace">${stageAgendaMaterialSidebarV1(stage, state)}${section}${form}</div>`;
-  let html = stageV9DedicatedAgendaBase?.apply(this, args) || "";
-  const start = html.indexOf('<section class="stage-v9-flow-section">');
-  const end = start < 0 ? -1 : html.indexOf("</section>", start);
-  if (start >= 0 && end >= 0) html = html.slice(0, start) + workspace + html.slice(end + "</section>".length);
-  return html
-    .replace('<section class="stage-v9-dedicated-page">', '<section class="stage-v9-dedicated-page stage-agenda-page">')
-    .replace(`<h1>${esc(stage.name)}</h1>`, `<h1>Agenda de atividades</h1><p class="stage-v9-agenda-stage-name">${esc(stage.name)}</p>`);
-};
-
-const bindBeforeStageAgendaWorkspaceV1 = ViewLayer.prototype.bind;
-ViewLayer.prototype.bind = function (...args) {
-  const result = bindBeforeStageAgendaWorkspaceV1?.apply(this, args);
-  const page = this.querySelector(".stage-agenda-page");
-  if (!page) return result;
-  const sidebar = page.querySelector("[data-stage-agenda-material-sidebar]");
-  const materialCards = [...(sidebar?.querySelectorAll(".stage-agenda-material-item") || [])];
-  page.querySelectorAll(".stage-agenda-activity-row").forEach((row) => {
-    const focusMaterials = () => {
-      const activity = row.dataset.stageActivityFocus || "";
-      const ids = new Set(String(row.dataset.stageMaterialIds || "").split(",").filter(Boolean));
-      let first = true;
-      materialCards.forEach((card) => {
-        const matches = ids.size ? ids.has(card.dataset.stageMaterialId) : card.dataset.stageMaterialActivity === activity;
-        card.hidden = !matches;
-        if (matches && first) { card.open = true; first = false; }
-      });
-      sidebar?.classList.toggle("is-filtered", Boolean(activity || ids.size));
-    };
-    row.addEventListener("mouseenter", focusMaterials);
-    row.addEventListener("focus", focusMaterials);
-  });
-  sidebar?.querySelector("[data-stage-material-show-all]")?.addEventListener("click", () => {
-    materialCards.forEach((card) => { card.hidden = false; });
-    sidebar.classList.remove("is-filtered");
-  });
-  page.querySelectorAll("[data-stage-agenda-event-open]").forEach((button) => button.addEventListener("click", (event) => {
-    event.preventDefault(); event.stopPropagation();
-    appStore.set({ view: "agenda", selectedAgendaEventV3: button.dataset.stageAgendaEventOpen, lastAction: "Abriu atividade na agenda" });
-  }));
-  const form = page.querySelector("[data-stage-agenda-create-form]");
-  if (!form) return result;
-  const feedback = page.querySelector("[data-stage-agenda-fit]");
-  const suggest = () => {
-    const data = agendaCalendarReadV3();
-    const events = data.initialized ? data.events : agendaCalendarOperationalEventsV3(appStore.get());
-    const slot = stageAgendaNextSlotV1(events, Number(form.elements.durationHours.value) || 1.5);
-    if (slot) { form.elements.date.value = slot.date; form.elements.start.value = slot.start; }
-    const label = feedback?.querySelector("span");
-    if (label) label.textContent = slot ? `${slot.date} � ${slot.start} � sem conflito na agenda` : "Sem janela livre nos pr�ximos 90 dias";
-  };
-  form.querySelector("[data-stage-agenda-suggest]")?.addEventListener("click", suggest);
-  form.elements.durationHours?.addEventListener("change", suggest);
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const values = Object.fromEntries(new FormData(form));
-    const stage = executionModel.stages.find((item) => item.key === form.dataset.stageKey);
-    const date = String(values.date || ""), start = String(values.start || "");
-    const durationHours = Number(values.durationHours);
-    const day = agendaCalendarParseDateV3(date);
-    const startHour = agendaCalendarTimeToHoursV3(start);
-    const label = feedback?.querySelector("span");
-    if (!stage || !day || day.getDay() === 0 || day.getDay() === 6 || !Number.isFinite(durationHours) || durationHours < 0.5 || durationHours > 8 || startHour < 8 || startHour + durationHours > 18) {
-      if (label) label.textContent = "Escolha um dia �til entre 08:00 e 18:00, com dura��o de 0,5 a 8 horas.";
-      return;
-    }
-    const stored = agendaCalendarReadV3();
-    const data = stored.initialized ? stored : { ...stored, events: agendaCalendarOperationalEventsV3(appStore.get()) };
-    const slotStart = new Date(day.getFullYear(), day.getMonth(), day.getDate(), Math.floor(startHour), Math.round(startHour % 1 * 60)).getTime();
-    const slotEnd = slotStart + durationHours * 3600000;
-    const conflict = (data.events || []).some((item) => {
-      const eventDay = agendaCalendarParseDateV3(item.date);
-      if (!eventDay) return false;
-      const hour = agendaCalendarTimeToHoursV3(item.start);
-      const otherStart = new Date(eventDay.getFullYear(), eventDay.getMonth(), eventDay.getDate(), Math.floor(hour), Math.round(hour % 1 * 60)).getTime();
-      return slotStart < agendaCalendarEventEndV3(item) && slotEnd > otherStart;
-    });
-    if (conflict) { if (label) label.textContent = "Hor�rio ocupado. Use "Recalcular encaixe livre"."; return; }
-    const title = String(values.title || "").trim();
-    if (!title) return;
-    const packet = stageV9FlowPackets(stage).find((item) => item.key === values.relatedPacket);
-    const id = `agenda-stage-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-    const next = { id, title, stageKey: stage.key, stageName: stage.name, activityId: packet ? `${stage.key}:${packet.key}` : id, activityName: title, relatedPacket: packet?.key || "", owner: String(values.owner || "").trim(), date, start, durationHours, spanDays: 1, status: String(values.status || "Planejado"), notes: String(values.notes || "").trim(), materialIds: new FormData(form).getAll("materialIds").map(String).filter(Boolean), stageAgendaCustomV1: true };
-    agendaCalendarWriteV3({ ...data, events: [...(data.events || []), next] });
-    if (!agendaCalendarReadV3().events.some((item) => item.id === id)) { if (label) label.textContent = "N�o foi poss�vel salvar na agenda deste navegador."; return; }
-    appStore.set({ stageAgendaItems: [...(appStore.get().stageAgendaItems || []), next], agendaCalendarWeekV8: agendaCalendarWeekKeyV8(date), lastAction: `Adicionou atividade ${title} � agenda de ${stage.name}` });
-    this.render();
-  });
-  return result;
-};
-
         },
         personnelInferenceStatus:
           "Prévia recalculada; aguardando documento validado",
@@ -33184,6 +35028,19 @@ ViewLayer.prototype.bind = function (...args) {
     form = this.querySelector("[data-foreman-form]");
   if (!form || form.dataset.bound === "true") return result;
   form.dataset.bound = "true";
+  const editing = (appStore.get().foremenContacts || []).find(contact => contact.id === appStore.get().editingForemanId);
+  this.querySelectorAll('.foreman-list-v5424 article').forEach((article, index) => {
+    const contact = appStore.get().foremenContacts[index];
+    article.insertAdjacentHTML('beforeend', `<div><button type="button" data-foreman-edit="${esc(contact.id)}">Editar</button><button type="button" data-foreman-delete="${esc(contact.id)}">Excluir</button></div>`);
+    article.querySelector('[data-foreman-edit]').addEventListener('click', () => {
+      appStore.set({editingForemanId:contact.id});
+      this.querySelector('[data-foreman-form] [name="name"]')?.focus();
+    });
+    article.querySelector('[data-foreman-delete]').addEventListener('click', () => {
+      if (!confirm(`Excluir o cadastro de ${contact.name}? Os registros históricos serão preservados.`)) return;
+      appStore.set({foremenContacts:appStore.get().foremenContacts.filter(item=>item.id!==contact.id),editingForemanId:null,lastAction:`Excluiu encarregado ${contact.name}`});
+    });
+  });
   const contactGrid = form.querySelector("fieldset");
   if (contactGrid) {
     contactGrid.insertAdjacentHTML(
@@ -33233,61 +35090,41 @@ ViewLayer.prototype.bind = function (...args) {
       reader.onerror = () => resolve("");
       reader.readAsDataURL(file);
     });
-  form.addEventListener(
-    "submit",
-    () => {
-      const snapshot = form._foremanSubmission;
-      if (!snapshot) return;
-      setTimeout(async () => {
-        const photoDataUrl = await foremanFileToDataUrlV5424(snapshot.photo);
-        appStore.update((state) => {
-          const contacts = [...(state.foremenContacts || [])],
-            index = contacts.findIndex(
-              (contact) =>
-                contact.email === snapshot.email &&
-                contact.name === snapshot.name,
-            );
-          if (index < 0) return state;
-          contacts[index] = {
-            ...contacts[index],
-            document: snapshot.document,
-            birthDate: snapshot.birthDate,
-            address: snapshot.address,
-            whatsapp: snapshot.whatsapp,
-            photoDataUrl: photoDataUrl || contacts[index].photoDataUrl || "",
-          };
-          return { ...state, foremenContacts: contacts };
-        });
-      }, 0);
-    },
-    false,
-  );
-  form.addEventListener("submit", (event) => {
+  if (editing) {
+    for (const name of ['name','email','phone','document','birthDate','address','whatsapp']) form.elements[name].value = editing[name] || '';
+    form.querySelectorAll('[name="stages"]').forEach(input=>{input.checked=(editing.stages || []).includes(input.value);});
+    form.querySelector('button[type="submit"]').textContent = 'Salvar alterações';
+    form.insertAdjacentHTML('beforeend','<button type="button" data-foreman-cancel>Cancelar edição</button>');
+    form.querySelector('[data-foreman-cancel]').addEventListener('click',()=>appStore.set({editingForemanId:null}));
+  }
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = new FormData(form),
       name = String(data.get("name") || "").trim(),
       email = String(data.get("email") || "").trim(),
       phone = String(data.get("phone") || "").trim(),
       stages = data.getAll("stages"),
-      password = `AP-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+      password = editing ? editing.password : `AP-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
       contact = {
-        id: `foreman-${Date.now()}`,
+        ...editing,
+        id: editing?.id || `foreman-${Date.now()}`,
         name,
         email,
         phone,
         stages,
         password,
-        activityCount: 0,
+        activityCount: editing?.activityCount || 0,
+        ...Object.fromEntries(['document','birthDate','address','whatsapp'].map(key=>[key,String(data.get(key)||'').trim()])),
+        photoDataUrl: await foremanFileToDataUrlV5424(data.get('photo')) || editing?.photoDataUrl || '',
       };
-    const contacts = [...(appStore.get().foremenContacts || []), contact];
+    const contacts = [...(appStore.get().foremenContacts || []).filter(item=>item.id!==contact.id), contact];
     appStore.set({
       foremenContacts: contacts,
-      lastAction: `Cadastrou encarregado ${name}`,
+      editingForemanId: null,
+      lastAction: `${editing ? 'Atualizou' : 'Cadastrou'} encarregado ${name}`,
     });
-    form.reset();
-    form.querySelector("[data-foreman-status]").textContent =
-      `Cadastro salvo. Senha inicial: ${password}`;
-    personnelPublishV5372("foreman.created", "foreman", contact.id, {
+    this.querySelector("[data-foreman-status]").textContent = editing ? 'Cadastro atualizado.' : `Cadastro salvo. Senha inicial: ${password}`;
+    personnelPublishV5372(editing ? "foreman.updated" : "foreman.created", "foreman", contact.id, {
       name,
       email,
       phone,
@@ -33422,6 +35259,7 @@ const adminLeadRecordsV5425 = () => {
     budget: item.budget || "A confirmar",
     createdAt: item.createdAt || item.date || "",
     conversation: item.conversation || item.messages || "",
+    conversationSummary: item.conversationSummary || item.session?.conversationSummary || "",
   }));
   const fromPublic = publicLeads.map((item) => ({
     id: item.id || `lead-${Math.random()}`,
@@ -33444,6 +35282,7 @@ const adminLeadRecordsV5425 = () => {
     altitude: item.altitude || "—",
     createdAt: item.createdAt || item.date || "",
     conversation: item.conversation || item.messages || "",
+    conversationSummary: item.conversationSummary || item.session?.conversationSummary || "",
   }));
   const demo = (demoData.leads || []).map((item, index) => ({
     ...item,
@@ -33480,6 +35319,17 @@ const adminLeadPropertiesV5425 = (lead) => [
   ["Origem", lead.source],
   ["Cadastro", lead.createdAt || "Registro recente"],
 ];
+const adminLeadConversationSummaryV1 = (lead) => {
+  const summary = lead.conversationSummary || lead.conversation;
+  const content = typeof summary === "string" ? summary.trim() : "";
+  const note = typeof lead.note === "string" ? lead.note.trim() : "";
+  const fallback = note && !/^(Intenção recebida|Reserva recebida|Objetivo:)/i.test(note)
+    ? note : "";
+  return {
+    text: content || fallback,
+    source: content ? "Resumo registrado na conversa pública" : fallback ? "Nota do cadastro público" : "Resumo ainda não disponível",
+  };
+};
 ViewLayer.prototype.leads = function () {
   const state = appStore.get(),
     all = adminLeadRecordsV5425(),
@@ -33502,7 +35352,7 @@ ViewLayer.prototype.leads = function () {
       )
       .join(
         "",
-      )}</section><section class="admin-lead-conversation-v5425"><span class="admin-lead-kicker-v5425">CONTEXTO DA CONVERSA</span><h3>Intenção capturada</h3><p>${esc(lead.conversation || lead.note || "Sem resumo textual registrado. Consulte o histórico para continuar o atendimento.")}</p></section><footer><button type="button" class="admin-lead-primary-v5425" data-admin-lead-message>${ico("message-circle")} Abrir atendimento</button><button type="button" data-view="map">${ico("map-pinned")} Ver lote no mapa</button></footer></main><aside class="admin-lead-ai-summary-v5425"><span class="admin-lead-kicker-v5425">IA · RESUMO CONTEXTUAL</span><h2>Próxima melhor ação</h2><p>Priorizar o contato com base no lote indicado, no objetivo de compra e na disponibilidade de retorno.</p><ul><li><b>Intenção:</b> ${esc(lead.objective || "não informada")}</li><li><b>Sinal comercial:</b> ${esc(lead.budget || "faixa ainda não informada")}</li><li><b>Origem:</b> conversa na ${esc(lead.source || "página pública")}</li></ul><div class="admin-lead-ai-note-v5425">A IA sugere a ação; a confirmação do corretor continua necessária antes de reservar ou alterar o status.</div></aside></div></section>`;
+      )}</section><section class="admin-lead-conversation-v5425" aria-label="Resumo da conversa pública"><span class="admin-lead-kicker-v5425">ATENDIMENTO · PÁGINA PÚBLICA</span><h3>Resumo da conversa</h3><small>${esc(adminLeadConversationSummaryV1(lead).source)}</small><p>${esc(adminLeadConversationSummaryV1(lead).text || "Ainda não há resumo vinculado a este contato. A conversa não foi inferida a partir dos dados cadastrais.")}</p><dl><div><dt>Interesse registrado</dt><dd>${esc(lead.objective || "Não informado")}</dd></div><div><dt>Lote citado</dt><dd>${esc(lead.lot || "Não informado")}</dd></div><div><dt>Faixa declarada</dt><dd>${esc(lead.budget || "Não informada")}</dd></div></dl></section><footer><button type="button" class="admin-lead-primary-v5425" data-admin-lead-message>${ico("message-circle")} Abrir atendimento</button><button type="button" data-view="map">${ico("map-pinned")} Ver lote no mapa</button></footer></main><aside class="admin-lead-ai-summary-v5425"><span class="admin-lead-kicker-v5425">ORIENTAÇÃO COMERCIAL</span><h2>Próxima melhor ação</h2><p>Priorizar o contato com base no lote indicado, no objetivo de compra e na disponibilidade de retorno.</p><ul><li><b>Intenção:</b> ${esc(lead.objective || "não informada")}</li><li><b>Sinal comercial:</b> ${esc(lead.budget || "faixa ainda não informada")}</li><li><b>Origem:</b> ${esc(lead.source || "página pública")}</li></ul><div class="admin-lead-ai-note-v5425">Confirme os dados com o contato antes de reservar ou alterar o status.</div></aside></div></section>`;
   const filtered = all
     .map((item, index) => ({ item, index }))
     .filter(
@@ -33549,7 +35399,7 @@ ViewLayer.prototype.bind = function (...args) {
       const state = appStore.get(),
         lead =
           adminLeadRecordsV5425()[Math.max(0, Number(state.selectedLead) || 0)],
-        chat = document.querySelector("ai-chat");
+        chat = globalThis.belavistaWorkerAssistant;
       const name = lead?.name || "lead selecionado",
         lot = lead?.lot || "lote a definir",
         context = [
@@ -33557,16 +35407,16 @@ ViewLayer.prototype.bind = function (...args) {
           `Lote: ${lot}.`,
           `Status: ${lead?.status || "Novo"}.`,
           `Objetivo: ${lead?.objective || "não informado"}.`,
-          `Resumo: ${lead?.conversation || lead?.note || "sem resumo registrado"}.`,
+          `Resumo: ${adminLeadConversationSummaryV1(lead || {}).text || "sem resumo registrado"}.`,
           "Apresente a próxima ação comercial e aguarde confirmação antes de alterar qualquer status.",
         ].join(" ");
       appStore.set({
         lastAction: `Abriu atendimento de ${name}`,
         selectedLead: Number(state.selectedLead) || 0,
       });
-      chat?.classList.remove("collapsed");
-      if (chat?.respond) {
-        chat.respond(context);
+      chat?.root?.classList.remove("is-collapsed");
+      if (chat?.submit) {
+        chat.submit(context, null, null, [], {mode:"priority", requestContext:{source:"lead-follow-up",lead}});
         notify(`Atendimento de ${name} aberto no chat da IA.`, "success");
       } else {
         notify(
@@ -33778,7 +35628,7 @@ ViewLayer.prototype.leads = function () {
     )
     .join("");
   const contentTabs = `<nav class="admin-leads-content-tabs-v1" aria-label="Conteúdo de leads"><button type="button" class="${activeContentTab === "leads" ? "active" : ""}" aria-selected="${activeContentTab === "leads"}" data-lead-content-tab="leads">${ico("users-round")} Leads <small>${all.length}</small></button><button type="button" class="${activeContentTab === "instagram" ? "active" : ""}" aria-selected="${activeContentTab === "instagram"}" data-lead-content-tab="instagram">${ico("instagram")} Postagens e comentários <small>Instagram</small></button></nav>`;
-  const leadsContent = `<section class="admin-leads-content-v1 admin-leads-split-v1"><div class="admin-leads-public-frame-v1"><header><strong>Loteamento público</strong><a href="${esc(runtimeRouteV1("/leads"))}" target="_blank" rel="noopener">Abrir em outra aba</a></header><iframe src="${esc(runtimeRouteV1("/leads"))}" title="Página pública do loteamento" loading="lazy"></iframe></div><div class="admin-leads-list-pane-v1"><section class="admin-leads-toolbar-v5425"><label>${ico("search")} Buscar contato, lote ou objetivo<input type="search" value="${esc(state.adminLeadQuery || "")}" placeholder="Ex.: Juliana, Lote 54, investimento" data-admin-lead-search></label><span class="admin-leads-live-v5425"><i></i> Escuta da captação pública ativa</span></section><section class="admin-leads-grid-v5425">${cards || '<div class="admin-leads-empty-v5425">Nenhum lead corresponde à busca.</div>'}</section></div></section>`;
+  const leadsContent = `<section class="admin-leads-content-v1 admin-leads-split-v1"><section class="admin-leads-admin-map-panel-v1" aria-label="Mapa administrativo no CRM de leads"><header><div><strong>Mapa administrativo</strong><small>Modelo 3D do loteamento · ruas e lotes corrigidos</small></div><div class="admin-leads-map-actions-v1"><button type="button" data-view="map">Abrir mapa completo ${ico("arrow-up-right")}</button><a href="${esc(runtimeRouteV1("/leads"))}" target="_blank" rel="noopener">Abrir página pública</a></div></header><div class="admin-leads-admin-map-window-v1" aria-hidden="true"><span>${ico("layers-3")} Mapa compartilhado com a administração</span><small>Arraste, gire ou ajuste a inclinação diretamente na cena.</small></div></section><div class="admin-leads-list-pane-v1"><section class="admin-leads-toolbar-v5425"><label>${ico("search")} Buscar contato, lote ou objetivo<input type="search" value="${esc(state.adminLeadQuery || "")}" placeholder="Ex.: Juliana, Lote 54, investimento" data-admin-lead-search></label><span class="admin-leads-live-v5425"><i></i> Escuta da captação pública ativa</span></section><section class="admin-leads-grid-v5425">${cards || '<div class="admin-leads-empty-v5425">Nenhum lead corresponde à busca.</div>'}</section></div></section>`;
   const instagramContent = `<section class="admin-leads-content-v1 admin-leads-instagram-content-v1">${instagramFeedPanelV1(state)}</section>`;
   return `<section class="admin-leads-v5425 admin-leads-social-v1"><header class="workspace-head-v5356"><div><span>CRM · CAPTAÇÃO PÚBLICA</span><h1>Leads</h1><p>Separe a triagem comercial do acompanhamento de postagens e comentários do Instagram.</p></div><div class="admin-leads-header-actions-v5425"><button type="button" data-v5356-open-public>${ico("external-link")} Abrir página pública</button><span>${all.length} contatos</span></div></header>${contentTabs}${activeContentTab === "instagram" ? instagramContent : leadsContent}</section>`;
 };
@@ -34246,11 +36096,12 @@ ViewLayer.prototype.bind = function (...args) {
         event.preventDefault();
         event.stopPropagation();
         const next = button.dataset.stageView,
-          stage = extensionStage(),
+          { model, record: stage } = stageContextV1(),
           state = appStore.get();
         appStore.set({
           view: next,
           selectedStage: stage.id || state.selectedStage,
+          selectedStageV9: model?.key || state.selectedStageV9,
           activityDedicated: false,
           stageActivityDedicatedV9: false,
           selectedActivity: null,
@@ -34325,7 +36176,6 @@ ViewLayer.prototype.records = function () {
     history = records
       .slice()
       .reverse()
-      .slice(0, 20)
       .map(
         (item) =>
           `<article class="records-history-row-v1"><div><span>${esc(item.id || "REG")}</span><b>${esc(item.atividade || "Atividade operacional")}</b><small>${esc(item.data || "—")} · ${esc(item.responsavel || "A definir")}</small></div><em>${esc(item.status || "Pendente")}</em></article>`,
@@ -34337,8 +36187,9 @@ ViewLayer.prototype.records = function () {
 // STAGE_PERSISTENT_TIMELINE_V1: a linha do tempo acompanha todas as abas
 // internas da frente e mantém a etapa atual visualmente selecionada.
 const stagePersistentTimelineMarkupV1 = () => {
-  const selected = extensionStage(),
-    operational = appStore.get().operationalState || {};
+  const state = appStore.get(),
+    selected = extensionStage(),
+    operational = state.operationalState || {};
   const cards = (executionModel.stages || [])
     .map((stage, index) => {
       const live =
@@ -34351,23 +36202,31 @@ const stagePersistentTimelineMarkupV1 = () => {
           String(item.name).toLocaleLowerCase("pt-BR") ===
           String(stage.name).toLocaleLowerCase("pt-BR"),
       );
-      const active =
-        String(stageRecord?.id || "") === String(selected?.id || "");
+      const active = String(state.selectedStageV9 || "") === String(stage.key) ||
+        (!state.selectedStageV9 && String(stageRecord?.id || "") === String(selected?.id || ""));
       return `<button type="button" class="stage-persistent-timeline-card ${active ? "active" : ""}" data-persistent-stage-key="${esc(stage.key)}" aria-current="${active ? "step" : "false"}"><span>${String(index + 1).padStart(2, "0")}</span><div><small>${esc(live.week || `Fase ${String(index + 1).padStart(2, "0")}`)} · ${esc(progress >= 100 ? "Concluída" : progress > 0 ? "Em andamento" : "Planejada")}</small><b>${esc(stage.name)}</b><i><em style="width:${progress}%"></em></i></div><strong>${progress}%</strong></button>`;
     })
     .join("");
   return `<section class="stage-persistent-timeline" data-stage-persistent-timeline><header><div><span class="activity-kind">CRONOGRAMA · ETAPA EM FOCO</span><b>Linha do tempo da obra</b><small>A etapa selecionada permanece destacada enquanto você navega pelas abas.</small></div><span class="stage-persistent-timeline-count">${executionModel.stages?.length || 0} frentes</span></header><div class="stage-persistent-timeline-track">${cards}</div></section>`;
 };
 
+const STAGE_CONTEXT_VIEWS_V1 = new Set([
+  "stages",
+  "actions",
+  "agenda",
+  "activities",
+  "records",
+  "progress",
+  "foremen",
+]);
+
 [
   "agenda",
-  "pert",
   "actions",
-  "raci",
-  "raid",
   "activities",
   "progress",
   "records",
+  "foremen",
 ].forEach((view) => {
   const base = ViewLayer.prototype[view];
   if (typeof base !== "function") return;
@@ -34466,16 +36325,17 @@ ViewLayer.prototype.bind = function (...args) {
               String(item.name).toLocaleLowerCase("pt-BR") ===
               String(stage?.name || "").toLocaleLowerCase("pt-BR"),
           );
-        if (record)
+        if (stage) {
           appStore.set({
             view: "stages",
-            selectedStage: record.id,
+            selectedStage: record?.id || stage.key,
             selectedStageV9: key,
             activityDedicated: true,
             stageActivityDedicatedV9: false,
             dashboardStageFocus: "",
-            lastAction: `Abriu a etapa ${record.name} pela linha do tempo`,
+            lastAction: `Abriu a etapa ${stage.name} pela linha do tempo`,
           });
+        }
       },
       true,
     );
@@ -34485,6 +36345,48 @@ ViewLayer.prototype.bind = function (...args) {
 
 // PERT_INTERACTIVE_RELATIONS_V1: o PERT também serve como editor visual.
 const pertInteractiveBaseV1 = ViewLayer.prototype.pert;
+// Mesmo gesto para canvases de cards: linha Bézier e card fantasma acompanham
+// o ponteiro; somente o pointerup entrega um destino ao editor da superfície.
+const beginCardCanvasLinkV1 = ({ event, source, surface, from, onDrop }) => {
+  const ghost = document.createElement("div"),
+    svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"),
+    path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  ghost.className = "card-canvas-link-ghost";
+  ghost.textContent = "Novo card";
+  svg.classList.add("card-canvas-link-preview");
+  svg.appendChild(path);
+  surface.append(svg, ghost);
+  const update = (pointer) => {
+    const rect = surface.getBoundingClientRect(),
+      x1 = from().x - rect.left,
+      y1 = from().y - rect.top,
+      x2 = pointer.clientX - rect.left,
+      y2 = pointer.clientY - rect.top,
+      bend = Math.max(40, Math.abs(x2 - x1) * .48);
+    svg.setAttribute("viewBox", `0 0 ${rect.width} ${rect.height}`);
+    path.setAttribute("d", `M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`);
+    ghost.style.left = `${x2}px`;
+    ghost.style.top = `${y2}px`;
+  };
+  const cleanup = () => {
+    window.removeEventListener("pointermove", move, true);
+    window.removeEventListener("pointerup", up, true);
+    window.removeEventListener("pointercancel", cancel, true);
+    ghost.remove();
+    svg.remove();
+  };
+  const move = (pointer) => update(pointer);
+  const up = (pointer) => {
+    const target = document.elementFromPoint(pointer.clientX, pointer.clientY);
+    cleanup();
+    onDrop(pointer, target);
+  };
+  const cancel = () => cleanup();
+  update(event);
+  window.addEventListener("pointermove", move, true);
+  window.addEventListener("pointerup", up, { capture: true, once: true });
+  window.addEventListener("pointercancel", cancel, { capture: true, once: true });
+};
 const pertRelationMarkupV1 = () => {
   const relations = appStore.get().pertRelations || [],
     nodes = currentPertNodes();
@@ -34517,7 +36419,7 @@ const pertRelationEdgesV1 = () => {
 };
 ViewLayer.prototype.pert = function (...args) {
   const html = pertInteractiveBaseV1?.apply(this, args) || "";
-  const tools = `<div class="pert-interaction-tools"><span>PERT EDITÁVEL</span><small>Arraste cards para reorganizar · use ＋ para conectar e rotular</small></div><div class="pert-relation-editor">${pertRelationMarkupV1()}</div>`;
+  const tools = `<div class="pert-interaction-tools"><span>PERT EDITÁVEL</span><small>Arraste ＋ até outro card ou solte no canvas para criar um novo</small></div><div class="pert-relation-editor">${pertRelationMarkupV1()}</div><form class="pert-link-form" data-pert-link-form hidden><header><b>Finalizar card e relação</b><button type="button" data-pert-link-cancel aria-label="Cancelar">×</button></header><label>Nome do card<input name="name" required maxlength="100" placeholder="Nova atividade"></label><label>Relação<input name="label" required maxlength="80" value="libera"></label><label>Responsável<input name="owner" maxlength="100" placeholder="Responsável"></label><footer><button type="submit">Criar card e conexão</button></footer></form>`;
   return html
     .replace("</svg>", pertRelationEdgesV1() + "</svg>")
     .replace('<div class="pert-canvas">', '<div class="pert-canvas">' + tools);
@@ -34531,6 +36433,34 @@ ViewLayer.prototype.bind = function (...args) {
   if (!canvas || canvas.dataset.pertInteractiveBound === "true") return result;
   canvas.dataset.pertInteractiveBound = "true";
   const nodes = [...canvas.querySelectorAll("[data-pert-node]")];
+  const linkForm = canvas.querySelector("[data-pert-link-form]");
+  let pendingLink = null;
+  linkForm?.querySelector("[data-pert-link-cancel]")?.addEventListener("click", () => {
+    pendingLink = null;
+    linkForm.hidden = true;
+  });
+  linkForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (!pendingLink) return;
+    const name = String(linkForm.elements.name.value || "").trim(),
+      label = String(linkForm.elements.label.value || "").trim(),
+      owner = String(linkForm.elements.owner.value || "").trim();
+    if (!name || !label) return;
+    const id = `pert-${Date.now().toString(36)}`;
+    appStore.set({
+      pertCustomNodes: [...(appStore.get().pertCustomNodes || []), {
+        id, label: name, owner: owner || "A definir", progress: 0,
+        x: pendingLink.x, y: pendingLink.y, material: "A definir", contract: "A definir",
+      }],
+      pertRelations: [...(appStore.get().pertRelations || []), {
+        from: pendingLink.source, to: id, label,
+      }],
+      selectedPertNode: id,
+      lastAction: `Criou card ${name} ligado no PERT`,
+    });
+    pendingLink = null;
+    linkForm.hidden = true;
+  });
   nodes.forEach((node) => {
     const handle = document.createElement("button");
     handle.type = "button";
@@ -34591,50 +36521,46 @@ ViewLayer.prototype.bind = function (...args) {
       node.addEventListener("pointerup", up, { once: true });
     });
     handle.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
       event.preventDefault();
       event.stopPropagation();
       const source = node.dataset.pertNode;
-      handle.setPointerCapture?.(event.pointerId);
-      const move = (ev) => {
-        const target = document
-          .elementFromPoint(ev.clientX, ev.clientY)
-          ?.closest("[data-pert-node]");
-        nodes.forEach((item) =>
-          item.classList.toggle(
-            "connect-target",
-            item !== node && item === target,
-          ),
-        );
-      };
-      const up = (ev) => {
-        const target = document
-          .elementFromPoint(ev.clientX, ev.clientY)
-          ?.closest("[data-pert-node]");
-        handle.releasePointerCapture?.(event.pointerId);
-        handle.removeEventListener("pointermove", move);
-        nodes.forEach((item) => item.classList.remove("connect-target"));
+      beginCardCanvasLinkV1({
+        event, source, surface: canvas,
+        from: () => {
+          const rect = handle.getBoundingClientRect();
+          return { x: rect.right, y: rect.top + rect.height / 2 };
+        },
+        onDrop: (ev, element) => {
+        const target = element?.closest?.("[data-pert-node]");
         if (target && target !== node) {
-          const label = window.prompt("Rótulo da relação", "libera");
-          if (label !== null && label.trim()) {
-            const relations = [...(appStore.get().pertRelations || [])].filter(
+          const relations = [...(appStore.get().pertRelations || [])].filter(
               (item) =>
                 !(item.from === source && item.to === target.dataset.pertNode),
             );
             relations.push({
               from: source,
               to: target.dataset.pertNode,
-              label: label.trim(),
+              label: "libera",
             });
             appStore.set({
               pertRelations: relations,
-              lastAction: `Criou relação PERT ${label.trim()}`,
+              lastAction: "Criou relação PERT entre cards",
             });
-            notify("Relação criada e rotulada no PERT.", "success");
-          }
+          notify("Relação criada no PERT.", "success");
+        } else if (canvas.contains(element) && !element?.closest?.("[data-pert-link-form]")) {
+          const rect = canvas.getBoundingClientRect();
+          pendingLink = {
+            source,
+            x: Math.max(2, Math.min(90, ((ev.clientX - rect.left) / rect.width) * 100)),
+            y: Math.max(5, Math.min(76, ((ev.clientY - rect.top - 52) / Math.max(1, rect.height)) * 100)),
+          };
+          linkForm.reset();
+          linkForm.hidden = false;
+          linkForm.elements.name.focus();
         }
-      };
-      handle.addEventListener("pointermove", move);
-      handle.addEventListener("pointerup", up, { once: true });
+        },
+      });
     });
   });
   canvas.querySelectorAll("[data-pert-relation-edit]").forEach((button) =>
@@ -35665,7 +37591,7 @@ const agendaCalendarEventMarkupV3 = (event, weekdayIndex) => {
           : durationHours <= 1.5
             ? "short"
             : "full";
-  return `<article class="agenda-month-event-v3 ${tone} ${sizeClass}" data-agenda-event-v3="${esc(event.id)}" data-agenda-event-date="${esc(event.date)}" data-agenda-event-start="${esc(event.start)}" data-agenda-event-duration="${durationHours}" data-agenda-event-span="${spanDays}" style="top:${topPx}px;height:${heightPx}px;width:calc(${spanDays * 100}% + ${widthGap}px)" tabindex="0"><div class="agenda-month-event-body-v3"><div class="agenda-event-time-v4"><time>${esc(event.start)}—${esc(endLabel)}</time><span>${durationHours}h · ${spanDays}d</span></div><strong>${esc(event.title)}</strong><small>${esc(event.activityName || "Atividade")} · ${esc(event.stageName || "Etapa")}</small><em>${esc(event.owner || "Responsável a definir")}</em></div><span class="agenda-resize-edge-v4 agenda-resize-start-hours-v4" data-agenda-resize-edge-v4 data-agenda-resize-start-hours aria-label="Ajustar hora inicial" title="Aresta superior: hora inicial"></span><span class="agenda-resize-edge-v4 agenda-resize-hours-v3" data-agenda-resize-edge-v4 data-agenda-resize-hours aria-label="Ajustar hora final" title="Aresta inferior: hora final"></span><span class="agenda-resize-edge-v4 agenda-resize-start-days-v4" data-agenda-resize-edge-v4 data-agenda-resize-start-days aria-label="Ajustar dia inicial" title="Aresta esquerda: dia inicial"></span><span class="agenda-resize-edge-v4 agenda-resize-days-v3" data-agenda-resize-edge-v4 data-agenda-resize-days aria-label="Ajustar dia final" title="Aresta direita: dia final"></span></article>`;
+  return `<article class="agenda-month-event-v3 ${tone} ${sizeClass}" data-agenda-event-v3="${esc(event.id)}" data-agenda-event-date="${esc(event.date)}" data-agenda-event-start="${esc(event.start)}" data-agenda-event-duration="${durationHours}" data-agenda-event-span="${spanDays}" style="top:${topPx}px;height:${heightPx}px;width:calc(${spanDays * 100}% + ${widthGap}px)" tabindex="0"><div class="agenda-month-event-body-v3"><div class="agenda-event-time-v4"><time>${esc(event.start)}—${esc(endLabel)}</time><span>${durationHours}h · ${spanDays}d</span></div><strong>${esc(event.title)}</strong><small>${esc(event.activityName || "Atividade")} · ${esc(event.stageName || "Etapa")}</small><em>${esc(event.owner || "Responsável a definir")}</em></div><button type="button" class="agenda-card-link-handle" data-agenda-link-from="${esc(event.id)}" aria-label="Puxar relação para novo card" title="Arraste para criar card relacionado">＋</button><span class="agenda-resize-edge-v4 agenda-resize-start-hours-v4" data-agenda-resize-edge-v4 data-agenda-resize-start-hours aria-label="Ajustar hora inicial" title="Aresta superior: hora inicial"></span><span class="agenda-resize-edge-v4 agenda-resize-hours-v3" data-agenda-resize-edge-v4 data-agenda-resize-hours aria-label="Ajustar hora final" title="Aresta inferior: hora final"></span><span class="agenda-resize-edge-v4 agenda-resize-start-days-v4" data-agenda-resize-edge-v4 data-agenda-resize-start-days aria-label="Ajustar dia inicial" title="Aresta esquerda: dia inicial"></span><span class="agenda-resize-edge-v4 agenda-resize-days-v3" data-agenda-resize-edge-v4 data-agenda-resize-days aria-label="Ajustar dia final" title="Aresta direita: dia final"></span></article>`;
 };
 const agendaCalendarFormMarkupV3 = (stage, data, monthKey) => {
   const slot = agendaCalendarLastAvailableSlotV8(data.events || [], monthKey),
@@ -35847,7 +37773,7 @@ const agendaCalendarMarkupV3 = (stage) => {
 };
 
 ViewLayer.prototype.agenda = function () {
-  return agendaCalendarMarkupV3(extensionStage());
+  return stagePersistentTimelineMarkupV1() + agendaCalendarMarkupV3(extensionStage());
 };
 
 const renderBeforeActivityInstallationV1 = ViewLayer.prototype.render;
@@ -35912,6 +37838,7 @@ ViewLayer.prototype.bind = function (...args) {
     ".stage-agenda-month-page-v3",
   );
   if (agendaCalendarRootV5) {
+    let agendaLinkSourceV1 = "";
     const calendarRoot = agendaCalendarRootV5,
       editor = calendarRoot?.querySelector("[data-agenda-editor-v3]"),
       form = editor?.querySelector("[data-agenda-editor-form]"),
@@ -35947,6 +37874,7 @@ ViewLayer.prototype.bind = function (...args) {
               stageName: event.stageName,
               activityId: event.activityId,
               activity: event.activityName,
+              relatedFrom: event.relatedFrom || "",
               owner: event.owner,
               responsible: event.owner,
               status: event.status,
@@ -36007,6 +37935,7 @@ ViewLayer.prototype.bind = function (...args) {
           event = eventData || null;
 
         form.reset();
+        agendaLinkSourceV1 = event?.relatedFrom || "";
         form.elements.id.value = event?.id || "";
         form.elements.stageKey.value =
           event?.stageKey || selectedStage?.key || form.elements.stageKey.value;
@@ -36041,6 +37970,13 @@ ViewLayer.prototype.bind = function (...args) {
           );
         commit(events, action);
       };
+
+    if (state.selectedAgendaEventV3) {
+      const selectedEvent = (readData().events || []).find(
+        (item) => String(item.id) === String(state.selectedAgendaEventV3),
+      );
+      if (selectedEvent) showEditor(selectedEvent);
+    }
 
     calendarRoot
       ?.querySelectorAll("[data-agenda-week-shift-v8]")
@@ -36121,6 +38057,7 @@ ViewLayer.prototype.bind = function (...args) {
             Math.min(7, Math.round(Number(fd.get("spanDays") || 1))),
           ),
           status: String(fd.get("status") || "Planejado"),
+          relatedFrom: agendaLinkSourceV1,
         },
         data = readData(),
         events = [...(data.events || [])],
@@ -36563,6 +38500,7 @@ ViewLayer.prototype.bind = function (...args) {
       if (!(target instanceof Element)) return;
 
       const card = target.closest("[data-agenda-event-v3]");
+      if (target.closest("[data-agenda-link-from]")) return;
       if (
         !card ||
         !calendarRoot.contains(card) ||
@@ -36628,6 +38566,68 @@ ViewLayer.prototype.bind = function (...args) {
       capture: true,
       passive: false,
     });
+    // O mesmo gesto de ligação do PERT cria compromissos vinculados. O editor
+    // recebe o dia e a hora do ponto de soltura; o arraste existente permanece.
+    calendarRoot.querySelectorAll("[data-agenda-link-from]").forEach((handle) => {
+      handle.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const source = handle.dataset.agendaLinkFrom,
+          track = calendarRoot.querySelector(".agenda-week-days-v8");
+        if (!track) return;
+        beginCardCanvasLinkV1({
+          event, source, surface: track,
+          from: () => {
+            const rect = handle.getBoundingClientRect();
+            return { x: rect.right, y: rect.top + rect.height / 2 };
+          },
+          onDrop: (pointer) => {
+            const day = dayAtPointV7(pointer.clientX, pointer.clientY);
+            if (!day) return;
+            showEditor();
+            if (!form) return;
+            agendaLinkSourceV1 = source;
+            form.elements.date.value = day.dataset.agendaDayV3;
+            form.elements.start.value = agendaCalendarHoursToTimeV3(
+              timeAtPointerV7(day, pointer.clientY),
+            );
+            editor.querySelector("[data-agenda-editor-title]").textContent =
+              "Novo card relacionado";
+          },
+        });
+      });
+    });
+
+    const drawAgendaRelationsV1 = () => {
+      const track = calendarRoot.querySelector(".agenda-week-days-v8");
+      if (!track) return;
+      track.querySelector("[data-agenda-relation-layer]")?.remove();
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.classList.add("agenda-card-relations");
+      svg.dataset.agendaRelationLayer = "";
+      const bounds = track.getBoundingClientRect();
+      svg.setAttribute("viewBox", `0 0 ${bounds.width} ${bounds.height}`);
+      (readData().events || []).forEach((item) => {
+        if (!item.relatedFrom) return;
+        const from = [...track.querySelectorAll("[data-agenda-event-v3]")]
+            .find((card) => card.dataset.agendaEventV3 === String(item.relatedFrom)),
+          to = [...track.querySelectorAll("[data-agenda-event-v3]")]
+            .find((card) => card.dataset.agendaEventV3 === String(item.id));
+        if (!from || !to) return;
+        const a = from.getBoundingClientRect(), b = to.getBoundingClientRect(),
+          x1 = a.right - bounds.left, y1 = a.top + a.height / 2 - bounds.top,
+          x2 = b.left - bounds.left, y2 = b.top + b.height / 2 - bounds.top,
+          bend = Math.max(35, Math.abs(x2 - x1) * .45),
+          path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", `M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`);
+        svg.appendChild(path);
+      });
+      track.prepend(svg);
+    };
+    requestAnimationFrame(drawAgendaRelationsV1);
+    calendarRoot.querySelector("[data-agenda-horizontal-v4]")
+      ?.addEventListener("scroll", drawAgendaRelationsV1, { passive: true });
 
     agendaPointerV7.destroy = () => {
       if (agendaPointerV7.destroyed) return;
@@ -36935,7 +38935,7 @@ ViewLayer.prototype.connectedCallback = function () {
 // apresenta a cadeia completa do organizador numa única superfície. O
 // componente é puro; este adaptador apenas monta o snapshot e encaminha os
 // eventos para o interator global já existente.
-const stageHomeSnapshotV1 = () => {
+const stageHomeSnapshotV1 = (calendarWeekOverrideV2 = "") => {
   const state = appStore.get(),
     operational = state.operationalState || {},
     stages = (executionModel.stages || []).map((stage, index) => {
@@ -36972,28 +38972,29 @@ const stageHomeSnapshotV1 = () => {
           ),
       )?.name || "Leitura da atividade relacionada",
   }));
-  const days = [
-    ["03", "seg", "Planejamento"],
-    ["04", "ter", "Preparação"],
-    ["05", "qua", "Liberação"],
-    ["06", "qui", "Hoje"],
-    ["07", "sex", "Execução"],
-    ["08", "sáb", "Validação"],
-    ["09", "dom", "Fechamento"],
-  ].map(([date, weekday, note], index) => ({
-    date,
-    weekday,
-    note,
-    today: date === "06",
-    stages: stages[index] ? [stages[index]] : [],
-  }));
+  const storedAgenda = agendaCalendarReadV3(),
+    agendaEvents = storedAgenda.initialized
+      ? storedAgenda.events || []
+      : agendaCalendarOperationalEventsV3(state),
+    weekKey = calendarWeekOverrideV2 ||
+      state.stageHomeCalendarWeekV1 ||
+      agendaCalendarInitialWeekV8(state, { events: agendaEvents }),
+    today = agendaCalendarIsoV3(new Date()),
+    days = agendaCalendarWeekDaysV8(weekKey).map((date) => ({
+      iso: agendaCalendarIsoV3(date),
+      date: String(date.getDate()).padStart(2, "0"),
+      weekday: date.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", ""),
+      today: agendaCalendarIsoV3(date) === today,
+    })),
+    visibleDates = new Set(days.map((day) => day.iso));
   return {
     stages,
     activities,
     raid,
-    actions: operationalActions(),
     records: Array.isArray(state.records) ? state.records : [],
     calendar: days,
+    calendarLabel: agendaCalendarWeekLabelV8(weekKey),
+    calendarEvents: agendaEvents.filter((event) => visibleDates.has(String(event.date || ""))),
     icons: {
       shield: ico("shield-alert"),
       sparkles: ico("sparkles"),
@@ -37002,9 +39003,615 @@ const stageHomeSnapshotV1 = () => {
   };
 };
 
+// STAGE_HOME_CALENDAR_STATIC_STAGE_COLUMN_V3
+// A primeira coluna (ETAPAS + botões das etapas) permanece no grid original.
+// Somente a segunda coluna (cabeçalho dos dias + tracks das linhas) recebe
+// três semanas horizontais e anima translateX.
+const ensureStageHomeCalendarStaticColumnStyleV3 = () => {
+  if (document.getElementById("stage-home-calendar-static-column-style-v3")) return;
+  const style = document.createElement("style");
+  style.id = "stage-home-calendar-static-column-style-v3";
+  style.textContent = `
+    .stage-home-canvas-axis,
+    .stage-home-canvas-row {
+      grid-template-columns: var(--stage-home-static-stage-width-v3, 210px) minmax(0, 1fr) !important;
+    }
+    /* A altura pertence à linha da etapa, não às células das 3 semanas.
+       Assim conteúdo em previous/current/next não altera o espaçamento vertical. */
+    .stage-home-canvas-row {
+      height: var(--stage-home-calendar-row-height-v3, 58px) !important;
+      min-height: var(--stage-home-calendar-row-height-v3, 58px) !important;
+      max-height: var(--stage-home-calendar-row-height-v3, 58px) !important;
+      align-items: stretch !important;
+    }
+    .stage-home-canvas-row > .stage-home-canvas-stage,
+    .stage-home-canvas-row > .stage-home-calendar-cell-viewport-v3,
+    .stage-home-canvas-row .stage-home-calendar-cell-strip-v3,
+    .stage-home-canvas-row .stage-home-calendar-cell-page-v3,
+    .stage-home-canvas-row .stage-home-calendar-cell-page-v3 > .stage-home-canvas-track {
+      height: 100% !important;
+      min-height: 0 !important;
+      max-height: 100% !important;
+      box-sizing: border-box;
+    }
+    .stage-home-canvas-row .stage-home-calendar-cell-page-v3 {
+      overflow: hidden;
+    }
+    .stage-home-canvas-axis > span:first-child {
+      grid-column: 1 !important;
+      min-width: 0;
+    }
+    .stage-home-canvas-axis > .stage-home-calendar-cell-viewport-v3,
+    .stage-home-canvas-row > .stage-home-calendar-cell-viewport-v3 {
+      grid-column: 2 / -1 !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: none !important;
+      display: block !important;
+    }
+    .stage-home-canvas-row > .stage-home-canvas-stage {
+      grid-column: 1 !important;
+      min-width: 0 !important;
+    }
+    .stage-home-calendar-cell-viewport-v3 {
+      width: 100%;
+      min-width: 0;
+      overflow: hidden !important;
+      position: relative;
+      contain: layout paint;
+    }
+    .stage-home-calendar-cell-strip-v3 {
+      display: flex !important;
+      width: 300% !important;
+      min-width: 300% !important;
+      max-width: none !important;
+      transform: translate3d(-33.3333333333%, 0, 0);
+      will-change: transform;
+    }
+    .stage-home-calendar-cell-strip-v3.is-animating {
+      transition: transform 320ms cubic-bezier(.22,.61,.36,1);
+    }
+    .stage-home-calendar-cell-page-v3 {
+      flex: 0 0 33.3333333333% !important;
+      width: 33.3333333333% !important;
+      min-width: 0;
+      max-width: 33.3333333333% !important;
+    }
+    .stage-home-calendar-days-v3,
+    .stage-home-calendar-cell-page-v3 > .stage-home-canvas-track {
+      box-sizing: border-box;
+      width: 100%;
+      min-width: 0;
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .stage-home-calendar-cell-strip-v3.is-animating {
+        transition-duration: 1ms;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+};
+
+const syncStageHomeCalendarStaticColumnWidthV3 = (host) => {
+  const axis = host?.querySelector?.(".stage-home-canvas-axis"),
+    firstStage = host?.querySelector?.(".stage-home-canvas-row .stage-home-canvas-stage");
+  if (!axis || !firstStage) return;
+  const width = firstStage.getBoundingClientRect().width;
+  if (Number.isFinite(width) && width > 0)
+    host.style.setProperty("--stage-home-static-stage-width-v3", `${width}px`);
+};
+
+const stageHomeCalendarShiftWeekV3 = (weekKey, shift) => {
+  const date = agendaCalendarParseDateV3(weekKey);
+  if (!date) return "";
+  date.setDate(date.getDate() + Number(shift || 0) * 7);
+  return agendaCalendarWeekKeyV8(date);
+};
+
+const stageHomeCalendarWeekPartsV3 = (weekKey) => {
+  const template = document.createElement("template");
+  template.innerHTML = renderStageHomePageV1(stageHomeSnapshotV1(weekKey));
+  const page = template.content.querySelector("[data-stage-home-page]") || template.content,
+    axis = page.querySelector(".stage-home-canvas-axis"),
+    rows = [...page.querySelectorAll(".stage-home-canvas-row")],
+    days = axis?.querySelector(":scope > div")?.cloneNode(true) || null,
+    tracks = rows.map((row) => row.querySelector(".stage-home-canvas-track")?.cloneNode(true) || null);
+  if (days) days.classList.add("stage-home-calendar-days-v3");
+  return { days, tracks };
+};
+
+const stageHomeCalendarWrapCellV3 = ({ current, previous, next, kind, index = -1 }) => {
+  if (!current?.parentNode || !previous || !next) return null;
+
+  const viewport = document.createElement("div"),
+    strip = document.createElement("div");
+  viewport.className = "stage-home-calendar-cell-viewport-v3";
+  viewport.dataset.stageHomeCalendarCell = kind;
+  if (index >= 0) viewport.dataset.stageHomeCalendarRow = String(index);
+  strip.className = "stage-home-calendar-cell-strip-v3";
+
+  const makePage = (node, relation) => {
+    const page = document.createElement("div");
+    page.className = "stage-home-calendar-cell-page-v3";
+    page.dataset.stageHomeCalendarPage = relation;
+    page.appendChild(node);
+    return page;
+  };
+
+  const parent = current.parentNode;
+  parent.insertBefore(viewport, current);
+  viewport.appendChild(strip);
+  strip.append(
+    makePage(previous, "previous"),
+    makePage(current, "current"),
+    makePage(next, "next"),
+  );
+  return strip;
+};
+
+const mountStageHomeCalendarStaticColumnSliderV3 = (host) => {
+  if (!host || host.dataset.stageHomeCalendarStaticColumnV3 === "true") return;
+  const weekNode = host.querySelector("[data-stage-home-calendar-week]"),
+    currentWeek = weekNode?.dataset.stageHomeCalendarWeek,
+    axis = host.querySelector(".stage-home-canvas-axis"),
+    currentDays = axis?.querySelector(":scope > div"),
+    rows = [...host.querySelectorAll(".stage-home-canvas-row")],
+    currentTracks = rows.map((row) => row.querySelector(":scope > .stage-home-canvas-track"));
+
+  if (!currentWeek || !axis || !currentDays || !rows.length || currentTracks.some((track) => !track))
+    return;
+
+  const previousWeek = stageHomeCalendarShiftWeekV3(currentWeek, -1),
+    nextWeek = stageHomeCalendarShiftWeekV3(currentWeek, 1),
+    previous = stageHomeCalendarWeekPartsV3(previousWeek),
+    next = stageHomeCalendarWeekPartsV3(nextWeek);
+
+  if (
+    !previous.days ||
+    !next.days ||
+    previous.tracks.length !== currentTracks.length ||
+    next.tracks.length !== currentTracks.length ||
+    previous.tracks.some((track) => !track) ||
+    next.tracks.some((track) => !track)
+  ) return;
+
+  ensureStageHomeCalendarStaticColumnStyleV3();
+  syncStageHomeCalendarStaticColumnWidthV3(host);
+  currentDays.classList.add("stage-home-calendar-days-v3");
+
+  const strips = [];
+  const headerStrip = stageHomeCalendarWrapCellV3({
+    current: currentDays,
+    previous: previous.days,
+    next: next.days,
+    kind: "days",
+  });
+  if (headerStrip) strips.push(headerStrip);
+
+  currentTracks.forEach((track, index) => {
+    const rowStrip = stageHomeCalendarWrapCellV3({
+      current: track,
+      previous: previous.tracks[index],
+      next: next.tracks[index],
+      kind: "row",
+      index,
+    });
+    if (rowStrip) strips.push(rowStrip);
+  });
+
+  if (!strips.length) return;
+  strips.forEach((strip) => {
+    strip.dataset.stageHomeCalendarSlideWeek = currentWeek;
+  });
+  host.dataset.stageHomeCalendarStaticColumnV3 = "true";
+};
+
+const slideStageHomeCalendarStaticColumnV3 = (host, rawShift) => {
+  const strips = [...(host?.querySelectorAll(".stage-home-calendar-cell-strip-v3") || [])],
+    shift = Math.sign(Number(rawShift) || 0);
+  if (!strips.length || !shift || host.dataset.stageHomeCalendarSlidingV3 === "true") return;
+
+  const currentWeek = strips[0].dataset.stageHomeCalendarSlideWeek,
+    nextWeek = stageHomeCalendarShiftWeekV3(currentWeek, shift);
+  if (!nextWeek) return;
+
+  host.dataset.stageHomeCalendarSlidingV3 = "true";
+  strips.forEach((strip) => strip.classList.add("is-animating"));
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const target = shift > 0 ? -66.6666666667 : 0;
+    strips.forEach((strip) => {
+      strip.style.transform = `translate3d(${target}%, 0, 0)`;
+    });
+  }));
+
+  let committed = false;
+  const commit = () => {
+    if (committed) return;
+    committed = true;
+    delete host.dataset.stageHomeCalendarSlidingV3;
+    appStore.set({ stageHomeCalendarWeekV1: nextWeek });
+  };
+
+  const sentinel = strips[0];
+  const onTransitionEnd = (event) => {
+    if (event.target !== sentinel || event.propertyName !== "transform") return;
+    sentinel.removeEventListener("transitionend", onTransitionEnd);
+    commit();
+  };
+  sentinel.addEventListener("transitionend", onTransitionEnd);
+  setTimeout(commit, 420);
+};
+
+// STAGE_HOME_CALENDAR_VIEWPORT_FOCUS_V4
+// A linha cresce pela semana visível e o calendário vira uma superfície de foco
+// quando seu scrollpoint alcança o limite inferior do mapa persistente.
+const ensureStageHomeCalendarViewportStyleV4 = () => {
+  if (document.getElementById("stage-home-calendar-viewport-style-v4")) return;
+  const style = document.createElement("style");
+  style.id = "stage-home-calendar-viewport-style-v4";
+  style.textContent = `
+    /* V4 substitui a altura fixa da V3: a semana visível define a altura da linha. */
+    .stage-home-canvas-row {
+      height: auto !important;
+      min-height: 58px !important;
+      max-height: none !important;
+      align-items: stretch !important;
+    }
+    .stage-home-canvas-row > .stage-home-canvas-stage {
+      height: auto !important;
+      min-height: 58px !important;
+      max-height: none !important;
+      align-self: stretch !important;
+    }
+    .stage-home-canvas-row > .stage-home-calendar-cell-viewport-v3 {
+      min-height: 58px !important;
+      max-height: none !important;
+      transition: height 200ms cubic-bezier(.22,.61,.36,1);
+    }
+    .stage-home-canvas-row .stage-home-calendar-cell-strip-v3,
+    .stage-home-canvas-row .stage-home-calendar-cell-page-v3,
+    .stage-home-canvas-row .stage-home-calendar-cell-page-v3 > .stage-home-canvas-track {
+      height: auto !important;
+      min-height: 58px !important;
+      max-height: none !important;
+    }
+    .stage-home-canvas-row .stage-home-calendar-cell-page-v3 {
+      overflow: visible !important;
+      align-self: flex-start;
+    }
+
+    /* Superfície expandida no scrollpoint. */
+    .stage-home-calendar-focus-placeholder-v4 {
+      display: none;
+      width: 100%;
+      min-width: 0;
+      pointer-events: none;
+      visibility: hidden;
+    }
+    .stage-home-calendar-focus-v4 {
+      position: fixed !important;
+      margin: 0 !important;
+      box-sizing: border-box !important;
+      z-index: 80 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      min-width: 0 !important;
+      min-height: 0 !important;
+      overflow: hidden !important;
+      transition:
+        left 200ms cubic-bezier(.22,.61,.36,1),
+        top 200ms cubic-bezier(.22,.61,.36,1),
+        width 200ms cubic-bezier(.22,.61,.36,1),
+        height 200ms cubic-bezier(.22,.61,.36,1),
+        box-shadow 200ms ease;
+      box-shadow: 0 18px 48px rgba(0,0,0,.28);
+    }
+    .stage-home-calendar-focus-v4 > header {
+      flex: 0 0 auto;
+    }
+    .stage-home-calendar-focus-v4 .stage-home-canvas-scroll {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      min-width: 0 !important;
+      overflow: hidden !important;
+    }
+    .stage-home-calendar-focus-v4 .stage-home-canvas-grid {
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: none !important;
+      height: 100% !important;
+      min-height: 0 !important;
+      max-height: 100% !important;
+      overflow: auto !important;
+      align-content: start !important;
+      scrollbar-gutter: stable both-edges;
+    }
+    .stage-home-calendar-focus-v4 .stage-home-canvas-axis,
+    .stage-home-calendar-focus-v4 .stage-home-canvas-row {
+      width: 100% !important;
+      min-width: calc(var(--stage-home-static-stage-width-v3, 210px) + 1120px) !important;
+      grid-template-columns: var(--stage-home-static-stage-width-v3, 210px) minmax(1120px, 1fr) !important;
+    }
+    .stage-home-calendar-focus-v4 .stage-home-calendar-days-v3,
+    .stage-home-calendar-focus-v4 .stage-home-calendar-cell-page-v3 > .stage-home-canvas-track {
+      grid-template-columns: repeat(7, minmax(160px, 1fr)) !important;
+      align-items: stretch;
+    }
+    .stage-home-calendar-focus-v4 .stage-home-canvas-axis {
+      position: sticky;
+      top: 0;
+      z-index: 8;
+    }
+    .stage-home-calendar-focus-v4 .stage-home-canvas-axis > span:first-child,
+    .stage-home-calendar-focus-v4 .stage-home-canvas-row > .stage-home-canvas-stage {
+      position: sticky;
+      left: 0;
+      z-index: 7;
+    }
+    .stage-home-calendar-focus-v4 .stage-home-canvas-axis > span:first-child {
+      z-index: 10;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .stage-home-calendar-focus-v4,
+      .stage-home-canvas-row > .stage-home-calendar-cell-viewport-v3 {
+        transition-duration: 1ms !important;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+};
+
+const stageHomeCalendarSyncVisibleRowHeightsV4 = (
+  host,
+  relation = "current",
+) => {
+  host
+    ?.querySelectorAll?.('[data-stage-home-calendar-cell="row"]')
+    .forEach((viewport) => {
+      const page = viewport.querySelector(
+          `[data-stage-home-calendar-page="${relation}"]`,
+        ),
+        track = page?.querySelector(".stage-home-canvas-track");
+      if (!page || !track) return;
+      const height = Math.max(
+        58,
+        Math.ceil(track.scrollHeight || page.scrollHeight || 58),
+      );
+      viewport.style.setProperty("height", `${height}px`, "important");
+    });
+};
+
+const stageHomeCalendarPrepareRowHeightsV4 = (host, rawShift) => {
+  const shift = Math.sign(Number(rawShift) || 0);
+  if (!shift) return;
+  stageHomeCalendarSyncVisibleRowHeightsV4(
+    host,
+    shift > 0 ? "next" : "previous",
+  );
+};
+
+const stageHomeCalendarFocusBoundsV4 = (section) => {
+  const viewportWidth = globalThis.innerWidth || document.documentElement.clientWidth,
+    viewportHeight = globalThis.innerHeight || document.documentElement.clientHeight,
+    sidebar = document.querySelector(".sidebar"),
+    mapAccordion = document.querySelector(
+      "[data-stage-map-accordion],.stage-map-accordion,[data-map-accordion]",
+    ),
+    content = section?.closest?.("view-layer,.app-main,main") || null,
+    sidebarRect = sidebar?.getBoundingClientRect?.(),
+    mapRect = mapAccordion?.getBoundingClientRect?.(),
+    contentRect = content?.getBoundingClientRect?.();
+
+  const sidebarRight =
+      sidebarRect && sidebarRect.width > 0 && sidebarRect.right > 0
+        ? sidebarRect.right
+        : 0,
+    mapVisible =
+      mapRect &&
+      mapRect.width > 0 &&
+      mapRect.height > 0 &&
+      mapRect.bottom > 0 &&
+      mapRect.top < viewportHeight,
+    contentVisible = contentRect && contentRect.width > 0,
+    left = Math.max(
+      0,
+      sidebarRight,
+      mapVisible ? mapRect.left : contentVisible ? contentRect.left : 0,
+    ),
+    rightCandidate = mapVisible
+      ? mapRect.right
+      : contentVisible
+        ? contentRect.right
+        : viewportWidth,
+    right = Math.min(viewportWidth, Math.max(left, rightCandidate)),
+    top = Math.max(0, mapVisible ? mapRect.bottom : 0),
+    width = Math.max(0, right - left),
+    height = Math.max(0, viewportHeight - top);
+
+  if (width < 480 || height < 240) return null;
+  return { left, top, width, height };
+};
+
+const mountStageHomeCalendarViewportV4 = (host) => {
+  const section = host?.querySelector?.(
+      '[data-stage-home-section="calendar"],.stage-home-calendar-canvas',
+    ),
+    scroller = section?.querySelector?.(".stage-home-canvas-scroll");
+  if (!section || !scroller) return;
+
+  const restoreFocus = globalThis.__stageHomeCalendarViewportFocusWantedV4 === true;
+  globalThis.__stageHomeCalendarViewportCleanupV4?.();
+  ensureStageHomeCalendarViewportStyleV4();
+  stageHomeCalendarSyncVisibleRowHeightsV4(host);
+
+  const placeholder = document.createElement("div");
+  placeholder.className = "stage-home-calendar-focus-placeholder-v4";
+  section.before(placeholder);
+  section.dataset.stageHomeCalendarViewportV4 = "true";
+
+  let active = false,
+    exiting = false,
+    raf = 0,
+    exitTimer = 0;
+
+  const clearFixedGeometry = () => {
+    for (const property of ["left", "top", "width", "height"])
+      section.style.removeProperty(property);
+  };
+
+  const applyBounds = (bounds) => {
+    if (!bounds) return;
+    section.style.setProperty("left", `${Math.round(bounds.left)}px`, "important");
+    section.style.setProperty("top", `${Math.round(bounds.top)}px`, "important");
+    section.style.setProperty("width", `${Math.round(bounds.width)}px`, "important");
+    section.style.setProperty("height", `${Math.round(bounds.height)}px`, "important");
+  };
+
+  const finishExit = () => {
+    clearTimeout(exitTimer);
+    section.classList.remove("stage-home-calendar-focus-v4");
+    clearFixedGeometry();
+    placeholder.style.display = "none";
+    placeholder.style.height = "0px";
+    active = false;
+    exiting = false;
+    globalThis.__stageHomeCalendarViewportFocusWantedV4 = false;
+    stageHomeCalendarSyncVisibleRowHeightsV4(host);
+  };
+
+  const enter = () => {
+    if (active || exiting || !section.isConnected) return;
+    const bounds = stageHomeCalendarFocusBoundsV4(section);
+    if (!bounds) return;
+    const rect = section.getBoundingClientRect();
+    placeholder.style.display = "block";
+    placeholder.style.height = `${Math.max(rect.height, 1)}px`;
+    section.classList.add("stage-home-calendar-focus-v4");
+    section.style.setProperty("left", `${rect.left}px`, "important");
+    section.style.setProperty("top", `${rect.top}px`, "important");
+    section.style.setProperty("width", `${rect.width}px`, "important");
+    section.style.setProperty("height", `${rect.height}px`, "important");
+    active = true;
+    globalThis.__stageHomeCalendarViewportFocusWantedV4 = true;
+    section.getBoundingClientRect();
+    requestAnimationFrame(() => applyBounds(stageHomeCalendarFocusBoundsV4(section)));
+  };
+
+  const exit = () => {
+    if (!active || exiting) return;
+    exiting = true;
+    globalThis.__stageHomeCalendarViewportFocusWantedV4 = false;
+    const target = placeholder.getBoundingClientRect(),
+      targetVisible = target.width > 0 && target.height > 0 && target.bottom > 0;
+    if (!targetVisible) {
+      finishExit();
+      return;
+    }
+    section.style.setProperty("left", `${target.left}px`, "important");
+    section.style.setProperty("top", `${target.top}px`, "important");
+    section.style.setProperty("width", `${target.width}px`, "important");
+    section.style.setProperty("height", `${target.height}px`, "important");
+    exitTimer = setTimeout(finishExit, 215);
+  };
+
+  const evaluate = () => {
+    raf = 0;
+    if (!section.isConnected) {
+      cleanup();
+      return;
+    }
+    const bounds = stageHomeCalendarFocusBoundsV4(section);
+    if (!bounds) {
+      if (active) exit();
+      return;
+    }
+    if (active && !exiting) {
+      applyBounds(bounds);
+      const marker = placeholder.getBoundingClientRect(),
+        line = bounds.top + 2,
+        withinScrollpoint = marker.top <= line && marker.bottom > line + 64;
+      if (!withinScrollpoint) exit();
+      return;
+    }
+    if (exiting) return;
+    const rect = section.getBoundingClientRect(),
+      line = bounds.top + 2;
+    if (rect.top <= line && rect.bottom > line + 80) enter();
+  };
+
+  const scheduleEvaluate = () => {
+    if (raf) return;
+    raf = requestAnimationFrame(evaluate);
+  };
+
+  const resizeObserver = globalThis.ResizeObserver
+    ? new ResizeObserver(() => {
+        stageHomeCalendarSyncVisibleRowHeightsV4(host);
+        scheduleEvaluate();
+      })
+    : null;
+  host
+    .querySelectorAll(
+      '[data-stage-home-calendar-cell="row"] [data-stage-home-calendar-page="current"] .stage-home-canvas-track',
+    )
+    .forEach((track) => resizeObserver?.observe(track));
+
+  window.addEventListener("scroll", scheduleEvaluate, { passive: true });
+  window.addEventListener("resize", scheduleEvaluate, { passive: true });
+
+  const cleanup = () => {
+    if (raf) cancelAnimationFrame(raf);
+    clearTimeout(exitTimer);
+    resizeObserver?.disconnect();
+    window.removeEventListener("scroll", scheduleEvaluate);
+    window.removeEventListener("resize", scheduleEvaluate);
+    if (section.isConnected) {
+      section.classList.remove("stage-home-calendar-focus-v4");
+      clearFixedGeometry();
+    }
+    placeholder.remove();
+  };
+  globalThis.__stageHomeCalendarViewportCleanupV4 = cleanup;
+
+  if (restoreFocus)
+    requestAnimationFrame(() => requestAnimationFrame(enter));
+  else
+    scheduleEvaluate();
+};
+
 const bindStageHomeV1 = (host) => {
   if (!host || host.dataset.stageHomeBound === "true") return;
   host.dataset.stageHomeBound = "true";
+  mountStageHomeCalendarStaticColumnSliderV3(host);
+  mountStageHomeCalendarViewportV4(host);
+  host.querySelectorAll("[data-stage-home-calendar-shift]").forEach((button) =>
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      stageHomeCalendarPrepareRowHeightsV4(
+        host,
+        button.dataset.stageHomeCalendarShift,
+      );
+      slideStageHomeCalendarStaticColumnV3(
+        host,
+        button.dataset.stageHomeCalendarShift,
+      );
+    }),
+  );
+  host.querySelectorAll("[data-stage-home-calendar-event]").forEach((button) =>
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      appStore.set({
+        view: "agenda",
+        agendaCalendarWeekV8: agendaCalendarWeekKeyV8(button.dataset.stageHomeCalendarDate),
+        selectedAgendaEventV3: button.dataset.stageHomeCalendarEvent,
+        lastAction: "Abriu compromisso pela linha do tempo das etapas",
+      });
+    }, true),
+  );
   host.querySelectorAll("[data-stage-home-view]").forEach((button) =>
     button.addEventListener(
       "click",
@@ -37016,7 +39623,7 @@ const bindStageHomeV1 = (host) => {
           view,
           activityDedicated: false,
           stageActivityDedicatedV9: false,
-          lastAction: `Abriu ${view === "raid" ? "o quadro RAID" : view === "actions" ? "as Ações IA" : view === "records" ? "os registros" : "a agenda"} pelo organizador`,
+          lastAction: `Abriu ${view === "activities" ? "as atividades" : view === "actions" ? "as Ações IA" : view === "records" ? "os registros" : "a agenda"} pelo organizador`,
         });
       },
       true,
@@ -37047,21 +39654,6 @@ const bindStageHomeV1 = (host) => {
           view: "records",
           selectedRecordV5362: button.dataset.stageHomeRecord,
           lastAction: "Abriu registro pelo organizador de etapas",
-        });
-      },
-      true,
-    ),
-  );
-  host.querySelectorAll("[data-stage-home-ai]").forEach((button) =>
-    button.addEventListener(
-      "click",
-      (event) => {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        appStore.set({
-          view: "actions",
-          selectedAiAction: button.dataset.stageHomeAi,
-          lastAction: "Abriu a ação de IA pelo organizador de etapas",
         });
       },
       true,
@@ -37108,43 +39700,9 @@ const ensureStageHomeV1 = (layer) => {
     state = appStore.get();
   if (!host || state.view !== "stages" || state.activityDedicated) return false;
   const ensureTabs = (home) => {
-    if (!home || home.querySelector(".stage-view-tabs")) return;
-    const anchor = home.querySelector(".stage-home-head");
-    if (!anchor) return;
-    anchor.insertAdjacentHTML("afterend", stageViewTabs("stages"));
-    home
-      .querySelectorAll("nav.stage-view-tabs [data-stage-view]")
-      .forEach((button) => {
-        if (button.dataset.stageTabsHomeBound === "true") return;
-        button.dataset.stageTabsHomeBound = "true";
-        button.addEventListener("click", (event) => {
-          event.preventDefault();
-          const next = button.dataset.stageView,
-            stage = extensionStage(),
-            current = appStore.get();
-          appStore.set({
-            view: next,
-            selectedStage: stage.id || current.selectedStage,
-            activityDedicated: false,
-            stageActivityDedicatedV9: false,
-            selectedActivity: null,
-            activityRecordModalOpenV1: false,
-            editingRecord: null,
-            recordContext: null,
-            stageRecordsContext: next === "records",
-            recordFilters:
-              next === "records"
-                ? {
-                    ...(current.recordFilters || {}),
-                    stage: stage.name,
-                    entity: "records",
-                  }
-                : current.recordFilters,
-            lastAction: `Abriu ${button.textContent.trim()} da etapa ${stage.name}`,
-          });
-        });
-      });
-    window.lucide?.createIcons();
+    if (!home) return;
+    // O cabeçalho compartilhado é montado no view-layer, antes do conteúdo.
+    home.querySelector("[data-stage-home-timeline]")?.remove();
   };
   const legacyHome = host.querySelector(".dashboard-carbon-home");
   if (!legacyHome) {
@@ -37169,10 +39727,9 @@ ViewLayer.prototype.render = function (...args) {
     state = appStore.get();
   if (state.view === "stages" && !state.activityDedicated) {
     const legacyHome = this.querySelector(".dashboard-carbon-home");
-    if (legacyHome) {
+    if (legacyHome)
       legacyHome.outerHTML = renderStageHomePageV1(stageHomeSnapshotV1());
-      bindStageHomeV1(this.querySelector("[data-stage-home-page]"));
-    }
+    ensureStageHomeV1(this);
   }
   return result;
 };
@@ -37527,7 +40084,7 @@ ViewLayer.prototype.control = function (...args) {
   const history = (state.records || []).filter((record) => !record.stageId).slice(0, 5);
   const baseHtml = controlBeforeGeneralEventV1.apply(this, args);
   const cashLauncher = baseHtml.match(/<section class="cash-record-launcher"[\s\S]*?<\/section>/)?.[0] || "";
-  const eventPanel = `<nav class="control-event-tabs" aria-label="Abas da Central operacional"><button type="button" data-control-event-tab="event" class="${selectedTab === "event" ? "active" : ""}">Novo registro de evento</button><button type="button" data-control-event-tab="operations" class="${selectedTab === "operations" ? "active" : ""}">Visão operacional</button></nav>${cashLauncher}<section class="control-center-section control-general-event" aria-label="Registro geral de evento"><header><div><span class="activity-kind">REGISTRO GERAL · CENTRAL OPERACIONAL</span><h2>Novo evento</h2><p>Registre fatos do empreendimento sem vinculá-los artificialmente a uma etapa. Revise qualquer sugestão da IA antes de confirmar.</p></div></header><form data-control-general-event><div class="control-general-event-grid"><label>Nome do evento<input name="title" value="${esc(draft.title || "")}" placeholder="Ex.: Visita técnica ao empreendimento" required maxlength="120"></label><label>Categoria / tipo<select name="category"><option value="ocorrencia">Ocorrência</option><option value="vistoria">Vistoria</option><option value="reuniao">Reunião</option><option value="comunicacao">Comunicação</option><option value="decisao">Decisão</option><option value="outro">Outro</option></select></label><label>Data<input name="date" type="date" value="${new Date().toISOString().slice(0, 10)}" required></label><label>Hora<input name="time" type="time" value="${new Date().toTimeString().slice(0, 5)}" required></label><label>Responsável<input name="responsible" value="${esc(draft.responsible || "")}" placeholder="Pessoa ou equipe" required></label><label>Situação<select name="status"><option>Pendente</option><option>Concluído</option></select></label><label class="wide">Descrição do evento<textarea name="details" rows="5" placeholder="O que aconteceu, impacto e próximo passo" required maxlength="4000">${esc(draft.details || "")}</textarea></label><label class="wide">Foto ou documento (opcional)<input name="evidence" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"></label></div><footer><span data-control-general-event-status>O evento será salvo no histórico geral; nenhuma etapa será alterada automaticamente.</span><button type="submit" class="toolbar-primary">${ico("plus")} Registrar evento</button></footer></form><div class="control-general-event-history"><h3>Últimos eventos gerais</h3>${history.length ? history.map((item) => `<article><b>${esc(item.atividade || "Evento")}</b><small>${esc(item.data || "")} · ${esc(item.responsavel || "A definir")}</small></article>`).join("") : "<p>Nenhum evento geral registrado.</p>"}</div></section>`;
+  const eventPanel = `<nav class="control-event-tabs" aria-label="Abas da Central operacional"><button type="button" data-control-event-tab="event" class="${selectedTab === "event" ? "active" : ""}">Novo registro de evento</button><button type="button" data-control-event-tab="operations" class="${selectedTab === "operations" ? "active" : ""}">Visão operacional</button></nav><section class="control-center-section control-general-event" aria-label="Registro geral de evento"><header><div><span class="activity-kind">REGISTRO GERAL · CENTRAL OPERACIONAL</span><h2>Novo evento</h2><p>Registre fatos do empreendimento sem vinculá-los artificialmente a uma etapa. Revise qualquer sugestão da IA antes de confirmar.</p></div></header><form data-control-general-event><div class="control-general-event-grid"><label>Nome do evento<input name="title" value="${esc(draft.title || "")}" placeholder="Ex.: Visita técnica ao empreendimento" required maxlength="120"></label><label>Categoria / tipo<select name="category"><option value="ocorrencia">Ocorrência</option><option value="vistoria">Vistoria</option><option value="reuniao">Reunião</option><option value="comunicacao">Comunicação</option><option value="decisao">Decisão</option><option value="outro">Outro</option></select></label><label>Data<input name="date" type="date" value="${new Date().toISOString().slice(0, 10)}" required></label><label>Hora<input name="time" type="time" value="${new Date().toTimeString().slice(0, 5)}" required></label><label>Responsável<input name="responsible" value="${esc(draft.responsible || "")}" placeholder="Pessoa ou equipe" required></label><label>Situação<select name="status"><option>Pendente</option><option>Concluído</option></select></label><label class="wide">Descrição do evento<textarea name="details" rows="5" placeholder="O que aconteceu, impacto e próximo passo" required maxlength="4000">${esc(draft.details || "")}</textarea></label><label class="wide">Foto ou documento (opcional)<input name="evidence" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"></label></div><footer><span data-control-general-event-status>O evento será salvo no histórico geral; nenhuma etapa será alterada automaticamente.</span><button type="submit" class="toolbar-primary">${ico("plus")} Registrar evento</button></footer></form><div class="control-general-event-history"><h3>Últimos eventos gerais</h3>${history.length ? history.map((item) => `<article><b>${esc(item.atividade || "Evento")}</b><small>${esc(item.data || "")} · ${esc(item.responsavel || "A definir")}</small></article>`).join("") : "<p>Nenhum evento geral registrado.</p>"}</div></section>`;
   return baseHtml
     .replace(cashLauncher, "")
     .replace(/<section class="control-center-section control-field-entry-v1">[\s\S]*?<\/section>/, "")
@@ -37585,7 +40142,9 @@ ViewLayer.prototype.bind = function (...args) {
         detalhes: `Tipo: ${category}\n${String(data.get("details") || "").trim()}`,
         data: String(data.get("date") || ""), hora: String(data.get("time") || ""),
         status: String(data.get("status") || "Pendente"),
-        evidenceUri: evidenceUri || undefined,
+        evidenceUri: evidenceUri || String(data.get('evidenceUri') || '') || undefined,
+        properties: JSON.parse(String(data.get('properties') || '[]')),
+        requestId: String(data.get('requestId') || '') || undefined,
       };
       const response = await apiFetch("/api/records", {
         method: "POST", headers: operationalHeaders({ "Content-Type": "application/json" }),
@@ -37593,6 +40152,7 @@ ViewLayer.prototype.bind = function (...args) {
       });
       if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `HTTP ${response.status}`);
       const record = await response.json();
+      window.dispatchEvent(new CustomEvent('belavista:chat-record-saved', { detail: record }));
       appStore.update((current) => ({ ...current, records: [record, ...(current.records || [])], controlEventDraft: null, lastAction: `Registrou evento geral: ${title}` }));
       notify("Evento geral registrado.", "success");
     } catch (error) {
@@ -37650,7 +40210,7 @@ const mountRecordDropinV1 = (host, input, order) => {
     }
   };
   input.addEventListener("change", showFile);
-  clear.addEventListener("click", () => { input.value = ""; showFile(); });
+  clear.addEventListener("click", () => { input.value = ""; input.dispatchEvent(new Event('change', { bubbles: true })); showFile(); });
   ["dragenter", "dragover"].forEach((name) => dropin.addEventListener(name, (event) => {
     event.preventDefault();
     dropin.classList.add("dragging");
@@ -37733,3 +40293,1515 @@ ViewLayer.prototype.render = function (...args) {
   }
   return result;
 };
+
+// Ativa a carteira após os renderizadores legados declarados acima.
+installBrokerProfileV2();
+
+// Controles de listagem compartilhados: não alteram os formulários nem os
+// listeners de edição já associados às linhas das três áreas.
+const renderBeforeDataTablesV1 = ViewLayer.prototype.render;
+ViewLayer.prototype.render = function (...args) {
+  const result = renderBeforeDataTablesV1.apply(this, args);
+  if (!document.getElementById("data-table-controls-v1-style")) {
+    const style = document.createElement("style");
+    style.id = "data-table-controls-v1-style";
+    style.textContent = `.data-table-controls-v1{display:flex;flex-wrap:wrap;align-items:end;gap:10px;padding:14px 16px;background:#20262a;border:1px solid #3a4449;border-radius:12px;margin:12px 0}.data-table-controls-v1 label{display:grid;gap:5px;color:#b7c3c8;font-size:11px}.data-table-controls-v1 input,.data-table-controls-v1 select{min-width:140px;max-width:220px;background:#141a1d;color:#edf3f4;border:1px solid #526068;border-radius:7px;padding:8px}.data-table-controls-v1 button{background:#25323a;color:#e8f1f4;border:1px solid #526068;border-radius:7px;padding:8px 11px;cursor:pointer}.data-table-footer-v1{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:12px 16px;color:#b7c3c8;font-size:12px}.data-table-footer-v1 button{background:#25323a;color:#e8f1f4;border:1px solid #526068;border-radius:7px;padding:7px 11px;cursor:pointer}.data-table-footer-v1 button:disabled{opacity:.4;cursor:default}@media(max-width:650px){.data-table-controls-v1{display:grid;grid-template-columns:1fr 1fr}.data-table-controls-v1 label:first-child{grid-column:1/-1}.data-table-controls-v1 input,.data-table-controls-v1 select{width:100%;max-width:none;min-width:0}}`;
+    document.head.append(style);
+  }
+  const wire = (root, rows, options = {}) => {
+    if (!root || !rows.length || root.querySelector("[data-table-controls-v1]")) return;
+    const toolbar = document.createElement("div");
+    toolbar.className = "data-table-controls-v1";
+    toolbar.dataset.tableControlsV1 = options.kind;
+    toolbar.innerHTML = `<label>Pesquisar<input type="search" placeholder="Buscar na lista" data-table-search></label><label>Categoria<select data-table-category><option value="">Todas</option></select></label><label>Linhas<select data-table-size><option>10</option><option selected>20</option><option>50</option><option value="all">Todas</option></select></label><button type="button" data-table-csv>Exportar CSV</button>`;
+    const footer = document.createElement("footer");
+    footer.className = "data-table-footer-v1";
+    footer.innerHTML = `<span data-table-count></span><span><button type="button" data-table-prev>Anterior</button> <span data-table-page></span> <button type="button" data-table-next>Próxima</button></span>`;
+    const host = options.host || root;
+    const tableWrap = options.tableWrap || rows[0].closest(".control-table-wrap, .contracts-table-wrap-v2");
+    if (tableWrap) tableWrap.before(toolbar);
+    else rows[0].before(toolbar);
+    if (tableWrap) tableWrap.after(footer);
+    else rows[rows.length - 1].after(footer);
+    const category = toolbar.querySelector("[data-table-category]");
+    const categories = [...new Set(rows.map(options.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    categories.forEach((value) => { const option = document.createElement("option"); option.value = value; option.textContent = value; category.append(option); });
+    let page = 0;
+    const getMatching = () => {
+      const query = toolbar.querySelector("[data-table-search]").value.trim().toLocaleLowerCase("pt-BR");
+      return rows.filter((row) => (!query || row.textContent.toLocaleLowerCase("pt-BR").includes(query)) && (!category.value || options.category(row) === category.value));
+    };
+    const update = () => {
+      const matching = getMatching();
+      const sizeValue = toolbar.querySelector("[data-table-size]").value;
+      const size = sizeValue === "all" ? Math.max(matching.length, 1) : Number(sizeValue);
+      const pages = Math.max(1, Math.ceil(matching.length / size));
+      page = Math.min(page, pages - 1);
+      const visible = new Set(matching.slice(page * size, (page + 1) * size));
+      rows.forEach((row) => { row.hidden = !visible.has(row); });
+      footer.querySelector("[data-table-count]").textContent = `${matching.length ? page * size + 1 : 0}–${Math.min((page + 1) * size, matching.length)} de ${matching.length} registros`;
+      footer.querySelector("[data-table-page]").textContent = `${page + 1} / ${pages}`;
+      footer.querySelector("[data-table-prev]").disabled = page === 0;
+      footer.querySelector("[data-table-next]").disabled = page >= pages - 1;
+    };
+    toolbar.querySelector("[data-table-search]").addEventListener("input", () => { page = 0; update(); });
+    category.addEventListener("change", () => { page = 0; update(); });
+    toolbar.querySelector("[data-table-size]").addEventListener("change", () => { page = 0; update(); });
+    footer.querySelector("[data-table-prev]").addEventListener("click", () => { page--; update(); });
+    footer.querySelector("[data-table-next]").addEventListener("click", () => { page++; update(); });
+    toolbar.querySelector("[data-table-csv]").addEventListener("click", () => {
+      const table = rows[0].closest("table");
+      const headings = table ? [...table.querySelectorAll("thead th")].map((cell) => cell.textContent.trim()) : ["Registro", "Detalhes", "Status"];
+      const values = getMatching().map((row) => row.matches("tr")
+        ? [...row.querySelectorAll("td")].map((cell) => cell.querySelector("input, select")?.value ?? cell.textContent.trim())
+        : [row.querySelector("span")?.textContent.trim() || "", row.querySelector("b")?.textContent.trim() || "", row.querySelector("em")?.textContent.trim() || ""]);
+      const matrix = [headings, ...values];
+      const csv = "\uFEFF" + matrix.map((record) => record.map((value) => `"${String(value || "").replaceAll('"', '""')}"`).join(";")).join("\r\n");
+      const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a"); link.href = url; link.download = `${options.kind}-registros.csv`; link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+    update();
+  };
+  const contracts = this.querySelector(".contracts-page-v2");
+  wire(contracts, [...(contracts?.querySelectorAll("[data-contract-row]") || [])], { kind: "contratos", category: (row) => row.cells[2]?.querySelector(".deal-status")?.textContent.trim() || "" });
+  const materials = [...this.querySelectorAll("[data-control-material-row]")];
+  wire(materials[0]?.closest(".control-center-section"), materials, { kind: "materiais", category: (row) => row.querySelector('[data-control-material-field="status"]')?.value || "" });
+  const records = [...this.querySelectorAll(".records-stage-history-v1 .records-history-row-v1")];
+  wire(this.querySelector(".records-stage-history-v1"), records, { kind: "registros", category: (row) => row.querySelector("em")?.textContent.trim() || "" });
+  return result;
+};
+
+// STAGE_CONTEXT_CHROME_V1: a linha do tempo e o menu da etapa são um único
+// cabeçalho de navegação. Algumas páginas antigas renderizam a timeline no
+// view-layer e outras renderizam as abas dentro do conteúdo; normalizamos a
+// posição depois da composição final para que todas tenham a mesma leitura.
+const stageContextChromeV1 = (layer) => {
+  const state = appStore.get();
+  if (layer && !layer.__stageContextChromeObserverV1 && typeof MutationObserver !== "undefined") {
+    layer.__stageContextChromeObserverV1 = new MutationObserver(() => {
+      if (layer.__stageContextChromeSyncingV1) return;
+      stageContextChromeV1(layer);
+    });
+    layer.__stageContextChromeObserverV1.observe(layer, { childList: true });
+  }
+  if (!layer || !STAGE_CONTEXT_VIEWS_V1.has(state.view) || state.printMode)
+    return;
+  if (layer.__stageContextChromeSyncingV1) return;
+  layer.__stageContextChromeSyncingV1 = true;
+  try {
+  let chrome = layer.querySelector("[data-stage-context-chrome]");
+  if (!chrome) {
+    chrome = document.createElement("div");
+    chrome.className = "stage-context-chrome-v1";
+    chrome.dataset.stageContextChrome = "true";
+    layer.prepend(chrome);
+  } else if (chrome !== layer.firstElementChild) {
+    layer.prepend(chrome);
+  }
+
+  const timeline = layer.querySelector("[data-stage-persistent-timeline]");
+  if (timeline && timeline.parentElement !== chrome) chrome.append(timeline);
+  if (!chrome.querySelector("[data-stage-persistent-timeline]"))
+    chrome.insertAdjacentHTML("afterbegin", stagePersistentTimelineMarkupV1());
+
+  const existingTabs = layer.querySelector("nav.stage-view-tabs");
+  if (existingTabs && existingTabs.parentElement !== chrome)
+    chrome.append(existingTabs);
+  if (!chrome.querySelector("nav.stage-view-tabs"))
+    chrome.insertAdjacentHTML("beforeend", stageViewTabs(state.view));
+
+  let nav = chrome.querySelector("nav.stage-view-tabs");
+  const { model, record } = stageContextV1(state);
+  if (nav && (
+    nav.dataset.stageContextKey !== String(model?.key || "") ||
+    nav.querySelector(".stage-view-context strong")?.textContent.trim() !== (record || model)?.name ||
+    nav.querySelector("[data-stage-view].active")?.dataset.stageView !== state.view
+  )) {
+    nav.remove();
+    chrome.insertAdjacentHTML("beforeend", stageViewTabs(state.view));
+    nav = chrome.querySelector("nav.stage-view-tabs");
+  }
+  layer.querySelectorAll("nav.stage-view-tabs").forEach((other) => {
+    if (other !== nav) other.remove();
+  });
+  layer.querySelectorAll("[data-stage-persistent-timeline]").forEach((other) => {
+    if (other.parentElement !== chrome) other.remove();
+  });
+  nav?.classList.toggle("stage-context-home-tabs-v1", state.view === "stages");
+  if (!nav || nav.dataset.stageContextChromeBound === "true") return;
+  nav.dataset.stageContextChromeBound = "true";
+  nav.addEventListener("click", (event) => {
+      const button = event.target?.closest?.("[data-stage-view]");
+      if (!button || !nav.contains(button)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const next = button.dataset.stageView,
+        { model, record: stage } = stageContextV1(),
+        current = appStore.get();
+      appStore.set({
+        view: next,
+        selectedStage: stage?.id || current.selectedStage,
+        selectedStageV9: model?.key || current.selectedStageV9,
+        activityDedicated: false,
+        stageActivityDedicatedV9: false,
+        selectedActivity: null,
+        activityRecordModalOpenV1: false,
+        editingRecord: null,
+        recordContext: null,
+        stageRecordsContext: next === "records",
+        recordFilters:
+          next === "records"
+            ? {
+                ...(current.recordFilters || {}),
+                stage: stage?.name || "",
+                entity: "records",
+              }
+            : current.recordFilters,
+        lastAction: `Abriu ${button.textContent.trim()} da etapa ${stage?.name || ""}`,
+      });
+    }, true);
+  window.lucide?.createIcons();
+  } finally {
+    layer.__stageContextChromeSyncingV1 = false;
+  }
+};
+
+// O shell também consegue reconstruir uma view sem passar pelo renderizador
+// final do ViewLayer. Exponha somente este sincronizador pequeno para o shell
+// chamar depois de cada mudança de rota/estado.
+globalThis.__ensureStageContextChromeV1 = stageContextChromeV1;
+
+const renderStageContextChromeV1 = ViewLayer.prototype.render;
+ViewLayer.prototype.render = function (...args) {
+  const result = renderStageContextChromeV1.apply(this, args);
+  stageContextChromeV1(this);
+  return result;
+};
+
+// Etapas: atividades reais da frente em uma superfície de calendário livre.
+// Posições e vínculos são organização local; a execução continua no detalhe.
+const activitiesBeforeCalendarCanvasV1 = ViewLayer.prototype.activities;
+ViewLayer.prototype.activities = function (...args) {
+  if (appStore.get().stageActivityDedicatedV9)
+    return activitiesBeforeCalendarCanvasV1.apply(this, args);
+  const selected = extensionStage();
+  const model = (executionModel.stages || []).find((item) =>
+    String(item.name).toLocaleLowerCase("pt-BR") === String(selected?.name).toLocaleLowerCase("pt-BR"),
+  ) || executionModel.stages?.[0];
+  if (!model) return activitiesBeforeCalendarCanvasV1.apply(this, args);
+  const packets = stageV9FlowPackets(model);
+  const start = new Date();
+  start.setHours(12, 0, 0, 0);
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  const days = Array.from({ length: 14 }, (_, index) => {
+    const date = new Date(start); date.setDate(start.getDate() + index);
+    return `<span><b>${esc(date.toLocaleDateString("pt-BR", { weekday: "short" }))}</b><small>${esc(date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }))}</small></span>`;
+  }).join("");
+  return `<section class="activity-calendar-page-v1" data-activity-calendar="${esc(model.key)}"><header><div><span class="activity-kind">ETAPA · ${esc(model.name)}</span><h1>Atividades</h1><p>Mova os cards sobre os dias e conecte os passos da execução. Clique em Abrir para registrar e conferir a atividade.</p></div><button type="button" data-view="stages">${ico("arrow-left")} Etapas</button></header>${stageViewTabs("activities")}<div class="activity-calendar-toolbar-v1"><label>Pesquisar<input type="search" data-activity-canvas-search placeholder="Nome ou detalhe"></label><label>Situação<select data-activity-canvas-status><option value="">Todas</option><option value="Em andamento">Em andamento</option><option value="Planejada">Planejada</option></select></label><button type="button" data-activity-canvas-connect>Relacionar cards</button><button type="button" data-activity-canvas-reset>Reorganizar</button><button type="button" data-activity-canvas-export>Exportar CSV</button></div><p class="activity-calendar-hint-v1" data-activity-canvas-hint>Arraste pelo topo de cada card. Para criar uma relação, clique em “Relacionar cards” e selecione origem e destino.</p><div class="activity-calendar-scroll-v1"><div class="activity-calendar-board-v1" data-activity-board><div class="activity-calendar-days-v1">${days}</div><div class="activity-calendar-grid-v1"></div><svg class="activity-calendar-links-v1" data-activity-links aria-hidden="true"></svg>${packets.map((item, index) => `<article class="activity-calendar-card-v1" data-activity-node="${esc(item.key)}" data-activity-index="${index}" data-status="${index === 0 && Number(stageV9LiveFor(model)?.progress) > 0 ? "Em andamento" : "Planejada"}"><div class="activity-calendar-drag-v1" data-activity-drag><span>${String(index + 1).padStart(2, "0")} · ${esc(item.unit)}</span><span>⠿</span></div><div><h2>${esc(item.label)}</h2><p>${esc(item.detail)}</p><small>${esc(item.trigger)}</small></div><footer><span>${index === 0 && Number(stageV9LiveFor(model)?.progress) > 0 ? "Em andamento" : "Planejada"}</span><a href="/admin?view=activities&amp;activity=${encodeURIComponent(`${model.key}:${item.key}`)}" data-activity-canvas-open="${esc(item.key)}">Abrir ↗</a></footer></article>`).join("")}</div></div><footer class="activity-calendar-foot-v1"><span data-activity-canvas-count>${packets.length} atividades</span><span data-activity-canvas-page>Calendário de 14 dias · posição local</span></footer><div class="activity-calendar-relations-v1" data-activity-relations></div></section>`;
+};
+
+const renderBeforeActivityCalendarV1 = ViewLayer.prototype.render;
+ViewLayer.prototype.render = function (...args) {
+  const result = renderBeforeActivityCalendarV1.apply(this, args);
+  this.querySelectorAll('[data-stage-view="pert"], [data-stage-view="raid"], [data-stage-view="raci"], [data-view="pert"], [data-view="raid"], [data-view="raci"]').forEach((button) => {
+    if (button.closest(".stage-view-tabs, .stages-organizer-raid")) button.remove();
+  });
+  this.querySelectorAll("[data-stages-organizer-raid]").forEach((section) => section.remove());
+  const page = this.querySelector("[data-activity-calendar]");
+  if (!page) return result;
+  const newActivity = document.createElement("button");
+  newActivity.type = "button";
+  newActivity.textContent = "+ Nova atividade";
+  newActivity.addEventListener("click", () => window.location.assign(
+    runtimeRouteV1("/admin/workers/activity", `stage=${encodeURIComponent(page.dataset.activityCalendar)}&activity=new`),
+  ));
+  page.querySelector(".activity-calendar-toolbar-v1")?.append(newActivity);
+  if (!document.getElementById("activity-calendar-v1-style")) {
+    const style = document.createElement("style");
+    style.id = "activity-calendar-v1-style";
+    style.textContent = `.activity-calendar-page-v1{padding:22px;color:#eaf0f1}.activity-calendar-page-v1>header{display:flex;justify-content:space-between;gap:20px;align-items:start}.activity-calendar-page-v1 h1{margin:5px 0;font-size:28px}.activity-calendar-page-v1>header p{color:#aab7b9}.activity-calendar-page-v1 button{cursor:pointer}.activity-calendar-page-v1>header button,.activity-calendar-toolbar-v1 button,.activity-calendar-card-v1 a{background:#243139;color:#eaf0f1;border:1px solid #536269;border-radius:8px;padding:9px 12px}.activity-calendar-toolbar-v1{display:flex;flex-wrap:wrap;gap:10px;align-items:end;background:#20282b;border:1px solid #39484a;border-radius:12px;padding:12px;margin:16px 0}.activity-calendar-toolbar-v1 label{display:grid;gap:4px;color:#b8c6c8;font-size:11px}.activity-calendar-toolbar-v1 input,.activity-calendar-toolbar-v1 select{background:#101a1d;color:#eaf0f1;border:1px solid #536269;border-radius:8px;padding:9px;min-width:160px}.activity-calendar-toolbar-v1 button[data-active="true"]{border-color:#8ccfa8;color:#aaf0c6}.activity-calendar-hint-v1{color:#aab7b9;font-size:12px}.activity-calendar-scroll-v1{overflow:auto;border:1px solid #39484a;border-radius:14px;background:#142023}.activity-calendar-board-v1{position:relative;min-width:1300px;height:620px;background:#152124}.activity-calendar-days-v1{position:absolute;top:0;left:0;right:0;height:54px;display:grid;grid-template-columns:repeat(14,1fr);background:#1f2b2d;z-index:2}.activity-calendar-days-v1 span{text-align:center;border-right:1px solid #3b4b4d;padding:7px 2px}.activity-calendar-days-v1 b,.activity-calendar-days-v1 small{display:block}.activity-calendar-days-v1 small{color:#9caeb0}.activity-calendar-grid-v1{position:absolute;inset:54px 0 0;background-image:linear-gradient(to right,#344144 1px,transparent 1px),linear-gradient(to bottom,#293638 1px,transparent 1px);background-size:calc(100% / 14) 100%,100% 94px}.activity-calendar-links-v1{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:visible}.activity-calendar-card-v1{position:absolute;width:225px;min-height:146px;z-index:3;background:#20312e;border:1px solid #4a6960;border-radius:13px;box-shadow:0 10px 24px #0006;overflow:hidden}.activity-calendar-card-v1[data-selected="true"]{outline:2px solid #93d9b1}.activity-calendar-drag-v1{display:flex;justify-content:space-between;background:#2a4339;padding:9px 12px;color:#b6e4c9;font-size:11px;cursor:grab;touch-action:none}.activity-calendar-card-v1>div:nth-child(2){padding:10px 12px}.activity-calendar-card-v1 h2{font-size:15px;margin:0 0 5px}.activity-calendar-card-v1 p{font-size:11px;color:#c1cdcb;margin:0 0 7px}.activity-calendar-card-v1 small{font-size:10px;color:#9db3ad}.activity-calendar-card-v1 footer{display:flex;justify-content:space-between;align-items:center;padding:0 10px 10px;font-size:10px;color:#a9d5bd}.activity-calendar-card-v1 footer a{padding:5px 8px;text-decoration:none}.activity-calendar-foot-v1{display:flex;justify-content:space-between;gap:12px;padding:12px;color:#aebebf;font-size:12px}.activity-calendar-relations-v1{display:flex;flex-wrap:wrap;gap:8px}.activity-calendar-relations-v1 button{background:#253831;color:#d8e9df;border:1px solid #476456;border-radius:8px;padding:7px 9px}@media(max-width:700px){.activity-calendar-page-v1{padding:12px}.activity-calendar-toolbar-v1{display:grid;grid-template-columns:1fr 1fr}.activity-calendar-toolbar-v1 label:first-child{grid-column:1/-1}}`;
+    document.head.append(style);
+  }
+  const key = `alianca-activity-canvas-v1:${page.dataset.activityCalendar}`;
+  const board = page.querySelector("[data-activity-board]");
+  const nodes = [...page.querySelectorAll("[data-activity-node]")];
+  const valid = new Set(nodes.map((node) => node.dataset.activityNode));
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(key) || "{}") || {}; } catch { saved = {}; }
+  const positions = saved.positions && typeof saved.positions === "object" ? saved.positions : {};
+  let links = Array.isArray(saved.links) ? saved.links.filter((link) => valid.has(link[0]) && valid.has(link[1]) && link[0] !== link[1]) : [];
+  if (!saved.links) links = nodes.slice(1).map((node, index) => [nodes[index].dataset.activityNode, node.dataset.activityNode]);
+  const persist = () => { try { localStorage.setItem(key, JSON.stringify({ positions, links })); } catch { /* storage unavailable */ } };
+  nodes.forEach((node, index) => {
+    const point = positions[node.dataset.activityNode] || { x: 35 + index * 285, y: 90 + (index % 2) * 188 };
+    node.style.left = `${Math.max(0, Math.min(1075, Number(point.x) || 0))}px`;
+    node.style.top = `${Math.max(58, Math.min(450, Number(point.y) || 58))}px`;
+  });
+  const svg = page.querySelector("[data-activity-links]");
+  const relations = page.querySelector("[data-activity-relations]");
+  const draw = () => {
+    svg.replaceChildren(); relations.replaceChildren();
+    links.forEach(([source, target], index) => {
+      const a = nodes.find((node) => node.dataset.activityNode === source), b = nodes.find((node) => node.dataset.activityNode === target);
+      if (!a || !b || a.hidden || b.hidden) return;
+      const x1 = a.offsetLeft + a.offsetWidth / 2, y1 = a.offsetTop + a.offsetHeight / 2;
+      const x2 = b.offsetLeft + b.offsetWidth / 2, y2 = b.offsetTop + b.offsetHeight / 2;
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", `M ${x1} ${y1} C ${(x1+x2)/2} ${y1}, ${(x1+x2)/2} ${y2}, ${x2} ${y2}`);
+      path.setAttribute("fill", "none"); path.setAttribute("stroke", "#79bb95"); path.setAttribute("stroke-width", "2"); path.setAttribute("stroke-dasharray", "6 4"); svg.append(path);
+      const button = document.createElement("button"); button.type = "button";
+      button.textContent = `${a.querySelector("h2")?.textContent} → ${b.querySelector("h2")?.textContent} ×`;
+      button.title = "Remover relação"; button.addEventListener("click", () => { links.splice(index, 1); persist(); draw(); }); relations.append(button);
+    });
+  };
+  const filter = () => {
+    const query = page.querySelector("[data-activity-canvas-search]").value.toLocaleLowerCase("pt-BR");
+    const status = page.querySelector("[data-activity-canvas-status]").value;
+    nodes.forEach((node) => { node.hidden = Boolean((query && !node.textContent.toLocaleLowerCase("pt-BR").includes(query)) || (status && node.dataset.status !== status)); });
+    page.querySelector("[data-activity-canvas-count]").textContent = `${nodes.filter((node) => !node.hidden).length} de ${nodes.length} atividades`;
+    draw();
+  };
+  page.querySelector("[data-activity-canvas-search]").addEventListener("input", filter);
+  page.querySelector("[data-activity-canvas-status]").addEventListener("change", filter);
+  let connecting = false, origin = null;
+  page.querySelector("[data-activity-canvas-connect]").addEventListener("click", (event) => {
+    connecting = !connecting; origin = null; nodes.forEach((node) => delete node.dataset.selected);
+    event.currentTarget.dataset.active = String(connecting);
+    page.querySelector("[data-activity-canvas-hint]").textContent = connecting ? "Selecione o card de origem e depois o card de destino." : "Arraste pelo topo de cada card. Para criar uma relação, clique em “Relacionar cards” e selecione origem e destino.";
+  });
+  page.querySelector("[data-activity-canvas-reset]").addEventListener("click", () => {
+    nodes.forEach((node, index) => { node.style.left = `${35 + index * 285}px`; node.style.top = `${90 + (index % 2) * 188}px`; positions[node.dataset.activityNode] = { x: node.offsetLeft, y: node.offsetTop }; });
+    persist(); draw();
+  });
+  page.querySelector("[data-activity-canvas-export]").addEventListener("click", () => {
+    const data = [["Etapa", "Atividade", "Situação", "Dia aproximado", "Relacionada a"], ...nodes.filter((node) => !node.hidden).map((node) => [page.dataset.activityCalendar, node.querySelector("h2")?.textContent || "", node.dataset.status, Math.floor(node.offsetLeft / (board.clientWidth / 14)) + 1, links.filter((link) => link[0] === node.dataset.activityNode).map((link) => link[1]).join(", ")])];
+    const csv = "\uFEFF" + data.map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(";")).join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a"); a.href = url; a.download = `atividades-${page.dataset.activityCalendar}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+  nodes.forEach((node) => {
+    node.addEventListener("click", (event) => {
+      if (!connecting || event.target.closest("button, [data-activity-drag]")) return;
+      const id = node.dataset.activityNode;
+      if (!origin) { origin = id; node.dataset.selected = "true"; return; }
+      if (origin !== id && !links.some((link) => link[0] === origin && link[1] === id)) { links.push([origin, id]); persist(); draw(); }
+      nodes.forEach((item) => delete item.dataset.selected); origin = null;
+    });
+    node.querySelector("[data-activity-canvas-open]").addEventListener("click", (event) => {
+      if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      const model = (executionModel.stages || []).find((item) => item.key === page.dataset.activityCalendar);
+      if (!model) return;
+      appStore.set({ view: "activities", selectedStageV9: model.key, selectedActivity: `${model.key}:${node.dataset.activityNode}`, stageSelected: true, activityDedicated: false, stageActivityDedicatedV9: true, lastAction: `Abriu ${node.querySelector("h2")?.textContent}` });
+    });
+    const handle = node.querySelector("[data-activity-drag]");
+    handle.addEventListener("pointerdown", (event) => {
+      if (connecting) return;
+      event.preventDefault(); handle.setPointerCapture(event.pointerId);
+      const left = node.offsetLeft, top = node.offsetTop, x = event.clientX, y = event.clientY;
+      const move = (motion) => { node.style.left = `${Math.max(0, Math.min(board.clientWidth - node.offsetWidth, left + motion.clientX - x))}px`; node.style.top = `${Math.max(58, Math.min(board.clientHeight - node.offsetHeight, top + motion.clientY - y))}px`; draw(); };
+      const end = () => { handle.removeEventListener("pointermove", move); handle.removeEventListener("pointerup", end); handle.removeEventListener("pointercancel", end); positions[node.dataset.activityNode] = { x: node.offsetLeft, y: node.offsetTop }; persist(); };
+      handle.addEventListener("pointermove", move); handle.addEventListener("pointerup", end); handle.addEventListener("pointercancel", end);
+    });
+  });
+  draw();
+  return result;
+};
+
+installUsageSettings({ViewLayer, appStore, readIntegrationSettings, integrationKey: INTEGRATION_SETTINGS_KEY});
+
+// O quadro de prioridades pertence à Visão operacional da Central; os cards
+// são leitura pura e não herdam eventos de navegação de Etapas.
+const controlBeforeAiPrioritiesV1 = ViewLayer.prototype.control;
+ViewLayer.prototype.control = function (...args) {
+  const html = controlBeforeAiPrioritiesV1.apply(this, args);
+  const board = renderOperationalAiPrioritiesV1(operationalActions());
+  return html.replace(
+    /(?=<section class="control-center-section"><header><div><span class="activity-kind">01 · FLUXO FINANCEIRO)/,
+    board,
+  );
+};
+
+const priorityChatRequestV1 = (action) =>
+  [
+    `Conduza pelo chat a execução encadeada desta prioridade operacional: ${action?.label || "Ação operacional"}.`,
+    `Frente: ${action?.track || "não informada"}.`,
+    `Etapa/relação: ${action?.relation || "não informada"}.`,
+    `Situação ou bloqueio: ${action?.blocker || "sem bloqueio informado"}.`,
+    `Prontidão: ${Number(action?.readiness) || 0}% · impacto: ${Number(action?.impact) || 0}.`,
+    `Previsão/referência: ${action?.eta || "a definir"}.`,
+    "Siga uma cadeia guiada: confira o estado atual e os pré-requisitos; execute pela API/ferramentas disponíveis as etapas seguras e dependentes; valide o resultado; depois informe o próximo passo concreto.",
+    "Se faltarem dados ou documentos, prepare uma pendência no cronograma ou abra o fluxo documental quando aplicável e pergunte somente o que falta. Não declare etapas concluídas sem confirmação da ferramenta.",
+    "O tom visual tone-done do card não prova que a ação sugerida já foi executada. Verifique antes; se já estiver concluída, não a repita e guie para o próximo passo ainda pendente da mesma prioridade.",
+  ].join("\n");
+
+const bindBeforeControlAiPriorityChatV1 = ViewLayer.prototype.bind;
+ViewLayer.prototype.bind = function (...args) {
+  const result = bindBeforeControlAiPriorityChatV1?.apply(this, args);
+  this.querySelectorAll(
+    ".stage-home-ai-grid [data-stage-home-ai-action]",
+  ).forEach((card) => {
+    if (card.dataset.priorityChatBoundV1 === "true") return;
+    card.dataset.priorityChatBoundV1 = "true";
+    card.addEventListener("click", async () => {
+      if (card.getAttribute("aria-busy") === "true") return;
+      const actionId = String(card.dataset.stageHomeAiAction || ""),
+        action = operationalActions().find(
+          (item) => String(item.id || item.label || "") === actionId,
+        );
+      if (!action) return;
+      const chat = globalThis.belavistaWorkerAssistant;
+      if (!chat?.submit) {
+        notify("Assistente operacional dos workers não está disponível nesta tela.", "warning");
+        return;
+      }
+      chat.root?.classList.remove("is-collapsed");
+      const minimize = chat.root?.querySelector("[data-worker-chat-minimize]");
+      if (minimize) {
+        minimize.textContent = "−";
+        minimize.setAttribute("aria-label", "Minimizar assistente");
+      }
+      card.setAttribute("aria-busy", "true");
+      appStore.set({
+        lastAction: `Enviou prioridade ${action.label} ao assistente operacional dos workers`,
+      });
+      try {
+        await chat.submit(priorityChatRequestV1(action), null, null, [], {
+          mode: "priority",
+          instruction: CHAT_OPERATIONAL_EXECUTION_INSTRUCTION_V1,
+          requestContext: {
+            source: "stage-home-ai-priority",
+            workflow: "guided-operational-action-chain",
+            executionChain: [
+              "verify-current-state-and-prerequisites",
+              "execute-supported-safe-actions-through-tools",
+              "validate-tool-confirmed-results",
+              "prepare-pending-item-and-ask-only-missing-data-when-blocked",
+              "guide-the-next-unfinished-step",
+            ],
+            cardTone: [...card.classList].find((name) => name.startsWith("tone-")) || "tone-active",
+            priority: {
+              id: action.id || action.label || "",
+              label: action.label || "",
+              track: action.track || "",
+              phase: action.phase || "",
+              relation: action.relation || "",
+              blocker: action.blocker || "",
+              readiness: Number(action.readiness) || 0,
+              impact: Number(action.impact) || 0,
+              eta: action.eta || "",
+              requirements: action.requirements || [],
+              materialRequirements: action.materialRequirements || [],
+            },
+          },
+        });
+      } finally {
+        card.removeAttribute("aria-busy");
+      }
+    });
+  });
+  return result;
+};
+
+// MATERIALS_AI_APPLICATION_PREVIEW_V7 — substitui a lista simples da etapa
+// por uma projeção do ciclo operacional sobre como cada material tende a entrar
+// na geração da frente. A agenda do Worker vence; contexto da etapa é fallback.
+const materialsStageAiTokenV7 = (value) =>
+  normalizeActivityRouteTextV1(String(value || ""));
+const materialsStageAiArrayV7 = (value) =>
+  Array.isArray(value) ? value : [];
+const materialsStageAiRequirementV7 = (entry) =>
+  typeof entry === "string"
+    ? { name: entry, description: entry }
+    : entry && typeof entry === "object"
+      ? entry
+      : {};
+const materialsStageAiPreviewV7 = (stage, connectedItems, state) => {
+  const savedProfile = stageProfileSettingsFor(stage.key) || {},
+    profile = { ...(stage.executionProfile || {}), ...savedProfile },
+    stageToken = materialsStageAiTokenV7(stage.name),
+    agenda = materialsStageAiArrayV7(state.operationalAgenda).filter((item) => {
+      const key = String(item?.stageKey || item?.stage?.key || ""),
+        name = materialsStageAiTokenV7(item?.stageName || item?.stage || "");
+      return key === stage.key || (name && name === stageToken);
+    }),
+    procurement = materialsStageAiArrayV7(profile.procurementFocus).filter(Boolean),
+    hints = materialsStageAiArrayV7(profile.requestHints).filter(Boolean),
+    configured = materialsStageAiArrayV7(profile.materialsTable),
+    packets = stageV9FlowPackets(stage),
+    candidates = connectedItems.length
+      ? connectedItems
+      : configured.length
+        ? configured.map((item) => ({
+            ...item,
+            id: "",
+            stageKey: stage.key,
+            stageName: stage.name,
+            scope: item.description || item.scope || "",
+          }))
+        : materialsStageAiArrayV7(stage.materials).map((name) => ({
+            id: "",
+            name,
+            stageKey: stage.key,
+            stageName: stage.name,
+            quantity: null,
+            unit: "",
+            status: "Previsto",
+            scope: "Requisito modelado da etapa",
+          })),
+    requirements = agenda.flatMap((action) => {
+      const normal = materialsStageAiArrayV7(action?.materialRequirements).map((entry) => ({
+          action,
+          shortage: false,
+          requirement: materialsStageAiRequirementV7(entry),
+        })),
+        shortages = materialsStageAiArrayV7(action?.materialShortfalls).map((entry) => ({
+          action,
+          shortage: true,
+          requirement: materialsStageAiRequirementV7(entry),
+        }));
+      return [...normal, ...shortages];
+    });
+  const entries = candidates.map((material, index) => {
+    const materialToken = materialsStageAiTokenV7(material.name || material.description || material.scope),
+      matched = requirements.find(({ requirement }) => {
+        const requirementToken = materialsStageAiTokenV7(
+          [
+            requirement.name,
+            requirement.material,
+            requirement.description,
+            requirement.scope,
+          ]
+            .filter(Boolean)
+            .join(" "),
+        );
+        return Boolean(
+          materialToken &&
+            requirementToken &&
+            (requirementToken.includes(materialToken) ||
+              materialToken.includes(requirementToken)),
+        );
+      }),
+      action = matched?.action || (agenda.length ? agenda[index % agenda.length] : null),
+      kind = String(action?.kind || action?.properties?.kind || ""),
+      actionStatus = String(action?.status || ""),
+      packet = packets[
+        /governance|evidence/i.test(kind)
+          ? Math.min(2, packets.length - 1)
+          : /planning/i.test(kind)
+            ? 0
+            : action?.decisionBand === "material-block" || matched?.shortage
+              ? 0
+              : /conclu|finaliz|liberad/i.test(actionStatus)
+                ? Math.max(0, packets.length - 1)
+                : Math.min(1, packets.length - 1)
+      ] || packets[0],
+      phase = matched?.shortage
+        ? "SUPRIMENTO"
+        : /governance|evidence/i.test(kind)
+          ? "VALIDAR"
+          : /planning/i.test(kind)
+            ? "PREPARAR"
+            : /conclu|finaliz|liberad/i.test(actionStatus)
+              ? "LIBERAR"
+              : "EXECUTAR",
+      application =
+        matched?.requirement?.description ||
+        matched?.requirement?.scope ||
+        action?.referenceDescription ||
+        action?.nextStep ||
+        material.scope ||
+        procurement[index % Math.max(1, procurement.length)] ||
+        hints[index % Math.max(1, hints.length)] ||
+        packet?.detail ||
+        "Aplicação a confirmar pelo próximo registro operacional.",
+      quantity =
+        material.quantity == null || material.quantity === ""
+          ? "A dimensionar"
+          : `${material.quantity} ${material.unit || ""}`.trim(),
+      timing = action?.plannedStart || action?.date || stage.week || packet?.trigger || "A programar",
+      status = matched?.shortage
+        ? "Bloqueio material"
+        : action?.status || material.status || "Previsto";
+    return {
+      id: material.id || "",
+      name: material.name || matched?.requirement?.name || `Material ${index + 1}`,
+      phase,
+      application,
+      quantity,
+      timing,
+      status,
+      connected: Boolean(material.id),
+    };
+  });
+  return {
+    source: agenda.length
+      ? "ciclo operacional atual"
+      : configured.length
+        ? "contexto IA da etapa"
+        : "modelo operacional da etapa",
+    entries,
+  };
+};
+const materialsStageAiPreviewMarkupV7 = (stage, items, state) => {
+  const preview = materialsStageAiPreviewV7(stage, items, state);
+  return `<section class="materials-stage-ai-preview-v7" data-material-stage-ai-preview="${esc(stage.key)}"><div class="materials-stage-ai-preview-head-v7"><span>PRÉVIA IA · APLICAÇÃO DOS MATERIAIS</span><small>${esc(preview.source)}</small></div><div class="materials-stage-ai-preview-flow-v7">${preview.entries.length ? preview.entries.map((entry) => `<article class="materials-stage-ai-preview-item-v7"${entry.connected ? ` data-material-ai-entry="${esc(entry.id)}"` : ""}><span>${esc(entry.phase)}</span><div>${entry.connected ? `<button type="button" data-material-edit="${esc(entry.id)}"><b>${esc(entry.name)}</b></button>` : `<b>${esc(entry.name)}</b>`}<p>${esc(entry.application)}</p><small>${esc(entry.quantity)} · ${esc(entry.timing)}</small></div><em>${esc(entry.status)}</em>${entry.connected ? `<button type="button" class="materials-stage-ai-unlink-v7" data-material-unlink-stage="${esc(entry.id)}" aria-label="Remover ${esc(entry.name)} desta etapa" title="Remover vínculo com esta etapa">${ico("unlink-2")}</button>` : ""}</article>`).join("") : '<div class="materials-stage-ai-preview-empty-v7"><b>Aguardando materiais</b><p>Adicione ou vincule um material para a IA projetar sua aplicação nesta frente.</p></div>'}</div><small class="materials-stage-ai-preview-note-v7">Prévia operacional: registros, bloqueios, materiais e contexto da etapa podem alterar esta aplicação no próximo ciclo.</small></section>`;
+};
+const ensureMaterialsStageAiPreviewStyleV7 = () => {
+  if (document.getElementById("materials-stage-ai-preview-style-v7")) return;
+  const style = document.createElement("style");
+  style.id = "materials-stage-ai-preview-style-v7";
+  style.textContent = `
+    .materials-stage-ai-preview-v7{display:grid;gap:8px;margin:8px 0 10px;padding:9px;border:1px solid rgba(127,127,127,.24);background:rgba(127,127,127,.045)}
+    .materials-stage-ai-preview-head-v7{display:flex;align-items:center;justify-content:space-between;gap:8px}.materials-stage-ai-preview-head-v7>span{font-size:10px;font-weight:800;letter-spacing:.08em}.materials-stage-ai-preview-head-v7>small{opacity:.66;text-align:right}
+    .materials-stage-ai-preview-flow-v7{display:grid;gap:6px}.materials-stage-ai-preview-item-v7{display:grid;grid-template-columns:64px minmax(0,1fr) auto auto;align-items:start;gap:8px;padding:7px 0;border-top:1px solid rgba(127,127,127,.18)}.materials-stage-ai-preview-item-v7:first-child{border-top:0}
+    .materials-stage-ai-preview-item-v7>span{font-size:9px;font-weight:800;letter-spacing:.06em;opacity:.72}.materials-stage-ai-preview-item-v7>div{min-width:0}.materials-stage-ai-preview-item-v7>div>b,.materials-stage-ai-preview-item-v7>div>button{display:block;font:inherit;text-align:left}.materials-stage-ai-preview-item-v7>div>button{padding:0;border:0;background:none;color:inherit;cursor:pointer}.materials-stage-ai-preview-item-v7 p{margin:2px 0 3px;font-size:11px;line-height:1.3;opacity:.78}.materials-stage-ai-preview-item-v7 small{display:block;opacity:.62}.materials-stage-ai-preview-item-v7>em{font-size:9px;font-style:normal;white-space:nowrap;opacity:.72}.materials-stage-ai-unlink-v7{border:0;background:none;color:inherit;opacity:.55;cursor:pointer;padding:0}.materials-stage-ai-unlink-v7:hover{opacity:1}
+    .materials-stage-ai-preview-note-v7{opacity:.55;line-height:1.25}.materials-stage-ai-preview-empty-v7{padding:8px 0}.materials-stage-ai-preview-empty-v7 p{margin:3px 0 0;opacity:.65}
+    .materials-canvas-stages{display:flex!important;flex-direction:column!important;align-items:stretch!important;align-content:flex-start!important;gap:10px!important}
+    .materials-canvas-stages>h3{flex:0 0 auto!important}
+    .materials-stage-card{display:flex!important;flex-direction:column!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;flex:0 0 auto!important;align-self:stretch!important;box-sizing:border-box!important}
+    .materials-stage-card>.materials-stage-ai-preview-v7,.materials-stage-ai-preview-flow-v7,.materials-stage-ai-preview-item-v7{height:auto!important;min-height:0!important;max-height:none!important}
+    .materials-stage-card>.materials-stage-ai-preview-v7{overflow:visible!important;flex:0 0 auto!important}
+  `;
+  document.head.appendChild(style);
+};
+
+// MATERIALS_WORKSPACE_V1 — uma única coleção para canvas por etapa e catálogo.
+ViewLayer.prototype.materials = function () {
+  ensureMaterialsStageAiPreviewStyleV7();
+  const state = appStore.get(),
+    all = controlCenterMaterialRowsV1(state),
+    tab = state.materialsPageTab === "list" ? "list" : "canvas",
+    query = String(state.materialsPageQuery || "").trim().toLocaleLowerCase("pt-BR"),
+    stageFilter = String(state.materialsPageStage || "all"),
+    statusFilter = String(state.materialsPageStatus || "all"),
+    rows = all.filter((item) =>
+      (stageFilter === "all" || item.stageKey === stageFilter) &&
+      (statusFilter === "all" || item.status === statusFilter) &&
+      (!query || [item.name, item.scope, item.stageName, item.activityName, item.status]
+        .some((value) => String(value || "").toLocaleLowerCase("pt-BR").includes(query)))),
+    pageSize = 15,
+    pages = Math.max(1, Math.ceil(rows.length / pageSize)),
+    page = Math.max(1, Math.min(pages, Number(state.materialsPageNumber) || 1)),
+    visible = rows.slice((page - 1) * pageSize, page * pageSize),
+    editing = state.materialsEditId === "new" ? {} : all.find((item) => item.id === state.materialsEditId),
+    option = (value, selected) => `<option value="${esc(value)}" ${value === selected ? "selected" : ""}>${esc(value)}</option>`,
+    stageOptions = (executionModel.stages || []).map((stage) => option(stage.key, editing?.stageKey || state.materialsNewStage)).join(""),
+    statusOptions = [...new Set([editing?.status, "Planejado", "Em andamento", "Atenção", "Concluído", "Dimensionar"].filter(Boolean))]
+      .map((status) => option(status, editing?.status || "Planejado")).join("");
+  const stageCards = (executionModel.stages || []).map((stage) => {
+    const items = rows.filter((item) => item.stageKey === stage.key && item.materialDraftV1 !== true),
+      aiPreview = materialsStageAiPreviewMarkupV7(stage, items, state);
+    return `<article class="materials-stage-card" data-material-stage-card="${esc(stage.key)}" data-material-drop-stage="${esc(stage.key)}"><header><span>ETAPA · ${esc(stage.key)}</span><h2>${esc(stage.name)}</h2><small>${items.length} material(is) alocado(s)</small></header>${aiPreview}<footer><button type="button" data-material-add-stage="${esc(stage.key)}">＋ Adicionar à etapa</button></footer></article>`;
+  }).join("");
+  const draftMaterialV1 = all.find((item) => item.materialDraftV1 === true),
+    stageOrderV2 = new Map(
+      (executionModel.stages || []).map((stage, index) => [stage.key, index]),
+    ),
+    canvasRowsWithoutDraftV2 = rows
+      .filter((item) => item.id !== draftMaterialV1?.id)
+      .map((item, index) => ({ item, index }))
+      .sort((left, right) => {
+        const leftStage = stageOrderV2.get(left.item.stageKey) ?? Number.MAX_SAFE_INTEGER,
+          rightStage = stageOrderV2.get(right.item.stageKey) ?? Number.MAX_SAFE_INTEGER;
+        return leftStage - rightStage || left.index - right.index;
+      })
+      .map(({ item }) => item),
+    draftStageIndexV2 = draftMaterialV1
+      ? stageOrderV2.get(draftMaterialV1.stageKey) ?? Number.MAX_SAFE_INTEGER
+      : Number.MAX_SAFE_INTEGER,
+    draftStageTailV2 = draftMaterialV1
+      ? canvasRowsWithoutDraftV2.reduce(
+          (lastIndex, item, index) =>
+            item.stageKey === draftMaterialV1.stageKey ? index : lastIndex,
+          -1,
+        )
+      : -1,
+    draftStageInsertionV2 = !draftMaterialV1
+      ? -1
+      : draftStageTailV2 >= 0
+        ? draftStageTailV2 + 1
+        : (() => {
+            const nextStage = canvasRowsWithoutDraftV2.findIndex(
+              (item) =>
+                (stageOrderV2.get(item.stageKey) ?? Number.MAX_SAFE_INTEGER) >
+                draftStageIndexV2,
+            );
+            return nextStage >= 0 ? nextStage : canvasRowsWithoutDraftV2.length;
+          })(),
+    canvasRowsV1 = !draftMaterialV1
+      ? canvasRowsWithoutDraftV2
+      : [
+          ...canvasRowsWithoutDraftV2.slice(0, draftStageInsertionV2),
+          draftMaterialV1,
+          ...canvasRowsWithoutDraftV2.slice(draftStageInsertionV2),
+        ];
+  const materialCards = canvasRowsV1.map((item) => item.materialDraftV1 === true
+    ? `<article class="materials-link-card" data-material-link-card="${esc(item.id)}" data-material-linked-stage="${esc(item.stageKey || "")}" data-material-draft-v1="true"><div><span>NOVO MATERIAL</span><b></b><small></small></div></article>`
+    : `<article class="materials-link-card" data-material-link-card="${esc(item.id)}" data-material-linked-stage="${esc(item.stageKey || "")}"><div><span>MATERIAL · ${esc(item.id)}</span><b>${esc(item.name)}</b><small>${item.quantity == null ? "A dimensionar" : esc(item.quantity)} ${esc(item.unit || "")} · ${esc(item.status || "Planejado")}</small></div>${item.stageKey ? `<button type="button" class="materials-link-unlink-stage-v1" data-material-unlink-stage="${esc(item.id)}" aria-label="Remover ${esc(item.name)} da etapa ${esc(item.stageName || item.stageKey)}" title="Remover da etapa">${ico("unlink-2")}</button>` : ""}<button type="button" data-material-link-start="${esc(item.id)}" aria-label="Arrastar ${esc(item.name)} até uma etapa" title="Arraste para conectar à etapa">●</button></article>`).join("") || '<p class="materials-empty">Nenhum material corresponde aos filtros.</p>';
+  return `<section class="materials-page" data-materials-page><header class="materials-head"><div><span class="activity-kind">SUPRIMENTOS · CATÁLOGO OPERACIONAL</span><h1>Materiais</h1><p>Alocação por etapa e cadastro geral na mesma base da Central operacional.</p></div><button type="button" class="toolbar-primary" data-material-new>＋ Novo material</button></header><nav class="materials-tabs" aria-label="Visões de materiais"><button type="button" data-material-tab="canvas" class="${tab === "canvas" ? "active" : ""}">Canvas por etapa</button><button type="button" data-material-tab="list" class="${tab === "list" ? "active" : ""}">Lista corrida</button></nav><div class="materials-toolbar"><label>Pesquisar<input type="search" data-material-search value="${esc(state.materialsPageQuery || "")}" placeholder="Nome, atividade, descrição…"></label><label>Etapa<select data-material-stage-filter>${option("all", stageFilter).replace(">all<", ">Todas as etapas<")}${(executionModel.stages || []).map((stage) => `<option value="${esc(stage.key)}" ${stage.key === stageFilter ? "selected" : ""}>${esc(stage.name)}</option>`).join("")}</select></label><label>Situação<select data-material-status-filter><option value="all">Todas</option>${["Planejado", "Em andamento", "Atenção", "Concluído", "Dimensionar"].map((status) => option(status, statusFilter)).join("")}</select></label><span>${rows.length} de ${all.length} materiais</span></div>${editing ? `<form class="materials-editor" data-material-form><header><h2>${state.materialsEditId === "new" ? "Novo material" : "Editar material"}</h2><button type="button" data-material-cancel>Fechar</button></header><input type="hidden" name="id" value="${esc(editing.id || "")}"><div><label>Nome<input name="name" value="${esc(editing.name || "")}" required maxlength="120"></label><label>Etapa<select name="stageKey">${stageOptions}</select></label><label>Atividade<input name="activityName" value="${esc(editing.activityName || "")}" placeholder="Atividade principal"></label><label>Quantidade<input name="quantity" type="number" min="0" step="any" value="${editing.quantity == null ? "" : esc(editing.quantity)}"></label><label>Unidade<input name="unit" value="${esc(editing.unit || "un.")}" maxlength="20"></label><label>Situação<select name="status">${statusOptions}</select></label><label class="wide">Descrição / escopo<textarea name="scope" rows="2">${esc(editing.scope || "")}</textarea></label></div><footer><button type="submit" class="toolbar-primary">Salvar material</button></footer></form>` : ""}${tab === "canvas" ? `<div class="materials-canvas-shell"><p>Arraste o ponto azul de um material até uma etapa para alterar sua alocação. As curvas mostram as ligações atuais.</p><div class="materials-canvas" data-materials-canvas><svg class="materials-canvas-links" data-materials-links aria-hidden="true"></svg><div class="materials-canvas-column materials-canvas-materials"><h3>Materiais</h3>${materialCards}</div><div class="materials-canvas-column materials-canvas-stages"><h3>Etapas</h3>${stageCards}</div></div></div>` : `<div class="materials-list-wrap"><table class="materials-table"><thead><tr><th>ID</th><th>Material / descrição</th><th>Etapa</th><th>Atividade</th><th>Quantidade</th><th>Unidade</th><th>Situação</th><th>Ações</th></tr></thead><tbody>${visible.map((item) => `<tr><td><code>${esc(item.id)}</code></td><td><b>${esc(item.name)}</b><small>${esc(item.scope || "—")}</small></td><td>${esc(item.stageName)}</td><td>${esc(item.activityName || "Atividade principal")}</td><td>${item.quantity == null ? "—" : esc(item.quantity)}</td><td>${esc(item.unit || "—")}</td><td>${esc(item.status || "Planejado")}</td><td><button type="button" data-material-edit="${esc(item.id)}">Editar</button><button type="button" data-material-delete="${esc(item.id)}">Excluir</button></td></tr>`).join("") || '<tr><td colspan="8">Nenhum material encontrado.</td></tr>'}</tbody></table></div><footer class="materials-pagination"><span>Página ${page} de ${pages}</span><button type="button" data-material-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>Anterior</button><button type="button" data-material-page="${page + 1}" ${page >= pages ? "disabled" : ""}>Próxima</button></footer>`}</section>`;
+};
+
+const bindMaterialsCanvasLinksV1 = (root) => {
+  const board = root.querySelector("[data-materials-canvas]");
+  const svg = board?.querySelector("[data-materials-links]");
+  if (!board || !svg) return null;
+  const stageNodes = [...board.querySelectorAll("[data-material-drop-stage]")];
+  const materialNodes = [...board.querySelectorAll("[data-material-link-card]")];
+  const coordinates = (node, side) => {
+    const bounds = node.getBoundingClientRect();
+    const frame = board.getBoundingClientRect();
+    return {
+      x: (side === "right" ? bounds.right : bounds.left) - frame.left,
+      y: bounds.top + bounds.height / 2 - frame.top,
+    };
+  };
+  const curve = (from, to) => {
+    const bend = Math.max(42, Math.abs(to.x - from.x) * 0.42);
+    return `M ${from.x} ${from.y} C ${from.x + bend} ${from.y}, ${to.x - bend} ${to.y}, ${to.x} ${to.y}`;
+  };
+  let dragging = null;
+  const draw = () => {
+    const width = Math.max(1, board.clientWidth);
+    const height = Math.max(1, board.scrollHeight);
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    svg.setAttribute("width", String(width));
+    svg.setAttribute("height", String(height));
+    const materialConnectorPoint = (card) => {
+      const handle = card.querySelector("[data-material-link-start]");
+      if (!handle) return coordinates(card, "right");
+      const bounds = handle.getBoundingClientRect(),
+        frame = board.getBoundingClientRect();
+      return {
+        x: bounds.left + bounds.width / 2 - frame.left,
+        y: bounds.top + bounds.height / 2 - frame.top,
+      };
+    };
+    const materialStageTarget = (card) => {
+      const stage = stageNodes.find(
+        (node) =>
+          node.dataset.materialDropStage === card.dataset.materialLinkedStage,
+      );
+      if (!stage) return null;
+      return (
+        [...stage.querySelectorAll("[data-material-ai-entry]")].find(
+          (entry) =>
+            entry.dataset.materialAiEntry === card.dataset.materialLinkCard,
+        ) || stage
+      );
+    };
+    const paths = materialNodes.flatMap((card) => {
+      const target = materialStageTarget(card);
+      if (!target || dragging?.id === card.dataset.materialLinkCard) return [];
+      return `<path d="${curve(materialConnectorPoint(card), coordinates(target, "left"))}" class="materials-canvas-link"/>`;
+    });
+    if (dragging) {
+      const card = materialNodes.find((node) => node.dataset.materialLinkCard === dragging.id);
+      if (card) paths.push(`<path d="${curve(materialConnectorPoint(card), dragging.point)}" class="materials-canvas-link materials-canvas-link-drag"/>`);
+    }
+    svg.innerHTML = paths.join("");
+  };
+  const pointAt = (event) => {
+    const frame = board.getBoundingClientRect();
+    return { x: event.clientX - frame.left, y: event.clientY - frame.top };
+  };
+  const stageAt = (event) => {
+    const hit = document.elementFromPoint(event.clientX, event.clientY)?.closest("[data-material-drop-stage]");
+    return hit && board.contains(hit) ? hit : null;
+  };
+  for (const handle of board.querySelectorAll("[data-material-link-start]")) {
+    handle.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      handle.setPointerCapture(event.pointerId);
+      dragging = { id: handle.dataset.materialLinkStart, point: pointAt(event) };
+      board.dataset.linking = "true";
+      draw();
+    });
+    handle.addEventListener("pointermove", (event) => {
+      if (!dragging) return;
+      dragging.point = pointAt(event);
+      const candidate = stageAt(event);
+      for (const node of stageNodes) node.classList.toggle("materials-stage-drop-target", node === candidate);
+      draw();
+    });
+    const finish = (event) => {
+      if (!dragging) return;
+      const id = dragging.id;
+      const target = event.type === "pointerup" ? stageAt(event) : null;
+      dragging = null;
+      delete board.dataset.linking;
+      for (const node of stageNodes) node.classList.remove("materials-stage-drop-target");
+      draw();
+      if (!target) return;
+      const stage = (executionModel.stages || []).find((item) => item.key === target.dataset.materialDropStage);
+      const material = controlCenterMaterialRowsV1(appStore.get()).find((item) => item.id === id);
+      if (!stage || !material || material.stageKey === stage.key) return;
+      const updated = { ...material, stageKey: stage.key, stageName: stage.name, activityName: "Atividade principal" };
+      appStore.update((current) => ({
+        ...current,
+        controlMaterialOverrides: {
+          ...(current.controlMaterialOverrides || {}),
+          [id]: { ...(current.controlMaterialOverrides || {})[id], stageKey: stage.key, stageName: stage.name, activityName: "Atividade principal" },
+        },
+        lastAction: `Vinculou ${material.name} à etapa ${stage.name}`,
+      }));
+      const entry = controlCenterRecordChangeV1("Material vinculado à etapa", `${material.name} · ${material.stageName} → ${stage.name}`, { entity: "material", entityId: id });
+      controlCenterPublishV1("control.material.updated", "material", id, { material: updated, changeId: entry.id });
+      notify(`${material.name} vinculado à etapa ${stage.name}.`, "success");
+    };
+    handle.addEventListener("pointerup", finish);
+    handle.addEventListener("pointercancel", finish);
+  }
+  const observer = new ResizeObserver(draw);
+  observer.observe(board);
+  for (const node of [...materialNodes, ...stageNodes]) observer.observe(node);
+  requestAnimationFrame(draw);
+  return observer;
+};
+
+const bindBeforeMaterialsWorkspaceV1 = ViewLayer.prototype.bind;
+ViewLayer.prototype.bind = function (...args) {
+  const result = bindBeforeMaterialsWorkspaceV1?.apply(this, args),
+    root = this.querySelector("[data-materials-page]");
+  if (!root) {
+    this._materialsCanvasResizeObserverV1?.disconnect();
+    this._materialsCanvasResizeObserverV1 = null;
+    return result;
+  }
+  if (!this._materialsAiPreviewRequestedV7) {
+    this._materialsAiPreviewRequestedV7 = true;
+    const previewLoop = this.runOperationalLoop?.("materials.preview", { quiet: true });
+    previewLoop?.catch?.(() => {});
+  }
+  if (root.dataset.materialsBound) return result;
+  this._materialsCanvasResizeObserverV1?.disconnect();
+  root.dataset.materialsBound = "true";
+  this._materialsCanvasResizeObserverV1 = bindMaterialsCanvasLinksV1(root);
+  for (const doc of appStore.get().documentCatalog || []) {
+    if (!doc.sourceMaterialId) continue;
+    root.querySelectorAll(`[data-material-edit="${doc.sourceMaterialId}"]`).forEach((editButton) => {
+      const host = editButton.closest("li, td, .materials-stage-ai-preview-item-v7");
+      if (!host) return;
+      const link = document.createElement("button");
+      link.type = "button";
+      link.className = "materials-document-link";
+      link.textContent = doc.fileName ? "PDF / DWG" : "Documento pendente";
+      link.title = `Abrir ${doc.title} no acervo do loteamento`;
+      link.addEventListener("click", () => appStore.set({ view: "documents", documentsEditId: doc.id, lastAction: `Abriu documento ${doc.title}` }));
+      host.append(link);
+    });
+  }
+  const patch = (value) => appStore.set({ ...value, lastAction: "Atualizou a página de materiais" });
+  root.querySelectorAll("[data-material-tab]").forEach((button) => button.addEventListener("click", () => patch({ materialsPageTab: button.dataset.materialTab, materialsPageNumber: 1 })));
+  root.querySelector("[data-material-search]")?.addEventListener("input", (event) => {
+    const value = event.currentTarget.value, position = event.currentTarget.selectionStart;
+    patch({ materialsPageQuery: value, materialsPageNumber: 1 });
+    requestAnimationFrame(() => {
+      const input = this.querySelector("[data-material-search]");
+      input?.focus();
+      input?.setSelectionRange(position, position);
+    });
+  });
+  root.querySelector("[data-material-stage-filter]")?.addEventListener("change", (event) => patch({ materialsPageStage: event.currentTarget.value, materialsPageNumber: 1 }));
+  root.querySelector("[data-material-status-filter]")?.addEventListener("change", (event) => patch({ materialsPageStatus: event.currentTarget.value, materialsPageNumber: 1 }));
+  root.querySelectorAll("[data-material-page]").forEach((button) => button.addEventListener("click", () => patch({ materialsPageNumber: Number(button.dataset.materialPage) })));
+  root.querySelector("[data-material-new]")?.addEventListener("click", () => patch({ materialsEditId: "new" }));
+  const startMaterialDraftForStageV1 = (stageKey) => {
+    const stage = (executionModel.stages || []).find((item) => item.key === stageKey);
+    if (!stage) return;
+    const now = new Date().toISOString(),
+      id = `material-draft-${Date.now().toString(36)}`,
+      draft = {
+        id, name: "", stageKey: stage.key, stageName: stage.name,
+        activityName: "Atividade principal", scope: "", quantity: null, unit: "un.",
+        status: "Dimensionar", properties: {}, createdAt: now, updatedAt: now,
+        materialDraftV1: true,
+      };
+    appStore.update((current) => ({
+      ...current,
+      materialCatalogAdditions: [
+        ...(current.materialCatalogAdditions || []).filter((item) => item.materialDraftV1 !== true),
+        draft,
+      ],
+      materialTransitionId: id,
+      materialsEditId: null,
+      materialsNewStage: null,
+      materialsPageTab: "canvas",
+      lastAction: `Criou novo material vazio para ${stage.name}`,
+    }));
+  };
+  root.querySelectorAll("[data-material-stage-card]").forEach((card) => card.addEventListener("click", (event) => {
+    if (event.target.closest("[data-material-edit],[data-material-add-stage],[data-material-unlink-stage],a,input,select,textarea,label")) return;
+    startMaterialDraftForStageV1(card.dataset.materialStageCard);
+  }));
+  root.querySelectorAll("[data-material-add-stage]").forEach((button) => button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    startMaterialDraftForStageV1(button.dataset.materialAddStage);
+  }));
+  root.querySelectorAll("[data-material-edit]").forEach((button) => button.addEventListener("click", () => patch({ materialsEditId: button.dataset.materialEdit })));
+  root.querySelector("[data-material-cancel]")?.addEventListener("click", () => patch({ materialsEditId: null, materialsNewStage: null }));
+  root.querySelector("[data-material-form]")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const values = Object.fromEntries(new FormData(event.currentTarget).entries()),
+      stageKey = String(values.stageKey || appStore.get().materialsNewStage || ""),
+      stage = (executionModel.stages || []).find((item) => item.key === stageKey);
+    if (!stage || !String(values.name || "").trim()) return;
+    const id = String(values.id || `material-${Date.now().toString(36)}`),
+      material = {
+        id, name: String(values.name).trim(), stageKey, stageName: stage.name,
+        activityName: String(values.activityName || "").trim() || "Atividade principal",
+        scope: String(values.scope || "").trim(), quantity: values.quantity === "" ? null : Number(values.quantity),
+        unit: String(values.unit || "un.").trim(), status: String(values.status || "Planejado"),
+        properties: Object.fromEntries((appStore.get().materialSheetCustomColumns || []).map((entry) => [entry.id, String(values[`property:${entry.id}`] || "").trim()])),
+        createdAt: controlCenterMaterialRowsV1(appStore.get()).find((item) => item.id === id)?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      custom = (appStore.get().materialCatalogAdditions || []).some((item) => item.id === id);
+    appStore.update((current) => ({
+      ...current,
+      materialCatalogAdditions: custom || !values.id
+        ? [...(current.materialCatalogAdditions || []).filter((item) => item.id !== id), material]
+        : current.materialCatalogAdditions || [],
+      controlMaterialOverrides: {
+        ...(current.controlMaterialOverrides || {}),
+        [id]: { ...(current.controlMaterialOverrides || {})[id], ...material },
+      },
+      materialsEditId: null, materialsNewStage: null,
+      lastAction: `Salvou material ${material.name}`,
+    }));
+    const entry = controlCenterRecordChangeV1("Material salvo", `${material.name} · ${stage.name}`, { entity: "material", entityId: id });
+    controlCenterPublishV1("control.material.updated", "material", id, { material, changeId: entry.id });
+    notify("Material salvo na coleção operacional.", "success");
+  });
+  root.querySelectorAll("[data-material-delete]").forEach((button) => button.addEventListener("click", () => {
+    const id = button.dataset.materialDelete,
+      material = controlCenterMaterialRowsV1(appStore.get()).find((item) => item.id === id);
+    if (!material || !confirm(`Excluir ${material.name} do catálogo?`)) return;
+    appStore.update((current) => ({
+      ...current,
+      materialCatalogAdditions: (current.materialCatalogAdditions || []).filter((item) => item.id !== id),
+      controlMaterialOverrides: { ...(current.controlMaterialOverrides || {}), [id]: { ...(current.controlMaterialOverrides || {})[id], deleted: true } },
+      lastAction: `Excluiu material ${material.name}`,
+    }));
+    const entry = controlCenterRecordChangeV1("Material excluído", material.name, { entity: "material", entityId: id });
+    controlCenterPublishV1("control.material.deleted", "material", id, { changeId: entry.id });
+  }));
+  return result;
+};
+
+// A Lista corrida compartilha as mesmas linhas, overrides e eventos do canvas.
+const MATERIAL_SHEET_COLUMNS_V1 = [
+  ["id", "ID"], ["name", "Material"], ["stageKey", "Etapa"],
+  ["activityName", "Atividade"], ["quantity", "Quantidade"], ["unit", "Unidade"],
+  ["status", "Situação"], ["scope", "Descrição"],
+  ["createdAt", "Adicionado em"], ["updatedAt", "Última alteração"],
+];
+const materialSheetDateV1 = (value) => value ? new Date(value).toLocaleString("pt-BR") : "—";
+const materialsBeforeSheetV1 = ViewLayer.prototype.materials;
+ViewLayer.prototype.materials = function () {
+  let html = materialsBeforeSheetV1.call(this);
+  const state = appStore.get();
+  if (state.materialsPageTab !== "list") return html;
+  const all = controlCenterMaterialRowsV1(state);
+  const query = String(state.materialsPageQuery || "").trim().toLocaleLowerCase("pt-BR");
+  const rows = all.filter((item) =>
+    (state.materialsPageStage === "all" || !state.materialsPageStage || item.stageKey === state.materialsPageStage) &&
+    (state.materialsPageStatus === "all" || !state.materialsPageStatus || item.status === state.materialsPageStatus) &&
+    (!query || [item.name, item.scope, item.stageName, item.activityName, item.status, ...Object.values(item.properties || {})]
+      .some((value) => String(value || "").toLocaleLowerCase("pt-BR").includes(query))));
+  const page = Math.max(1, Math.min(Math.max(1, Math.ceil(rows.length / 15)), Number(state.materialsPageNumber) || 1));
+  const visibleRows = rows.slice((page - 1) * 15, page * 15);
+  const custom = Array.isArray(state.materialSheetCustomColumns) ? state.materialSheetCustomColumns : [];
+  const columns = [...MATERIAL_SHEET_COLUMNS_V1, ...custom.map((entry) => [entry.id, entry.label])];
+  const hidden = Array.isArray(state.materialSheetHiddenColumns) ? state.materialSheetHiddenColumns : [];
+  const shown = columns.filter(([id]) => !hidden.includes(id));
+  const toolbar = `<div class="materials-sheet-settings"><details><summary>Configurar colunas</summary>${columns.map(([id, label]) => `<div><label><input type="checkbox" data-material-sheet-toggle="${esc(id)}" ${hidden.includes(id) ? "" : "checked"}> ${esc(label)}</label>${custom.some((entry) => entry.id === id) ? `<button type="button" data-material-sheet-column-delete="${esc(id)}">Excluir</button>` : ""}</div>`).join("")}<form data-material-sheet-column-form><input name="label" maxlength="50" required placeholder="Nova propriedade"><button type="submit">Adicionar coluna</button></form></details></div><div class="materials-sheet-tools"><span data-material-sheet-selection>Selecione uma célula · Enter edita · Delete limpa · setas navegam</span><button type="button" data-material-sheet-document hidden>Documento</button><button type="button" data-material-sheet-edit data-material-edit hidden>Editar material</button><button type="button" data-material-sheet-clear hidden>Limpar célula</button><button type="button" data-material-sheet-delete data-material-delete hidden>Excluir linha</button><button type="button" data-material-sheet-column-action hidden>Ocultar coluna</button></div>`;
+  const table = `<div class="materials-list-wrap"><table class="materials-table materials-sheet-table"><thead><tr><th class="materials-sheet-number">#</th>${shown.map(([id, label]) => `<th tabindex="0" data-material-sheet-header="${esc(id)}" title="Selecionar coluna">${esc(label)}</th>`).join("")}</tr></thead><tbody>${visibleRows.map((item, index) => `<tr><th scope="row" tabindex="0" class="materials-sheet-number" data-material-sheet-row="${esc(item.id)}" title="Selecionar linha">${(page - 1) * 15 + index + 1}</th>${shown.map(([field]) => { const raw = custom.some((entry) => entry.id === field) ? item.properties?.[field] : field === "stageKey" ? item.stageName : ["createdAt", "updatedAt"].includes(field) ? materialSheetDateV1(item[field]) : item[field]; return `<td><button type="button" class="materials-sheet-cell" data-material-sheet-cell="${esc(item.id)}" data-material-sheet-field="${esc(field)}">${esc(raw == null || raw === "" ? "—" : raw)}</button></td>`; }).join("")}</tr>`).join("") || `<tr><td colspan="${shown.length + 1}">Nenhum material encontrado.</td></tr>`}</tbody></table></div>`;
+  html = html.replace(/<div class="materials-list-wrap">[\s\S]*?<\/table><\/div>/, toolbar + table);
+  if (custom.length) html = html.replace(/(<form class="materials-editor"[\s\S]*?<\/textarea><\/label>)(<\/div><footer>)/,
+    (_, before, after) => `${before}${custom.map((entry) => `<label>${esc(entry.label)}<input name="property:${esc(entry.id)}" value="${esc((all.find((item) => item.id === state.materialsEditId)?.properties || {})[entry.id] || "")}" maxlength="500"></label>`).join("")}${after}`);
+  return html;
+};
+
+const bindBeforeMaterialsSheetV1 = ViewLayer.prototype.bind;
+ViewLayer.prototype.bind = function (...args) {
+  const result = bindBeforeMaterialsSheetV1?.apply(this, args);
+  const root = this.querySelector("[data-materials-page]");
+  const table = root?.querySelector(".materials-sheet-table");
+  if (!table || table.dataset.sheetBound) return result;
+  table.dataset.sheetBound = "true";
+  const patch = (value) => appStore.set({ ...value, lastAction: "Atualizou planilha de materiais" });
+  const customColumns = () => appStore.get().materialSheetCustomColumns || [];
+  const currentRow = (id) => controlCenterMaterialRowsV1(appStore.get()).find((item) => item.id === id);
+  const selected = { type: null, id: null, field: null };
+  const action = (name, visible) => { const button = root.querySelector(`[data-material-sheet-${name}]`); if (button) button.hidden = !visible; return button; };
+  const select = (type, id, field, target) => {
+    root.querySelectorAll(".materials-sheet-selected").forEach((node) => node.classList.remove("materials-sheet-selected"));
+    target.classList.add("materials-sheet-selected");
+    if (type === "cell") target.closest("td")?.classList.add("materials-sheet-selected");
+    Object.assign(selected, { type, id, field });
+    const row = currentRow(id);
+    const label = customColumns().find((entry) => entry.id === field)?.label || MATERIAL_SHEET_COLUMNS_V1.find(([key]) => key === field)?.[1] || field;
+    root.querySelector("[data-material-sheet-selection]").textContent = type === "row" ? `Linha: ${row?.name || id}` : type === "column" ? `Coluna: ${label}` : `${row?.name || id} · ${label}`;
+    const edit = action("edit", type !== "column");
+    if (edit) edit.dataset.materialEdit = id || "";
+    const del = action("delete", type === "row");
+    if (del) del.dataset.materialDelete = id || "";
+    action("clear", type === "cell" && !["id", "name", "stageKey", "createdAt", "updatedAt"].includes(field));
+    const doc = (appStore.get().documentCatalog || []).find((entry) => entry.sourceMaterialId === id);
+    action("document", type !== "column" && Boolean(doc));
+    const column = action("column-action", type === "column");
+    if (column) column.textContent = customColumns().some((entry) => entry.id === field) ? "Excluir coluna" : "Ocultar coluna";
+  };
+  const updateCell = (row, field, value) => {
+    const custom = customColumns().some((entry) => entry.id === field);
+    const stage = field === "stageKey" ? (executionModel.stages || []).find((item) => item.key === value) : null;
+    const patchValue = custom ? { properties: { ...(row.properties || {}), [field]: value } } : field === "stageKey" ? { stageKey: stage.key, stageName: stage.name } : { [field]: field === "quantity" ? (value === "" ? null : Number(value)) : value };
+    const material = { ...row, ...patchValue, updatedAt: new Date().toISOString() };
+    appStore.update((current) => ({
+      ...current,
+      controlMaterialOverrides: { ...(current.controlMaterialOverrides || {}), [row.id]: { ...(current.controlMaterialOverrides || {})[row.id], ...patchValue, updatedAt: material.updatedAt } },
+      lastAction: `Editou material ${row.name}`,
+    }));
+    const entry = controlCenterRecordChangeV1("Material salvo", `${material.name} · ${material.stageName}`, { entity: "material", entityId: row.id });
+    controlCenterPublishV1("control.material.updated", "material", row.id, { material, changeId: entry.id });
+  };
+  const openCell = () => {
+    if (selected.type !== "cell" || ["id", "createdAt", "updatedAt"].includes(selected.field)) return;
+    const row = currentRow(selected.id);
+    if (!row) return;
+    const label = customColumns().find((entry) => entry.id === selected.field)?.label || MATERIAL_SHEET_COLUMNS_V1.find(([key]) => key === selected.field)?.[1] || selected.field;
+    const field = selected.field;
+    const button = [...table.querySelectorAll("[data-material-sheet-cell]")].find((entry) => entry.dataset.materialSheetCell === selected.id && entry.dataset.materialSheetField === field);
+    if (!button || button.parentElement.querySelector(".materials-sheet-inline-editor")) return;
+    const input = ["stageKey", "status"].includes(field) ? document.createElement("select") : document.createElement(field === "scope" ? "textarea" : "input");
+    if (field === "stageKey") (executionModel.stages || []).forEach((stage) => input.add(new Option(stage.name, stage.key)));
+    if (field === "status") [...new Set([row.status, "Planejado", "Em andamento", "Atenção", "Concluído", "Dimensionar"].filter(Boolean))].forEach((status) => input.add(new Option(status, status)));
+    if (field === "quantity") { input.type = "number"; input.min = "0"; input.step = "any"; }
+    input.required = ["name", "stageKey"].includes(field);
+    input.className = "materials-sheet-inline-editor";
+    input.setAttribute("aria-label", `Editar ${label} de ${row.name}`);
+    input.value = field.startsWith("custom-") ? row.properties?.[field] || "" : row[field] ?? "";
+    button.hidden = true;
+    button.after(input);
+    input.focus();
+    input.select?.();
+    let finished = false;
+    const cancel = () => { if (finished) return; finished = true; input.remove(); button.hidden = false; button.focus(); };
+    const commit = () => {
+      if (finished || !input.reportValidity()) return;
+      const value = input.value.trim();
+      if (!confirm(`Salvar alteração em ${row.name}?`)) return;
+      finished = true;
+      updateCell(row, field, value);
+    };
+    input.addEventListener("keydown", (event) => {
+      event.stopPropagation();
+      if (event.key === "Escape") { event.preventDefault(); cancel(); }
+      else if (event.key === "Enter" && (input.tagName !== "TEXTAREA" || event.ctrlKey)) { event.preventDefault(); commit(); }
+    });
+    input.addEventListener("blur", () => { if (!finished) cancel(); });
+  };
+  const clearCell = () => {
+    if (selected.type !== "cell" || ["id", "name", "stageKey", "createdAt", "updatedAt"].includes(selected.field)) return;
+    const row = currentRow(selected.id);
+    if (row && confirm(`Limpar esta célula de ${row.name}?`)) updateCell(row, selected.field, "");
+  };
+  table.querySelectorAll("[data-material-sheet-cell]").forEach((button) => {
+    button.addEventListener("click", () => select("cell", button.dataset.materialSheetCell, button.dataset.materialSheetField, button));
+    button.addEventListener("dblclick", () => { select("cell", button.dataset.materialSheetCell, button.dataset.materialSheetField, button); openCell(); });
+  });
+  table.querySelectorAll("[data-material-sheet-row]").forEach((header) => header.addEventListener("click", () => {
+    select("row", header.dataset.materialSheetRow, "", header);
+    patch({ materialsEditId: header.dataset.materialSheetRow });
+    requestAnimationFrame(() => this.querySelector("[data-material-form]")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }));
+  table.querySelectorAll("[data-material-sheet-header]").forEach((header) => header.addEventListener("click", () => select("column", "", header.dataset.materialSheetHeader, header)));
+  root.querySelector("[data-material-sheet-clear]")?.addEventListener("click", clearCell);
+  root.querySelector("[data-material-sheet-document]")?.addEventListener("click", () => {
+    const doc = (appStore.get().documentCatalog || []).find((entry) => entry.sourceMaterialId === selected.id);
+    if (doc) patch({ view: "documents", documentsEditId: doc.id });
+  });
+  root.querySelector("[data-material-sheet-column-action]")?.addEventListener("click", () => {
+    if (selected.type !== "column") return;
+    const button = root.querySelector(`[data-material-sheet-column-delete="${selected.field}"]`);
+    if (button) button.click();
+    else if (confirm("Ocultar esta coluna? Os dados serão preservados.")) patch({ materialSheetHiddenColumns: [...new Set([...(appStore.get().materialSheetHiddenColumns || []), selected.field])] });
+  });
+  table.addEventListener("keydown", (event) => {
+    if (!selected.type || !["Enter", "Delete", "Backspace", "Escape", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
+    if (event.key === "Escape") { root.querySelectorAll(".materials-sheet-selected").forEach((node) => node.classList.remove("materials-sheet-selected")); selected.type = null; return; }
+    if (event.key === "Enter") { event.preventDefault(); if (selected.type === "cell") openCell(); else if (selected.type === "row") root.querySelector("[data-material-sheet-edit]")?.click(); return; }
+    if (["Delete", "Backspace"].includes(event.key)) { event.preventDefault(); if (selected.type === "cell") clearCell(); else if (selected.type === "row") root.querySelector("[data-material-sheet-delete]:not([hidden])")?.click(); else root.querySelector("[data-material-sheet-column-action]:not([hidden])")?.click(); return; }
+    if (selected.type !== "cell") return;
+    event.preventDefault();
+    const rows = [...table.querySelectorAll("tbody tr")].map((row) => [...row.querySelectorAll("[data-material-sheet-cell]")]);
+    const r = rows.findIndex((cells) => cells.some((cell) => cell.dataset.materialSheetCell === selected.id));
+    const c = rows[r]?.findIndex((cell) => cell.dataset.materialSheetField === selected.field) ?? -1;
+    const nextRow = Math.max(0, Math.min(rows.length - 1, r + (event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0)));
+    const nextColumn = Math.max(0, Math.min((rows[nextRow]?.length || 1) - 1, c + (event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0)));
+    const next = rows[nextRow]?.[nextColumn];
+    if (next) { next.focus(); select("cell", next.dataset.materialSheetCell, next.dataset.materialSheetField, next); }
+  });
+  root.querySelectorAll("[data-material-sheet-toggle]").forEach((input) => input.addEventListener("change", () => {
+    const hidden = new Set(appStore.get().materialSheetHiddenColumns || []);
+    if (input.checked) hidden.delete(input.dataset.materialSheetToggle); else hidden.add(input.dataset.materialSheetToggle);
+    patch({ materialSheetHiddenColumns: [...hidden] });
+  }));
+  root.querySelector("[data-material-sheet-column-form]")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const label = String(new FormData(event.currentTarget).get("label") || "").trim();
+    if (!label || customColumns().some((entry) => entry.label.toLocaleLowerCase("pt-BR") === label.toLocaleLowerCase("pt-BR"))) return;
+    patch({ materialSheetCustomColumns: [...customColumns(), { id: `custom-${globalThis.crypto?.randomUUID?.() || Date.now().toString(36)}`, label }] });
+  });
+  root.querySelectorAll("[data-material-sheet-column-delete]").forEach((button) => button.addEventListener("click", () => {
+    const id = button.dataset.materialSheetColumnDelete;
+    if (!confirm("Excluir esta propriedade personalizada e todos os seus valores?")) return;
+    appStore.update((current) => ({
+      ...current,
+      materialSheetCustomColumns: (current.materialSheetCustomColumns || []).filter((entry) => entry.id !== id),
+      controlMaterialOverrides: Object.fromEntries(Object.entries(current.controlMaterialOverrides || {}).map(([key, value]) => {
+        const properties = { ...(value.properties || {}) }; delete properties[id]; return [key, { ...value, properties }];
+      })),
+      lastAction: "Excluiu coluna da planilha de materiais",
+    }));
+  }));
+  return result;
+};
+
+// O registro geral e o apontamento da frente compartilham a mesma apresentação
+// recolhível. Movemos os nós existentes para conservar validação e listeners.
+const renderBeforeControlRecordAccordionsV1 = ViewLayer.prototype.render;
+ViewLayer.prototype.render = function (...args) {
+  const result = renderBeforeControlRecordAccordionsV1.apply(this, args);
+  if (appStore.get().view !== "control") return result;
+  const openState = this._controlRecordAccordionOpenV1 ||= {};
+  const wrap = (host, key, title, description) => {
+    if (!host || host.querySelector(":scope > details.control-record-accordion-v1")) return;
+    const header = host.querySelector(":scope > header");
+    const details = document.createElement("details");
+    details.className = "control-record-accordion-v1";
+    details.dataset.controlRecordAccordion = key;
+    const summary = document.createElement("summary");
+    summary.innerHTML = `<span><b>${title}</b><small>${description}</small></span><span class="control-record-accordion-cue-v1" aria-hidden="true">⌄</span>`;
+    details.append(summary);
+    [...host.children].filter((child) => child !== header).forEach((child) => details.append(child));
+    host.append(details);
+    details.open = openState[key] ?? (key === "general" && Boolean(appStore.get().controlEventDraft?.title));
+    details.addEventListener("toggle", () => { openState[key] = details.open; });
+  };
+  wrap(this.querySelector(".control-general-event"), "general", "Novo registro de evento", "Evento geral · sem vínculo obrigatório a uma etapa");
+  const stageRecord = this.querySelector("[data-control-stage-inline-record]");
+  if (stageRecord && !stageRecord.querySelector("[data-inline-record-date]")) {
+    const now = new Date();
+    const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    stageRecord.querySelector(":scope > header")?.insertAdjacentHTML("afterend", `<div class="control-inline-record-when-v1"><label>Data<input data-inline-record-date type="date" value="${date}"></label><label>Hora<input data-inline-record-time type="time" value="${time}"></label></div>`);
+  }
+  wrap(stageRecord, "stage", "Novo registro da etapa", "Propriedades, requisitos e execução · apontamento vinculado à frente");
+  return result;
+};
+
+// CONTROL_CENTER_RECORD_DRAWER_V2
+// O registro geral deixa de disputar a pilha vertical da Central e passa a
+// compor uma coluna lateral retrátil ao lado do quadro de prioridades da IA.
+const ensureControlRecordDrawerStyleV2 = () => {
+  if (document.getElementById("control-record-drawer-style-v2")) return;
+  const style = document.createElement("style");
+  style.id = "control-record-drawer-style-v2";
+  style.textContent = `
+    .control-center-workspace-v2 {
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(390px,32vw);
+      gap:12px;
+      align-items:start;
+      margin:14px 0 16px;
+      transition:grid-template-columns 180ms ease;
+    }
+    .control-center-workspace-v2.drawer-collapsed-v2 {
+      grid-template-columns:minmax(0,1fr) 52px;
+    }
+    .control-center-workspace-main-v2 {
+      min-width:0;
+    }
+    .control-center-workspace-main-v2 > .control-ai-priorities {
+      display:block !important;
+      margin:0 !important;
+      width:100%;
+      min-width:0;
+    }
+    .control-record-drawer-v2 {
+      position:sticky;
+      top:10px;
+      min-width:0;
+      max-height:calc(100dvh - 120px);
+      border:1px solid #34475f;
+      background:#111a27;
+      overflow:hidden;
+      box-sizing:border-box;
+      transition:width 180ms ease,background 180ms ease,border-color 180ms ease;
+    }
+    .control-record-drawer-head-v2 {
+      min-height:52px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:8px 10px;
+      border-bottom:1px solid #31445c;
+      background:#0d1724;
+      box-sizing:border-box;
+    }
+    .control-record-drawer-toggle-v2 {
+      flex:0 0 32px;
+      width:32px;
+      height:32px;
+      display:grid;
+      place-items:center;
+      border:1px solid #45617f;
+      background:#132337;
+      color:#dbe9fb;
+      cursor:pointer;
+    }
+    .control-record-drawer-copy-v2 {min-width:0}
+    .control-record-drawer-copy-v2 b {display:block;font-size:12px;color:#f0f6ff}
+    .control-record-drawer-copy-v2 small {display:block;margin-top:2px;font-size:9px;color:#86a0bd}
+    .control-record-drawer-body-v2 {
+      max-height:calc(100dvh - 184px);
+      overflow:auto;
+      overscroll-behavior:contain;
+      scrollbar-gutter:stable;
+    }
+    .control-record-drawer-v2 .control-general-event {
+      display:block !important;
+      margin:0 !important;
+      border:0 !important;
+      min-width:0;
+      background:transparent !important;
+    }
+    .control-record-drawer-v2 .control-general-event > header {display:none !important}
+    .control-record-drawer-v2 .control-record-accordion-v1 {
+      display:block;
+      border:0 !important;
+      margin:0 !important;
+      background:transparent !important;
+    }
+    .control-record-drawer-v2 .control-record-accordion-v1 > summary {display:none !important}
+    .control-record-drawer-v2 [data-control-general-event] {padding:12px}
+    .control-record-drawer-v2 .record-composer-v1 {
+      display:grid !important;
+      grid-template-columns:1fr !important;
+      gap:12px !important;
+    }
+    .control-record-drawer-v2 .record-composer-fields-v1,
+    .control-record-drawer-v2 .control-general-event-grid {
+      display:grid !important;
+      grid-template-columns:1fr !important;
+      gap:9px !important;
+      min-width:0;
+    }
+    .control-record-drawer-v2 .control-general-event-grid .wide {grid-column:1 !important}
+    .control-record-drawer-v2 .record-dropin-v1 {min-height:190px}
+    .control-record-drawer-v2 [data-control-general-event] footer {
+      display:grid !important;
+      grid-template-columns:1fr !important;
+      gap:10px !important;
+      align-items:stretch !important;
+    }
+    .control-record-drawer-v2 [data-control-general-event] footer button {width:100%}
+    .control-record-drawer-v2 .control-general-event-history {padding:0 12px 14px}
+    .control-center-workspace-v2.drawer-collapsed-v2 .control-record-drawer-copy-v2,
+    .control-center-workspace-v2.drawer-collapsed-v2 .control-record-drawer-body-v2 {display:none !important}
+    .control-center-workspace-v2.drawer-collapsed-v2 .control-record-drawer-head-v2 {
+      justify-content:center;
+      padding:9px;
+      border-bottom:0;
+    }
+    @media (max-width:1180px) {
+      .control-center-workspace-v2 {grid-template-columns:minmax(0,1fr) minmax(340px,42vw)}
+    }
+    @media (max-width:900px) {
+      .control-center-workspace-v2,
+      .control-center-workspace-v2.drawer-collapsed-v2 {display:block}
+      .control-record-drawer-v2 {position:relative;top:auto;margin-top:10px;max-height:none}
+      .control-record-drawer-body-v2 {max-height:none}
+      .control-center-workspace-v2.drawer-collapsed-v2 .control-record-drawer-v2 {height:52px}
+    }
+  `;
+  document.head.appendChild(style);
+};
+
+const mountControlRecordDrawerV2 = (layer) => {
+  const root = layer?.querySelector?.(".control-center-page");
+  if (!root) return;
+
+  root.querySelectorAll(".cash-record-launcher").forEach((node) => node.remove());
+  root.querySelectorAll(".control-event-tabs").forEach((node) => node.remove());
+
+  const head = root.querySelector(":scope > .control-center-head"),
+    kpis = root.querySelector(":scope > .control-center-kpis"),
+    priorities = root.querySelector(".control-ai-priorities"),
+    eventPanel = root.querySelector(".control-general-event");
+  if (!head || !priorities || !eventPanel) return;
+
+  ensureControlRecordDrawerStyleV2();
+
+  let workspace = root.querySelector(":scope > .control-center-workspace-v2");
+  if (!workspace) {
+    workspace = document.createElement("section");
+    workspace.className = "control-center-workspace-v2";
+    workspace.innerHTML = `<div class="control-center-workspace-main-v2" data-control-workspace-main-v2></div><aside class="control-record-drawer-v2" data-control-record-drawer-v2><header class="control-record-drawer-head-v2"><button type="button" class="control-record-drawer-toggle-v2" data-control-record-drawer-toggle-v2 aria-label="Recolher novo registro" aria-expanded="true">${ico("panel-right-close")}</button><div class="control-record-drawer-copy-v2"><b>Novo registro</b><small>Evento geral · Central operacional</small></div></header><div class="control-record-drawer-body-v2" data-control-record-drawer-body-v2></div></aside>`;
+    (kpis || head).insertAdjacentElement("afterend", workspace);
+  }
+
+  workspace.querySelector("[data-control-workspace-main-v2]")?.append(priorities);
+  workspace.querySelector("[data-control-record-drawer-body-v2]")?.append(eventPanel);
+
+  const details = eventPanel.querySelector(":scope > details.control-record-accordion-v1");
+  if (details) {
+    details.open = true;
+    details.querySelector(":scope > summary")?.setAttribute("hidden", "");
+  }
+
+  if (layer._controlRecordDrawerOpenV2 == null)
+    layer._controlRecordDrawerOpenV2 = true;
+
+  const toggle = workspace.querySelector("[data-control-record-drawer-toggle-v2]");
+  const sync = () => {
+    const open = layer._controlRecordDrawerOpenV2 !== false;
+    workspace.classList.toggle("drawer-collapsed-v2", !open);
+    toggle?.setAttribute("aria-expanded", String(open));
+    toggle?.setAttribute("aria-label", open ? "Recolher novo registro" : "Expandir novo registro");
+    if (toggle) toggle.innerHTML = ico(open ? "panel-right-close" : "panel-right-open");
+    window.lucide?.createIcons();
+  };
+
+  if (toggle && toggle.dataset.bound !== "true") {
+    toggle.dataset.bound = "true";
+    toggle.addEventListener("click", () => {
+      layer._controlRecordDrawerOpenV2 = !(layer._controlRecordDrawerOpenV2 !== false);
+      sync();
+    });
+  }
+  sync();
+};
+
+const renderBeforeControlRecordDrawerV2 = ViewLayer.prototype.render;
+ViewLayer.prototype.render = function (...args) {
+  const result = renderBeforeControlRecordDrawerV2.apply(this, args);
+  if (appStore.get().view === "control") mountControlRecordDrawerV2(this);
+  return result;
+};
+
+// O card de material abre uma transição auditável, não a edição silenciosa da
+// célula. A API confirma registro, comprovantes e recálculo antes do estado UI.
+const materialsBeforeTransitionV1 = ViewLayer.prototype.materials;
+ViewLayer.prototype.materials = function (...args) {
+  const html = materialsBeforeTransitionV1.apply(this, args);
+  const state = appStore.get();
+  const material = controlCenterMaterialRowsV1(state).find((item) => item.id === state.materialTransitionId);
+  if (!material) return html;
+  const isDraftMaterialV1 = material.materialDraftV1 === true;
+  const statuses = [...new Set([material.status, "Planejado", "Em andamento", "Atenção", "Concluído", "Dimensionar"].filter(Boolean))];
+  const updated = material.updatedAt ? new Date(material.updatedAt).toLocaleString("pt-BR") : "Estado inicial do catálogo";
+  const modal = `<dialog class="material-transition-dialog-v1" data-material-transition-dialog aria-label="${isDraftMaterialV1 ? "Cadastrar novo material" : `Alterar estado do material ${esc(material.name)}`}"><header><div><small>REGISTRO ADITIVO · MATERIAL ${esc(material.id)}</small><h2>${isDraftMaterialV1 ? "Novo material" : esc(material.name)}</h2><p>${esc(material.stageName)} · ${esc(material.activityName || "Atividade principal")}</p></div><button type="button" data-material-transition-close aria-label="Fechar">×</button></header><div class="material-transition-body-v1"><section class="material-transition-before-v1"><span>${isDraftMaterialV1 ? "NOVO MATERIAL" : "ESTADO ANTERIOR"}</span><strong>${isDraftMaterialV1 ? "Ainda sem cadastro" : `${material.quantity == null ? "A dimensionar" : esc(material.quantity)} ${esc(material.unit || "un.")}`}</strong><b>${esc(material.status || "Planejado")}</b><p>${isDraftMaterialV1 ? "Card vazio criado a partir da etapa. Preencha o estado inicial ao lado." : esc(material.scope || "Sem descrição anterior registrada.")}</p><small>${isDraftMaterialV1 ? "Rascunho ainda não confirmado" : `Última alteração: ${esc(updated)}`}</small><div class="material-transition-history-v1" data-material-transition-history>${isDraftMaterialV1 ? "Nenhum histórico: este material ainda é um rascunho." : "Carregando registros e comprovantes associados…"}</div></section><div class="material-transition-arrow-v1" aria-hidden="true">→</div><form data-material-transition-form data-material-transition-draft-v1="${isDraftMaterialV1 ? "true" : "false"}"><span>${isDraftMaterialV1 ? "EDIÇÃO INICIAL" : "NOVO ESTADO"} · ${esc(material.id)}</span>${isDraftMaterialV1 ? `<label>Nome do material<input name="name" value="" required maxlength="120" autocomplete="off" autofocus placeholder="Ex.: Tubo PEAD 60 mm"></label>` : ""}<label>Número do material associado<input name="materialNumber" value="${esc(material.id)}" required maxlength="80"></label><div class="material-transition-pair-v1"><label>Quantidade / unidades<input name="quantity" type="number" min="0" step="any" value="${material.quantity == null ? "" : esc(material.quantity)}" required></label><label>Unidade<input name="unit" value="${esc(material.unit || "un.")}" required maxlength="20"></label></div><label>Situação<select name="status">${statuses.map((value) => `<option ${value === material.status ? "selected" : ""}>${esc(value)}</option>`).join("")}</select></label><label>Descrição escrita da mudança<textarea name="description" required rows="4" maxlength="4000" placeholder="Descreva o que mudou e por quê."></textarea></label><div class="material-transition-proof-v1"><b>Adicionar comprovantes</b><label>Número do documento<input name="documentNumber" maxlength="80" placeholder="NF, recibo ou referência"></label><label>Descrição do documento<input name="documentDescription" maxlength="1000" placeholder="O que este comprovante demonstra"></label><label>Arquivos PDF ou imagem<input name="documents" type="file" accept=".pdf,image/jpeg,image/png,image/webp" multiple></label><small>Até 3 arquivos de 6 MB cada. Os comprovantes ficam associados ao registro.</small></div><div role="status" data-material-transition-status>Ao salvar, o registro e o cronograma serão atualizados.</div><footer><button type="button" data-material-transition-close>Cancelar</button><button type="submit" class="toolbar-primary">Confirmar novo estado e gerar cronograma</button></footer></form></div></dialog>`;
+  const end = html.lastIndexOf("</section>");
+  return end < 0 ? html + modal : html.slice(0, end) + modal + html.slice(end);
+};
+
+const bindBeforeMaterialTransitionV1 = ViewLayer.prototype.bind;
+ViewLayer.prototype.bind = function (...args) {
+  const result = bindBeforeMaterialTransitionV1.apply(this, args);
+  const root = this.querySelector("[data-materials-page]");
+  if (!root) return result;
+  const draftSlotCardV2 = root.querySelector('[data-material-draft-v1="true"]');
+  if (draftSlotCardV2) {
+    const animatedDraftsV2 =
+      (globalThis.__belavistaMaterialDraftSlotAnimatedV2 ||= new Set()),
+      draftIdV2 = draftSlotCardV2.dataset.materialLinkCard;
+    if (draftIdV2 && !animatedDraftsV2.has(draftIdV2)) {
+      animatedDraftsV2.add(draftIdV2);
+      const targetHeightV2 = Math.max(1, draftSlotCardV2.getBoundingClientRect().height);
+      draftSlotCardV2.animate(
+        [
+          {
+            height: "0px",
+            minHeight: "0px",
+            opacity: 0,
+            transform: "translateY(-8px)",
+            overflow: "hidden",
+          },
+          {
+            height: `${targetHeightV2}px`,
+            opacity: 1,
+            transform: "translateY(0)",
+            overflow: "hidden",
+          },
+        ],
+        { duration: 180, easing: "cubic-bezier(.22,.61,.36,1)" },
+      );
+      requestAnimationFrame(() =>
+        draftSlotCardV2.scrollIntoView({ behavior: "smooth", block: "nearest" }),
+      );
+    }
+  }
+  root.querySelectorAll("[data-material-link-card]").forEach((card) => {
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-expanded", "false");
+    card.setAttribute("aria-label", `Abrir estado e comprovantes de ${card.querySelector("b")?.textContent || "material"}`);
+    const open = () => appStore.set({materialTransitionId:card.dataset.materialLinkCard,materialsEditId:null,lastAction:"Abriu controle de unidades do material"});
+    card.addEventListener("click", (event) => {if (!event.target.closest("[data-material-link-start],[data-material-unlink-stage]")) open();});
+    card.addEventListener("keydown", (event) => {if (["Enter", " "].includes(event.key) && !event.target.closest("button")) {event.preventDefault();open();}});
+  });
+  root.querySelectorAll("[data-material-unlink-stage]").forEach((button) => {
+    if (button.dataset.materialUnlinkBoundV1 === "true") return;
+    button.dataset.materialUnlinkBoundV1 = "true";
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const id = button.dataset.materialUnlinkStage,
+        material = controlCenterMaterialRowsV1(appStore.get()).find((item) => item.id === id);
+      if (!material || !material.stageKey || material.materialDraftV1 === true) return;
+      const previousStage = {
+        key: material.stageKey,
+        name: material.stageName || material.stageKey,
+        activityName: material.activityName || "Atividade principal",
+      };
+      if (!confirm(`Remover ${material.name} da etapa ${previousStage.name}? O material continuará no catálogo e a IA receberá a alteração.`)) return;
+      const updatedAt = new Date().toISOString(),
+        detachedMaterial = {
+          ...material,
+          stageKey: "",
+          stageName: "",
+          activityName: "",
+          updatedAt,
+        };
+      appStore.update((current) => ({
+        ...current,
+        materialCatalogAdditions: (current.materialCatalogAdditions || []).map((item) =>
+          item.id === id
+            ? { ...item, stageKey: "", stageName: "", activityName: "", updatedAt }
+            : item,
+        ),
+        controlMaterialOverrides: {
+          ...(current.controlMaterialOverrides || {}),
+          [id]: {
+            ...(current.controlMaterialOverrides || {})[id],
+            stageKey: "",
+            stageName: "",
+            activityName: "",
+            updatedAt,
+          },
+        },
+        materialTransitionId:
+          current.materialTransitionId === id ? null : current.materialTransitionId,
+        lastAction: `Removeu ${material.name} da etapa ${previousStage.name}`,
+      }));
+      const entry = controlCenterRecordChangeV1(
+        "Material removido da etapa",
+        `${material.name} · ${previousStage.name} → sem etapa`,
+        {
+          entity: "material",
+          entityId: id,
+          stageKey: previousStage.key,
+        },
+      );
+      controlCenterPublishV1("control.material.unlinked", "material", id, {
+        material: detachedMaterial,
+        previousStage,
+        aiReason: "material.changed",
+        changeId: entry.id,
+      });
+      const materialLoop = this.runOperationalLoop?.("material.changed", {
+        quiet: true,
+      });
+      materialLoop?.catch?.(() => {});
+      notify(
+        `${material.name} removido de ${previousStage.name}; alteração propagada para a IA.`,
+        "success",
+      );
+    });
+  });
+  const dialog = root.querySelector("[data-material-transition-dialog]");
+  if (!dialog) return result;
+  const material = controlCenterMaterialRowsV1(appStore.get()).find((item) => item.id === appStore.get().materialTransitionId);
+  if (!material) return result;
+  const isDraftMaterialV1 = material.materialDraftV1 === true;
+  const activeCard=[...root.querySelectorAll("[data-material-link-card]")].find((card)=>card.dataset.materialLinkCard===material.id);
+  if(activeCard){activeCard.classList.add("material-link-card-expanded-v1");activeCard.setAttribute("aria-expanded","true");activeCard.insertAdjacentHTML("beforeend",`<div class="material-link-card-expanded-note-v1">${esc(material.quantity==null?"A dimensionar":material.quantity)} ${esc(material.unit||"un.")} · ${esc(material.status||"Planejado")} · histórico e comprovantes abertos</div>`);}
+  dialog.showModal();
+  if (isDraftMaterialV1) requestAnimationFrame(() => dialog.querySelector('input[name="name"]')?.focus());
+  let transitionCloseCommittedV1 = false;
+  const finalizeTransitionCloseV1 = () => {
+    if (transitionCloseCommittedV1) return;
+    transitionCloseCommittedV1 = true;
+    appStore.update((current) => {
+      const next = {
+        ...current,
+        materialTransitionId: null,
+        materialCatalogAdditions: isDraftMaterialV1
+          ? (current.materialCatalogAdditions || []).filter((item) => item.id !== material.id)
+          : current.materialCatalogAdditions || [],
+        lastAction: isDraftMaterialV1
+          ? "Descartou novo material vazio"
+          : "Fechou controle do material",
+      };
+      if (isDraftMaterialV1) {
+        const overrides = { ...(current.controlMaterialOverrides || {}) };
+        delete overrides[material.id];
+        next.controlMaterialOverrides = overrides;
+      }
+      return next;
+    });
+  };
+  const requestTransitionCloseV1 = (event) => {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    if (dialog.open) dialog.close("cancel");
+    else finalizeTransitionCloseV1();
+  };
+  dialog.querySelectorAll("[data-material-transition-close]").forEach((button) =>
+    button.addEventListener("click", requestTransitionCloseV1),
+  );
+  dialog.addEventListener("cancel", requestTransitionCloseV1, { once: true });
+  dialog.addEventListener("close", finalizeTransitionCloseV1, { once: true });
+  const history = dialog.querySelector("[data-material-transition-history]");
+  if (!isDraftMaterialV1) apiFetch(`/api/workbench/diary?resource=material-transition&materialId=${encodeURIComponent(material.id)}&stage=${encodeURIComponent(material.stageKey||"")}`,{headers:operationalHeaders()})
+    .then(async (response) => {if (!response.ok) throw new Error(`HTTP ${response.status}`);return response.json();})
+    .then(({transitions=[],attachments=[]}) => {
+      if (!history.isConnected) return;
+      history.innerHTML = transitions.length ? `<h3>Registros anteriores</h3>${transitions.map((record) => {
+        const prop = (id) => record.properties?.find((entry) => entry.id === id)?.value || "";
+        let ids=[];try{ids=JSON.parse(prop("document_ids")||"[]");}catch{}
+        const proofs=attachments.filter((item) => ids.includes(item.id));
+        return `<article><b>${esc(record.id)} · ${esc(record.data)} ${esc(record.hora||"")}</b><span>${esc(prop("before_quantity")||"—")} → ${esc(prop("after_quantity")||"—")} ${esc(prop("after_unit"))}</span><p>${esc(prop("after_description"))}</p>${proofs.length?`<ul>${proofs.map((item)=>`<li><a href="${esc(item.fileUrl)}" target="_blank" rel="noopener">${esc(item.title||"Comprovante")} · ${esc(item.fileName)}</a><small>${esc(item.notes||"")}</small></li>`).join("")}</ul>`:"<small>Sem comprovantes.</small>"}</article>`;
+      }).join("")}` : "<p>Nenhum registro anterior para este material.</p>";
+    }).catch(() => {if(history.isConnected)history.textContent="Histórico indisponível no momento; o estado atual permanece visível.";});
+  dialog.querySelector("[data-material-transition-form]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form=event.currentTarget,button=form.querySelector('button[type="submit"]'),status=form.querySelector("[data-material-transition-status]");
+    const data=new FormData(form),quantity=Number(data.get("quantity")),files=[...form.elements.documents.files],
+      materialName=String(data.get("name")||material.name||"").trim();
+    if (!materialName){status.textContent="Informe o nome do material.";form.elements.name?.focus();return;}
+    if (!Number.isFinite(quantity)||quantity<0||files.length>3||files.some((file)=>file.size>6*1024*1024||!["application/pdf","image/jpeg","image/png","image/webp"].includes(file.type))){status.textContent="Informe quantidade válida e até três arquivos PDF/JPG/PNG/WebP de 6 MB.";return;}
+    button.disabled=true;status.textContent="Salvando registro, comprovantes e recalculando cronograma…";
+    try{
+      const documents=await Promise.all(files.map((file)=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve({fileName:file.name,dataUrl:String(reader.result||""),documentNumber:String(data.get("documentNumber")||"").trim(),description:String(data.get("documentDescription")||"").trim()});reader.onerror=()=>reject(new Error(`Não foi possível ler ${file.name}.`));reader.readAsDataURL(file);})));
+      const response=await apiFetch("/api/workbench/diary?resource=material-transition",{method:"POST",headers:operationalHeaders({"Content-Type":"application/json"}),body:JSON.stringify({materialId:material.id,materialNumber:String(data.get("materialNumber")||material.id).trim(),name:materialName,stageKey:material.stageKey,stageName:material.stageName,unit:String(data.get("unit")||"un.").trim(),before:{quantity:material.quantity,unit:material.unit,description:material.scope,status:material.status,updatedAt:material.updatedAt},after:{quantity,status:String(data.get("status")||"Planejado"),description:String(data.get("description")||"").trim()},documents})});
+      const payload=await response.json();if(!response.ok)throw new Error(payload.error||`HTTP ${response.status}`);
+      const updatedAt=payload.material?.updatedAt||new Date().toISOString();
+      appStore.update((current)=>({...current,materialCatalogAdditions:(current.materialCatalogAdditions||[]).map((item)=>item.id===material.id?{...item,name:materialName,materialDraftV1:false,quantity,unit:String(data.get("unit")||"un.").trim(),status:String(data.get("status")||"Planejado"),scope:String(data.get("description")||"").trim(),updatedAt}:item),controlMaterialOverrides:{...(current.controlMaterialOverrides||{}),[material.id]:{...(current.controlMaterialOverrides||{})[material.id],name:materialName,materialDraftV1:false,quantity,unit:String(data.get("unit")||"un.").trim(),status:String(data.get("status")||"Planejado"),scope:String(data.get("description")||"").trim(),updatedAt}},records:[payload.record,...(current.records||[]).filter((record)=>record.id!==payload.record.id)],materialTransitionId:null,lastAction:`Registrou transição do material ${materialName}` }));
+      const entry=controlCenterRecordChangeV1(isDraftMaterialV1?"Material criado":"Material atualizado",`${materialName} · ${material.quantity??"—"} → ${quantity} ${data.get("unit")}`,{entity:"material",entityId:material.id,recordId:payload.record.id});
+      controlCenterPublishV1("control.material.transition", "material", material.id,{recordId:payload.record.id,material:payload.material,plannerStatus:payload.plannerStatus,changeId:entry.id});
+      notify(payload.plannerStatus==="generated"?"Registro salvo; cronograma recalculado.":"Registro salvo; recálculo do cronograma pendente.",payload.plannerStatus==="generated"?"success":"warning");
+    }catch(error){status.textContent=`Não foi possível salvar: ${error.message}`;button.disabled=false;}
+  });
+  return result;
+};
+
+
+// BELAVISTA_RECORD_OCR_DYNAMIC_V21
+globalThis.__BELAVISTA_RECORD_OCR_BRIDGE_V21={apiFetch,operationalHeaders,appStore};

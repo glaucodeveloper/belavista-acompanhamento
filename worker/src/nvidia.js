@@ -1,6 +1,36 @@
 const WORKERS_MODEL='@cf/nvidia/nemotron-3-120b-a12b';
 const DEFAULT_NVIDIA_MODEL='google/diffusiongemma-26b-a4b-it';
 const DEFAULT_VISION_MODEL='meta/llama-3.2-90b-vision-instruct';
+const DEFAULT_REASONING_VISION_MODEL='nvidia/nemotron-3-nano-omni-30b-a3b-reasoning';
+const MAX_VISION_DATA_URL_LENGTH=8_400_000;
+
+const OPERATIONAL_CHAT_EXECUTION_POLICY_V1=`Trate pedidos operacionais como intenção de execução, não apenas como perguntas. Use somente as ferramentas permitidas e faça no sistema tudo que for seguro e representável sem inventar fatos. Quando houver compreensão suficiente de etapa ou atividade, mas faltarem dados, use agenda.create_pending para criar um apontamento pendente com o que já é conhecido e, no texto, pergunte somente os detalhes faltantes. Quando a ação depender de evidência, comprovante, nota, projeto, autorização ou outro documento, peça o documento; use documents.open_form quando for útil abrir a inclusão. Se o pedido for completamente externo ao sistema e não houver ação interna segura, não crie registro, agenda, compra ou conclusão: peça apenas o documento ou evidência necessária. Nunca confirme como executado algo que nenhuma ferramenta representa. Preserve fato observado, inferência e dado a confirmar como categorias distintas.`;
+const OPERATIONAL_CHAT_TOOLS_V1=[
+  {name:'ui.navigate',description:'Abre uma área da aplicação.',arguments:'view'},
+  {name:'records.open_form',description:'Prepara a ficha de registro geral para revisão; não grava.',arguments:'activity,responsible,details,category'},
+  {name:'agenda.create_pending',description:'Cria um apontamento Pendente no cronograma quando etapa/atividade já são compreendidas; pode deixar detalhes/evidência a confirmar.',arguments:'title,stageKey,stageName,activityId,activityName,owner,date,start,durationHours,spanDays,detailsNeeded,evidenceRequired,notes'},
+  {name:'documents.open_form',description:'Abre a inclusão de documento quando a ação depende de evidência ou comprovante.',arguments:'reason,documentType'},
+  {name:'reports.select',description:'Abre relatório.',arguments:'family,reportType'},
+  {name:'map.set_overlay',description:'Destaca frente no mapa.',arguments:'category'},
+  {name:'map.adjust_view',description:'Ajusta vista do mapa.',arguments:'rotationDelta,tiltDelta,zoomDelta,fit'},
+  {name:'map.set_tiles',description:'Troca base do mapa.',arguments:'mode'},
+  {name:'commissions.filter',description:'Filtra carteira comercial.',arguments:'query,status,profile'},
+  {name:'ui.print',description:'Solicita confirmação de impressão.',arguments:'scope'}
+];
+const OPERATIONAL_CHAT_TOOL_NAMES_V1=new Set(OPERATIONAL_CHAT_TOOLS_V1.map(item=>item.name));
+function normalizeOperationalAssistantToolCallsV1(calls){
+  const output=[];
+  for(const raw of Array.isArray(calls)?calls:[]){
+    const name=String(raw?.name||raw?.function?.name||'');
+    if(!OPERATIONAL_CHAT_TOOL_NAMES_V1.has(name))continue;
+    let args=raw?.arguments??raw?.function?.arguments??{};
+    if(typeof args==='string'){try{args=JSON.parse(args);}catch{args={};}}
+    if(!args||typeof args!=='object'||Array.isArray(args))args={};
+    output.push({name,arguments:args});
+    if(output.length>=4)break;
+  }
+  return output;
+}
 
 function truncate(value,max=6000){
   return String(value??'').trim().slice(0,max);
@@ -23,16 +53,31 @@ function nvidiaKey(env){
   return env.NVIDIA_API_KEY||env.NVIDIA_NIM_API_KEY||'';
 }
 
-function nvidiaSettings(env,{vision=false}={}){
+function nvidiaSettings(env,{vision=false,reasoning=false}={}){
+  const visionModel=env.NVIDIA_VISION_MODEL||env.NVIDIA_VLM_MODEL||DEFAULT_VISION_MODEL;
+  const reasoningVisionModel=env.NVIDIA_REASONING_VISION_MODEL||env.NVIDIA_REASONING_VLM_MODEL||DEFAULT_REASONING_VISION_MODEL;
   return {
     apiKey:nvidiaKey(env),
-    apiUrl:env.NVIDIA_API_URL||env.NVIDIA_NIM_API_URL||'https://integrate.api.nvidia.com/v1/chat/completions',
-    model:vision?(env.NVIDIA_VISION_MODEL||DEFAULT_VISION_MODEL):(env.NVIDIA_MODEL||env.NVIDIA_NIM_MODEL||DEFAULT_NVIDIA_MODEL),
-    maxTokens:numberSetting(env.NVIDIA_MAX_TOKENS,900,{min:64,max:4096}),
-    temperature:numberSetting(env.NVIDIA_TEMPERATURE,0.25,{min:0,max:2}),
-    topP:numberSetting(env.NVIDIA_TOP_P,0.8,{min:0,max:1}),
+    apiUrl:vision&&reasoning
+      ?(env.NVIDIA_REASONING_API_URL||env.NVIDIA_API_URL||env.NVIDIA_NIM_API_URL||'https://integrate.api.nvidia.com/v1/chat/completions')
+      :(env.NVIDIA_API_URL||env.NVIDIA_NIM_API_URL||'https://integrate.api.nvidia.com/v1/chat/completions'),
+    model:vision?(reasoning?reasoningVisionModel:visionModel):(env.NVIDIA_MODEL||env.NVIDIA_NIM_MODEL||DEFAULT_NVIDIA_MODEL),
+    maxTokens:numberSetting(reasoning&&vision?env.NVIDIA_REASONING_MAX_TOKENS:env.NVIDIA_MAX_TOKENS,reasoning&&vision?4096:900,{min:64,max:8192}),
+    reasoningBudget:numberSetting(env.NVIDIA_REASONING_BUDGET,2048,{min:256,max:16384}),
+    temperature:numberSetting(reasoning&&vision?env.NVIDIA_REASONING_TEMPERATURE:env.NVIDIA_TEMPERATURE,reasoning&&vision?0.6:0.25,{min:0,max:2}),
+    topP:numberSetting(reasoning&&vision?env.NVIDIA_REASONING_TOP_P:env.NVIDIA_TOP_P,reasoning&&vision?0.95:0.8,{min:0,max:1}),
     timeoutMs:numberSetting(env.NVIDIA_TIMEOUT_MS,45_000,{min:1_000,max:120_000})
   };
+}
+
+function normalizeVisionAttachment(attachment){
+  const source=String(attachment?.dataUrl||'').trim();
+  const match=source.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/=\s]+)$/i);
+  if(!match)return null;
+  const mimeType=match[1].toLowerCase()==='image/jpg'?'image/jpeg':match[1].toLowerCase();
+  const base64=match[2].replace(/\s+/g,'');
+  if(!base64||base64.length>MAX_VISION_DATA_URL_LENGTH)return null;
+  return {name:truncate(attachment?.name||'imagem colada',120),mimeType,dataUrl:`data:${mimeType};base64,${base64}`};
 }
 
 async function callWorkersAI(env,prompt){
@@ -46,8 +91,8 @@ async function callWorkersAI(env,prompt){
   return result?.response||result?.text||null;
 }
 
-async function nvidiaRequest(env,messages,{vision=false,maxTokens=null,retries=0,retryBaseMs=900}={}){
-  const settings=nvidiaSettings(env,{vision});
+async function nvidiaRequest(env,messages,{vision=false,reasoning=false,maxTokens=null,retries=0,retryBaseMs=900}={}){
+  const settings=nvidiaSettings(env,{vision,reasoning});
   if(!settings.apiKey)return null;
 
   let lastError=null;
@@ -60,9 +105,10 @@ async function nvidiaRequest(env,messages,{vision=false,maxTokens=null,retries=0
         messages,
         temperature:settings.temperature,
         top_p:settings.topP,
-        max_tokens:Number.isFinite(Number(maxTokens))?Number(maxTokens):settings.maxTokens,
+        max_tokens:Number.isFinite(Number(maxTokens))&&Number(maxTokens)>=1?Math.trunc(Number(maxTokens)):Math.max(1,Math.trunc(Number(settings.maxTokens)||900)),
         stream:false
       };
+      if(vision&&reasoning)requestBody.reasoning_budget=settings.reasoningBudget;
       const response=await fetch(settings.apiUrl,{
         method:'POST',
         headers:{'content-type':'application/json',accept:'application/json',authorization:`Bearer ${settings.apiKey}`},
@@ -115,33 +161,127 @@ function parseMaybeJson(text,fallback){
   try{return JSON.parse(str);}catch{return fallback;}
 }
 
+const INSTAGRAM_VISIT_HANDOFF_V1='Nossa equipe entrará em contato para confirmar a visita agendada.';
+const normalizeInstagramLeadDraftV1=(draft={})=>({
+  name:truncate(draft.name,120),
+  whatsapp:truncate(draft.whatsapp,40).replace(/\D/g,'').slice(0,20),
+  email:truncate(draft.email,160).toLowerCase(),
+  lotId:truncate(draft.lotId||draft.selectedLotId,160),
+  lotLabel:truncate(draft.lotLabel||draft.selectedLot,160),
+  objective:truncate(draft.objective||draft.intent,80),
+  budget:truncate(draft.budget,100),
+  visitDate:truncate(draft.visitDate||draft.date,30),
+  visitTime:truncate(draft.visitTime||draft.time,20)
+});
+
+export async function runInstagramCommercialLeadAssistant(env,{conversation=null,messages=[],leadContext={}}={}){
+  const history=(Array.isArray(messages)?messages:[]).slice(-12).map(item=>`${item?.direction==='outbound'?'Equipe':'Lead'}: ${truncate(item?.body||item?.message,900)}`).filter(Boolean).join('\n');
+  if(!history)throw Object.assign(new Error('A conversa do Instagram ainda não possui mensagens para qualificação.'),{statusCode:400});
+  const context={
+    contactName:truncate(conversation?.contactName,120),
+    externalThreadId:truncate(conversation?.externalThreadId,120),
+    existingLeadId:truncate(conversation?.leadId,120),
+    ...leadContext
+  };
+  const instruction=`Você é o assistente comercial do Aliança Park para conversas recebidas pelo Instagram Direct. Conduza a conversa com cordialidade, objetividade e perguntas curtas para transformar o interesse em um lead comercial de reserva e visita.
+
+Regras:
+- Responda sempre em português do Brasil e não invente disponibilidade, preço, data ou confirmação de agenda.
+- Faça no máximo três perguntas por resposta. Pergunte somente o que falta: nome completo, WhatsApp, lote/quadra ou preferência, objetivo (moradia/investimento/veraneio), faixa de valor e data/horário pretendidos para visita.
+- Não peça CPF, documentos, senha ou pagamento pelo Direct. Documentos e sinal só entram em fluxo seguro, depois da aprovação comercial.
+- Se a pessoa demonstrar intenção de reserva, explique que o cadastro permite encaminhar a visita e o atendimento do lote escolhido.
+- Quando nome, WhatsApp, objetivo/lote e data/horário da visita estiverem presentes, inclua exatamente esta ideia: "Nossa equipe entrará em contato para confirmar a visita agendada." Isso é confirmação do próximo contato, não promessa de disponibilidade nem de horário final.
+- Nunca envie a mensagem. Gere somente um rascunho para aprovação humana.
+
+Retorne SOMENTE JSON válido neste formato:
+{"reply":"resposta pronta para o lead","questions":["pergunta opcional"],"leadDraft":{"name":"","whatsapp":"","email":"","lotId":"","lotLabel":"","objective":"","budget":"","visitDate":"","visitTime":""},"stage":"qualificacao|reserva|visita","nextAction":"qualificar|pedir_contato|organizar_visita|encaminhar_comercial","notes":"resumo curto"}`;
+  const raw=await nvidiaRequest(env,[
+    {role:'system',content:instruction},
+    {role:'user',content:`Contexto seguro da conversa: ${JSON.stringify(context)}\nHistórico recente:\n${history}`}
+  ],{maxTokens:900,retries:2,retryBaseMs:700});
+  const parsed=parseMaybeJson(raw,null);
+  if(!parsed||!String(parsed.reply||'').trim())throw Object.assign(new Error('A IA não retornou uma orientação comercial válida.'),{statusCode:502});
+  const leadDraft=normalizeInstagramLeadDraftV1(parsed.leadDraft||parsed.lead||{});
+  const readyForLead=Boolean(leadDraft.name&&leadDraft.whatsapp&&(leadDraft.lotId||leadDraft.lotLabel)&&leadDraft.objective);
+  const readyForVisit=Boolean(readyForLead&&leadDraft.visitDate&&leadDraft.visitTime);
+  const missing=[];
+  if(!leadDraft.name)missing.push('nome completo');
+  if(!leadDraft.whatsapp)missing.push('WhatsApp');
+  if(!leadDraft.lotId&&!leadDraft.lotLabel)missing.push('lote, quadra ou preferência');
+  if(!leadDraft.objective)missing.push('objetivo da compra');
+  if(!leadDraft.visitDate||!leadDraft.visitTime)missing.push('data e horário pretendidos para a visita');
+  const questions=[...(Array.isArray(parsed.questions)?parsed.questions:[])].map(item=>truncate(item,240)).filter(Boolean).slice(0,3);
+  for(const item of missing){
+    if(questions.length>=3)break;
+    const question={
+      'nome completo':'Como posso registrar seu nome completo?',
+      WhatsApp:'Qual WhatsApp podemos usar para a equipe falar com você?',
+      'lote, quadra ou preferência':'Você já tem um lote/quadra em mente ou prefere que eu indique opções?',
+      'objetivo da compra':'A visita é para moradia, investimento ou veraneio?',
+      'data e horário pretendidos para a visita':'Qual data e horário você prefere para a visita?'
+    }[item];
+    if(question&&!questions.includes(question))questions.push(question);
+  }
+  let reply=truncate(parsed.reply,1200);
+  if(!readyForVisit)reply=reply.replace(INSTAGRAM_VISIT_HANDOFF_V1,'').replace(/\s{2,}/g,' ').trim();
+  if(questions.length&&!reply.includes('?'))reply=`${reply}\n\n${questions.join('\n')}`.trim();
+  if(readyForVisit&&!reply.includes(INSTAGRAM_VISIT_HANDOFF_V1))reply=`${reply} ${INSTAGRAM_VISIT_HANDOFF_V1}`.trim();
+  return {
+    reply,
+    questions,
+    leadDraft:{...leadDraft,source:'instagram-direct',readyForLead,readyForVisit},
+    qualification:{stage:readyForVisit?'visita':readyForLead?'reserva':'qualificacao',readyForLead,readyForVisit,missing},
+    nextAction:truncate(parsed.nextAction,80)||(readyForVisit?'organizar_visita':readyForLead?'encaminhar_comercial':'qualificar'),
+    notes:truncate(parsed.notes,500),
+    handoff:{message:readyForVisit?INSTAGRAM_VISIT_HANDOFF_V1:'Aguardando dados para encaminhamento comercial.',requiresHumanApproval:true,sendAutomatically:false},
+    provider:'nvidia-api'
+  };
+}
+
 export function getNvidiaRuntime(env){
   const text=nvidiaSettings(env);
   const vision=nvidiaSettings(env,{vision:true});
+  const reasoningVision=nvidiaSettings(env,{vision:true,reasoning:true});
   return {
     configured:Boolean(text.apiKey),
     model:text.model,
     visionModel:vision.model,
+    reasoningVisionModel:reasoningVision.model,
+    reasoningVisionEndpoint:reasoningVision.apiUrl,
+    supportsImageReasoning:Boolean(reasoningVision.model),
     maxTokens:text.maxTokens,
+    reasoningBudget:reasoningVision.reasoningBudget,
     temperature:text.temperature,
     topP:text.topP,
-    timeoutMs:text.timeoutMs
+    timeoutMs:text.timeoutMs,
+    attachmentStorage:(env.BELAVISTA_MEDIA||env.BELAVISTA_UPLOADS)?'cloudflare-r2':'not-configured'
   };
 }
 
-export async function runOperationalAssistant(env,{message,view='assistant',context=null,explain=false}={}){
-  if(!truncate(message))return {text:'Mensagem vazia.',provider:'deterministic'};
- const prompt=`Tela: ${view}. Analise a operação do Aliança Park usando somente os dados fornecidos. Contexto: ${truncate(JSON.stringify(context||{}),8000)}. Pedido: ${truncate(message,1200)}. ${explain?'Inclua prioridade, causa e próximo passo.':''} Responda SOMENTE em JSON com text, risk e nextAction. Não altere valores financeiros.`;
+export async function runOperationalAssistant(env,{message,view='assistant',context=null,instruction='',requestContext=null,explain=false,reasoning=false,attachment=null}={}){
+  if(!truncate(message)&&!attachment)return {text:'Mensagem vazia.',provider:'deterministic'};
+  const image=attachment?normalizeVisionAttachment(attachment):null;
+  if(attachment&&!image)return {text:'A imagem não está em PNG, JPEG ou WEBP válido, ou excede o limite de 6 MB.',provider:'nvidia-api',
+    normalizerVersion:JOURNEY_NORMALIZER_VERSION,vision:true,attachmentRejected:true};
+  const requestMessage=truncate(message)||'Analise a imagem anexada e descreva os fatos visíveis e seus impactos operacionais.',
+    requestInstruction=truncate(instruction,5000)||OPERATIONAL_CHAT_EXECUTION_POLICY_V1,
+    tools=OPERATIONAL_CHAT_TOOLS_V1.map(item=>`${item.name}(${item.arguments}) — ${item.description}`).join('\n');
+  const prompt=`Tela: ${view}. Analise a operação do Aliança Park usando somente os dados fornecidos. Contexto: ${truncate(JSON.stringify(context||{}),8000)}. Contexto do disparo: ${truncate(JSON.stringify(requestContext||{}),4000)}. Pedido: ${requestMessage}.\n\nINSTRUÇÃO OPERACIONAL PERMANENTE:\n${OPERATIONAL_CHAT_EXECUTION_POLICY_V1}\n\nINSTRUÇÃO ENVIADA NESTA REQUISIÇÃO:\n${requestInstruction}\n\nFERRAMENTAS DISPONÍVEIS NO CLIENTE:\n${tools}\n\n${image?'Há uma imagem anexada. Use raciocínio visual para ler primeiro os fatos visíveis, diferenciar observação de inferência e relacionar a resposta ao contexto da tela. Raciocine internamente, mas não exponha cadeia de pensamento; entregue somente a síntese operacional.':''} ${explain?'Inclua prioridade, causa e próximo passo.':''} Responda SOMENTE em JSON válido com {"text":"resposta curta ao usuário","risk":"low|medium|high","nextAction":"próximo passo","toolCalls":[{"name":"ferramenta permitida","arguments":{}}]}. Use toolCalls somente para ações que a aplicação pode representar. Se algo for completamente externo, toolCalls deve ser [] e o text deve pedir o documento/evidência necessária. Não altere valores financeiros.`;
+  const userContent=image?[{type:'text',text:prompt},{type:'image_url',image_url:{url:image.dataUrl}}]:prompt;
   const messages=[
     {role:'system',content:'Você explica decisões operacionais de obras. Cálculos e autorizações pertencem ao backend. Responda SOMENTE em formato JSON válido.'},
-    {role:'user',content:prompt}
+    {role:'user',content:userContent}
   ];
-  const nvidiaText=await nvidiaRequest(env,messages).catch(()=>null);
+  const useReasoning=Boolean(image&&reasoning);
+  const nvidiaSettingsForRequest=nvidiaSettings(env,{vision:Boolean(image),reasoning:useReasoning});
+  const nvidiaText=await nvidiaRequest(env,messages,{vision:Boolean(image),reasoning:useReasoning,retries:image?1:0}).catch(()=>null);
+  if(image&&!nvidiaText)return {text:'A NVIDIA não conseguiu interpretar esta imagem agora. Verifique o modelo VLM e tente novamente.',provider:'nvidia-api',vision:true,model:nvidiaSettingsForRequest.model,attachmentAccepted:true};
   const workersText=nvidiaText?null:await callWorkersAI(env,prompt).catch(()=>null);
   const aiText=nvidiaText||workersText;
-  const parsed=parseMaybeJson(aiText,{text:aiText});
-  const textOutput=parsed?.text||parsed?.summary||parsed?.reply||(typeof parsed==='string'?parsed:'');
-  if(textOutput)return {...parsed,text:textOutput,provider:nvidiaText?'nvidia-api':'workers-ai'};
+  const parsed=parseMaybeJson(aiText,{text:aiText}),
+    toolCalls=normalizeOperationalAssistantToolCallsV1(parsed?.toolCalls||parsed?.tool_calls||[]),
+    textOutput=parsed?.text||parsed?.summary||parsed?.reply||(typeof parsed==='string'?parsed:'');
+  if(textOutput||toolCalls.length)return {...parsed,text:textOutput||'Ação preparada.',toolCalls,provider:nvidiaText?'nvidia-api':'workers-ai',...(image?{vision:true,reasoning:useReasoning,model:nvidiaSettingsForRequest.model,endpoint:nvidiaSettingsForRequest.apiUrl,attachmentAccepted:true}:{})};
   return {
     text:/atras|risco|bloque/i.test(message)
       ? 'Há etapas que precisam ser revisadas por dependência, caixa, cobertura de materiais e evidência de campo.'
@@ -150,7 +290,121 @@ export async function runOperationalAssistant(env,{message,view='assistant',cont
         : 'A camada operacional está pronta para correlacionar caixa, materiais, agenda e evidências.',
     risk:'medium',
     nextAction:'Executar o planejamento e revisar as solicitações de compra sugeridas.',
+    toolCalls:[],
     provider:'deterministic'
+  };
+}
+
+
+
+
+
+const JOURNEY_NORMALIZER_VERSION='v20';
+
+function normalizeJourneyHeadingsV20(value){
+  let text=String(value??'')
+    .replace(/\r\n/g,'\n')
+    .trim();
+
+  // Repara somente perda parcial inequívoca do primeiro título no início.
+  text=text.replace(
+    /^(?:ADO|TADO|STADO|ESTADO)\s+ATUAL\s+DA\s+OBRA\s*:/i,
+    'ESTADO ATUAL DA OBRA:'
+  );
+
+  // Canonicaliza a segunda heading sem inventá-la quando ausente.
+  text=text.replace(
+    /\bPR[OÓ]XIMO\s+PASSO\s*:/i,
+    'PRÓXIMO PASSO:'
+  );
+
+  return text;
+}
+
+export async function runWholeWorkJourneyExplanation(
+  env,
+  {message,context=null,instruction='',requestContext=null}={}
+){
+  const settings=nvidiaSettings(env);
+
+  if(!settings.apiKey){
+    const error=new Error('NVIDIA journey strict: NVIDIA_API_KEY não configurada no Worker.');
+    error.statusCode=502;
+    throw error;
+  }
+
+  const systemInstruction=truncate(
+    instruction ||
+      'Você explica o estado atual de uma obra e o próximo passo definido pelo System Model. Não invente fatos.',
+    7000
+  );
+
+  const factualContext=truncate(JSON.stringify(context||{}),14000);
+
+  const messages=[
+    {
+      role:'system',
+      content:[
+        systemInstruction,
+        '',
+        'REGRAS DE SAÍDA:',
+        '1. Não responda JSON.',
+        '2. Não altere a decisão do MiniCPM.',
+        '3. Use somente fatos do contexto.',
+        '4. Responda obrigatoriamente com os títulos ESTADO ATUAL DA OBRA: e PRÓXIMO PASSO:.',
+        '5. Primeiro explique o estado atual; depois explique a próxima ação.',
+        '6. Evento atual, snapshot atual e authoritativeNextStep têm precedência absoluta sobre qualquer texto anterior.',
+        '7. previousConversation nunca é fonte factual; serve somente para continuidade se sameDecision=true.',
+        '8. Se previousConversation.sameDecision=false, ignore previousConversation.text e não repita a ação anterior.',
+        '9. Se a conversa anterior contradizer estoque, caixa, progresso, evento ou próxima ação atuais, descarte-a.'
+      ].join('\n')
+    },
+    {
+      role:'user',
+      content:
+        'PEDIDO: '+truncate(message,1800)+'\n\n'+
+        'CONTEXTO OPERACIONAL AUTORITATIVO:\n'+factualContext+'\n\n'+
+        'INTENÇÃO DA REQUISIÇÃO: '+truncate(JSON.stringify(requestContext||{}),1200)
+    }
+  ];
+
+  let response='';
+  try{
+    response=await nvidiaRequest(env,messages,{maxTokens:Math.max(256,Math.trunc(Number(settings.maxTokens)||900))});
+  }catch(error){
+    const strictError=new Error('NVIDIA journey strict falhou: '+String(error?.message||error));
+    strictError.statusCode=502;
+    throw strictError;
+  }
+
+  const rawTextV20=String(response||'')
+    .replace(/<think>[\s\S]*?<\/think>/gi,'')
+    .trim();
+
+  const text=normalizeJourneyHeadingsV20(rawTextV20);
+
+  if(!text){
+    const error=new Error('NVIDIA journey strict: resposta vazia.');
+    error.statusCode=502;
+    throw error;
+  }
+
+  if(!/estado atual da obra/i.test(text) || !/pr[oó]ximo passo/i.test(text)){
+    const error=new Error(
+      '[journey-normalizer-v20] NVIDIA journey strict: resposta não contém as seções obrigatórias. '+
+      'Normalizada: '+text.slice(0,500)+
+      ' | Raw: '+rawTextV20.slice(0,500)
+    );
+    error.statusCode=502;
+    throw error;
+  }
+
+  return {
+    text,
+    provider:'nvidia-api',
+    model:settings.model,
+    endpoint:settings.apiUrl,
+    strictJourney:true
   };
 }
 
@@ -198,6 +452,597 @@ export async function explainMaterialPlan(env,plan){
     risks:plan.decisions.filter(item=>item.action.startsWith('blocked')).slice(0,5).map(item=>`${item.requirement.materialName}: ${item.action}`),
     managementActions:['Revisar solicitações sugeridas e confirmar alterações relevantes de agenda.'],
     provider:'deterministic'
+  };
+}
+
+
+// BELAVISTA_RECORD_OCR_DYNAMIC_V21
+const RECORD_OCR_MAX_PROPERTIES_V21=40;
+const cleanOcrTextV21=(value,max=240)=>truncate(String(value??''),max);
+const cleanOcrNumberV21=(value,fallback=0)=>{const n=Number(value);return Number.isFinite(n)?n:fallback;};
+const cleanOcrCentsV21=(value)=>{
+  if(typeof value==='number'&&Number.isFinite(value))return Math.max(0,Math.round(value));
+  const text=String(value??'').trim();
+  if(!text)return 0;
+  const numeric=Number(text);
+  if(Number.isFinite(numeric))return Math.max(0,Math.round(numeric));
+  const normalized=text.replace(/[^\d,.-]/g,'').replace(/\./g,'').replace(',','.');
+  const amount=Number(normalized);
+  return Number.isFinite(amount)?Math.max(0,Math.round(amount*100)):0;
+};
+const ocrPropertyV21=(key,label,type,value,confidence=0)=>({
+  key,label,type,value,source:'nvidia-vision-ocr',confidence:Math.max(0,Math.min(1,cleanOcrNumberV21(confidence,0)))
+});
+
+
+// BELAVISTA_RECORD_OCR_FAST_VISION_V23
+// BELAVISTA_RECORD_OCR_CAPACITY_FALLBACK_V24B
+// BELAVISTA_RECORD_OCR_SUPPORTED_VLM_V25
+const sleepRecordOcrV25=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+
+function recordOcrSettingsV25(env){
+  const apiKey=nvidiaKey(env);
+
+  const configured=String(
+    env.NVIDIA_RECORD_OCR_MODELS||
+    [
+      env.NVIDIA_RECORD_OCR_MODEL,
+      env.NVIDIA_RECORD_OCR_FALLBACK_MODEL
+    ].filter(Boolean).join(',')
+  )
+    .split(',')
+    .map(value=>value.trim())
+    .filter(Boolean);
+
+  const defaults=[
+    'meta/llama-3.2-11b-vision-instruct',
+    'google/gemma-3-27b-it',
+    'meta/llama-3.2-90b-vision-instruct'
+  ];
+
+  // Modelos que já provaram estar indisponíveis ou inadequados neste fluxo
+  // não entram novamente por configuração antiga.
+  const rejected=new Set([
+    'nvidia/nemotron-nano-12b-v2-vl',
+    'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning'
+  ]);
+
+  const models=[...configured,...defaults]
+    .filter(model=>!rejected.has(model))
+    .filter((model,index,array)=>model&&array.indexOf(model)===index);
+
+  return {
+    apiKey,
+    apiUrl:
+      env.NVIDIA_RECORD_OCR_API_URL||
+      env.NVIDIA_API_URL||
+      env.NVIDIA_NIM_API_URL||
+      'https://integrate.api.nvidia.com/v1/chat/completions',
+    models,
+    primaryRetries:numberSetting(env.NVIDIA_RECORD_OCR_RETRIES,1,{min:0,max:2}),
+    primaryTimeoutMs:numberSetting(env.NVIDIA_RECORD_OCR_TIMEOUT_MS,30_000,{min:8_000,max:45_000}),
+    fallbackTimeoutMs:numberSetting(env.NVIDIA_RECORD_OCR_FALLBACK_TIMEOUT_MS,35_000,{min:8_000,max:50_000}),
+    maxTokens:numberSetting(env.NVIDIA_RECORD_OCR_MAX_TOKENS,1000,{min:256,max:1600})
+  };
+}
+
+const retryableRecordOcrV25=(status,message='')=>
+  status===429||
+  status===503||
+  status===504||
+  /ResourceExhausted|request limit|rate limit|temporar|capacity|timeout/i.test(String(message||''));
+
+const permanentlyUnavailableRecordOcrV25=(status,message='')=>
+  status===404||
+  status===410||
+  /not found|gone|deprecated|no longer available|unsupported model/i.test(String(message||''));
+
+async function recordOcrSingleRequestV25(settings,model,messages,{timeoutMs}={}){
+  const controller=new AbortController();
+  const effectiveTimeout=Number(timeoutMs||settings.primaryTimeoutMs);
+  const timeout=setTimeout(()=>controller.abort(),effectiveTimeout);
+  const startedAt=Date.now();
+
+  try{
+    const response=await fetch(settings.apiUrl,{
+      method:'POST',
+      headers:{
+        'content-type':'application/json',
+        accept:'application/json',
+        authorization:'Bearer '+settings.apiKey
+      },
+      body:JSON.stringify({
+        model,
+        messages,
+        temperature:0,
+        top_p:0.1,
+        max_tokens:settings.maxTokens,
+        stream:false
+      }),
+      signal:controller.signal
+    });
+
+    const payload=await response.json().catch(()=>({}));
+    const detail=String(payload?.error?.message||payload?.detail||'');
+
+    if(!response.ok){
+      return {
+        ok:false,
+        status:response.status,
+        detail,
+        retryable:retryableRecordOcrV25(response.status,detail),
+        permanent:permanentlyUnavailableRecordOcrV25(response.status,detail),
+        elapsedMs:Date.now()-startedAt
+      };
+    }
+
+    const content=String(payload?.choices?.[0]?.message?.content||'').trim();
+
+    if(!content){
+      return {
+        ok:false,
+        status:502,
+        detail:'conteúdo vazio',
+        retryable:false,
+        permanent:false,
+        elapsedMs:Date.now()-startedAt
+      };
+    }
+
+    return {
+      ok:true,
+      content,
+      model,
+      endpoint:settings.apiUrl,
+      elapsedMs:Date.now()-startedAt
+    };
+  }catch(error){
+    const timedOut=error?.name==='AbortError'||controller.signal.aborted;
+
+    return {
+      ok:false,
+      status:timedOut?504:502,
+      detail:timedOut?'timeout':String(error?.message||error),
+      retryable:timedOut,
+      permanent:false,
+      elapsedMs:Date.now()-startedAt
+    };
+  }finally{
+    clearTimeout(timeout);
+  }
+}
+
+async function recordOcrNvidiaRequestV25(env,messages){
+  const settings=recordOcrSettingsV25(env);
+
+  if(!settings.apiKey){
+    const error=new Error('OCR de registro: NVIDIA_API_KEY não configurada.');
+    error.statusCode=502;
+    throw error;
+  }
+
+  if(!settings.models.length){
+    const error=new Error('OCR de registro: nenhum VLM NVIDIA disponível configurado.');
+    error.statusCode=502;
+    throw error;
+  }
+
+  const attempts=[];
+
+  for(let modelIndex=0;modelIndex<settings.models.length;modelIndex++){
+    const model=settings.models[modelIndex];
+    const maxAttempts=modelIndex===0?settings.primaryRetries+1:1;
+    const timeoutMs=modelIndex===0
+      ? settings.primaryTimeoutMs
+      : settings.fallbackTimeoutMs;
+
+    for(let attempt=1;attempt<=maxAttempts;attempt++){
+      const result=await recordOcrSingleRequestV25(
+        settings,
+        model,
+        messages,
+        {timeoutMs}
+      );
+
+      attempts.push({
+        model,
+        attempt,
+        status:result.status||200,
+        retryable:Boolean(result.retryable),
+        permanent:Boolean(result.permanent),
+        elapsedMs:result.elapsedMs,
+        detail:String(result.detail||'').slice(0,180)
+      });
+
+      if(result.ok){
+        return {...result,attempts};
+      }
+
+      // 404/410: não gasta retry; passa imediatamente ao próximo VLM.
+      if(result.permanent)break;
+
+      // 4xx/5xx não-transitório: pula para próximo VLM.
+      if(!result.retryable)break;
+
+      // Só o modelo primário recebe retry local.
+      if(attempt<maxAttempts){
+        await sleepRecordOcrV25(1400*attempt);
+      }
+    }
+  }
+
+  const error=new Error(
+    'OCR NVIDIA indisponível em todos os VLMs. '+
+    attempts.map(item=>item.model+'#'+item.attempt+'='+item.status).join(', ')
+  );
+  error.statusCode=503;
+  error.retryable=true;
+  error.ocrAttempts=attempts;
+  throw error;
+}
+
+
+// BELAVISTA_RECORD_OCR_JSON_REPAIR_V26B
+function extractBalancedJsonObjectV26b(value){
+  const text=String(value??'');
+  let start=-1;
+  let depth=0;
+  let quote='';
+  let escaped=false;
+
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+
+    if(quote){
+      if(escaped){
+        escaped=false;
+        continue;
+      }
+      if(ch==='\\'){
+        escaped=true;
+        continue;
+      }
+      if(ch===quote){
+        quote='';
+      }
+      continue;
+    }
+
+    // JSON válido usa aspas duplas; o normalizador também tolera aspas simples.
+    if(ch==='"'||ch==="'"){
+      quote=ch;
+      continue;
+    }
+
+    if(ch==='{'){
+      if(depth===0)start=i;
+      depth++;
+      continue;
+    }
+
+    if(ch==='}'&&depth>0){
+      depth--;
+      if(depth===0&&start>=0){
+        return text.slice(start,i+1);
+      }
+    }
+  }
+
+  return '';
+}
+
+function convertSingleQuotedJsonStringsV26b(value){
+  const text=String(value??'');
+  let out='';
+  let inSingle=false;
+  let inDouble=false;
+  let escaped=false;
+
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+
+    if(inDouble){
+      out+=ch;
+      if(escaped){
+        escaped=false;
+      }else if(ch==='\\'){
+        escaped=true;
+      }else if(ch==='"'){
+        inDouble=false;
+      }
+      continue;
+    }
+
+    if(inSingle){
+      if(escaped){
+        if(ch==="'"){
+          out+="'";
+        }else{
+          out+='\\'+ch;
+        }
+        escaped=false;
+        continue;
+      }
+
+      if(ch==='\\'){
+        escaped=true;
+        continue;
+      }
+
+      if(ch==="'"){
+        out+='"';
+        inSingle=false;
+        continue;
+      }
+
+      if(ch==='"'){
+        out+='\\"';
+      }else if(ch==='\n'){
+        out+='\\n';
+      }else if(ch==='\r'){
+        out+='\\r';
+      }else{
+        out+=ch;
+      }
+      continue;
+    }
+
+    if(ch==='"'){
+      inDouble=true;
+      out+=ch;
+      continue;
+    }
+
+    if(ch==="'"){
+      inSingle=true;
+      out+='"';
+      continue;
+    }
+
+    out+=ch;
+  }
+
+  return out;
+}
+
+function normalizeJsonishOcrV26b(value){
+  let text=String(value??'')
+    .replace(/^\uFEFF/,'')
+    .replace(/<think>[\s\S]*?<\/think>/gi,'')
+    .replace(/~~~(?:json|javascript|js)?/gi,'')
+    .replace(/~~~/g,'')
+    .replace(/[“”]/g,'"')
+    .replace(/[‘’]/g,"'")
+    .trim();
+
+  // Remove cercas markdown com crases sem usar crase literal neste aplicador.
+  const fence=String.fromCharCode(96).repeat(3);
+  text=text
+    .split(fence+'json').join('')
+    .split(fence+'javascript').join('')
+    .split(fence+'js').join('')
+    .split(fence).join('')
+    .trim();
+
+  const balanced=extractBalancedJsonObjectV26b(text);
+  if(balanced)text=balanced;
+
+  text=text
+    .replace(/\bTrue\b/g,'true')
+    .replace(/\bFalse\b/g,'false')
+    .replace(/\bNone\b/g,'null')
+    .replace(/,\s*([}\]])/g,'$1')
+    .replace(/([{,]\s*)([A-Za-z_][A-Za-z0-9_-]*)(\s*:)/g,'$1"$2"$3');
+
+  if(/'/.test(text)){
+    text=convertSingleQuotedJsonStringsV26b(text);
+  }
+
+  return text.trim();
+}
+
+function parseOcrJsonV26b(value){
+  const direct=parseMaybeJson(value,null);
+  if(direct&&typeof direct==='object'){
+    return {value:direct,mode:'direct'};
+  }
+
+  const normalized=normalizeJsonishOcrV26b(value);
+  if(normalized){
+    try{
+      const parsed=JSON.parse(normalized);
+      if(parsed&&typeof parsed==='object'){
+        return {value:parsed,mode:'local-normalize'};
+      }
+    }catch{}
+  }
+
+  return {value:null,mode:'failed'};
+}
+
+async function repairOcrJsonWithTextModelV26b(env,rawText){
+  const apiKey=nvidiaKey(env);
+  if(!apiKey)return null;
+
+  const model=
+    env.NVIDIA_RECORD_OCR_REPAIR_MODEL||
+    env.NVIDIA_STATE_MODEL||
+    env.NVIDIA_MODEL||
+    '';
+
+  if(!model)return null;
+
+  const apiUrl=
+    env.NVIDIA_RECORD_OCR_API_URL||
+    env.NVIDIA_API_URL||
+    env.NVIDIA_NIM_API_URL||
+    'https://integrate.api.nvidia.com/v1/chat/completions';
+
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),15_000);
+
+  try{
+    const response=await fetch(apiUrl,{
+      method:'POST',
+      headers:{
+        'content-type':'application/json',
+        accept:'application/json',
+        authorization:'Bearer '+apiKey
+      },
+      body:JSON.stringify({
+        model,
+        messages:[{
+          role:'user',
+          content:[
+            'Converta o conteúdo abaixo em JSON estritamente válido.',
+            'NÃO altere, complete, traduza ou invente valores.',
+            'NÃO faça OCR novamente.',
+            'Apenas repare sintaxe: aspas, vírgulas, chaves e literais.',
+            'Retorne somente o objeto JSON, sem markdown.',
+            '',
+            String(rawText??'').slice(0,14000)
+          ].join('\n')
+        }],
+        temperature:0,
+        top_p:0.1,
+        max_tokens:1300,
+        stream:false
+      }),
+      signal:controller.signal
+    });
+
+    if(!response.ok)return null;
+
+    const payload=await response.json().catch(()=>({}));
+    const content=String(payload?.choices?.[0]?.message?.content||'').trim();
+    if(!content)return null;
+
+    const parsed=parseOcrJsonV26b(content);
+    if(!parsed.value)return null;
+
+    return {
+      value:parsed.value,
+      model,
+      mode:'text-repair'
+    };
+  }catch{
+    return null;
+  }finally{
+    clearTimeout(timeout);
+  }
+}
+
+export async function extractInstantRecordOcr(env,{attachment,context=null}={}){
+  const image=normalizeVisionAttachment(attachment);
+  if(!image){const error=new Error('OCR de registro: imagem PNG/JPEG/WEBP válida é obrigatória.');error.statusCode=400;throw error;}
+  const settings=recordOcrSettingsV25(env);
+  if(!settings.apiKey){const error=new Error('OCR de registro: NVIDIA_API_KEY não configurada.');error.statusCode=502;throw error;}
+
+  const prompt=[
+    'Leia o documento anexado como OCR estruturado para um formulário operacional de obra.',
+    'Não invente valores que não estejam visíveis. O resultado será revisado por uma pessoa antes de ser gravado.',
+    'Se for nota fiscal, extraia número, série, emissão, fornecedor, CNPJ, chave de acesso, valor total e todos os itens.',
+    'Para itens, preserve código/materialId impresso quando existir; quantidade e valores devem ser numéricos.',
+    'Valores monetários DEVEM ser retornados em centavos inteiros.',
+    'Para cada item, classifique itemKind como material, servico ou outro. Quando houver evidência suficiente, sugira stageKey/stageName, activityId/activityName e materialId/materialName. Nunca trate sugestão como confirmação; use vazio quando não houver correspondência segura.',
+    'servico deve representar mão de obra/serviço contratado; material deve representar insumo, equipamento ou componente físico.',
+    'Além dos campos conhecidos, devolva dynamicFields para qualquer propriedade adicional realmente visível.',
+    'Responda SOMENTE JSON no formato:',
+    JSON.stringify({documentType:'purchase_invoice|purchase_receipt|other',confidence:0,invoiceNumber:'',series:'',issueDate:'',supplier:'',supplierCnpj:'',accessKey:'',totalAmountCents:0,items:[{itemKind:'material|servico|outro',materialId:'',materialName:'',description:'',quantity:0,unit:'',unitPriceCents:0,totalPriceCents:0,stageKey:'',stageName:'',activityId:'',activityName:'',confidence:0}],dynamicFields:[{key:'',label:'',type:'text|number|date|currency',value:'',confidence:0}]}),
+    'Contexto da interface: '+truncate(JSON.stringify(context||{}),1200)
+  ].join('\n');
+
+  const ocrRequestV25=await recordOcrNvidiaRequestV25(env,[{
+    role:'user',
+    content:[
+      {
+        type:'text',
+        text:[
+          'Você é um extrator OCR multimodal.',
+          'Extraia somente fatos legíveis do documento.',
+          'Não execute ações operacionais.',
+          'Responda apenas JSON válido.',
+          prompt
+        ].join('\n')
+      },
+      {
+        type:'image_url',
+        image_url:{url:image.dataUrl}
+      }
+    ]
+  }]);
+  const response=ocrRequestV25.content;
+  let parsedResultV26b=parseOcrJsonV26b(response);
+  let parsed=parsedResultV26b.value;
+  let parseModeV26b=parsedResultV26b.mode;
+  let repairModelV26b='';
+
+  if(!parsed||typeof parsed!=='object'){
+    const repairedV26b=await repairOcrJsonWithTextModelV26b(env,response);
+    if(repairedV26b?.value){
+      parsed=repairedV26b.value;
+      parseModeV26b=repairedV26b.mode;
+      repairModelV26b=repairedV26b.model||'';
+    }
+  }
+
+  if(!parsed||typeof parsed!=='object'){
+    const error=new Error(
+      'OCR de registro: resposta visual recebida, mas não foi possível normalizar o JSON.'
+    );
+    error.statusCode=502;
+    error.ocrParseMode=parseModeV26b;
+    error.ocrRawLength=String(response||'').length;
+    throw error;
+  }
+
+  const confidence=Math.max(0,Math.min(1,cleanOcrNumberV21(parsed.confidence,0)));
+  const items=(Array.isArray(parsed.items)?parsed.items:[]).slice(0,50).map((item,index)=>({
+    index,
+    materialId:cleanOcrTextV21(item?.materialId||item?.code||item?.codigo,120),
+    description:cleanOcrTextV21(item?.description||item?.name||item?.descricao,240),
+    quantity:cleanOcrNumberV21(item?.quantity||item?.quantidade,0),
+    unit:cleanOcrTextV21(item?.unit||item?.unidade,30),
+    unitPriceCents:cleanOcrCentsV21(item?.unitPriceCents??item?.unitPrice??item?.valorUnitario),
+    totalPriceCents:cleanOcrCentsV21(item?.totalPriceCents??item?.totalPrice??item?.valorTotal),
+    itemKind:cleanOcrTextV21(item?.itemKind||item?.kind||item?.tipo,30).toLowerCase() || 'outro',
+    materialName:cleanOcrTextV21(item?.materialName||item?.material||item?.description||item?.descricao,160),
+    stageKey:cleanOcrTextV21(item?.stageKey||item?.etapaKey,100),
+    stageName:cleanOcrTextV21(item?.stageName||item?.etapa,160),
+    activityId:cleanOcrTextV21(item?.activityId||item?.atividadeId,100),
+    activityName:cleanOcrTextV21(item?.activityName||item?.atividade||item?.serviceName,160),
+    confidence:Math.max(0,Math.min(1,cleanOcrNumberV21(item?.confidence,confidence)))
+  }));
+
+  const base=[
+    ['invoiceNumber','Número da NF','text',cleanOcrTextV21(parsed.invoiceNumber||parsed.documentNumber,80)],
+    ['series','Série','text',cleanOcrTextV21(parsed.series,40)],
+    ['issueDate','Data de emissão','date',cleanOcrTextV21(parsed.issueDate,30)],
+    ['supplier','Fornecedor','text',cleanOcrTextV21(parsed.supplier,160)],
+    ['supplierCnpj','CNPJ do fornecedor','text',cleanOcrTextV21(parsed.supplierCnpj||parsed.cnpj,40)],
+    ['accessKey','Chave de acesso','text',cleanOcrTextV21(parsed.accessKey,100)],
+    ['totalAmountCents','Valor total da nota','currency',cleanOcrCentsV21(parsed.totalAmountCents??parsed.totalAmount)]
+  ].filter(([, , ,value])=>value!==''&&value!==0);
+
+  const properties=base.map(([key,label,type,value])=>ocrPropertyV21(key,label,type,value,confidence));
+  for(const field of (Array.isArray(parsed.dynamicFields)?parsed.dynamicFields:[]).slice(0,RECORD_OCR_MAX_PROPERTIES_V21-properties.length)){
+    const key=cleanOcrTextV21(field?.key,80);
+    if(!key||properties.some(item=>item.key===key))continue;
+    properties.push(ocrPropertyV21(key,cleanOcrTextV21(field?.label||key,120),cleanOcrTextV21(field?.type||'text',24),field?.value??'',field?.confidence??confidence));
+  }
+  properties.push(ocrPropertyV21('items','Itens','items',items,confidence));
+  return {
+    documentType:cleanOcrTextV21(parsed.documentType||'other',50),
+    confidence,
+    properties,
+    items,
+    reviewRequired:true,
+    provider:'nvidia-api',
+    vision:true,
+    model:ocrRequestV25.model,
+    endpoint:ocrRequestV25.endpoint,
+    latencyMs:ocrRequestV25.elapsedMs,
+    ocrProfile:'json-repair-v26b',ocrAttempts:ocrRequestV25.attempts,ocrParseMode:parseModeV26b,ocrRepairModel:repairModelV26b
   };
 }
 

@@ -1,0 +1,61 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
+const read=file=>fs.readFileSync(path.join(root,file),'utf8');
+const components=read('components.js');
+const styles=read('styles.css');
+const html=read('index.html');
+const recordsDrill=read('records-activity-drill-in-v5377.mjs');
+
+test('dashboard mantém a infraestrutura de camadas para a cena e separa o seletor de resumo',()=>{
+  assert.match(components,/normalizeStageOverlayKeysV1/);
+  assert.match(components,/blendStageOverlayColorV1/);
+  assert.match(components,/MapScene\.prototype\.setStageOverlays/);
+  assert.match(components,/state\.mapFilters/);
+  assert.match(components,/mapFilterSelectionKeyV1/);
+  assert.match(components,/mapFilters:\[key\],mapFilter:key,mapFilterWidget:key/);
+  assert.doesNotMatch(components,/map\?\.setStageOverlays\?\.\(overlays,false\)/);
+  assert.match(components,/overlayLayerCount/);
+  assert.match(components,/stageOverlayMaterial\(item,matches\[0\],color\)/);
+});
+
+test('seletor de resumos preserva estado acessível e permite limpar a seleção',()=>{
+  assert.match(components,/aria-pressed=/);
+  assert.match(components,/data-map-filter-clear/);
+  assert.match(components,/selecione um item para abrir seu resumo e destacar os lotes correspondentes/);
+  assert.match(styles,/DASHBOARD_MAP_SUMMARY_SELECTOR_V1/);
+  assert.match(styles,/\.map-filter-chip\.active::after/);
+  assert.match(components,/mapFilterWidget/);
+  assert.match(components,/this\.querySelector\('\.map-rotation-controls'\)\?\.remove\(\)/);
+  assert.doesNotMatch(read('admin-brand-style-v1.css'),/map-scene\[data-admin-shared-public-map\] \.map-rotation-controls/);
+  assert.match(components,/data-map-summary-widget/);
+  assert.match(components,/data-map-widget-context/);
+  assert.match(components,/stopImmediatePropagation\(\)/);
+  assert.match(components,/MIN_SCENE_ZOOM=\.16/);
+  assert.match(components,/DASHBOARD_INITIAL_SCENE_ZOOM=\.28/);
+  assert.match(components,/DASHBOARD_PAN_BOUNDING_SCREEN_RATIO=\.5/);
+  assert.match(components,/\['assistant','map'\]\.includes\(appStore\.get\(\)\.view\)/);
+  assert.match(components,/somente um resumo fica ativo por vez/);
+  assert.doesNotMatch(components,/const activeMapFilters=Array\.isArray\(state\.mapFilters\)/);
+  assert.doesNotMatch(components,/this\.setStageOverlays\(activeMapOverlays,false\)/);
+  assert.doesNotMatch(components,/if\(Array\.isArray\(s\.mapFilters\)\)/);
+  assert.match(components,/DASHBOARD_FULL_MAP_MIN_ZOOM_V2/);
+  assert.match(components,/mountMap3DLoadingScreenV1/);
+  assert.match(components,/data-map-3d-loading/);
+  assert.match(components,/data-map-3d-loading-backdrop="pdf-page"/);
+  assert.match(styles,/MAP_3D_LOADING_SCREEN_V1/);
+  assert.match(styles,/map-3d-loading-backdrop-page/);
+  assert.match(styles,/1800\/2098/);
+  assert.match(components,/mapFilterSummaryMetricsV1/);
+  assert.match(styles,/MAP_FILTER_SUMMARY_WIDGET_V1/);
+  assert.match(styles,/MAP_HUD_CONTROLS_REMOVED_V1/);
+  assert.match(styles,/map-scene \.map-rotation-controls\{display:none!important/);
+  assert.match(html,/styles\.css\?v=stage-home-raid-ai-records-calendar-v8-20260915/);
+  assert.match(html,/admin-original-bootstrap-v5351\.mjs\?v=map-pdf-texture-bright-aligned-v26-20260915/);
+  assert.match(html,/records-activity-drill-in-v5377\.mjs\?v=map-pdf-texture-bright-aligned-v26-20260915/);
+  assert.match(recordsDrill,/components\.js\?v=map-pdf-texture-bright-aligned-v26-20260915&route=ngrok-route-v1/);
+});

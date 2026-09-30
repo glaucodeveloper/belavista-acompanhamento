@@ -9,6 +9,28 @@ function text(value,fallback=''){
   return String(value??fallback).trim();
 }
 
+function mapAreaValue(input={}){
+  const value=input.mapArea|| (Array.isArray(input.partIds)&&input.partIds.length?{partIds:input.partIds}:null);
+  if(!value)return '';
+  if(typeof value==='string')return value.trim();
+  try{return JSON.stringify(value);}catch{return '';}
+}
+
+function recordPropertiesValue(input={},fallback='[]'){
+  if(input.properties===undefined)return text(fallback,'[]');
+  let value=input.properties;
+  if(typeof value==='string'){try{value=JSON.parse(value);}catch{value=[];}}
+  if(!Array.isArray(value))value=[];
+  return JSON.stringify(value.slice(0,40));
+}
+
+function hydrateRecord(row){
+  if(!row)return row;
+  let properties=[];
+  try{properties=JSON.parse(row.propertiesJson||'[]');}catch{}
+  return {...row,properties};
+}
+
 function int(value,fallback=0){
   const parsed=Number(value);
   return Number.isFinite(parsed)?Math.round(parsed):fallback;
@@ -49,21 +71,25 @@ export function getApiRuntime(env,origin){
     ai:{
       provider:aiProvider,
       model:nvidiaConfigured?(env.NVIDIA_MODEL||env.NVIDIA_NIM_MODEL||'google/diffusiongemma-26b-a4b-it'):(env.WORKERS_AI_MODEL||'deterministic'),
-      visionModel:env.NVIDIA_VISION_MODEL||'meta/llama-3.2-90b-vision-instruct',
+      visionModel:env.NVIDIA_VISION_MODEL||env.NVIDIA_VLM_MODEL||'meta/llama-3.2-90b-vision-instruct',
+      reasoningVisionModel:env.NVIDIA_REASONING_VISION_MODEL||env.NVIDIA_REASONING_VLM_MODEL||'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning',
+      reasoningVisionEndpoint:env.NVIDIA_REASONING_API_URL||env.NVIDIA_API_URL||env.NVIDIA_NIM_API_URL||'https://integrate.api.nvidia.com/v1/chat/completions',
+      attachmentStorage:(env.BELAVISTA_MEDIA||env.BELAVISTA_UPLOADS)?'cloudflare-r2':'not-configured',
       supportsVision:nvidiaConfigured,
+      supportsImageReasoning:nvidiaConfigured,
       explainMode:'?explain=1'
     }
   };
 }
 
 export async function listRecords(env){
-  return all(env,`SELECT id,project_id AS projectId,stage_name AS etapa,activity_name AS atividade,record_date AS data,record_time AS hora,responsible_name AS responsavel,details AS detalhes,status,evidence_url AS evidenceUri,created_at AS createdAt,updated_at AS updatedAt FROM records ORDER BY record_date DESC,record_time DESC,created_at DESC`);
+  return (await all(env,`SELECT id,project_id AS projectId,stage_name AS etapa,activity_name AS atividade,record_date AS data,record_time AS hora,responsible_name AS responsavel,details AS detalhes,status,evidence_url AS evidenceUri,map_area AS mapArea,properties_json AS propertiesJson,created_at AS createdAt,updated_at AS updatedAt FROM records ORDER BY record_date DESC,record_time DESC,created_at DESC`)).map(hydrateRecord);
 }
 
 export async function insertRecord(env,input={}){
   const id=text(input.id)||createId('REG');
   const createdAt=now();
-  await run(env,`INSERT INTO records (id,project_id,stage_name,activity_name,record_date,record_time,responsible_name,details,status,evidence_url,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+  await run(env,`INSERT INTO records (id,project_id,stage_name,activity_name,record_date,record_time,responsible_name,details,status,evidence_url,map_area,properties_json,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     id,
     text(input.projectId,'belavista'),
     text(input.etapa||input.stage,'Drenagem Pluvial'),
@@ -74,17 +100,19 @@ export async function insertRecord(env,input={}){
     text(input.detalhes||input.details,''),
     text(input.status,'Pendente'),
     text(input.evidenceUri||input.evidenceUrl,''),
+    mapAreaValue(input),
+    recordPropertiesValue(input),
     createdAt,
     createdAt
   );
-  return first(env,`SELECT id,project_id AS projectId,stage_name AS etapa,activity_name AS atividade,record_date AS data,record_time AS hora,responsible_name AS responsavel,details AS detalhes,status,evidence_url AS evidenceUri,created_at AS createdAt,updated_at AS updatedAt FROM records WHERE id=?`,id);
+  return hydrateRecord(await first(env,`SELECT id,project_id AS projectId,stage_name AS etapa,activity_name AS atividade,record_date AS data,record_time AS hora,responsible_name AS responsavel,details AS detalhes,status,evidence_url AS evidenceUri,map_area AS mapArea,properties_json AS propertiesJson,created_at AS createdAt,updated_at AS updatedAt FROM records WHERE id=?`,id));
 }
 
 export async function updateRecord(env,id,input={}){
   const current=await first(env,`SELECT * FROM records WHERE id=?`,id);
   if(!current)throw new Error('Registro não encontrado.');
   const updatedAt=now();
-  await run(env,`UPDATE records SET project_id=?,stage_name=?,activity_name=?,record_date=?,record_time=?,responsible_name=?,details=?,status=?,evidence_url=?,updated_at=? WHERE id=?`,
+  await run(env,`UPDATE records SET project_id=?,stage_name=?,activity_name=?,record_date=?,record_time=?,responsible_name=?,details=?,status=?,evidence_url=?,map_area=?,properties_json=?,updated_at=? WHERE id=?`,
     text(input.projectId,current.project_id),
     text(input.etapa||input.stage,current.stage_name),
     text(input.atividade||input.activity,current.activity_name),
@@ -94,10 +122,12 @@ export async function updateRecord(env,id,input={}){
     text(input.detalhes||input.details,current.details),
     text(input.status,current.status),
     text(input.evidenceUri||input.evidenceUrl,current.evidence_url),
+    mapAreaValue(input)||text(current.map_area),
+    recordPropertiesValue(input,current.properties_json),
     updatedAt,
     id
   );
-  return first(env,`SELECT id,project_id AS projectId,stage_name AS etapa,activity_name AS atividade,record_date AS data,record_time AS hora,responsible_name AS responsavel,details AS detalhes,status,evidence_url AS evidenceUri,created_at AS createdAt,updated_at AS updatedAt FROM records WHERE id=?`,id);
+  return hydrateRecord(await first(env,`SELECT id,project_id AS projectId,stage_name AS etapa,activity_name AS atividade,record_date AS data,record_time AS hora,responsible_name AS responsavel,details AS detalhes,status,evidence_url AS evidenceUri,map_area AS mapArea,properties_json AS propertiesJson,created_at AS createdAt,updated_at AS updatedAt FROM records WHERE id=?`,id));
 }
 
 export async function deleteRecord(env,id){

@@ -7,6 +7,11 @@
 
   function attach(map){
     if(!map||map.dataset.admin3dProbe==='v5353')return;
+    if(map.dataset.mapInit==='admin-static-first-v5370'){
+      map.dataset.admin3dProbe='static-first-isolated';
+      map.dataset.admin3dState='idle-explicit-activation';
+      return;
+    }
     map.dataset.admin3dProbe='v5353';
     map.dataset.admin3dState=map.modelReady?'ready':'loading';
 

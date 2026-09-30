@@ -11,6 +11,7 @@ the source GLB is deliberately not duplicated into this editable scene.
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import bpy
@@ -23,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MODEL_DIR = ROOT / "assets" / "model"
 ROAD_TRACE_PATH = ROOT / "assets" / "data" / "aerial-road-trace-v1.json"
 LOT_TRACE_PATH = ROOT / "assets" / "data" / "aerial-lot-trace-v1.json"
-AERIAL_PATH = ROOT / "assets" / "public" / "alianca-park-aerial-reference-expanded-v1.png"
+AERIAL_PATH = ROOT / "assets" / "public" / "alianca-park-aerial-reference-expanded-v4-4k-600dpi.png"
 OUTPUT_BLEND = MODEL_DIR / "alianca_park_editable_v1.blend"
 OUTPUT_GLB = MODEL_DIR / "alianca_park_editable_v1.glb"
 OUTPUT_PREVIEW = MODEL_DIR / "alianca_park_editable_preview_v1.png"
@@ -98,6 +99,23 @@ def mesh_object(name, vertices, faces, collection, materials=(), face_materials=
     return obj
 
 
+def mesh_object_with_uv(
+    name,
+    vertices,
+    faces,
+    collection,
+    materials=(),
+    uv_corners=None,
+    face_materials=None,
+):
+    obj = mesh_object(name, vertices, faces, collection, materials, face_materials)
+    if uv_corners:
+        uv_layer = obj.data.uv_layers.new(name="UV · máscara contínua de asfalto")
+        for loop, uv in zip(obj.data.loops, uv_corners):
+            uv_layer.data[loop.index].uv = uv
+    return obj
+
+
 def signed_area(points):
     return sum(
         points[index][0] * points[(index + 1) % len(points)][1]
@@ -161,6 +179,182 @@ def triangulate_rings(rings):
     return normalized, [(int(a), int(b), int(c)) for a, b, c in triangles]
 
 
+def make_uv_mask_underlay(
+    road_data, collection, image_size, world_width, world_height, material_surface,
+    *, mask_key="uvMask", object_name="Asfalto · malha UV contínua sem focos vegetais",
+    elevation=ROAD_BASE_Z,
+):
+    mask = road_data.get(mask_key) or {}
+    rows = mask.get("rows")
+    if not isinstance(rows, list) or not rows:
+        return None
+    image_width, image_height = image_size
+    cell_size = max(1, int(mask.get("cellSize") or 2))
+    vertices, faces, uv_corners = [], [], []
+
+    def add_vertex(px, py):
+        x, y = world_xy((px, py), image_width, image_height, world_width, world_height)
+        vertices.append((x, y, elevation))
+        uv_corners.append((px / image_width, 1.0 - py / image_height))
+        return len(vertices) - 1
+
+    for grid_y, spans in enumerate(rows):
+        if not isinstance(spans, list):
+            continue
+        y0 = min(image_height, grid_y * cell_size)
+        y1 = min(image_height, y0 + cell_size)
+        if y1 <= y0:
+            continue
+        for span in spans:
+            if not isinstance(span, list) or len(span) < 2:
+                continue
+            x0 = max(0, min(image_width, int(span[0]) * cell_size))
+            x1 = max(0, min(image_width, int(span[1]) * cell_size))
+            if x1 <= x0:
+                continue
+            # No referencial XY, a ordem começa no canto inferior esquerdo
+            # para manter a normal voltada para cima.
+            start = len(vertices)
+            add_vertex(x0, y1)
+            add_vertex(x1, y1)
+            add_vertex(x1, y0)
+            add_vertex(x0, y0)
+            faces.append((start, start + 1, start + 2, start + 3))
+
+    if not faces:
+        return None
+    underlay = mesh_object_with_uv(
+        object_name,
+        vertices,
+        faces,
+        collection,
+        [material_surface],
+        uv_corners,
+    )
+    underlay["tipo"] = "superfície de asfalto construída por células UV da imagem"
+    underlay["uv_cell_size_px"] = cell_size
+    underlay["uv_faces"] = len(faces)
+    underlay["focos_vegetacao_ignorados"] = True
+    underlay["vazios_estruturais_preservados"] = True
+    return underlay
+
+
+def curve_guides_from_rings(road_data):
+    guides = []
+
+    def distance(a, b):
+        return ((float(a[0]) - float(b[0])) ** 2 + (float(a[1]) - float(b[1])) ** 2) ** 0.5
+
+    def angle_at(previous, current, following):
+        ax = float(previous[0]) - float(current[0])
+        ay = float(previous[1]) - float(current[1])
+        bx = float(following[0]) - float(current[0])
+        by = float(following[1]) - float(current[1])
+        a_len = (ax * ax + ay * ay) ** 0.5
+        b_len = (bx * bx + by * by) ** 0.5
+        if a_len < 0.001 or b_len < 0.001:
+            return 0.0
+        cosine = max(-1.0, min(1.0, (ax * bx + ay * by) / (a_len * b_len)))
+        # 0° é uma reta contínua; só a mudança real de direção recebe guia.
+        return math.pi - math.acos(cosine)
+
+    for road_index, road in enumerate(road_data.get("roads", [])):
+        rings = [("outer-curb", road.get("outer", []))]
+        rings.extend(
+            (f"inner-curb-{hole_index + 1}", hole)
+            for hole_index, hole in enumerate(road.get("holes") or [])
+        )
+        for ring_type, points in rings:
+            if len(points) < 3:
+                continue
+            for index, current in enumerate(points):
+                previous = points[(index - 1) % len(points)]
+                following = points[(index + 1) % len(points)]
+                incoming = distance(previous, current)
+                outgoing = distance(current, following)
+                turn = angle_at(previous, current, following)
+                if incoming < 8 or outgoing < 8 or turn < math.radians(28):
+                    continue
+                trim = min(9.0, incoming * 0.24, outgoing * 0.24)
+                before = (
+                    float(current[0]) + (float(previous[0]) - float(current[0])) * trim / incoming,
+                    float(current[1]) + (float(previous[1]) - float(current[1])) * trim / incoming,
+                )
+                after = (
+                    float(current[0]) + (float(following[0]) - float(current[0])) * trim / outgoing,
+                    float(current[1]) + (float(following[1]) - float(current[1])) * trim / outgoing,
+                )
+                guides.append({
+                    "road": road_index,
+                    "ring": ring_type,
+                    "corner": index,
+                    "turn": turn,
+                    "points": (
+                        before,
+                        (
+                            before[0] + (float(current[0]) - before[0]) * 0.72,
+                            before[1] + (float(current[1]) - before[1]) * 0.72,
+                        ),
+                        (
+                            after[0] + (float(current[0]) - after[0]) * 0.72,
+                            after[1] + (float(current[1]) - after[1]) * 0.72,
+                        ),
+                        after,
+                    ),
+                })
+    guides.sort(key=lambda item: item["turn"], reverse=True)
+    return guides[:48]
+
+
+def cubic_point(points, t):
+    inverse = 1.0 - t
+    p0, p1, p2, p3 = points
+    return (
+        inverse ** 3 * p0[0]
+        + 3 * inverse ** 2 * t * p1[0]
+        + 3 * inverse * t ** 2 * p2[0]
+        + t ** 3 * p3[0],
+        inverse ** 3 * p0[1]
+        + 3 * inverse ** 2 * t * p1[1]
+        + 3 * inverse * t ** 2 * p2[1]
+        + t ** 3 * p3[1],
+    )
+
+
+def make_bezier_curb_guides(road_data, collection, image_size, world_width, world_height, material_guide):
+    image_width, image_height = image_size
+    guides = curve_guides_from_rings(road_data)
+    if not guides:
+        return None
+    curve = bpy.data.curves.new("Guias Bézier · curvas dos meio-fios", "CURVE")
+    curve.dimensions = "3D"
+    curve.resolution_u = 1
+    curve.bevel_depth = 0.012
+    curve.bevel_resolution = 0
+    sample_count = 12
+    for guide in guides:
+        samples = []
+        for step in range(sample_count + 1):
+            px, py = cubic_point(guide["points"], step / sample_count)
+            x, y = world_xy((px, py), image_width, image_height, world_width, world_height)
+            samples.append((x, y, ROAD_SEGMENT_Z + 0.012))
+        # Pequenas splines separadas criam o tracejado sem alterar a face
+        # contínua do asfalto ou a posição dos meio-fios.
+        for start in range(0, len(samples) - 1, 2):
+            spline = curve.splines.new("POLY")
+            spline.points.add(1)
+            spline.points[0].co = (*samples[start], 1.0)
+            spline.points[1].co = (*samples[start + 1], 1.0)
+    obj = bpy.data.objects.new("Guias Bézier tracejadas · curvas entre meio-fios", curve)
+    collection.objects.link(obj)
+    curve.materials.append(material_guide)
+    obj["tipo"] = "tracejado Bézier somente nas esquinas"
+    obj["guias"] = len(guides)
+    obj["trechos_longos"] = "retos, contínuos e limitados pelos meio-fios vetoriais"
+    obj["area_social"] = "limite lateral preservado pela face do asfalto"
+    return obj
+
+
 def make_roads(road_data, collection, image_size, world_width, world_height, base_mat, segment_mat):
     image_width, image_height = image_size
     underlay_vertices, underlay_faces = [], []
@@ -203,6 +397,9 @@ def make_roads(road_data, collection, image_size, world_width, world_height, bas
                 (flat_vectors[index].x, flat_vectors[index].y)
                 for index in triangle
             ]
+            # A base vetorial acompanha os vértices dos meio-fios. A máscara
+            # UV fica apenas como fallback; usar suas células aqui deixava as
+            # retas com bordas serrilhadas no modelo exportado.
             underlay_start = len(underlay_vertices)
             underlay_vertices.extend((x, y, ROAD_BASE_Z) for x, y in points)
             underlay_faces.append((underlay_start, underlay_start + 1, underlay_start + 2))
@@ -227,16 +424,32 @@ def make_roads(road_data, collection, image_size, world_width, world_height, bas
             "areaM2": covered_area,
         })
 
-    underlay = mesh_object(
-        "Asfalto · base contínua sem vãos",
-        underlay_vertices,
-        underlay_faces,
-        collection,
-        [base_mat],
-    )
-    underlay["tipo"] = "preenchimento contínuo sob cada segmento reto"
+    underlay = None
+    if not underlay_vertices:
+        underlay = make_uv_mask_underlay(
+            road_data,
+            collection,
+            image_size,
+            world_width,
+            world_height,
+            base_mat,
+        )
+    if underlay is None:
+        underlay = mesh_object(
+            "Asfalto · base contínua sem vãos",
+            underlay_vertices,
+            underlay_faces,
+            collection,
+            [base_mat],
+        )
+        underlay["tipo"] = "preenchimento contínuo sob cada segmento reto"
     underlay["traçados"] = len(road_records)
     underlay["policy"] = "cada segmento preenchido; nenhuma junta abre o asfalto"
+    underlay["uv_policy"] = (
+        "polígonos vetoriais internos aos meio-fios; pequenos focos de vegetação ignorados"
+        if underlay_vertices
+        else "fallback por máscara UV"
+    )
     return underlay, road_records
 
 
@@ -373,7 +586,8 @@ def main():
     image.pack()
     ground_mat = image_material(image)
     road_base_mat = material("Asfalto · base integral", (0.105, 0.125, 0.15))
-    road_segment_mat = material("Asfalto · segmentos preenchidos", (0.17, 0.19, 0.21))
+    road_segment_mat = material("Asfalto · segmentos preenchidos", (0.105, 0.125, 0.15))
+    road_guide_mat = material("Meio-fio · guia Bézier tracejada", (0.72, 0.78, 0.82))
     lot_side_mat = material("Lote · laterais", (0.19, 0.40, 0.27), alpha=0.50)
     lot_top_mat = material("Lote · face superior translúcida", (0.31, 0.68, 0.42), alpha=0.26)
     boundary_mat = material("Divisa · verde escuro", (0.10, 0.25, 0.16), alpha=0.72)
@@ -409,6 +623,17 @@ def main():
         road_base_mat,
         road_segment_mat,
     )
+    bezier_guides = make_bezier_curb_guides(
+        road_data,
+        road_collection,
+        (image_width, image_height),
+        world_width,
+        world_height,
+        road_guide_mat,
+    )
+    if bezier_guides:
+        underlay["guias_bezier"] = int(bezier_guides.get("guias", 0))
+        underlay["politica_trechos_longos"] = "retos, contínuos e limitados pelos meio-fios"
     underlay["segmentos_preenchidos"] = len(roads)
     underlay["area_coberta"] = "Todos os polígonos do traçado, inclusive cruzamentos"
 

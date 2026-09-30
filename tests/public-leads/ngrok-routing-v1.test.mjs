@@ -15,7 +15,7 @@ test('recursos públicos usam o prefixo do túnel e não URLs absolutas quebrada
   assert.match(context,/runtimeUrlV1\('\/assets\/data\/dwg-georeference\.json'/);
   assert.match(context,/runtimeUrlV1\('\/assets\/data\/public-record-stage-state-v5330\.json'/);
   assert.match(context,/runtimeUrlV1\('\/api\/records'/);
-  assert.match(context,/runtimeUrlV1\('\/assets\/public\/alianca-park-logo-mark-transparent-v551\.png'/);
+  assert.match(context,/runtimeUrlV1\('\/assets\/public\/alianca-park-logo-mark-transparent-v551\.png\?edited=20260915'/);
   assert.match(activityLayer,/runtimeUrlV1\('\/api\/workbench\/state\?resource=activity-map'/);
   assert.match(components,/runtimeRouteV1\('\/assets\/model\/alianca_park_masterplan_preview\.glb'/);
 });

@@ -1,0 +1,16 @@
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #f4f4f5;
+  background: #0d1117;
+}
+* { box-sizing: border-box; }
+html, body, #ruby-root { margin: 0; min-height: 100%; }
+body { min-height: 100vh; }
+.shell { max-width: 920px; margin: 0 auto; padding: 32px 20px 80px; }
+.card { border: 1px solid #2f3742; border-radius: 18px; padding: 20px; background: #151b23; }
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+button { border: 0; border-radius: 12px; padding: 12px 16px; font: inherit; cursor: pointer; }
+small { opacity: .72; }
+
+#alianca-menu{display:none} #alianca-nav label{font-size:12px;color:#b5c3d7}
+@media(max-width:760px){#alianca-shell{grid-template-columns:minmax(0,1fr)!important;padding-top:48px;box-sizing:border-box}#alianca-nav{display:none}#alianca-menu{display:block;position:fixed;inset:0 0 auto;height:48px;background:#0b1422;color:white;border:0;text-align:left;padding:0 16px;z-index:100}html.alianca-menu-open #alianca-nav{display:block;position:fixed;top:48px;bottom:0;left:0;width:260px;box-sizing:border-box;z-index:80}html.alianca-menu-open #alianca-program-layer,html.alianca-menu-open #instagram-direct-layer{visibility:hidden!important}}

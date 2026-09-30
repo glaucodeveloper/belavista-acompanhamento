@@ -1,0 +1,60 @@
+import { test, expect } from '@playwright/test';
+
+test.use({ serviceWorkers: 'block' });
+
+test('controle de lote abre em modal e toolbar executa CRUD', async ({ page }) => {
+  await page.addInitScript(() => {
+    globalThis.BELAVISTA_DISABLE_SERVICE_WORKER = true;
+    globalThis.BELAVISTA_ADMIN_ACTOR = { uid: 'e2e-owner', name: 'Teste', role: 'developer', label: 'Teste' };
+  });
+  await page.route('**/admin-auth.mjs*', (route) => route.fulfill({ contentType: 'text/javascript', body: 'globalThis.BELAVISTA_ADMIN_AUTH_REQUIRED=false;globalThis.BELAVISTA_ADMIN_AUTH_READY=Promise.resolve(true);' }));
+  await page.route('**/api/**', (route) => route.fulfill({ json: { ok: true, records: [], items: [], attachments: [], notifications: [], leads: [], reservations: [], entries: [], stages: [], events: [], summary: { balanceCents: 0 }, requests: [], sales: [] } }));
+  await page.goto('/admin?demo=1&view=brokers-board', { waitUntil: 'domcontentloaded' });
+  const catalog = page.locator('[data-lot-price-catalog]');
+  await expect(catalog).toBeVisible({ timeout: 20000 });
+  const firstRow = catalog.locator('[data-lot-catalog-row]').first();
+  const lotKey = await firstRow.getAttribute('data-lot-key');
+  await firstRow.click();
+  const modal = page.locator('body > .lot-status-modal[data-lot-floating-control]');
+  await expect(modal).toBeVisible();
+  await expect(modal.locator('[name="lotKey"]')).toHaveValue(lotKey);
+  await modal.locator('[name="status"]').selectOption('Reservado');
+  await modal.getByRole('button', { name: 'Salvar controle do lote' }).click();
+  await expect(modal).toBeHidden();
+  await expect(firstRow.locator('[data-lot-status-cell]')).toHaveText('Reservado');
+  await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem('belavista.ui-memory.v1') || '{}').state?.lotStatuses?.[key]?.status, lotKey)).toBe('Reservado');
+  await expect(catalog.locator('[data-lot-control-edit]')).toBeEnabled();
+  await expect(catalog.locator('[data-lot-control-delete]')).toBeEnabled();
+  await catalog.locator('[data-lot-control-edit]').click();
+  await expect(modal).toBeVisible();
+  await modal.locator('[data-lot-status-close]').last().click();
+  await catalog.locator('[data-lot-catalog-filter]').fill('sem lote correspondente');
+  await expect(firstRow).toBeHidden();
+  await catalog.locator('[data-lot-filter-clear]').click();
+  await expect(firstRow).toBeVisible();
+  page.once('dialog', (dialog) => dialog.accept());
+  await catalog.locator('[data-lot-control-delete]').click();
+  await expect(firstRow.locator('[data-lot-status-cell]')).toHaveText('Disponível');
+  await expect(catalog.locator('[data-lot-control-delete]')).toBeDisabled();
+  await catalog.locator('[data-lot-control-new]').click();
+  await expect(modal).toBeVisible();
+  await expect(modal.locator('[data-lot-status-picker]')).toHaveValue(lotKey);
+  await modal.locator('[data-lot-status-close]').last().click();
+  await catalog.locator('[data-lot-control-repasse]').click();
+  await expect(page.locator('[data-repasse-entry-form] [name="lot"]')).toHaveValue(lotKey);
+
+  const servicePosts = [];
+  page.on('request', (request) => { if (request.method() === 'POST' && request.url().includes('/api/service-requests')) servicePosts.push(request.url()); });
+  const chat = page.locator('[data-worker-context-assistant]');
+  await chat.locator('textarea[name="message"]').fill(`Altere o status do lote ${lotKey} para Vendido`);
+  await chat.locator('[data-worker-chat-submit]').click();
+  await expect(chat.locator('[data-worker-chat-log]')).toContainText(`${lotKey}: status alterado para Vendido.`);
+  await expect(catalog.locator(`[data-lot-key="${lotKey}"] [data-lot-status-cell]`)).toHaveText('Vendido');
+  expect(servicePosts).toHaveLength(0);
+  await chat.locator('textarea[name="message"]').fill('Altere o status do lote QA-999 para Reservado');
+  await chat.locator('[data-worker-chat-submit]').click();
+  await expect(chat.locator('[data-worker-chat-log]')).toContainText('não consta da tabela de lotes');
+  await expect(catalog.locator(`[data-lot-key="${lotKey}"] [data-lot-status-cell]`)).toHaveText('Vendido');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.locator(`[data-lot-price-catalog] [data-lot-key="${lotKey}"] [data-lot-status-cell]`)).toHaveText('Vendido');
+});

@@ -19,6 +19,10 @@ test('ruas nativas são recortadas pela face superior em blocos físicos',()=>{
   assert.match(source,/cells\.push\(\{column,row,x:centerX,z:centerZ,angle\}\)/);
   assert.match(source,/quaternion\.setFromAxisAngle\(upAxis,cell\.angle\+Math\.PI\/4\)/);
   assert.match(source,/streetAlignment:'eixo local da via \+ 45deg de assentamento'/);
+  assert.match(source,/ROAD_HALF_LOT_SLICE_WORLD_V1 = 5/);
+  assert.match(source,/streetSliceDividers: true/);
+  assert.match(source,/streetSliceOrientation: "transversal ao eixo local da rua"/);
+  assert.match(source,/publicRoadCoverage = "todas as faces superiores das ruas preenchidas"/);
   assert.match(source,/source\.raycast=\(\)=>\{\}/);
   assert.doesNotMatch(source,/if\(nativeSources\.length\)\{[\s\S]*?return nativeSources;/);
 });

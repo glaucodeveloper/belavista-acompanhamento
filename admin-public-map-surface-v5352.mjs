@@ -10,6 +10,14 @@
 
   function configure(map){
     if(!map||map.dataset.adminPublicMapConfigured==='true')return;
+    // O dashboard passou a abrir em uma superfície aérea estática. As regras
+    // antigas de ponte pública escondiam o .map-host e aguardavam Three.js;
+    // nesse modo a base já está pronta e o 3D só pode ser ativado pelo botão.
+    if(map.dataset.mapInit==='admin-static-first-v5370'){
+      map.dataset.adminPublicMapConfigured='static-first-isolated';
+      map.dataset.adminPublicMapBridge='deferred-until-3d-activation';
+      return;
+    }
     map.dataset.adminPublicMapConfigured='true';
     map.dataset.adminMapSource='public-leads-map-scene';
     map.dataset.publicPresentation='true';
@@ -27,19 +35,21 @@
       leaflet.style.pointerEvents='none';
     }
 
-    // Mesmo preset inicial do /leads. Atribuição direta evita registrar a
-    // calibração automática como uma interação manual do operador.
+    // O administrativo usa um preset visual fixo, oposto ao frame inicial do
+    // loading. Atribuição direta evita registrar a calibração automática como
+    // uma interação manual do operador.
     map.sceneManualPan={x:0,y:0};
-    map.sceneManualRotation=0;
+    map.sceneManualRotation=180;
     map.sceneTiltAdjust=0;
     map.sceneManualZoom=1.62;
     map.sceneUserInteracted=true;
     map.style?.setProperty('--scene-pan-x','0px');
     map.style?.setProperty('--scene-pan-y','0px');
-    map.setSceneVisual?.(22,0,1.62);
+    map.setSceneVisual?.(22,180,1.62);
 
-    map.dataset.adminPublicPreset='pan0,0-rotation0-zoom1.62';
+    map.dataset.adminPublicPreset='pan0,0-rotation180-zoom1.62';
     map.dataset.adminPublicCameraPreset='true';
+    map.dataset.adminMapRotationLock='180deg-fixed';
     map.dataset.adminPublicMapBase='satellite-georeferenced-dashboard-reference';
     document.documentElement.dataset.adminPublicMapSurface='v5352';
     alignDwgSatelliteFrame(map);

@@ -10,14 +10,14 @@
   <link rel="icon" href="/assets/icons/icon-192.png">
   <link rel="stylesheet" href="/styles.css?v=activity-location-v1">
   <link rel="stylesheet" href="/admin-workers.css?v=development-cycle-v5375">
-  <link rel="stylesheet" href="/stage-workbench.css?v=stage-input-sessions-v5379">
+  <link rel="stylesheet" href="/stage-workbench.css?v=activity-record-page-v5386">
   <link rel="stylesheet" href="/stage-attachments.css?v=1">
   <link rel="stylesheet" href="/stage-notifications.css?v=1">
   <link rel="stylesheet" href="/activity-map-editor.css?v=street-paver-map-layout-v5378">
   <link rel="stylesheet" href="/activity-map-container-v5380.css?v=bounded-activity-map-v5380">
-  <link rel="stylesheet" href="/activity-map-layer.css?v=1">
+  <link rel="stylesheet" href="/activity-map-layer.css?v=lead-number-markers-v3">
   <link rel="stylesheet" href="/admin-test-controls.css?v=1">
-  <link rel="stylesheet" href="/worker-context-chat.css?v=worker-chat-v5407">
+  <link rel="stylesheet" href="/worker-context-chat.css?v=worker-chat-image-reasoning-v3">
   <script src="/login-crash-profiler.js?v=1" defer></script>
   <!--
     O workbench dedicado usa a cena Three.js sem Leaflet. Não carregar um
@@ -119,7 +119,7 @@
     <div class="communication-scrim" data-communication-close></div>
     <aside class="communication-sidebar" data-communication-sidebar aria-label="Comunicações em tempo real" aria-hidden="true">
       <header><div><span class="eyebrow">REALTIME DATABASE</span><h2>Comunicações</h2></div><button data-communication-close aria-label="Fechar">×</button></header>
-      <nav class="communication-tabs"><button data-communication-tab="notifications" class="is-active">Notificações</button><button data-communication-tab="messages">Mensagens</button></nav>
+      <nav class="communication-tabs"><button data-communication-tab="notifications" class="is-active">Notificações</button><button data-communication-tab="messages">Pessoal</button><button data-communication-tab="social">Instagram</button></nav>
       <section class="communication-view is-active" data-communication-view="notifications">
         <div class="push-card"><div><strong>Notificações no celular</strong><span>Agenda, cronograma, materiais, caixa e novas mensagens.</span></div><button class="button button-primary" data-enable-push>Ativar</button><small data-push-status>Aguardando permissão deste dispositivo.</small></div>
         <div class="notification-feed" data-notification-feed><div class="empty-state">Conectando ao canal de notificações…</div></div>
@@ -130,15 +130,19 @@
           <section class="conversation-panel"><header data-conversation-head><strong>Selecione um contato</strong><span>Mensagens internas do projeto</span></header><div class="message-feed" data-message-feed><div class="empty-state">Escolha uma pessoa na lista para conversar.</div></div><form class="message-compose" data-message-form><textarea name="message" rows="2" maxlength="2000" placeholder="Escreva uma atualização operacional…" disabled></textarea><button class="button button-primary" disabled>Enviar</button></form></section>
         </div>
       </section>
+      <section class="communication-view" data-communication-view="social">
+        <div class="social-toolbar"><div><strong>Conversas do Instagram</strong><small data-social-status>Verificando Instagram Messaging API…</small></div><div class="social-channel-tabs"><button data-social-channel="instagram" class="is-active">Instagram</button></div></div>
+        <div class="messenger-layout social-messenger-layout"><nav class="contact-sidebar"><label><span>LEADS / CONVERSAS</span><input type="search" data-social-search placeholder="Buscar lead ou identificador"></label><div data-social-list><div class="empty-state">Carregando conversas externas…</div></div></nav><section class="conversation-panel"><header data-social-conversation-head><strong>Selecione uma conversa</strong><span>Mensagens Meta entram aqui após o webhook.</span></header><div class="message-feed" data-social-feed><div class="empty-state">Nenhuma conversa selecionada.</div></div><form class="message-compose" data-social-form><textarea name="message" rows="2" maxlength="4000" placeholder="Responder ao lead…" disabled></textarea><button class="button button-primary" disabled>Enviar</button></form></section></div>
+      </section>
     </aside>
     <footer class="worker-footer"><span>Aliança Park · monitoria de agentes</span><span>modo local protegido · saída externa desabilitada nos testes</span></footer>
   </div>
   <script type="module" src="/admin-auth.mjs?v=admin-auth-v4"></script>
   <script type="module" src="/admin-test-controls.mjs?v=1"></script>
-  <script type="module" src="/admin-workers.js?v=development-cycle-v5380"></script>
+  <script type="module" src="/admin-workers.js?v=activity-record-page-v5386"></script>
   <!-- A camada de mapa é carregada somente pela tela de atividade, depois da
        autenticação. Mantê-la global fazia a rota de login inicializar observers
        de mapa/3D desnecessariamente e podia derrubar o renderer embutido. -->
-  <script type="module" src="/worker-context-chat.mjs?v=worker-chat-v5407"></script>
+  <script type="module" src="/worker-context-chat.mjs?v=worker-chat-image-reasoning-v2"></script>
 </body>
 </html>

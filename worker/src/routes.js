@@ -1,4 +1,5 @@
-import {registerPublicLead} from './public-lead-register-v5342.js';
+import {
+  registerPublicLead} from './public-lead-register-v5342.js';
 import {
   deleteRecord,
   getApiRuntime,
@@ -35,7 +36,13 @@ import {
 import {buildBudgetSummary} from './budget.js';
 import {buildNotificationsFromSnapshot} from './notifications.js';
 import {buildCorrelationSummary} from './correlation.js';
-import {getNvidiaRuntime, runOperationalAssistant, runVisualDigest} from './nvidia.js';
+import {getNvidiaRuntime,
+  runOperationalAssistant,
+  runVisualDigest,
+  runInstagramCommercialLeadAssistant,
+  runWholeWorkJourneyExplanation,
+  extractInstantRecordOcr
+} from './nvidia.js';
 import {runPlanningCycle} from './planning-service.js';
 import {runOperationalLoop} from './operational-loop.js';
 import {runPublicLeadConversation} from './public-lead-ai.js';
@@ -45,6 +52,8 @@ import {readPublicCatalog} from './public-commercial-store.js';
 import {createLiveTestSession,readLiveTestSession,saveLiveTestSession,deleteLiveTestSession,applyLiveTestEvent} from './live-test-session.js';
 
 import {saveCashEvidence} from './cash-evidence.js';
+import {webhookVerification,parseWebhook,saveInboundSocialMessages,socialRuntime,listSocialConversations,listSocialMessages,sendSocialMessage,saveInstagramCommercialLead,listInstagramFeed,replyInstagramComment,getInstagramAutomationPolicy,saveInstagramAutomationPolicy} from './social.js';
+import {getHeldImage,holdImageInWorker,readHeldImageDataUrl,normalizeImageAttachment} from './media-attachments.js';
 
 const JSON_HEADERS={'content-type':'application/json; charset=utf-8'};
 
@@ -71,6 +80,13 @@ function pathId(pathname,prefix){
   return rest && !rest.includes('/') ? decodeURIComponent(rest) : null;
 }
 
+async function digestImageSource(env,source){
+  const value=String(source||'').trim();
+  if(!value)return null;
+  if(/^r2:\/\//i.test(value))return readHeldImageDataUrl(env,value).catch(()=>null);
+  return value;
+}
+
 function strictEventTransitionMode(){ return 'strict-ai-state-transition'; }
 
 export async function routeRequest(request,env,ctx){
@@ -84,8 +100,89 @@ export async function routeRequest(request,env,ctx){
       service:'belavista-cloudflare-worker',
       date:new Date().toISOString(),
       runtime:getApiRuntime(env,url.origin),
-      operational:snapshot
+      operational:snapshot,social:socialRuntime(env)
     });
+  }
+
+  for(const channel of ['instagram','whatsapp']){
+    if(pathname===`/${channel}/webhook`){
+      if(request.method==='GET')return webhookVerification(request,env,channel);
+      if(request.method==='POST'){
+        const parsed=await parseWebhook(request,env,channel);
+        const saved=await saveInboundSocialMessages(env,parsed.messages);
+        return json({ok:true,received:parsed.messages.length,saved:saved.length});
+      }
+      return methodNotAllowed();
+    }
+  }
+  if(pathname==='/api/communications/status'&&request.method==='GET'){
+    const actor=await requireAdminRequest(request,env);
+    return json({actor:{email:actor.email,mode:actor.mode},social:socialRuntime(env)});
+  }
+  if(pathname==='/api/instagram/feed'&&request.method==='GET'){
+    await requireAdminRequest(request,env);
+    try{
+      const query=new URL(request.url).searchParams;
+      return json(await listInstagramFeed(env,{limit:query.get('limit'),commentsLimit:query.get('commentsLimit')}));
+    }catch(error){
+      return json({source:'unavailable',posts:[],configured:socialRuntime(env).instagram.configured,error:error.message||'Feed do Instagram indisponível.'},error.statusCode||502);
+    }
+  }
+  if(pathname==='/api/instagram/automation-policy'){
+    await requireAdminRequest(request,env);
+    if(request.method==='GET')return json(await getInstagramAutomationPolicy(env));
+    if(request.method==='PUT')return json(await saveInstagramAutomationPolicy(env,await body(request)));
+    return methodNotAllowed();
+  }
+  const instagramCommentReply=pathname.match(/^\/api\/instagram\/comments\/([^/]+)\/reply$/);
+  if(instagramCommentReply){
+    await requireAdminRequest(request,env);
+    if(request.method!=='POST')return methodNotAllowed();
+    try{return json(await replyInstagramComment(env,{commentId:decodeURIComponent(instagramCommentReply[1]),message:(await body(request)).message}),201);}
+    catch(error){return json({error:error.message||'Não foi possível responder ao comentário.'},error.statusCode||502);}
+  }
+  if(pathname==='/api/communications/conversations'&&request.method==='GET'){
+    await requireAdminRequest(request,env);
+    return json({conversations:await listSocialConversations(env,new URL(request.url).searchParams.get('channel')||'all')});
+  }
+  const conversationMessages=pathname.match(/^\/api\/communications\/conversations\/([^/]+)\/messages$/);
+  if(conversationMessages){
+    await requireAdminRequest(request,env);
+    const conversationId=decodeURIComponent(conversationMessages[1]);
+    if(request.method==='GET')return json({messages:await listSocialMessages(env,conversationId)});
+    if(request.method==='POST'){
+      const payload=await body(request),channel=conversationId.split(':')[0];
+      return json(await sendSocialMessage(env,{channel,conversationId,text:payload.text||payload.message}),201);
+    }
+    return methodNotAllowed();
+  }
+  const instagramConversationAssistant=pathname.match(/^\/api\/communications\/conversations\/([^/]+)\/assistant$/);
+  if(instagramConversationAssistant){
+    await requireAdminRequest(request,env);
+    if(request.method!=='POST')return methodNotAllowed();
+    const conversationId=decodeURIComponent(instagramConversationAssistant[1]);
+    if(!conversationId.startsWith('instagram:'))return json({error:'A qualificação por IA está disponível somente para conversas do Instagram.'},400);
+    try{
+      const conversations=await listSocialConversations(env,'instagram');
+      const conversation=conversations.find(item=>item.id===conversationId);
+      if(!conversation)return json({error:'Conversa do Instagram não encontrada.'},404);
+      const messages=await listSocialMessages(env,conversationId);
+      return json(await runInstagramCommercialLeadAssistant(env,{conversation,messages,leadContext:await body(request)}));
+    }catch(error){return json({error:error.message||'Não foi possível gerar a orientação comercial.'},error.statusCode||502);}
+  }
+  const instagramConversationLead=pathname.match(/^\/api\/communications\/conversations\/([^/]+)\/lead$/);
+  if(instagramConversationLead){
+    await requireAdminRequest(request,env);
+    if(request.method!=='POST')return methodNotAllowed();
+    const conversationId=decodeURIComponent(instagramConversationLead[1]);
+    if(!conversationId.startsWith('instagram:'))return json({error:'O lead comercial só pode ser criado a partir de uma conversa do Instagram.'},400);
+    try{
+      const payload=await body(request);
+      if(payload.confirm!==true)return json({error:'Confirme o registro do lead comercial antes de persistir.'},400);
+      const conversation=(await listSocialConversations(env,'instagram')).find(item=>item.id===conversationId);
+      if(!conversation)return json({error:'Conversa do Instagram não encontrada.'},404);
+      return json(await saveInstagramCommercialLead(env,{conversation,leadDraft:payload.leadDraft||{}}),201);
+    }catch(error){return json({error:error.message||'Não foi possível registrar o lead comercial.'},error.statusCode||502);}
   }
 
   /* BELAVISTA_PUBLIC_LEAD_ROUTE_V5342 */
@@ -117,7 +214,7 @@ export async function routeRequest(request,env,ctx){
     });
   }
 
-  if(pathname==='/api/runtime'&&request.method==='GET')return json(getApiRuntime(env,url.origin));
+  if(pathname==='/api/runtime'&&request.method==='GET')return json({...getApiRuntime(env,url.origin),github:getGitHubRuntime(env)});
   if(pathname==='/api/ai/status'&&request.method==='GET')return json({...getApiRuntime(env,url.origin).ai,nvidia:getNvidiaRuntime(env)});
 
 
@@ -125,13 +222,26 @@ export async function routeRequest(request,env,ctx){
     const payload=await body(request);
     // As etapas de identificação, documentos e sinal são eventos da mesma
     // conversa e podem chegar sem uma nova mensagem textual.
-    if(!String(payload.message||'').trim()&&!payload.event)return json({error:'Mensagem ou evento obrigatório.'},400);
+    if(!String(payload.message||'').trim()&&!payload.event&&!payload.attachment)return json({error:'Mensagem, evento ou imagem obrigatória.'},400);
+    const attachment=payload.attachment?await holdImageInWorker(env,payload.attachment,{channel:'public-lead-chat',purpose:'commercial-conversation'}):null;
+    if(payload.attachment&&!attachment)return json({error:'Imagem inválida. Use PNG, JPEG ou WEBP de até 6 MB.'},400);
     return json(await runPublicLeadConversation(env,{
       message:payload.message,
       session:payload.session||{},
       selectedLot:payload.selectedLot||null,
-      event:payload.event||null
+      event:payload.event||null,
+      attachment:payload.attachment||null,
+      attachmentRef:attachment
     }));
+  }
+
+  if(pathname==='/api/media/attachment'&&request.method==='GET'){
+    await requireAdminRequest(request,env);
+    const key=String(url.searchParams.get('key')||'').trim();
+    if(!key.startsWith('attachments/admin-chat/'))return json({error:'Anexo não autorizado.'},403);
+    const object=await getHeldImage(env,{key});
+    if(!object)return json({error:'Anexo não encontrado.'},404);
+    return new Response(object.body,{status:200,headers:{'content-type':object.httpMetadata?.contentType||'application/octet-stream','cache-control':'private, no-store','etag':object.httpEtag||''}});
   }
 
 
@@ -258,10 +368,38 @@ export async function routeRequest(request,env,ctx){
     return json(result,payload.persist===true?201:200);
   }
 
-  if((pathname==='/api/ai'||pathname==='/api/gemini')&&request.method==='POST'){
+  if((pathname==='/api/ai'||pathname==='/api/ai/vision-reasoning'||pathname==='/api/gemini')&&request.method==='POST'){
+    await requireAdminRequest(request,env);
     const payload=await body(request);
+    const reasoningVision=pathname==='/api/ai/vision-reasoning';
+    if(reasoningVision&&!payload.attachment)return json({error:'A rota de reasoning exige uma imagem.'},400);
     const snapshot=await getOperationalSnapshot(env).catch(()=>null);
-    const result=await runOperationalAssistant(env,{message:payload.message,view:payload.view,context:payload.context||snapshot,explain:url.searchParams.get('explain')==='1'});
+    const image=payload.attachment?normalizeImageAttachment(payload.attachment):null;
+    if(payload.attachment&&!image)return json({error:'Imagem inválida. Use PNG, JPEG ou WEBP de até 6 MB.'},400);
+    const serializedImage=image?{id:image.id,name:image.name,mimeType:image.mimeType,sizeBytes:image.sizeBytes,dataUrl:image.dataUrl,stored:false,storage:'request-ephemeral',transport:'inline-data-url'}:null;
+    if(payload.requestContext?.intent==='explain-current-work-state-and-next-step'){
+      const result=await runWholeWorkJourneyExplanation(env,{
+        message:payload.message,
+        context:payload.context||snapshot,
+        instruction:payload.instruction||'',
+        requestContext:payload.requestContext||null
+      });
+      return json(result);
+    }
+    const result=await runOperationalAssistant(env,{message:payload.message,view:payload.view,context:payload.context||snapshot,instruction:payload.instruction,requestContext:payload.requestContext,explain:url.searchParams.get('explain')==='1',reasoning:reasoningVision,attachment:serializedImage});
+    const heldAttachmentV21=image?await holdImageInWorker(env,payload.attachment,{channel:'admin-chat',purpose:'record-ocr'}).catch(()=>null):null;
+    const recordOcrV21=image?await extractInstantRecordOcr(env,{attachment:serializedImage,context:{view:payload.view,source:'chat'}}).catch(error=>({error:String(error?.message||error),reviewRequired:true})):null;
+    return json({...result,endpoint:result.endpoint||env.NVIDIA_REASONING_API_URL||env.NVIDIA_API_URL||'https://integrate.api.nvidia.com/v1/chat/completions',reasoning:Boolean(reasoningVision&&image),recordOcr:recordOcrV21,attachment:heldAttachmentV21?{...heldAttachmentV21,dataUrl:undefined}:serializedImage?{...serializedImage,dataUrl:undefined}:null,attachmentStorage:heldAttachmentV21?.storage||(image?'request-ephemeral':null)});
+  }
+
+
+  // BELAVISTA_RECORD_OCR_DYNAMIC_V21
+  if(pathname==='/api/records/ocr'&&request.method==='POST'){
+    await requireAdminRequest(request,env);
+    const payload=await body(request);
+    const image=payload.attachment?normalizeImageAttachment(payload.attachment):null;
+    if(!image)return json({error:'Imagem OCR inválida. Use PNG, JPEG ou WEBP de até 6 MB.'},400);
+    const result=await extractInstantRecordOcr(env,{attachment:{name:image.name,mimeType:image.mimeType,dataUrl:image.dataUrl},context:payload.context||null});
     return json(result);
   }
 
@@ -269,11 +407,18 @@ export async function routeRequest(request,env,ctx){
     if(request.method==='GET')return json({records:await listRecords(env)});
     if(request.method==='POST'){
       const payload=await body(request);
-      const record=await insertRecord(env,payload);
-      if(payload.evidence?.imageBase64||payload.evidenceUri){
-        ctx.waitUntil(env.BELAVISTA_QUEUE?.send?.({kind:'record.digest',recordId:record.id,payload}));
+      let recordAttachmentV21=null;
+      if(payload.evidence?.imageBase64){
+        const mimeType=String(payload.evidence.mimeType||'image/jpeg');
+        const dataUrl='data:'+mimeType+';base64,'+String(payload.evidence.imageBase64||'');
+        recordAttachmentV21=await holdImageInWorker(env,{name:payload.evidence.fileName||'registro.png',mimeType,dataUrl},{channel:'records',purpose:'record-evidence'}).catch(()=>null);
+        if(recordAttachmentV21?.stored&&recordAttachmentV21.reference)payload.evidenceUri=recordAttachmentV21.reference;
       }
-      return json(record,201);
+      const record=await insertRecord(env,payload);
+      if(payload.evidence?.imageBase64||payload.evidenceUri)ctx.waitUntil(env.BELAVISTA_QUEUE?.send?.({kind:'record.digest',recordId:record.id,payload}));
+      const itemProperty=(record.properties||[]).find(item=>item?.key==='items'&&Array.isArray(item?.value));
+      const propagatedItemsV21=Array.isArray(itemProperty?.value)?itemProperty.value:[];
+      return json({...record,propagatedItems:propagatedItemsV21,attachmentRef:recordAttachmentV21?{...recordAttachmentV21,dataUrl:undefined}:null},201);
     }
     return methodNotAllowed();
   }
@@ -472,7 +617,8 @@ export async function handleQueueBatch(batch,env){
   for(const message of batch.messages||[]){
     const payload=message.body||{};
     if(payload.kind==='record.digest'){
-      const digest=await runVisualDigest(env,{kind:'record-photo',imageBase64:payload.payload?.evidence?.imageBase64,imageUrl:payload.payload?.evidenceUri,notes:payload.payload?.detalhes});
+      const evidenceSource=await digestImageSource(env,payload.payload?.evidenceUri);
+      const digest=await runVisualDigest(env,{kind:'record-photo',imageBase64:payload.payload?.evidence?.imageBase64,imageUrl:evidenceSource,notes:payload.payload?.detalhes});
       await insertNotification(env,{
         category:'record-digest',
         severity:digest.risk||'info',

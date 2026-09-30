@@ -1,10 +1,11 @@
 // BELAVISTA_ADMIN_PUBLIC_MAP_SURFACE_V5352
 // v5.3.51 deferred after shell: import './admin-runtime-v11.js?v=admin-runtime-v11';
 // v5.3.51 deferred after shell: import './admin-lots-canvas-v1.js?v=admin-lots-canvas-v1';
-import './components.js?v=instagram-api-live-v25&route=ngrok-route-v1&full-image-3d-environment-v1&foreman-surface-v1&admin-map-static-first-v20-scene-only-168&map-aerial-alignment-v88&stage-context-chrome-v5&road-integral-asphalt-slices-v14';
+import './components.js?v=stage-map-mouse-v1';
 import {appStore, persistUiState, restoreUiState, viewThemes} from './state.js?v=system-metrics-v1-20260919';
 import {apiFetch} from './api-client.mjs?v=instagram-api-live-v1';
 import {normalizeOperationalRole, roleCanOpenView} from './admin-role-policy.mjs?v=admin-role-policy-v1';
+import {readUsagePreferences} from './usage-settings-v1.mjs?v=1';
 
 document.addEventListener('click',event=>{
   const back=event.target?.closest?.('.stage-v9-dedicated-page .stage-v9-back');
@@ -123,13 +124,43 @@ async function loadDeferredAdminModulesV5351({force=false}={}){
 }
 
 const STORAGE_KEY='belavista.install.v1';
+const INTEGRATION_STORAGE_KEY_V1='belavista.integrations.v1';
+
+// A conexao com GitHub e propriedade do Cloudflare Worker. O navegador nao
+// recebe PAT, repo ou branch como requisito de instalacao. Limpa somente os
+// residuos legados que poderiam ter sido salvos pelo painel local antigo.
+const purgeLegacyInstallCredentialsV1=()=>{
+  try{localStorage.removeItem(STORAGE_KEY);}catch{}
+  try{
+    const current=JSON.parse(localStorage.getItem(INTEGRATION_STORAGE_KEY_V1)||'{}');
+    const next={...current};
+    for(const key of ['pat','githubPat','github_pat','githubToken','github_token','repo','githubRepo','githubBranch','githubWorkflow'])delete next[key];
+    if(JSON.stringify(next)!==JSON.stringify(current))localStorage.setItem(INTEGRATION_STORAGE_KEY_V1,JSON.stringify(next));
+  }catch{}
+};
+
+const workerManagedConfigV1=async()=>{
+  const base={mode:'cloudflare-worker',projectName:'Empreendimento Alianca Park',repositorySource:'worker-env',savedAt:new Date().toISOString()};
+  try{
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),3500);
+    const response=await apiFetch('/api/runtime',{cache:'no-store',signal:controller.signal});
+    clearTimeout(timer);
+    if(!response.ok)throw new Error(`Worker respondeu ${response.status}`);
+    const runtime=await response.json();
+    return {...base,workerRuntime:runtime,github:runtime.github||null};
+  }catch(error){
+    return {...base,workerRuntime:{available:false,error:String(error?.message||error)}};
+  }
+};
 const qs=new URLSearchParams(location.search);
 
 // A sessão de instalação só faz sentido quando a base SQL operacional deste
 // dispositivo ainda não tem atividades. O endpoint é local no servidor Node
 // e continua funcionando no PWA/URL visit; em uma visita sem SQL local, a
 // sessão permanece oculta até que uma base compatível seja detectada.
-const directViewsV1=new Set(['map','assistant','control','stages','agenda','activities','progress','pert','actions','raci','raid','records','foremen','leads','messages','personnel','proposals','contracts','brokers','brokers-board','commission-deal','finance','cash-record','reports','settings','activity-installation']);
+const viewAliasesV1=Object.freeze({lotes:'brokers-board',repasse:'brokers-board',finance:'control'});
+const directViewsV1=new Set(['map','control','stages','agenda','activities','progress','actions','records','foremen','messages','proposals','contracts','brokers','brokers-board','commission-deal','cash-record','settings','activity-installation']);
 async function refreshLocalSqlStateV1(requestedView=''){
   try{
     const response=await apiFetch('/api/health',{cache:'no-store'});
@@ -171,51 +202,55 @@ const waitForMapWarmup=async(timeout=500)=>{
   await new Promise(resolve=>{const tick=()=>{const map=document.querySelector('map-scene[data-persistent-map="true"]'),ready=['ready','partial','uploading'].includes(map?.dataset.mapTexture);if(ready||performance.now()-started>=timeout)return resolve();setTimeout(tick,60);};tick();});
 };
 
-class InstallScreen extends HTMLElement {
-  connectedCallback(){ this.render(); this.bind(); }
-  render(){
-    if(globalThis.BELAVISTA_ADMIN_AUTH_REQUIRED){
-      this.hidden=true;
-      queueMicrotask(()=>startApp({mode:'firebase-admin-twa'}));
-      return;
-    }
-    const saved=localStorage.getItem(STORAGE_KEY);
-    const demo=qs.get('demo')==='1';
-    if(saved||demo){ this.hidden=true; queueMicrotask(()=>startApp(saved?JSON.parse(saved):{mode:'demo'})); return; }
-    this.hidden=false;
-    document.querySelector('#boot')?.remove();
-    this.innerHTML=`<section class="install-wrap"><div class="install-panel"><div class="install-brand"><span class="install-mark">◢</span><div><strong>Aliança Park</strong><small>LOTEAMENTO · CONFIGURAÇÃO LOCAL</small></div></div><h1>Instalar o painel local</h1><p class="install-copy">Configure o projeto, salve a integração neste dispositivo e instale a PWA. O sistema funciona como SPA e mantém o shell em cache para não recarregar a interface entre módulos.</p><div class="install-grid"><label>Nome do empreendimento<input id="projectName" value="Empreendimento Aliança Park" /></label><label>Repositório GitHub<input id="repo" placeholder="usuario/belavista-acompanhamento" /></label><label class="full">Personal Access Token (PAT)<input id="pat" type="password" autocomplete="off" placeholder="github_pat_…" /></label></div><div class="security-note"><b>Segurança:</b> por solicitação desta instalação, o PAT pode ser salvo no <code>localStorage</code> deste navegador. Isso não é recomendado para produção porque scripts da mesma origem podem lê-lo. Use um token de escopo mínimo e um perfil de navegador dedicado.</div><label class="remember"><input id="remember" type="checkbox" checked /> Salvar configuração e PAT neste dispositivo</label><div class="install-actions"><button id="validate" class="ghost">Validar PAT</button><button id="demo" class="ghost">Abrir modo demonstração</button><button id="install" class="primary">Salvar e entrar</button></div><div id="installStatus" class="install-status" aria-live="polite"></div><div class="script-box"><div><strong>Criar um novo repositório com GitHub CLI + SSH</strong><span>Script incluído em <code>scripts/create-repo.sh</code></span></div><pre>bash scripts/create-repo.sh belavista-acompanhamento private</pre></div><button id="pwaInstall" class="pwa-install" disabled>Instalar PWA neste dispositivo</button></div></section>`;
-  }
-  bind(){
-    this.querySelector('#demo')?.addEventListener('click',()=>{this.hidden=true;startApp({mode:'demo'});});
-    this.querySelector('#validate')?.addEventListener('click',()=>this.validatePat());
-    this.querySelector('#install')?.addEventListener('click',()=>this.save());
-    this.querySelector('#pwaInstall')?.addEventListener('click',async()=>{const p=appStore.get().installPrompt;if(!p)return;await p.prompt();appStore.set({installPrompt:null});this.updateInstallButton();});
-    this.updateInstallButton();
-  }
-  updateInstallButton(){ const b=this.querySelector('#pwaInstall'); if(!b)return; b.disabled=!appStore.get().installPrompt; b.textContent=b.disabled?'Instalação PWA disponível após abrir a página':'Instalar PWA neste dispositivo'; }
-  async validatePat(){
-    const token=this.querySelector('#pat').value.trim(); const status=this.querySelector('#installStatus'); if(!token){status.textContent='Informe um PAT para validar.';return;}
-    status.textContent='Validando…';
-    try{const r=await fetch('https://api.github.com/user',{headers:{Authorization:`Bearer ${token}`,Accept:'application/vnd.github+json'}});if(!r.ok)throw new Error(`GitHub respondeu ${r.status}`);const u=await r.json();status.textContent=`PAT válido para ${u.login}.`;status.className='install-status ok';}
-    catch(err){status.textContent=`Não foi possível validar: ${err.message}`;status.className='install-status err';}
-  }
-  save(){
-    const cfg={projectName:this.querySelector('#projectName').value.trim()||'Empreendimento Aliança Park',repo:this.querySelector('#repo').value.trim(),savedAt:new Date().toISOString()};
-    if(this.querySelector('#remember').checked)localStorage.setItem(STORAGE_KEY,JSON.stringify(cfg));
-    this.hidden=true;startApp(cfg);
+class CloudflareBootstrap extends HTMLElement {
+  connectedCallback(){
+    this.hidden=true;
+    this.replaceChildren();
+    purgeLegacyInstallCredentialsV1();
+    const boot=async()=>{
+      if(qs.get('demo')==='1')return startApp({mode:'demo'});
+      return startApp(await workerManagedConfigV1());
+    };
+    queueMicrotask(()=>boot().catch(error=>{
+      console.error('[Alianca Park] bootstrap Cloudflare indisponivel',error);
+      startApp({mode:'cloudflare-worker',projectName:'Empreendimento Alianca Park',repositorySource:'worker-env',workerRuntime:{available:false,error:String(error?.message||error)}});
+    }));
   }
 }
-if(!customElements.get('install-screen')) customElements.define('install-screen', InstallScreen);
+if(!customElements.get('cloudflare-bootstrap')) customElements.define('cloudflare-bootstrap', CloudflareBootstrap);
 
 class BelavistaApp extends HTMLElement {
   connectedCallback(){ this.mountShell(); if(!this._bound){this._bound=true;this.bind();} }
   mountShell(){
     if(this.querySelector('.app-shell'))return;
-    this.innerHTML=`<div class="app-shell ${appStore.get().sidebarCollapsed?'sidebar-collapsed':''}"><app-sidebar></app-sidebar><div class="app-main"><app-topbar></app-topbar><main class="scene"><map-scene data-persistent-map="true" data-public-map="" data-public-presentation="true" data-base-map="" data-stage="Aliança Park · comercial" data-overlay="urbanizacao" data-admin-shared-public-map="v5352" data-dashboard-progress-map="true" data-admin-record-selection="true" data-map-context="admin" aria-label="Mapa operacional do Aliança Park"></map-scene><view-layer></view-layer></main></div></div>`;
+    this.innerHTML=`<div class="app-shell ${appStore.get().sidebarCollapsed?'sidebar-collapsed':''}"><app-sidebar></app-sidebar><div class="app-main"><app-topbar></app-topbar><main class="scene"><map-scene data-persistent-map="true" data-public-map="" data-public-presentation="true" data-base-map="" data-stage="Aliança Park · comercial" data-overlay="urbanizacao" data-admin-shared-public-map="v5352" data-dashboard-progress-map="true" data-admin-record-selection="true" data-map-context="admin" aria-label="Mapa operacional do Aliança Park"></map-scene><div class="stage-map-accordion" data-stage-map-accordion role="group" aria-label="Controles do mapa da etapa"><span>MAPA DA OBRA · CENA CONTÍNUA</span><div><button type="button" data-stage-map-toggle aria-expanded="true" aria-controls="stage-map-viewport">Recolher mapa</button><button type="button" data-stage-map-fullscreen aria-label="Abrir mapa em tela cheia no dashboard inicial">Tela cheia ↗</button></div></div><view-layer></view-layer></main></div></div>`;
+    this.querySelector('map-scene[data-persistent-map]')?.setAttribute('id','stage-map-viewport');
     window.lucide?.createIcons();
+    queueMicrotask(()=>globalThis.__ensureStageContextChromeV1?.(this.querySelector('view-layer')));
   }
   bind(){
+    const stageMapViews=new Set(['stages','agenda','actions','activities','records','progress','foremen','activity-installation']);
+    const scene=this.querySelector('main.scene');
+    const syncStageMap=(state)=>{
+      const active=stageMapViews.has(state.view);
+      scene?.classList.toggle('has-stage-map',active);
+      if(!active)scene?.classList.remove('stage-map-collapsed');
+      const toggle=scene?.querySelector('[data-stage-map-toggle]');
+      if(toggle){const collapsed=scene.classList.contains('stage-map-collapsed');toggle.textContent=collapsed?'Expandir mapa':'Recolher mapa';toggle.setAttribute('aria-expanded',String(!collapsed));}
+    };
+    syncStageMap(appStore.get());
+    scene?.addEventListener('click',event=>{
+      if(event.target.closest('[data-stage-map-toggle]')){
+        const collapsed=scene.classList.toggle('stage-map-collapsed');
+        const button=scene.querySelector('[data-stage-map-toggle]');
+        button.textContent=collapsed?'Expandir mapa':'Recolher mapa';
+        button.setAttribute('aria-expanded',String(!collapsed));
+      }
+      if(event.target.closest('[data-stage-map-fullscreen]')){
+        appStore.set({view:'map',activityDedicated:false,stageActivityDedicatedV9:false,lastAction:'Expandiu o mesmo mapa no dashboard inicial'});
+        const url=new URL(location.href);url.searchParams.set('view','map');history.replaceState(history.state,'',url);
+      }
+    });
     let deferredExtensionsPromise=null;
     const ensureDeferredExtensions=()=>{
       const deferredState=document.documentElement.dataset.adminDeferredState;
@@ -232,6 +267,11 @@ class BelavistaApp extends HTMLElement {
       return deferredExtensionsPromise;
     };
     appStore.subscribe(s=>{
+      if(s.view==='finance'){
+        queueMicrotask(()=>{if(appStore.get().view==='finance')appStore.set({view:'control',lastAction:'Abriu Central operacional'});});
+        return;
+      }
+      syncStageMap(s);
       this.dataset.view=s.view;
       const role=normalizeOperationalRole(s.currentActor?.role||'owner');
       this.dataset.role=role;
@@ -239,6 +279,7 @@ class BelavistaApp extends HTMLElement {
       shell?.classList.toggle('sidebar-collapsed',s.sidebarCollapsed);
       shell?.classList.toggle('print-mode',!!s.printMode);
       if(shell){shell.dataset.shellView=s.view;shell.dataset.shellRole=role;}
+      queueMicrotask(()=>globalThis.__ensureStageContextChromeV1?.(this.querySelector('view-layer')));
       if(role==='foreman'&&!roleCanOpenView(role,s.view)){
         queueMicrotask(()=>{
           const current=appStore.get();
@@ -261,7 +302,6 @@ class BelavistaApp extends HTMLElement {
     window.addEventListener('pagehide',()=>persistUiState(appStore.get()));
     this.addEventListener('click',event=>{const back=event.target?.closest?.('.activity-dedicated-page [data-view="stages"]');if(!back)return;event.preventDefault();event.stopPropagation();appStore.set({view:'stages',activityDedicated:false,selectedActivity:null,lastAction:'Voltou para as etapas'});},true);
     this.addEventListener('click',event=>{const back=event.target?.closest?.('.stage-v9-dedicated-page .stage-v9-back');if(!back)return;event.preventDefault();event.stopImmediatePropagation();appStore.set({view:'stages',activityDedicated:false,stageActivityDedicatedV9:false,selectedActivity:null,lastAction:'Voltou para a central de etapas'});},true);
-    this.addEventListener('click',e=>{if(e.target.closest('#reinstall')){localStorage.removeItem(STORAGE_KEY);location.href=location.pathname;}if(e.target.closest('#clearPat')){const cfg=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');cfg.pat='';localStorage.setItem(STORAGE_KEY,JSON.stringify(cfg));alert('PAT removido do armazenamento local.');}});
   }
 }
 if(!customElements.get('belavista-app')) customElements.define('belavista-app', BelavistaApp);
@@ -280,7 +320,12 @@ async function startApp(config){
   }
   let boot=document.querySelector('#boot');
   if(!boot){boot=document.createElement('div');boot.id='boot';boot.className='boot-screen';boot.setAttribute('aria-live','polite');boot.innerHTML='<div class="boot-orb"></div><p>Abrindo painel operacional...</p>';document.body.appendChild(boot);}
-  const app=document.querySelector('belavista-app'),savedUi=restoreUiState(),authActor=globalThis.BELAVISTA_ADMIN_ACTOR,rawRequestedView=qs.get('view'),requestedView=rawRequestedView==='assistant'?'map':directViewsV1.has(rawRequestedView)?rawRequestedView:'map',actor=authActor||savedUi.currentActor||{},role=normalizeOperationalRole(actor.role||'owner'),safeView=role==='foreman'&&!roleCanOpenView(role,requestedView)?'map':requestedView,initialView=safeView==='activity-installation'?'stages':safeView; app.hidden=false; app.dataset.preloading='true'; app.dataset.role=role; globalThis.installStageHomeRaidAiRecordsCalendarV1?.(); appStore.set({...savedUi,config,currentActor:actor,view:initialView,mapMode:'overview',sidebarCollapsed:false,activityDedicated:false,proposalFormOpen:false,contractEditing:null,theme:'dark',lastAction:initialView==='map'?'Abriu o mapa operacional':`Abriu ${initialView}`}); if(initialView==='stages'){[0,500,1800,4200].forEach(delay=>setTimeout(()=>globalThis.ensureStageHomeRaidAiRecordsCalendarV1?.(),delay));} document.documentElement.dataset.theme='dark';
+  if (qs.get('view') === 'finance') {
+    qs.set('view', 'control');
+    const url = new URL(location.href); url.searchParams.set('view', 'control'); history.replaceState(history.state, '', url);
+  }
+  if (!qs.has('view')) qs.set('view', readUsagePreferences().defaultPage);
+  const app=document.querySelector('belavista-app'),savedUi=restoreUiState(),authActor=globalThis.BELAVISTA_ADMIN_ACTOR,rawRequestedView=qs.get('view'),aliasedView=viewAliasesV1[rawRequestedView]||rawRequestedView,requestedView=aliasedView==='assistant'?'map':['pert','raid','raci'].includes(aliasedView)?'stages':directViewsV1.has(aliasedView)?aliasedView:'map',actor=authActor||savedUi.currentActor||{},role=normalizeOperationalRole(actor.role||'owner'),safeView=!roleCanOpenView(role,requestedView)?'map':requestedView,initialView=safeView==='activity-installation'?'stages':safeView,linkedActivity=initialView==='activities'&&/^[a-z0-9_-]+:(front|execute|measure|release)$/i.test(qs.get('activity')||'')?qs.get('activity'):null; if(aliasedView!==rawRequestedView&&aliasedView) { qs.set('view',aliasedView); const url=new URL(location.href); url.searchParams.set('view',aliasedView); history.replaceState(history.state,'',url); } app.hidden=false; app.dataset.preloading='true'; app.dataset.role=role; globalThis.installStageHomeRaidAiRecordsCalendarV1?.(); appStore.set({...savedUi,config,currentActor:actor,view:initialView,mapMode:'overview',sidebarCollapsed:false,activityDedicated:false,stageActivityDedicatedV9:Boolean(linkedActivity),selectedActivity:linkedActivity||null,selectedStageV9:linkedActivity?.split(':')[0]||savedUi.selectedStageV9,proposalFormOpen:false,contractEditing:null,theme:'dark',lastAction:initialView==='map'?'Abriu o mapa operacional':`Abriu ${initialView}`}); if(initialView==='stages'){[0,500,1800,4200].forEach(delay=>setTimeout(()=>globalThis.ensureStageHomeRaidAiRecordsCalendarV1?.(),delay));} document.documentElement.dataset.theme='dark';
   delete app.dataset.preloading; if(boot)boot.remove();
   // Extensões administrativas são opcionais na abertura. Alguns módulos
   // antigos instalam observadores de documento e não podem disputar o
@@ -303,10 +348,7 @@ async function startApp(config){
 }
 
 window.addEventListener('beforeinstallprompt',e=>{
-  const screen=document.querySelector('install-screen');
-  if(!screen){ return; }
-  e.preventDefault();
+  // Sem painel proprio: o navegador pode oferecer a instalacao PWA nativamente.
   appStore.set({installPrompt:e});
-  screen.updateInstallButton?.();
 });
 window.addEventListener('appinstalled',()=>appStore.set({installPrompt:null}));

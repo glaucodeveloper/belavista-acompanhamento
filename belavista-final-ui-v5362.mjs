@@ -66,7 +66,7 @@
   const removeLegacyStageUi = () => {
     const view = document.querySelector('view-layer[data-view="stages"]');
     view?.querySelectorAll(
-      '.stage-view-tabs,.stage-plan-tabs,[data-stage-pane],.planning-gantt,.gantt-operational-tools,' +
+      '.stage-view-tabs:not(.stage-context-home-tabs-v1),.stage-plan-tabs,[data-stage-pane],.planning-gantt,.gantt-operational-tools,' +
       '.stage-focus-canvas,.stage-plan-utilities'
     ).forEach(el => {
       if (!el.closest('.stage-calendar-page-v5362')) el.remove();

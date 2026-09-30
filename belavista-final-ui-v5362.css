@@ -92,7 +92,7 @@
 .stage-card-v5362 h2{margin:0;font-size:12px}.stage-card-v5362 p{margin:0;color:#a8a8a8;font-size:8px}
 .stage-card-v5362 i{height:3px;background:#393939}.stage-card-v5362 i em{display:block;height:100%;background:#4589ff}
 .stage-card-v5362 footer{display:flex;justify-content:space-between}
-view-layer[data-view="stages"] .stage-view-tabs,
+view-layer[data-view="stages"] .stage-view-tabs:not(.stage-context-home-tabs-v1),
 view-layer[data-view="stages"] .stage-plan-tabs,
 view-layer[data-view="stages"] [data-stage-pane],
 view-layer[data-view="stages"] .planning-gantt,

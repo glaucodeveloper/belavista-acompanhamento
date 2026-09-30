@@ -9,7 +9,7 @@ const source=fs.readFileSync(path.join(root,'components.js'),'utf8');
 
 test('ruas permanecem integralmente preenchidas e recebem divisões de meio lote',()=>{
   assert.match(source,/const ROAD_HALF_LOT_SLICE_WORLD_V1 = 5/);
-  assert.match(source,/roadSurfacePatchVersion = "integral-asphalt-slices-v14"/);
+  assert.match(source,/roadSurfacePatchVersion = "integral-asphalt-slices-v16-curb-subtraction"/);
   assert.match(source,/const pavers = new THREE\.Mesh\(surfaceGeometry, paverMaterial\)/);
   assert.match(source,/color: 0x30363a/);
   assert.match(source,/Math\.abs\(ny\) \/ normalLength < 0\.35/);
@@ -21,7 +21,23 @@ test('ruas permanecem integralmente preenchidas e recebem divisões de meio lote
   assert.match(source,/if \(groundInXY\) surfacePositions\.push\(x, z, surfaceElevation\)/);
   assert.match(source,/buildAdminStandaloneRoadSurfaceV1\(\{/);
   assert.match(source,/asfalto integral georreferenciado/);
-  assert.match(source,/publicRoadSurfaceMode: "asfalto integral opaco por contorno da imagem"/);
+  assert.match(source,/publicRoadSurfaceMode: "asfalto integral opaco por polígonos internos dos meio-fios"/);
+  assert.match(source,/createAdminReferenceAerialBezierCurbGuidesV1/);
+  assert.match(source,/createAdminReferenceAerialNativeRoadGeometryV1/);
+  assert.match(source,/publicRoadSelectedContourParity/);
+  assert.match(source,/same-native-mesh-as-selected-road/);
+  assert.match(source,/As faixas são recortadas pelos triângulos da própria malha selecionável/);
+  assert.match(source,/somente filtro sobre a imagem · preenchimento 3D removido/);
+  assert.match(source,/publicRoadFill = "removed"/);
+  assert.match(source,/commonAreaFilterOnly/);
+  assert.match(source,/item\.visible = targetKey === "urbanizacao"/);
+  assert.match(source,/alianca-park-aerial-realistic-preview-v2\.jpg/);
+  assert.match(source,/adminSatelliteTextureResolution/);
+  assert.match(source,/prévia realista da cena · base 4K/);
+  assert.match(source,/Asfalto_tracado_da_imagem__curvas-bezier-meio-fio/);
+  assert.match(source,/curvePolicy: "somente esquinas; trechos longos permanecem retos"/);
+  assert.match(source,/publicRoadStraightPolicy =/);
+  assert.doesNotMatch(source,/if \(roadTrace\.rightStreetUvMask\?\.rows\)/);
   assert.match(source,/ensureAdminStandaloneRoadSurfaceV1\(\)/);
   assert.match(source,/this\.ensureAdminStandaloneRoadSurfaceV1\(\);/);
   assert.match(source,/transparent: false,\s+opacity: 1,\s+depthTest: false/);
@@ -57,8 +73,8 @@ test('a cena administrativa usa uma única classe MapScene com o patch viário',
   const index=fs.readFileSync(path.join(root,'index.html'),'utf8');
   const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
   const records=fs.readFileSync(path.join(root,'records-activity-drill-in-v5377.mjs'),'utf8');
-  assert.match(index,/admin-original-bootstrap-v5351\.mjs\?road-integral-asphalt-slices-v14/);
-  assert.match(app,/components\.js\?v=instagram-api-live-v25&route=ngrok-route-v1&full-image-3d-environment-v1&foreman-surface-v1&admin-map-static-first-v20-scene-only-168&map-aerial-alignment-v88&stage-context-chrome-v5&road-integral-asphalt-slices-v14/);
-  assert.match(records,/components\.js\?v=instagram-api-live-v25&route=ngrok-route-v1&full-image-3d-environment-v1&foreman-surface-v1&admin-map-static-first-v20-scene-only-168&map-aerial-alignment-v88&stage-context-chrome-v5&road-integral-asphalt-slices-v14/);
+  assert.match(index,/admin-original-bootstrap-v5351\.mjs\?stage-shared-header-v55/);
+  assert.match(app,/components\.js\?v=stage-shared-header-v55/);
+  assert.match(records,/components\.js\?v=stage-shared-header-v55/);
   assert.doesNotMatch(records,/from '\.\/components-road-integral-/);
 });

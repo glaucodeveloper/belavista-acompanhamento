@@ -642,11 +642,20 @@ export function runAutomationPlanner({referenceDate=today(), publishNotification
 
 function summarizeOperationalGuidance(operational, panorama){
   const stages=panorama?.stages||[];
-  const ranked=[...stages].sort((a,b)=>{
-    const aScore=(a.automation.cashCoverage<35?4:0)+(a.automation.purchaseProofs.missing?3:0)+(a.automation.materialStatus==='critical'?2:0)+(a.blockedBy.length?0:1);
-    const bScore=(b.automation.cashCoverage<35?4:0)+(b.automation.purchaseProofs.missing?3:0)+(b.automation.materialStatus==='critical'?2:0)+(b.blockedBy.length?0:1);
-    return bScore-aScore||b.progress-a.progress;
-  });
+  const decisionBand=stage=>{
+    if(Number(stage.progress)>=100)return 'complete';
+    if(stage.blockedBy.length)return 'logical-block';
+    if(stage.automation.materialStatus==='critical')return 'material-block';
+    if(stage.automation.personnel?.status==='registration_pending')return 'personnel-block';
+    if(stage.automation.purchaseProofs.missing||stage.automation.cashCoverage<35)return 'governance-block';
+    return 'execute';
+  };
+  const bandOrder=new Map([['execute',0],['material-block',1],['personnel-block',2],['governance-block',3],['logical-block',4],['complete',5]]);
+  const ranked=[...stages].sort((a,b)=>
+    (bandOrder.get(decisionBand(a))??9)-(bandOrder.get(decisionBand(b))??9)
+    ||Number(b.progress)-Number(a.progress)
+    ||String(a.automation.plannedStart).localeCompare(String(b.automation.plannedStart))
+  );
   const focal=ranked[0]||null;
   const cashAction=focal?(
     focal.automation.cashCoverage<35
@@ -704,6 +713,8 @@ export function runOperationalLoop({referenceDate=today(), reason='client.tick',
   const notifications=includeNotifications?listNotifications(role):[];
   const calibration=getCalibration();
   const guidance=summarizeOperationalGuidance(operational,panorama);
+  const decisionBand=stage=>Number(stage.progress)>=100?'complete':stage.blockedBy.length?'logical-block':stage.automation.materialStatus==='critical'?'material-block':stage.automation.personnel?.status==='registration_pending'?'personnel-block':stage.automation.purchaseProofs.missing||stage.automation.cashCoverage<35?'governance-block':'execute';
+  const bandOrder=new Map([['execute',0],['material-block',1],['personnel-block',2],['governance-block',3],['logical-block',4],['complete',5]]);
   const agenda=panorama.stages.flatMap(stage=>stage.plannedActivities.map(activity=>({
     id:activity.id,
     stageKey:stage.key,
@@ -712,6 +723,14 @@ export function runOperationalLoop({referenceDate=today(), reason='client.tick',
     owner:activity.owner,
     status:activity.status,
     category:activity.category,
+    kind:activity.properties?.kind||'execution',
+    stageProgress:stage.progress,
+    decisionBand:decisionBand(stage),
+    nextStep:stage.automation.nextStep,
+    referenceDescription:text(stage.executionProfile?.typicalDescription,1200),
+    requirements:(stage.executionProfile?.requirements||[]).concat(stage.executionProfile?.conditions||[]).slice(0,12),
+    materialRequirements:(stage.executionProfile?.procurementFocus||[]).concat(stage.automation.materialAlerts||[]).slice(0,8),
+    logicalRequirements:(stage.blockedBy||[]).slice(0,8),
     plannedStart:activity.plannedStart,
     plannedEnd:activity.plannedEnd,
     production:stage.automation.production,
@@ -721,7 +740,11 @@ export function runOperationalLoop({referenceDate=today(), reason='client.tick',
     relations:stage.automation.relations,
     overlapPlan:stage.automation.overlapPlan,
     calculationBasis:stage.automation.calculationBasis
-  }))).sort((a,b)=>String(a.plannedStart).localeCompare(String(b.plannedStart))).slice(0,18);
+  }))).sort((a,b)=>
+    (bandOrder.get(a.decisionBand)??9)-(bandOrder.get(b.decisionBand)??9)
+    ||String(a.plannedStart).localeCompare(String(b.plannedStart))
+    ||({planning:0,execution:1,governance:2}[a.kind]??3)-({planning:0,execution:1,governance:2}[b.kind]??3)
+  ).slice(0,18);
   const loopId=saveJobRun('operational-loop',{
     reason:text(reason),
     role:text(role),

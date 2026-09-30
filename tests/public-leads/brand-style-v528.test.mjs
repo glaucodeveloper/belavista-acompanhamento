@@ -16,14 +16,14 @@ test('página pública usa canvas azul-noite para não vazar verde nos vazados d
 });
 
 test('marca do atendimento usa o mesmo símbolo oficial da capa do PDF',()=>{
-  assert.match(context,/const BRAND_MARK=runtimeUrlV1\('\/assets\/public\/alianca-park-logo-mark-transparent-v551\.png'\)/);
+  assert.match(context,/const BRAND_MARK=runtimeUrlV1\('\/assets\/public\/alianca-park-logo-mark-transparent-v551\.png\?edited=20260915'\)/);
   assert.match(context,/public-chat-v52-mark/);
   assert.match(html,/theme-color" content="#070b16"/);
   assert.match(html,/public-leads\.css\?v=[^"']+/);
-  assert.match(html,/public-leads-context-v521\.mjs\?v=logo-transparent-v551/);
+  assert.match(html,/public-leads-context-v521\.mjs\?v=logo-edited-mark-v551/);
 });
 
 test('assets oficiais da marca permanecem publicados',()=>{
-  for(const asset of ['alianca-park-logo-full-transparent-v551.png','alianca-park-logo-mark-transparent-v551.png'])
+  for(const asset of ['alianca-park-logo-full-transparent-v552.png','alianca-park-logo-mark-transparent-v551.png'])
     assert.equal(fs.existsSync(path.join(root,'assets/public',asset)),true,asset);
 });

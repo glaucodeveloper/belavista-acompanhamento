@@ -1,0 +1,16 @@
+.control-center-page .control-record-accordion-v1{margin-top:12px;border:1px solid #525252;border-radius:6px;background:#171c25;overflow:hidden}
+.control-center-page .control-record-accordion-v1>summary{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;cursor:pointer;list-style:none;color:#f4f4f4}
+.control-center-page .control-record-accordion-v1>summary::-webkit-details-marker{display:none}
+.control-center-page .control-record-accordion-v1>summary:hover,.control-center-page .control-record-accordion-v1>summary:focus-visible{background:#1d334f;outline:2px solid #78a9ff;outline-offset:-2px}
+.control-center-page .control-record-accordion-v1>summary span:first-child{display:grid;gap:3px}
+.control-center-page .control-record-accordion-v1>summary b{font-size:14px}
+.control-center-page .control-record-accordion-v1>summary small{font-size:11px;color:#a6c8ff}
+.control-record-accordion-cue-v1{font-size:22px;line-height:1;transition:transform .2s ease}
+.control-record-accordion-v1[open] .control-record-accordion-cue-v1{transform:rotate(180deg)}
+.control-center-page .control-record-accordion-v1>form,.control-center-page .control-record-accordion-v1>.control-general-event-history{margin:0 16px 16px}
+.control-center-page .control-stage-inline-record-v2>.control-record-accordion-v1>div:not(.record-composer-v1),.control-center-page .control-stage-inline-record-v2>.control-record-accordion-v1>small{margin:12px 16px;display:block}
+.control-inline-record-when-v1{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.control-inline-record-when-v1 label{display:grid;gap:5px;color:#c6c6c6;font-size:11px}
+.control-inline-record-when-v1 input{min-width:0}
+@media(max-width:640px){.control-inline-record-when-v1{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.control-record-accordion-cue-v1{transition:none}}

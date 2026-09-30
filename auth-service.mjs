@@ -3,6 +3,8 @@ const ROLE_ALIASES=new Map([
   ['owner','owner'],['dono','owner'],['proprietario','owner'],['proprietário','owner'],
   ['admin','admin'],['administrador','admin'],
   ['foreman','foreman'],['encarregado','foreman'],
+  ['sales','sales'],['vendedor','sales'],['vendedora','sales'],['corretor','sales'],['corretora','sales'],
+  ['commercial','commercial'],['comercial','commercial'],
   ['developer','developer'],['desenvolvimento','developer'],['desenvolvedor','developer'],['ti','developer'],['dev','developer']
 ]);
 
@@ -35,7 +37,7 @@ export async function requestActor(req){
     const claimedRole=normalizedRole(decoded.role);
     const role=localHost(req)&&localDeveloperEmail(decoded.email)?'developer':claimedRole==='developer'?'':claimedRole;
     if(!role)throw Object.assign(new Error('Perfil operacional não configurado.'),{statusCode:403});
-    return {uid:decoded.uid,role,name:String(decoded.name||decoded.email||decoded.uid),mode:'firebase'};
+    return {uid:decoded.uid,role,name:String(decoded.name||decoded.email||decoded.uid),email:String(decoded.email||''),commercialProfile:String(decoded.commercialProfile||decoded.profileId||''),mode:'firebase'};
   }
   const requestedRole=normalizedRole(req.headers['x-belavista-role']);
   const fallbackRole=normalizedRole(process.env.BELAVISTA_DEMO_ROLE)||'owner';

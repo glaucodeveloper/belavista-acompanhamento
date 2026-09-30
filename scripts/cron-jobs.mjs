@@ -49,10 +49,13 @@ export function startBelavistaCronJobs({root,dbPath}){
   };
 
   // Ao iniciar: recalcula a leitura financeira operacional e garante os relatórios do mês.
-  setTimeout(()=>runJob('stage-cashflow-snapshot',stageSnapshot),1200);
-  setTimeout(()=>runJob('activity-condition-notifications',activityConditionNotifications),1600);
-  setTimeout(()=>runJob('notification-dispatch',dispatchNotificationOutbox),1900);
-  setTimeout(()=>runJob('broker-monthly-reports',brokerReports),2600);
+  // A primeira tela precisa responder antes das rotinas pesadas de SQLite e
+  // do relatório Python. Os jobs continuam executando no startup, mas fora da
+  // janela crítica de carregamento do administrativo.
+  setTimeout(()=>runJob('stage-cashflow-snapshot',stageSnapshot),10000);
+  setTimeout(()=>runJob('activity-condition-notifications',activityConditionNotifications),11000);
+  setTimeout(()=>runJob('notification-dispatch',dispatchNotificationOutbox),12000);
+  setTimeout(()=>runJob('broker-monthly-reports',brokerReports),15000);
 
   // Recalcula o caixa/prontidão a cada hora. Relatórios são atualizados diariamente às 06h.
   setInterval(()=>runJob('stage-cashflow-snapshot',stageSnapshot),60*60*1000).unref?.();

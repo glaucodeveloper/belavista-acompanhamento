@@ -183,6 +183,14 @@ export const viewThemes = {
   settings:{center:[-16.708,-49.092], zoom:14, tint:'neutral', chat:'left', tilt:4}
 };
 
+// Modos da superfície inicial. O modo troca a leitura e os widgets sobre o
+// mapa, mas não muda a rota nem descarta os dados do empreendimento.
+export const dashboardModes = {
+  tracking:{label:'Acompanhamento',icon:'activity',description:'Execução · cronograma · riscos'},
+  commercial:{label:'Leads e lotes',icon:'badge-dollar-sign',description:'Demanda · contratos · parcelas'},
+  social:{label:'Comunicação',icon:'messages-square',description:'Instagram · pessoal · equipe'}
+};
+
 export const spreadsheetSchema = {
   months:48,
   sheets:['Lançamentos','Resumo Mensal','Orçamento','Indicadores','Como Usar'],
@@ -225,6 +233,22 @@ export const activityCatalog = [
   {nature:'Administração',name:'Emitir relatório de etapa',initial:['Período','Responsável','Destinatários'],execution:['Avanço físico','Avanço financeiro','Anexos','Pendências','Aprovação final']}
 ];
 
+// Sessão persistida de instalação das atividades. O rascunho atravessa as
+// telas PERT, RACI, Ações IA e RAID sem transformar nenhuma delas em uma cópia
+// isolada do cadastro de atividades.
+export const activityInstallationDefaults = {
+  step:1,
+  stageKey:'earthwork',
+  draft:{name:'',nature:'',description:'',unit:'',responsible:'',target:'',release:'',evidence:''},
+  materials:[],
+  rationalization:{status:'pending',summary:'Aguardando leitura da proposta.',checks:[]},
+  cards:[],
+  dependencies:[],
+  assignments:[],
+  priority:null,
+  updatedAt:null
+};
+
 export function* cycle(values, start=0) {
   let index = start;
   while (true) { yield values[index % values.length]; index += 1; }
@@ -237,7 +261,7 @@ export function* stateTransitions(sequence) {
 }
 
 export const UI_MEMORY_KEY = 'belavista.ui-memory.v1';
-const uiMemoryFields = ['view','selectedLead','selectedMaterial','chatOpen','chatManual','mapFilter','mapTileMode','theme','reportFamily','reportType','reportPeriod','customReports','sidebarCollapsed','mapMode','selectedStage','stageSelected','activityDedicated','actionAudit','widgetLayouts','mapView','solarHour','solarHourMode','aiActions','selectedAiAction','raidItems','selectedRaidItem','raciAssignments','selectedRaciCell','selectedPertNode','pertOverrides','stageOverrides','stagePropertyWorkItems','stageAgendaItems','stageRelationItems','stageTodoItems','selectedLotWidget','productionOverrides','stageMaterialOverrides','cashFlowLocal','commissionReasons','selectedPlanningStage','dashboardStagePage','controlMaterialOverrides','controlChangeLog','personnelTeams','personnelAssignments','personnelDocumentName','personnelInferenceOverrides','selectedPersonnelStage','selectedPersonnelTeam','personnelInferenceStatus'];
+const uiMemoryFields = ['view','selectedLead','selectedMaterial','chatOpen','chatManual','dashboardMode','mapFilter','mapFilters','mapFilterWidget','mapProgressSelection','mapTileMode','theme','reportFamily','reportType','reportPeriod','customReports','reportDocumentLinks','sidebarCollapsed','mapMode','selectedStage','stageSelected','activityDedicated','actionAudit','widgetLayouts','mapView','solarHour','solarHourMode','aiActions','selectedAiAction','raidItems','raciAssignments','selectedRaciCell','selectedPertNode','pertOverrides','stageOverrides','stagePropertyWorkItems','stageAgendaItems','stageTodoItems','selectedLotWidget','productionOverrides','stageMaterialOverrides','cashFlowLocal','commissionReasons','selectedPlanningStage','dashboardStagePage','controlMaterialOverrides','controlChangeLog','personnelTeams','personnelAssignments','personnelDocumentName','personnelInferenceOverrides','selectedPersonnelStage','selectedPersonnelTeam','personnelInferenceStatus','activityInstallation','documentCatalog','documentsCustomColumns','documentsHiddenColumns','documentsFileFilter','materialSheetCustomColumns','materialSheetHiddenColumns','lotStatuses','repasseEntries','repassePartners','repasseConfig'];
 export function restoreUiState(){
   try {
     if(typeof localStorage==='undefined')return {};
@@ -251,12 +275,18 @@ export function restoreUiState(){
 export function persistUiState(state){
   try {
     if(typeof localStorage==='undefined')return;
-    const snapshot=Object.fromEntries(uiMemoryFields.filter(key=>key in state).map(key=>[key,state[key]]));
+    const snapshot=Object.fromEntries([...uiMemoryFields,'foremenContacts'].filter(key=>key in state).map(key=>[key,state[key]]));
+    if(snapshot.foremenContacts) snapshot.foremenContacts=snapshot.foremenContacts.map(({password,...contact})=>contact);
     localStorage.setItem(UI_MEMORY_KEY,JSON.stringify({version:1,savedAt:new Date().toISOString(),state:snapshot}));
   } catch(error) { console.warn('Não foi possível salvar a memória local da interface.',error); }
 }
 export function clearUiState(){try{localStorage?.removeItem(UI_MEMORY_KEY);}catch(error){console.warn('Não foi possível limpar a memória local.',error);}}
 const restoredUiState=restoreUiState();
+const projectDocumentSeeds = [
+  {id:'doc-proj-exec',title:'Projeto executivo',category:'Projeto e planta',code:'',issuer:'',documentDate:'',description:'Compatibilização geométrica e executiva das redes e vias.',sourceMaterialId:'proj-exec',fileName:'',fileSize:0,fileType:'',createdAt:'',updatedAt:''},
+  {id:'doc-proj-licenses',title:'Liberações / licenças',category:'Licença e aprovação',code:'',issuer:'',documentDate:'',description:'Documentação anterior à abertura das frentes.',sourceMaterialId:'proj-licenses',fileName:'',fileSize:0,fileType:'',createdAt:'',updatedAt:''},
+  {id:'doc-presentation-v3',title:'Apresentação do loteamento',category:'Institucional',code:'V3',issuer:'Aliança Park',documentDate:'',description:'Apresentação geral do empreendimento em PDF.',sourceMaterialId:'',fileName:'alianca-park-apresentacao-loteamento-v3.pdf',fileSize:11334230,fileType:'application/pdf',sourceUrl:'/assets/public/alianca-park-apresentacao-loteamento-v3.pdf',builtIn:true,createdAt:'',updatedAt:''},
+];
 
 export function createStore(initial) {
   let state = structuredClone(initial);
@@ -295,18 +325,32 @@ const sessionStarted = new Date().toISOString();
 const sessionStorageApi = typeof sessionStorage === 'undefined'
   ? {getItem:()=>null,setItem:()=>{}}
   : sessionStorage;
-export const appStore = createStore({
+const createSessionId = () => {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID().slice(0, 8).toUpperCase();
+  }
+  if (typeof globalThis.crypto?.getRandomValues === 'function') {
+    const bytes = new Uint8Array(4);
+    globalThis.crypto.getRandomValues(bytes);
+    return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('').toUpperCase();
+  }
+  return `${Date.now().toString(16)}${Math.random().toString(16).slice(2, 6)}`.slice(-8).toUpperCase();
+};
+// Cache-busted imports must share the same live UI state and assistant bridge.
+export const appStore = globalThis.__belavistaAppStore || createStore({
   view:'map', selectedLead:0, selectedMaterial:2, chatOpen:true, chatManual:false,
   currentActor:{uid:'local-warley',name:'Warley',role:'owner',label:'Dono'},
-  config:null, mapReady:false, mapFilter:'execution', mapTileMode:'satellite', installPrompt:null, lastAction:'Aplicação iniciada', theme:'dark', reportFamily:'Financeiro', reportType:'financial-balance', reportPeriod:'2024-06',
-  sessionId:sessionStorageApi.getItem('belavista.session')||crypto.randomUUID().slice(0,8).toUpperCase(), sessionStarted, sidebarCollapsed:false, mapMode:'overview', adminMenu:false, selectedStage:2, stageSelected:false, selectedActivity:null, activityDedicated:false, printMode:false, editingRecord:null, recordMapArea:null, publicLeads:[],
+  config:null, mapReady:false, dashboardMode:'tracking', mapFilter:'execution', mapFilters:['execution'], mapFilterWidget:null, mapProgressSelection:[], mapTileMode:'satellite', installPrompt:null, lastAction:'Aplicação iniciada', theme:'dark', reportFamily:'Sistema', reportType:'system-live', reportPeriod:'all',
+  sessionId:sessionStorageApi.getItem('belavista.session')||createSessionId(), sessionStarted, sidebarCollapsed:false, mapMode:'overview', adminMenu:false, selectedStage:2, stageSelected:false, selectedActivity:null, activityDedicated:false, printMode:false, editingRecord:null, recordMapArea:null, publicLeads:[], localSqlState:{status:'unknown',clean:false,entities:{},checkedAt:null,error:null},
   actionAudit:[{id:'ACT-BOOT',label:'Aplicação iniciada',at:sessionStarted,actor:'Warley',role:'Dono',view:'map'}],
   aiActions:[], selectedAiAction:null, raidItems:[], selectedRaidItem:null, raciAssignments:null, selectedRaciCell:null, selectedPertNode:null, pertOverrides:{},
   widgetLayouts:{chat:{},floating:{}}, mapView:{rotation:0,zoom:1.68,pan:{x:0,y:0},tiltAdjust:0}, solarHour:9, solarHourMode:'clock',
   productionOverrides:{}, stageMaterialOverrides:{}, controlMaterialOverrides:{}, controlChangeLog:[], controlRealtime:null, cashFlowLocal:[], cashSummary:{entriesCents:0,exitsCents:0,balanceCents:0}, operationalState:null, operationalNotifications:[], operationalAgenda:[], operationalGuidance:null, systemCalibration:null, publicReservations:[], dashboardStagePage:0, integrationSettings:{}, commissionReasons:structuredClone(commissionReasonDefaults), selectedPlanningStage:'earthwork',
   personnelTeams:structuredClone(personnelModel.teams), personnelAssignments:structuredClone(personnelModel.assignments), personnelDocumentName:'Nenhum documento de estimativas carregado', personnelInferenceOverrides:{}, selectedPersonnelStage:'earthwork', selectedPersonnelTeam:'earthwork', personnelInferenceStatus:'Prévia assistida pelas regras atuais do catálogo',
+  activityInstallation:structuredClone(activityInstallationDefaults), documentCatalog:[], reportDocumentLinks:{},
   records:[{id:'REG-001',obra:'Aliança Park',atividade:'Drenagem Pluvial',data:'2024-06-06',hora:'08:30',responsavel:'Carlos Mendes',detalhes:'Medição da rede principal',status:'Pendente'}],
-  ...restoredUiState
+  ...restoredUiState,
+  documentCatalog:[...projectDocumentSeeds.filter(seed=>!(restoredUiState.documentCatalog||[]).some(item=>item.id===seed.id)),...(restoredUiState.documentCatalog||[])],
 });
 sessionStorageApi.setItem('belavista.session',appStore.get().sessionId);
 

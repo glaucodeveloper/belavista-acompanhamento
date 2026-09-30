@@ -1,0 +1,9 @@
+/* BELAVISTA_RECORD_OCR_DYNAMIC_V21 */
+.record-ocr-upload-v21,.record-ocr-properties-v21{border:1px solid rgba(120,130,150,.25);border-radius:14px;padding:14px;margin:12px 0;background:rgba(255,255,255,.035)}
+.record-ocr-upload-v21 header,.record-ocr-properties-v21>header{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px}.record-ocr-upload-v21 header span,.record-ocr-properties-v21 header span{font-size:.72rem;letter-spacing:.12em;opacity:.65}.record-ocr-upload-v21 label{display:grid;gap:7px}.record-ocr-field-grid-v21{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.record-ocr-field-grid-v21 label,.record-ocr-items-v21 article label{display:grid;gap:5px}.record-ocr-field-grid-v21 small{opacity:.6}.record-ocr-items-v21{margin-top:14px}.record-ocr-items-v21 article{display:grid;grid-template-columns:1fr 1.7fr .7fr .6fr .9fr .9fr;gap:8px;padding:10px 0;border-top:1px solid rgba(120,130,150,.18)}@media(max-width:800px){.record-ocr-field-grid-v21{grid-template-columns:1fr}.record-ocr-items-v21 article{grid-template-columns:1fr 1fr}}
+/* O mesmo OCR cabe no drawer da Central e no dialog do chat. */
+.control-record-drawer-v2 .record-ocr-items-v21 article{grid-template-columns:repeat(2,minmax(0,1fr))}
+.control-record-drawer-v2 .record-ocr-properties-v21 input{width:100%;min-width:0;box-sizing:border-box}
+.control-record-drawer-v2 .record-ocr-properties-v21>header{flex-wrap:wrap}
+.control-record-drawer-v2 .record-ocr-properties-v21>header>div{display:grid;gap:4px}
+@media(max-width:600px){.control-record-drawer-v2 .record-ocr-items-v21 article{grid-template-columns:minmax(0,1fr)}}

@@ -1,7 +1,7 @@
 // STAGE_HOME_PAGE_V1
 // Componente puramente apresentacional: a página recebe um snapshot do
-// organizador e produz uma única composição na ordem RAID → IA → registros →
-// cronograma visual → RAID → IA → registros → calendário. A navegação continua pertencendo ao interator do app.
+// organizador e produz uma composição de cronograma, ações, registros e
+// calendário. A navegação continua pertencendo ao interator do app.
 const esc = (value = '') => String(value).replace(/[&<>"']/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[char]));
@@ -20,7 +20,6 @@ const stageHomeRender = model => {
   const stages = Array.isArray(model.stages) ? model.stages : [];
   const activities = Array.isArray(model.activities) ? model.activities : [];
   const raid = Array.isArray(model.raid) ? model.raid : [];
-  const actions = Array.isArray(model.actions) ? model.actions : [];
   const records = Array.isArray(model.records) ? model.records : [];
   const calendar = Array.isArray(model.calendar) ? model.calendar : [];
   const activityForStage = stage => activities.find(activity => String(activity.stage || activity.stageName || activity.etapa || '').toLocaleLowerCase('pt-BR') === String(stage.name || '').toLocaleLowerCase('pt-BR'))
@@ -37,14 +36,6 @@ const stageHomeRender = model => {
     <footer><span>${esc(item.linked || 'Sem etapa vinculada')}</span><small>${esc(activityForRaid(item))}</small></footer>
   </article>`).join('');
 
-  const actionCards = actions.map(action => `<button type="button" class="stage-home-ai-card tone-${tone(action.blocker)}" data-stage-home-ai="${esc(action.id)}">
-    <header><span>${esc(action.track || 'Frente operacional')} · ${esc(actionPhase(action.phase))}</span><b>${Number(action.impact) || 0}</b></header>
-    <h3>${esc(action.label || 'Ação operacional')}</h3>
-    <p>${esc(action.blocker || 'Sem bloqueio informado.')}</p>
-    <div class="stage-home-ai-score"><i><em style="width:${pct(action.readiness)}%"></em></i><strong>${pct(action.readiness)}% pronta</strong></div>
-    <footer><span>${esc(action.relation || 'Sem vínculo')}</span><small>${esc(action.eta || 'A definir')}</small></footer>
-  </button>`).join('');
-
   const recordCards = records.slice().reverse().slice(0, 6).map(record => `<button type="button" class="stage-home-record-card tone-${tone(record.status)}" data-stage-home-record="${esc(record.id || '')}">
     <header><span>${esc(record.id || 'REGISTRO')}</span><b>${esc(record.status || 'Pendente')}</b></header>
     <h3>${esc(record.atividade || record.activity || 'Atividade operacional')}</h3>
@@ -52,40 +43,25 @@ const stageHomeRender = model => {
     <footer><span>${esc(record.etapa || record.stage || 'Etapa não informada')}</span><small>${esc(record.data || 'Sem data')} · ${esc(record.responsavel || 'Responsável a definir')}</small></footer>
   </button>`).join('');
 
-  const timelineCards = stages.map((stage, index) => {
-    const progress = pct(stage.progress);
-    const status = stageStatus(progress);
-    const activity = activityForStage(stage);
-    const dependencyName = key => stages.find(item => String(item.key) === String(key))?.name || key;
-    const dependency = Array.isArray(stage.dependsOn) && stage.dependsOn.length
-      ? `Após ${dependencyName(stage.dependsOn[stage.dependsOn.length - 1])}`
-      : index === 0 ? 'Início do encadeamento' : 'Próxima frente operacional';
-    return `<button type="button" class="stage-persistent-timeline-card stage-home-timeline-card ${progress > 0 ? 'active' : ''}" data-stage-home-stage="${esc(stage.key || '')}" aria-label="Abrir etapa ${esc(stage.name || 'Etapa operacional')}">
-      <span>${String(index + 1).padStart(2, '0')}</span>
-      <div><small>${esc(stage.period || `Fase ${String(index + 1).padStart(2, '0')}`)} · ${esc(status)}</small><b>${esc(stage.name || 'Etapa operacional')}</b><i><em style="width:${progress}%"></em></i><small>${esc(dependency)} · ${esc(activity?.name || 'Atividades da etapa')}</small></div>
-      <strong>${progress}%</strong>
-    </button>`;
+  const eventCards = Array.isArray(model.calendarEvents) ? model.calendarEvents : [];
+  const weekStart = calendar[0]?.iso || '';
+  const dayLabels = calendar.map(day => `<span class="stage-home-canvas-day ${day.today ? 'today' : ''}"><b>${esc(day.weekday)}</b><strong>${esc(day.date)}</strong></span>`).join('');
+  const stageRows = stages.map(stage => {
+    const scheduled = eventCards.filter(event => String(event.stageKey) === String(stage.key));
+    const cards = scheduled.map((event, index) => {
+      const dayIndex = calendar.findIndex(day => day.iso === event.date);
+      if (dayIndex < 0) return '';
+      const width = Math.max(1, Math.min(7 - dayIndex, Number(event.spanDays) || 1));
+      return `<button type="button" class="stage-home-canvas-event tone-${tone(event.status)}" data-stage-home-calendar-event="${esc(event.id)}" data-stage-home-calendar-date="${esc(event.date)}" title="${esc(event.title)} · ${esc(event.start || '')}" style="left:calc(${dayIndex} * 100% / 7 + 4px);width:calc(${width} * 100% / 7 - 8px);top:${8 + index * 47}px"><b>${esc(event.start || '—')} · ${esc(event.title || 'Atividade')}</b><small>${esc(event.owner || stage.owner)} · ${esc(event.status || 'Planejado')}</small></button>`;
+    }).join('');
+    return `<div class="stage-home-canvas-row"><button type="button" class="stage-home-canvas-stage" data-stage-home-stage="${esc(stage.key)}"><b>${esc(stage.name)}</b><small>${pct(stage.progress)}% · ${esc(stage.owner)}</small></button><div class="stage-home-canvas-track" style="min-height:${Math.max(58, scheduled.length * 47 + 12)}px">${cards || '<span class="stage-home-canvas-empty">Sem atividade agendada nesta semana</span>'}</div></div>`;
   }).join('');
 
-  const dayCards = calendar.map(day => `<article class="stage-home-calendar-day ${day.today ? 'today' : ''}">
-    <header><span>${esc(day.weekday || '')}</span><b>${esc(day.date || '')}</b><small>${esc(day.note || 'Janela operacional')}</small></header>
-    <div>${(day.stages || []).map(stage => {
-      const progress = pct(stage.progress);
-      return `<button type="button" class="stage-home-calendar-card tone-${tone(stageStatus(progress))}" data-stage-home-stage="${esc(stage.key || stage.id || '')}">
-        <span>${esc(stageStatus(progress))}</span><h3>${esc(stage.name || 'Etapa')}</h3><p>${esc(stage.owner || 'Responsável a definir')}</p>
-        <i><em style="width:${progress}%"></em></i><footer><b>${progress}%</b><small>${esc(stage.period || 'Frente')}</small></footer>
-      </button>`;
-    }).join('') || '<p class="stage-home-day-empty">Sem etapa nesta janela.</p>'}</div>
-  </article>`).join('');
-
   return `<section class="stage-home-page-v1" data-stage-home-page>
-    <header class="stage-home-head"><div><span class="activity-kind">ETAPAS E CRONOGRAMA · ORGANIZADOR OPERACIONAL</span><h1>Central de decisão das etapas</h1><p>RAID, inteligência, registros e calendário reunidos na sequência de leitura do administrador.</p></div><div class="stage-home-head-actions"><button type="button" class="ghost" data-stage-home-view="raid">${model.icons?.shield || 'RAID'} Quadro RAID</button><button type="button" class="ghost" data-stage-home-view="actions">${model.icons?.sparkles || 'IA'} Ações IA</button><button type="button" class="stage-home-primary" data-stage-home-new-record>${model.icons?.plus || '+'} Novo registro</button></div></header>
-    <div class="stage-home-kpis"><article><small>ETAPAS</small><b>${stages.length}</b><span>frentes relacionais</span></article><article><small>ATIVIDADES</small><b>${activities.length || 28}</b><span>unidades no organizador</span></article><article><small>RAID ABERTO</small><b>${openRaid}</b><span>riscos e dependências</span></article><article><small>AVANÇO CONSOLIDADO</small><b>${totalProgress}%</b><span>posição média das etapas</span></article></div>
-    <section class="stage-persistent-timeline stage-home-timeline" data-stage-home-section="timeline" data-stage-home-timeline><header><div><span class="activity-kind">01 · CRONOGRAMA VISUAL</span><b>Linha do tempo da obra</b><small>Acompanhe todas as etapas na ordem de execução. Clique em uma frente para abrir seus detalhes específicos.</small></div><span class="stage-persistent-timeline-count">${stages.length} frentes</span></header><div class="stage-persistent-timeline-track">${timelineCards || '<p class="stage-home-empty">Nenhuma etapa cadastrada.</p>'}</div></section>
-    <section class="stage-home-section stage-home-raid" data-stage-home-section="raid"><header><div><span class="activity-kind">02 · RAID CONSOLIDADO</span><h2>RAID de todas as etapas e atividades</h2><p>Riscos, premissas, problemas e dependências são apresentados com o vínculo territorial e a atividade que precisa de decisão.</p></div><div class="stage-home-section-meta"><b>${raid.length}</b><span>itens<br>monitorados</span></div></header><div class="stage-home-raid-grid">${raidCards || '<p class="stage-home-empty">Nenhuma pendência cadastrada.</p>'}</div></section>
-    <section class="stage-home-section stage-home-ai" data-stage-home-section="actions"><header><div><span class="activity-kind">03 · AÇÕES IA</span><h2>Prioridades geradas pelo organizador</h2><p>A matriz de impacto e prontidão mostra quais atividades devem ser executadas, preparadas ou revisadas.</p></div><div class="stage-home-section-meta"><b>${actions.length}</b><span>ações<br>calculadas</span></div></header><div class="stage-home-ai-grid">${actionCards || '<p class="stage-home-empty">Nenhuma ação de IA disponível.</p>'}</div><footer class="stage-home-section-footer"><span>O resultado detalhado continua disponível na matriz gráfica.</span><button type="button" class="ghost" data-stage-home-view="actions">Abrir Ações IA →</button></footer></section>
-    <section class="stage-home-section stage-home-records" data-stage-home-section="records"><header><div><span class="activity-kind">04 · REGISTROS DE ATIVIDADES</span><h2>Entradas, medições e comprovantes</h2><p>O diário preserva os fatos de campo que alimentam o RAID, as prioridades e o avanço das etapas.</p></div><div class="stage-home-head-actions"><span class="stage-home-section-meta"><b>${records.length}</b><span>registros<br>preservados</span></span><button type="button" class="ghost" data-stage-home-view="records">Ver todos →</button></div></header><div class="stage-home-record-grid">${recordCards || '<p class="stage-home-empty">Nenhum registro cadastrado. O primeiro apontamento pode ser criado aqui.</p>'}</div></section>
-    <section class="stage-home-section stage-home-calendar" data-stage-home-section="calendar"><header><div><span class="activity-kind">05 · CALENDÁRIO DE ETAPAS</span><h2>Cards das etapas na janela operacional</h2><p>Leia a sequência por dia, compare o progresso e abra a etapa dedicada para consultar atividades e dependências.</p></div><div class="stage-home-calendar-controls"><button type="button" class="ghost" data-stage-home-view="agenda">Abrir agenda completa →</button><b>03 — 09 de junho de 2024</b></div></header><div class="stage-home-calendar-grid">${dayCards || '<p class="stage-home-empty">Nenhuma etapa cadastrada no calendário.</p>'}</div><footer class="stage-home-section-footer"><span><i class="planned"></i> Planejada <i class="active"></i> Em andamento <i class="done"></i> Concluída</span><small>Fuso · America/Bahia</small></footer></section>
+    <header class="stage-home-head"><div><span class="activity-kind">ETAPAS E CRONOGRAMA · ORGANIZADOR OPERACIONAL</span><h1>Central de decisão das etapas</h1><p>Atividades, inteligência, registros e calendário na sequência de execução.</p></div><div class="stage-home-head-actions"><button type="button" class="ghost" data-stage-home-view="activities">Atividades</button><button type="button" class="ghost" data-stage-home-view="actions">${model.icons?.sparkles || 'IA'} Ações IA</button><button type="button" class="stage-home-primary" data-stage-home-new-record>${model.icons?.plus || '+'} Novo registro</button></div></header>
+    <section class="stage-home-section stage-home-calendar-canvas" data-stage-home-section="calendar" data-stage-home-calendar-week="${esc(weekStart)}"><header><div><span class="activity-kind">01 · CALENDÁRIO DE ATIVIDADES</span><h2>Etapas na linha do tempo</h2><p>Compromissos por dia e etapa, sincronizados com a Agenda. Abra um card para ajustar dia, horário ou detalhes.</p></div><div class="stage-home-calendar-controls"><button type="button" data-stage-home-calendar-shift="-1" aria-label="Semana anterior">‹</button><b>${esc(model.calendarLabel || '')}</b><button type="button" data-stage-home-calendar-shift="1" aria-label="Próxima semana">›</button><button type="button" class="ghost" data-stage-home-view="agenda">Abrir agenda →</button></div></header><div class="stage-home-canvas-scroll"><div class="stage-home-canvas-grid"><div class="stage-home-canvas-axis"><span>ETAPAS</span><div>${dayLabels}</div></div>${stageRows || '<p class="stage-home-empty">Nenhuma etapa cadastrada.</p>'}</div></div><footer class="stage-home-section-footer"><span>${eventCards.length} compromisso(s) na semana · clique em um card para abrir na Agenda</span><small>Fuso · America/Bahia</small></footer></section>
+    <div class="stage-home-kpis"><article><small>ETAPAS</small><b>${stages.length}</b><span>frentes relacionais</span></article><article><small>ATIVIDADES</small><b>${activities.length}</b><span>unidades no organizador</span></article><article><small>REGISTROS</small><b>${records.length}</b><span>apontamentos preservados</span></article><article><small>AVANÇO CONSOLIDADO</small><b>${totalProgress}%</b><span>posição média das etapas</span></article></div>
+    <section class="stage-home-section stage-home-records" data-stage-home-section="records"><header><div><span class="activity-kind">02 · REGISTROS DE ATIVIDADES</span><h2>Entradas, medições e comprovantes</h2><p>O diário preserva os fatos de campo que alimentam prioridades e avanço das etapas.</p></div><div class="stage-home-head-actions"><span class="stage-home-section-meta"><b>${records.length}</b><span>registros<br>preservados</span></span><button type="button" class="ghost" data-stage-home-view="records">Ver todos →</button></div></header><div class="stage-home-record-grid">${recordCards || '<p class="stage-home-empty">Nenhum registro cadastrado. O primeiro apontamento pode ser criado aqui.</p>'}</div></section>
   </section>`;
 };
 
@@ -96,3 +72,14 @@ export const StageHomePage = ({props = {}, children = []} = {}) => ({
 });
 
 export const renderStageHomePageV1 = props => StageHomePage({props}).next().value;
+
+export const renderOperationalAiPrioritiesV1 = (items = []) => {
+  const actions = Array.isArray(items) ? items : [];
+  const cards = actions.map(action => `<button type="button" class="stage-home-ai-card tone-${tone(action.blocker)}" data-stage-home-ai-action="${esc(action.id || action.label || '')}" aria-label="Enviar prioridade ${esc(action.label || 'operacional')} ao chat da IA">
+    <header><span>${esc(action.track || 'Frente operacional')} · ${esc(actionPhase(action.phase))}</span><b>${Number(action.impact) || 0}</b></header>
+    <div class="stage-home-ai-main"><h3>${esc(action.label || 'Ação operacional')}</h3><p>${esc(action.blocker || 'Sem bloqueio informado.')}</p></div>
+    <div class="stage-home-ai-score"><i><em style="width:${pct(action.readiness)}%"></em></i><strong>${pct(action.readiness)}% pronta</strong></div>
+    <footer><span>${esc(action.relation || 'Sem vínculo')}</span><small>${esc(action.eta || 'A definir')}</small></footer>
+  </button>`).join('');
+  return `<section class="control-center-section stage-home-section stage-home-ai control-ai-priorities" aria-label="Prioridades geradas por IA"><header><div><span class="activity-kind">PRIORIDADES · IA OPERACIONAL</span><h2>Prioridades geradas por IA</h2><p>Lista executável. Clique em uma prioridade para enviá-la ao chat operacional: a IA executa o que puder no sistema e pede somente os detalhes ou documentos que ainda faltarem.</p></div><div class="stage-home-section-meta"><b>${actions.length}</b><span>ações<br>calculadas</span></div></header><div class="stage-home-ai-grid" role="list">${cards || '<p class="stage-home-empty">Nenhuma prioridade calculada nesta sessão.</p>'}</div></section>`;
+};

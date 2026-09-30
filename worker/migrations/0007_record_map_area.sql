@@ -1,0 +1,1 @@
+ALTER TABLE records ADD COLUMN map_area TEXT NOT NULL DEFAULT '';

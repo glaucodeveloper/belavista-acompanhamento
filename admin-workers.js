@@ -1,13 +1,13 @@
 import {DEVELOPMENT_STAGE_CATALOG,DEVELOPMENT_STAGE_CATALOG_VERSION,DEVELOPMENT_STAGE_SOURCES} from './development-stage-catalog.mjs';
 import {registerOperationalDevice,subscribeOperationalNotifications,subscribeOperationalContacts,subscribeOperationalConversation,sendOperationalMessage} from './firebase.mjs?v=twa-comms-v1';
 
-const dedicatedWorkbench=/\/admin\/workers\/(stage|activity)\/?$/.test(location.pathname);
+const dedicatedWorkbench=/\/admin\/workers\/(stage|activity|activity\/record)\/?$/.test(location.pathname);
 if(dedicatedWorkbench){
   // A superfície dedicada só deve importar o workbench depois de a sessão
   // estar pronta. Isso mantém o gate de login leve e evita inicializar
   // Three.js enquanto o Firebase ainda restaura a sessão.
   await (globalThis.BELAVISTA_ADMIN_AUTH_READY||Promise.resolve(true));
-  await import('./stage-workbench.mjs?v=stage-input-sessions-v5381');
+  await import('./stage-workbench.mjs?v=activity-record-page-v5386');
 }else{
 
 const root=document.querySelector('[data-worker-app]');
@@ -70,7 +70,7 @@ function initializeRequirementsCatalog(){
   renderRequirementsCatalog();
 }
 
-const communications={actor:null,contacts:[],selected:null,messages:[],notifications:{},unsubscribeNotifications:null,unsubscribeContacts:null,unsubscribeConversation:null};
+const communications={actor:null,contacts:[],selected:null,messages:[],notifications:{},unsubscribeNotifications:null,unsubscribeContacts:null,unsubscribeConversation:null,social:[],socialSelected:null,socialMessages:[],socialChannel:'all'};
 const actorForCommunications=()=>globalThis.BELAVISTA_ADMIN_ACTOR||{uid:`local-${roleKey()}`,name:roleKey()==='foreman'?'Encarregado mobile':roleKey()==='owner'?'Dono':'Administrador',role:roleKey()};
 const notificationItems=()=>Object.values(communications.notifications||{}).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
 
@@ -110,6 +110,12 @@ function openCommunications(tab='notifications'){
 }
 function closeCommunications(){qs('[data-communication-sidebar]').classList.remove('is-open');qs('[data-communication-sidebar]').setAttribute('aria-hidden','true');document.body.classList.remove('communication-open');}
 
+function renderSocial(){const list=qs('[data-social-list]'),query=String(qs('[data-social-search]')?.value||'').toLocaleLowerCase('pt-BR');if(!list)return;const rows=communications.social.filter(item=>!query||`${item.contactName} ${item.phone} ${item.channel}`.toLocaleLowerCase('pt-BR').includes(query));list.innerHTML=rows.map(item=>`<button class="contact-item ${communications.socialSelected?.id===item.id?'is-active':''}" data-social-id="${esc(item.id)}"><i>${item.channel==='instagram'?'IG':'WA'}</i><span><strong>${esc(item.contactName||item.externalThreadId)}</strong><small>${esc(item.channel)} · ${esc(item.phone||item.externalThreadId)}</small></span><em>${esc(item.status||'open')}</em></button>`).join('')||'<div class="empty-state">Nenhuma conversa externa recebida.</div>';list.querySelectorAll('[data-social-id]').forEach(button=>button.addEventListener('click',()=>selectSocial(rows.find(item=>item.id===button.dataset.socialId))));}
+function renderSocialMessages(){const feed=qs('[data-social-feed]');if(!feed)return;feed.innerHTML=communications.socialMessages.map(item=>`<article class="message-bubble ${item.direction==='outbound'?'is-own':''}"><strong>${item.direction==='outbound'?'Você':esc(communications.socialSelected?.contactName||'Lead')}</strong><p>${esc(item.body)}</p><time>${esc(dateTime(item.createdAt))}</time></article>`).join('')||'<div class="empty-state">Nenhuma mensagem nesta conversa.</div>';feed.scrollTop=feed.scrollHeight;}
+async function selectSocial(item){if(!item)return;communications.socialSelected=item;communications.socialMessages=[];renderSocial();const head=qs('[data-social-conversation-head]');head.innerHTML=`<strong>${esc(item.contactName||item.externalThreadId)}</strong><span>${esc(item.channel)} · ${esc(item.leadId?'Lead vinculado':'perfil aguardando vínculo')}</span>`;const form=qs('[data-social-form]');form.elements.message.disabled=false;form.querySelector('button').disabled=false;try{communications.socialMessages=(await jsonFetch(`/api/communications/conversations/${encodeURIComponent(item.id)}/messages`)).messages||[];renderSocialMessages();}catch(error){head.insertAdjacentHTML('beforeend',`<small class="error-text">${esc(error.message)}</small>`);}}
+async function initializeSocial(){communications.socialChannel='instagram';try{const status=await jsonFetch('/api/communications/status');const s=status.social||{};qs('[data-social-status]').textContent=`Instagram ${s.instagram?.configured?'pronto para receber e enviar':'aguardando secrets e configuração do webhook'}`;}catch(error){qs('[data-social-status]').textContent=error.message;}await loadSocial();}
+async function loadSocial(){try{communications.social=(await jsonFetch(`/api/communications/conversations?channel=${encodeURIComponent(communications.socialChannel)}`)).conversations||[];renderSocial();}catch(error){const target=qs('[data-social-list]');if(target)target.innerHTML=`<div class="empty-state">${esc(error.message)}</div>`;}}
+
 async function enablePush(){
   const status=qs('[data-push-status]'),button=qs('[data-enable-push]');button.disabled=true;status.textContent='Registrando este celular…';
   try{
@@ -120,12 +126,13 @@ async function enablePush(){
 }
 
 async function initializeCommunications(){
-  if('serviceWorker' in navigator)await navigator.serviceWorker.register('/sw.js').catch(()=>null);
+  if('serviceWorker' in navigator)await navigator.serviceWorker.register('/sw.js?v=map-progress-area-v7',{updateViaCache:'none'}).catch(()=>null);
   await (globalThis.BELAVISTA_ADMIN_AUTH_READY||Promise.resolve(true));
   communications.actor=actorForCommunications();
   const picker=qs('[data-role]');if(picker){picker.value=communications.actor.role;picker.disabled=Boolean(globalThis.BELAVISTA_ADMIN_ACTOR);}
   communications.unsubscribeNotifications=await subscribeOperationalNotifications(communications.actor,items=>{communications.notifications=items;renderNotificationFeed();});
   communications.unsubscribeContacts=await subscribeOperationalContacts(communications.actor,contacts=>{communications.contacts=contacts;renderContacts();});
+  await initializeSocial();
   if(new URLSearchParams(location.search).get('panel')==='messages')openCommunications('messages');
 }
 
@@ -281,6 +288,9 @@ qs('[data-run-cycle]')?.addEventListener('click',runCycle);
 document.querySelectorAll('[data-open-communications]').forEach(button=>button.addEventListener('click',()=>openCommunications(button.dataset.openCommunications)));
 document.querySelectorAll('[data-communication-close]').forEach(button=>button.addEventListener('click',closeCommunications));
 document.querySelectorAll('[data-communication-tab]').forEach(button=>button.addEventListener('click',()=>openCommunications(button.dataset.communicationTab)));
+document.querySelectorAll('[data-social-channel]').forEach(button=>button.addEventListener('click',async()=>{communications.socialChannel=button.dataset.socialChannel;document.querySelectorAll('[data-social-channel]').forEach(item=>item.classList.toggle('is-active',item===button));await loadSocial();}));
+qs('[data-social-search]')?.addEventListener('input',renderSocial);
+qs('[data-social-form]')?.addEventListener('submit',async event=>{event.preventDefault();const form=event.currentTarget,textValue=form.elements.message.value.trim(),selected=communications.socialSelected;if(!textValue||!selected)return;const button=form.querySelector('button');button.disabled=true;try{await jsonFetch(`/api/communications/conversations/${encodeURIComponent(selected.id)}/messages`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:textValue})});form.reset();communications.socialMessages=(await jsonFetch(`/api/communications/conversations/${encodeURIComponent(selected.id)}/messages`)).messages||[];renderSocialMessages();}catch(error){alert(error.message);}finally{button.disabled=false;}});
 qs('[data-contact-search]')?.addEventListener('input',renderContacts);
 qs('[data-enable-push]')?.addEventListener('click',enablePush);
 qs('[data-message-form]')?.addEventListener('submit',async event=>{event.preventDefault();const field=event.currentTarget.elements.message,button=event.currentTarget.querySelector('button'),message=field.value.trim();if(!message||!communications.selected)return;button.disabled=true;try{await sendOperationalMessage(communications.actor,communications.selected,message);field.value='';}catch(error){field.setCustomValidity(error.message);field.reportValidity();setTimeout(()=>field.setCustomValidity(''),1200);}finally{button.disabled=false;}});

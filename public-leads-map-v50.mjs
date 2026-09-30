@@ -151,8 +151,11 @@ function tuneMaterials(map){
 }
 function applyView(map){
   if(!map)return;
+  if(map.dataset.mapInit==='admin-static-first-v5370')return;
+  const adminShared=map.hasAttribute('data-admin-shared-public-map');
+  const rotation=adminShared?180:PUBLIC_VIEW.rotation;
   const gapFitted=map.dataset.publicGapFrameStatus==='fitted-between-letter-and-chat'&&map.dataset.publicGapFrame;
-  map.sceneManualRotation=PUBLIC_VIEW.rotation;
+  map.sceneManualRotation=rotation;
   map.sceneTiltAdjust=0;
   map.sceneUserInteracted=true;
   if(!gapFitted){
@@ -161,7 +164,7 @@ function applyView(map){
     map.style.setProperty('--scene-pan-x','0px');map.style.setProperty('--scene-pan-y','0px');map.dataset.scenePan='0,0';
   }
   map.dataset.publicViewPreset='oblique-22deg-terrain-coverage-v55';
-  if(map.sceneStage&&typeof map.setSceneVisual==='function'&&!gapFitted)map.setSceneVisual(PUBLIC_VIEW.tilt,PUBLIC_VIEW.rotation,PUBLIC_VIEW.zoom);
+  if(map.sceneStage&&typeof map.setSceneVisual==='function'&&!gapFitted)map.setSceneVisual(PUBLIC_VIEW.tilt,rotation,PUBLIC_VIEW.zoom);
   map.fitPublicGapView?.();
   tuneLighting(map);tuneMaterials(map);
 }

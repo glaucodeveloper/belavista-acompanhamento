@@ -55,6 +55,12 @@ public-lead-chat{position:absolute;z-index:9;right:clamp(24px,4.5vw,72px);top:50
 .public-chat-input button{height:48px;border:0;border-radius:0;background:var(--lead-green);color:#082019;font-size:19px;cursor:pointer}
 .public-chat-input input:disabled,.public-chat-input button:disabled{opacity:.55}
 
+.public-chat-instagram-handoff{display:grid;gap:8px;margin:0 0 12px;padding:12px;border:1px solid rgba(188,235,220,.22);background:rgba(9,34,26,.82)}
+.public-chat-instagram-toggle{display:grid;grid-template-columns:1fr auto;gap:4px 8px;width:100%;padding:0;border:0;background:transparent;color:#eef8f3;text-align:left;cursor:pointer}.public-chat-instagram-toggle span{color:#9bd0bb;font:700 8px ui-monospace,monospace;letter-spacing:.12em}.public-chat-instagram-toggle b{color:#bcebdc;font-size:11px}.public-chat-instagram-toggle i{grid-column:1/-1;color:#93aa9f;font-size:10px;font-style:normal}
+.public-chat-instagram-panel{display:grid;gap:8px}
+.public-chat-instagram-panel>p{margin:0;color:#a8bdb3;font-size:10px;line-height:1.45}.public-chat-instagram-handoff iframe{display:block;width:100%;height:198px;border:1px solid rgba(193,232,216,.15);background:#0b1d17}
+.public-chat-instagram-handoff-actions{display:flex;gap:7px}.public-chat-instagram-handoff-actions a,.public-chat-instagram-handoff-actions button{flex:1;min-height:34px;padding:8px 10px;border:1px solid rgba(193,232,216,.25);background:#102820;color:#eef8f3;font:700 10px inherit;text-align:center;text-decoration:none;cursor:pointer}.public-chat-instagram-handoff-actions a{background:#bcebdc;border-color:#bcebdc;color:#082019}
+
 .public-selected-lot{position:absolute;z-index:8;right:clamp(24px,4.5vw,72px);bottom:clamp(24px,4vh,46px);width:min(410px,34vw);padding:9px 12px;border:1px solid rgba(188,235,220,.2);background:rgba(5,17,14,.76);backdrop-filter:blur(12px)}
 .public-selected-lot span,.public-selected-lot b,.public-selected-lot small{display:block}.public-selected-lot span{color:#8ec0ad;font:700 8px ui-monospace,monospace;letter-spacing:.14em}.public-selected-lot b{margin-top:3px;font-size:12px}.public-selected-lot small{margin-top:3px;color:#8ca59a;font-size:8px}
 
@@ -73,6 +79,38 @@ public-lead-chat{position:absolute;z-index:9;right:clamp(24px,4.5vw,72px);top:50
   .public-seal-grid{grid-template-columns:1fr 1fr}
 }
 @media(max-width:560px){.public-seals{padding:64px 20px}.public-seal-grid{grid-template-columns:1fr}.public-seal-grid article{min-height:145px}.public-seal-grid b{margin-top:28px}.public-modal-grid{grid-template-columns:1fr}}
+
+/* BELAVISTA_PUBLIC_PDF_BRAND_CUTOUT_V1
+   O PDF não volta como uma segunda cartografia. Esta é a camada de marca
+   transparente, com a textura verde removida e só logo + nome preservados. */
+body.public-leads-page .public-pdf-brand-layer{
+  position:absolute;
+  left:clamp(24px,6vw,92px);
+  bottom:clamp(30px,7vh,82px);
+  z-index:2;
+  width:min(270px,23vw);
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transform:translate3d(0,14px,0);
+  transition:opacity 220ms ease,transform 260ms ease,visibility 220ms ease;
+}
+body.public-leads-page .public-pdf-brand-layer img{
+  display:block;
+  width:100%;
+  height:auto;
+  background:transparent!important;
+  mix-blend-mode:normal;
+  filter:drop-shadow(0 16px 30px rgba(0,0,0,.30));
+}
+body.public-leads-page[data-public-scroll-section="map"] .public-pdf-brand-layer{
+  opacity:.88;
+  visibility:visible;
+  transform:none;
+}
+@media(max-width:900px){
+  body.public-leads-page .public-pdf-brand-layer{left:20px;bottom:24px;width:min(190px,42vw);}
+}
 
 
 /* BELAVISTA_PUBLIC_LEADS_STATE_SCROLL_V48 */
@@ -284,6 +322,18 @@ body.public-leads-page .public-chat-message .is-assistant-typing::after{
   animation:public-assistant-caret-v553 .72s steps(1,end) infinite;
 }
 @keyframes public-assistant-caret-v553{50%{opacity:.18;}}
+body.public-leads-page .public-chat-media-row{
+  display:flex;align-items:center;gap:9px;margin:0 23px;padding:0 0 4px;
+  color:rgba(224,233,230,.48);font:500 8px "IBM Plex Mono",monospace;letter-spacing:.06em;
+}
+body.public-leads-page .public-chat-media-row input{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;}
+body.public-leads-page .public-chat-media-button{min-height:30px;padding:0 10px;border:1px solid rgba(224,233,230,.25);background:rgba(255,255,255,.035);color:#f2f4ee;font:600 8px "IBM Plex Mono",monospace;cursor:pointer;}
+body.public-leads-page .public-chat-media-button:hover,body.public-leads-page .public-chat-media-button:focus-visible{border-color:var(--lead-gold);color:var(--lead-gold);outline:none;}
+body.public-leads-page .public-chat-attachment{display:flex;align-items:center;gap:10px;margin:0 23px 8px;padding:7px;border:1px solid rgba(242,182,50,.42);background:rgba(242,182,50,.07);color:#f6f7f2;font:600 8px "IBM Plex Mono",monospace;}
+body.public-leads-page .public-chat-attachment img{width:38px;height:38px;object-fit:cover;border:1px solid rgba(224,233,230,.28);}
+body.public-leads-page .public-chat-attachment span{display:grid;gap:4px;min-width:0;flex:1;}
+body.public-leads-page .public-chat-attachment small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:rgba(224,233,230,.54);font-size:7px;font-weight:400;}
+body.public-leads-page .public-chat-attachment button{width:26px;height:26px;border:1px solid rgba(224,233,230,.22);background:transparent;color:#f6f7f2;cursor:pointer;}
 @media(prefers-reduced-motion:reduce){
   body.public-leads-page .public-chat-message.is-assistant-typing::after,
   body.public-leads-page .public-chat-message .is-assistant-typing::after{animation:none;}

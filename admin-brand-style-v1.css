@@ -48,7 +48,7 @@ body.admin-shell-page .install-mark{
   width:42px!important;height:42px!important;
   overflow:hidden!important;
   color:transparent!important;font-size:0!important;
-  background:transparent url('./assets/public/alianca-park-logo-mark-v5346.png') center/contain no-repeat!important;
+  background:transparent url('./assets/public/alianca-park-logo-mark-transparent-v551.png?edited=20260915') center/contain no-repeat!important;
 }
 body.admin-shell-page .install-panel input,
 body.admin-shell-page .install-panel select,
@@ -72,7 +72,7 @@ body.admin-shell-page .brand-mark,
 body.admin-shell-page .session-mark{
   overflow:hidden!important;
   color:transparent!important;font-size:0!important;
-  background:transparent url('./assets/public/alianca-park-logo-mark-v5346.png') center/contain no-repeat!important;
+  background:transparent url('./assets/public/alianca-park-logo-mark-transparent-v551.png?edited=20260915') center/contain no-repeat!important;
   border-radius:0!important;
   box-shadow:none!important;
 }
@@ -154,7 +154,6 @@ body.admin-shell-page .scene:has(>view-layer[data-view="map"]){
    pertencendo ao shell operacional autenticado. */
 body.admin-shell-page map-scene[data-admin-shared-public-map] .map-badge,
 body.admin-shell-page map-scene[data-admin-shared-public-map] .map-category-switcher,
-body.admin-shell-page map-scene[data-admin-shared-public-map] .map-rotation-controls,
 body.admin-shell-page map-scene[data-admin-shared-public-map] .map-gesture-legend{
   display:flex!important;
   visibility:visible!important;
@@ -420,6 +419,50 @@ body.admin-shell-page main.scene>view-layer[data-view="map"]{
   pointer-events:none!important;
 }
 body.admin-shell-page main.scene>view-layer[data-view]:not([data-view="map"]){
+  pointer-events:auto!important;
+}
+
+/* OPERATIONAL_VIEW_LAYER_OVERLAY_FIX_V2: as telas de operação não devem
+   ficar posicionadas como uma camada fixa sobre o conteúdo da página. */
+body.admin-shell-page main.scene>view-layer[data-view="stages"],
+body.admin-shell-page main.scene>view-layer[data-view="activities"],
+body.admin-shell-page main.scene>view-layer[data-view="progress"]{
+  position:relative!important;
+  inset:auto!important;
+  z-index:20!important;
+  width:100%!important;
+  height:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  overflow:auto!important;
+  background:#161616!important;
+}
+body.admin-shell-page main.scene:has(>view-layer[data-view="stages"])>map-scene[data-persistent-map="true"],
+body.admin-shell-page main.scene:has(>view-layer[data-view="activities"])>map-scene[data-persistent-map="true"],
+body.admin-shell-page main.scene:has(>view-layer[data-view="progress"])>map-scene[data-persistent-map="true"]{
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+body.admin-shell-page main.scene:has(>view-layer[data-view="stages"])>map-scene{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+body.admin-shell-page main.scene:has(>view-layer[data-view="stages"]) map-scene:not([data-dashboard-operational-map="true"]):not([data-stages-panorama-map="true"]){
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+body.admin-shell-page main.scene:has(>view-layer[data-view="stages"])>view-layer[data-view="stages"],
+body.admin-shell-page main.scene:has(>view-layer[data-view="stages"])>view-layer[data-view="stages"] *{
+  pointer-events:auto!important;
+}
+body.admin-shell-page main.scene:has(>view-layer[data-view="stages"])>view-layer[data-view="stages"] map-scene[data-dashboard-operational-map="true"]{
+  pointer-events:none!important;
+}
+body.admin-shell-page main.scene:has(>view-layer[data-view="stages"])>view-layer[data-view="stages"] map-scene[data-dashboard-operational-map="true"] .map-rotation-controls,
+body.admin-shell-page main.scene:has(>view-layer[data-view="stages"])>view-layer[data-view="stages"] map-scene[data-dashboard-operational-map="true"] .map-category-switcher,
+body.admin-shell-page main.scene:has(>view-layer[data-view="stages"])>view-layer[data-view="stages"] map-scene[data-dashboard-operational-map="true"] [data-scene-fit]{
   pointer-events:auto!important;
 }
 

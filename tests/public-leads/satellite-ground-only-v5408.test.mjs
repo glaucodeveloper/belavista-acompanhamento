@@ -46,11 +46,11 @@ test('a implantação pública preserva a orientação corrigida sobre o ajuste 
   assert.match(source,/const PUBLIC_MODEL_NORTH_ROTATION_DEG=-90/);
   assert.match(source,/const PUBLIC_MODEL_NORTH_ROTATION_RAD=\s*PUBLIC_MODEL_NORTH_ROTATION_DEG\*Math\.PI\/180/);
   assert.match(source,/const PUBLIC_MODEL_HORIZONTAL_FLIP=-1/);
-  assert.match(source,/const PUBLIC_MODEL_GUIDE_ROTATION_DEG=0/);
-  assert.match(source,/const PUBLIC_MODEL_ALIGNMENT_OFFSET_WORLD_X=0/);
-  assert.match(source,/const PUBLIC_MODEL_ALIGNMENT_OFFSET_WORLD_Z=0/);
-  assert.match(source,/makeScale\(PUBLIC_MODEL_HORIZONTAL_FLIP,1,1\)\s*\.multiply\(new THREE\.Matrix4\(\)\.makeRotationY\(PUBLIC_MODEL_NORTH_ROTATION_RAD\)\)/);
-  assert.match(source,/publicModelOrientation='dwg-affine\|rotate-left-90deg\|flip-horizontal\|north=upper-road-exit'/);
+  assert.match(source,/const PUBLIC_MODEL_GUIDE_ROTATION_DEG=-90/);
+  assert.match(source,/const PUBLIC_MODEL_ALIGNMENT_OFFSET_WORLD_X=-75/);
+  assert.match(source,/const PUBLIC_MODEL_ALIGNMENT_OFFSET_WORLD_Z=-775/);
+  assert.match(source,/makeScale\(horizontalFlip,1,1\)\s*\.multiply\(new THREE\.Matrix4\(\)\.makeRotationY\(PUBLIC_MODEL_NORTH_ROTATION_RAD\)\)/);
+  assert.match(source,/this\.dataset\.publicModelOrientation=`dwg-affine\|orientation-before-fit\|rotate-left-90deg\|flipX-\$\{horizontalFlip\}\|y\+\$\{extraRotationDeg\}deg\|north=upper-road-exit/);
   assert.match(source,/saída superior = norte · giro à esquerda 90° · flip horizontal/);
 });
 

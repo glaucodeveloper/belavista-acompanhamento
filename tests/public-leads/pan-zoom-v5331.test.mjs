@@ -39,7 +39,7 @@ test('Ctrl + roda controla o zoom e Ctrl + arraste mantém a inclinação',()=>{
   const components=read('components.js');
   assert.match(components,/const zoomSceneAtCursorByCtrlWheel=event=>\{/);
   assert.match(components,/if\(!event\.ctrlKey\|\|event\.defaultPrevented\)return;/);
-  assert.match(components,/event\.preventDefault\(\);\n        event\.stopPropagation\(\);/);
+  assert.match(components,/event\.preventDefault\(\);\s*event\.stopPropagation\(\);/);
   assert.match(components,/this\.addEventListener\('wheel',zoomSceneAtCursorByCtrlWheel,\{capture:true,passive:false\}\)/);
   assert.match(components,/this\.setSceneZoomAt\(nextZoom,event\.clientX,event\.clientY,false\)/);
   assert.match(components,/this\.dataset\.sceneWheelZoom='ctrl-wheel · cursor-ground'/);
@@ -47,9 +47,10 @@ test('Ctrl + roda controla o zoom e Ctrl + arraste mantém a inclinação',()=>{
   assert.match(components,/mapZoomAnchor='cursor-ground · rotation-aware'/);
   assert.match(components,/this\.queueSceneBoundsCommit\('ctrl-wheel-zoom'\)/);
   assert.doesNotMatch(components,/queueSceneBoundsCommit\('wheel'\)/);
-  assert.match(components,/tilting=!selecting&&event\.button===0&&\(event\.ctrlKey\|\|event\.shiftKey\)/);
+  assert.match(components,/tilting=!selecting&&event\.button===0&&event\.shiftKey/);
   assert.match(components,/else if\(tilting\)this\.setSceneTiltAdjust\(this\.sceneTiltAdjust\+dy\*TILT_DRAG_SENSITIVITY,false\)/);
-  assert.match(components,/MAX_SCENE_TILT=48/);
+  assert.match(components,/MIN_SCENE_TILT=0, MAX_SCENE_TILT=72/);
+  assert.match(components,/Math\.max\(\.5,Math\.min\(89\.5,90-tilt\)\)/);
   assert.match(components,/tiltSafety=1\+Math\.sin\(tilt\*Math\.PI\/180\)\*\.58/);
   assert.match(components,/sceneTiltBounds=`\$\{bounds\.min\}–\$\{bounds\.max\}deg`/);
   assert.match(components,/publicCameraInteracted!=='true'/);
@@ -97,7 +98,7 @@ test('loader entrega 80% e mantém os 20% finais no modelo',()=>{
 test('mapa público usa enquadramento compacto e floresta periférica',()=>{
   const components=read('components.js');
   assert.match(components,/MODEL_PUBLIC_FIT_RATIO=1\.10/);
-  assert.match(components,/public-compact-1\.10/);
+  assert.match(components,/public-dwg-envelope-z18/);
   assert.match(components,/BelavistaPublicSurroundingForest/);
   assert.match(components,/publicForestTreeCount/);
   assert.match(components,/bounds\.min\.x-offset/);

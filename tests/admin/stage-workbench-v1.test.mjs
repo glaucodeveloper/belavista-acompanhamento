@@ -62,6 +62,14 @@ test('atividade usa pintura persistente somente nos polígonos do modelo 3D',asy
   assert.match(persistence,/activity_locations_json/);
 });
 
+test('atividade dedicada oferece botão Voltar para o fluxo da etapa',async()=>{
+  const client=await readFile(new URL('../../stage-workbench.mjs',import.meta.url),'utf8');
+  assert.match(client,/class="button button-secondary detail-back"/);
+  assert.match(client,/aria-label="Voltar ao fluxo da etapa"/);
+  assert.match(client,/← Voltar ao fluxo da etapa/);
+  assert.match(client,/runtimeRouteV1\('\/admin\/workers\/stage',`stage=\$\{definition\.key\}`\)/);
+});
+
 test('atividades oferece destino Nova atividade preservando a etapa',async()=>{
   const [components,client]=await Promise.all([
     readFile(new URL('../../components.js',import.meta.url),'utf8'),
@@ -75,12 +83,12 @@ test('atividades oferece destino Nova atividade preservando a etapa',async()=>{
   assert.match(client,/title:'Nova atividade'/);
 });
 
-test('admin abre a base leve e inicia o modelo 3D após a primeira pintura',async()=>{
+test('admin abre a base leve e exige ativação explícita para o modelo 3D',async()=>{
   const [components,styles]=await Promise.all([
     readFile(new URL('../../components.js',import.meta.url),'utf8'),
     readFile(new URL('../../styles.css',import.meta.url),'utf8')
   ]);
-  assert.match(components,/admin3dAutostart='queued-after-first-paint'/);
+  assert.match(components,/admin3dAutostart = "disabled-explicit-activation"/);
   assert.match(components,/startAdminStandalone3DV5370\(\)/);
   assert.match(components,/Mapa base preservado/);
   assert.match(styles,/data-admin-standalone-boot/);

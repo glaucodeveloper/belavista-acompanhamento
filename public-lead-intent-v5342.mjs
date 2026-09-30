@@ -9,6 +9,7 @@
 
   const normalize=value=>String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
   const digits=value=>String(value||'').replace(/\D/g,'');
+  const instagramHandle=value=>{const handle=String(value||'').trim().replace(/^@+/,'');return /^[a-z0-9._]{1,30}$/i.test(handle)?'@'+handle:'';};
 
   function detectIntent(message,selection={}){
     const text=normalize(message);
@@ -119,8 +120,9 @@
         <div class="public-lead-intent-lot-v5342" data-lead-intent-lot>Lote: —</div>
         <div class="public-lead-intent-fields-v5342">
           <label class="full"><span>Nome completo</span><input name="name" autocomplete="name" maxlength="120" required></label>
-          <label><span>WhatsApp</span><input name="whatsapp" autocomplete="tel" maxlength="24" required></label>
-          <label><span>Documento</span><select name="documentType"><option>CPF</option><option>RG</option><option>CNPJ</option></select></label>
+           <label><span>WhatsApp</span><input name="whatsapp" autocomplete="tel" maxlength="24" required></label>
+           <label><span>Instagram @ <small>(opcional)</small></span><input name="instagramHandle" autocomplete="off" maxlength="31" placeholder="@seuusuario"></label>
+           <label><span>Documento</span><select name="documentType"><option>CPF</option><option>RG</option><option>CNPJ</option></select></label>
           <label class="full"><span>Número do documento</span><input name="document" autocomplete="off" maxlength="32" required></label>
         </div>
         <label class="public-lead-intent-consent-v5342"><input type="checkbox" name="consent" required><span>Autorizo o registro dos dados e do contexto comercial desta conversa para continuidade da negociação.</span></label>
@@ -153,7 +155,7 @@
     const form=event.currentTarget,modal=form.closest('[data-public-lead-intent-modal-v5342]');
     const status=modal.querySelector('[data-lead-intent-status]'),submit=form.querySelector('[type="submit"]');
     const values=Object.fromEntries(new FormData(form)),ctx=pending||{message:'',selection:currentSelection(),memory:currentMemory()};
-    const name=String(values.name||'').trim(),whatsapp=String(values.whatsapp||'').trim();
+    const name=String(values.name||'').trim(),whatsapp=String(values.whatsapp||'').trim(),instagram=instagramHandle(values.instagramHandle);
     const documentType=String(values.documentType||'CPF').toUpperCase(),documentValue=String(values.document||'').trim();
     status.classList.remove('error');
     if(name.length<2){status.textContent='Informe o nome.';status.classList.add('error');return;}
@@ -166,7 +168,7 @@
       const configured=document.querySelector('meta[name="belavista-api-base"]')?.content?.trim()||document.querySelector('meta[name="belavista-ai-base"]')?.content?.trim()||'';
       const endpoint=new URL(ENDPOINT,configured||location.origin).href;
       const response=await fetch(endpoint,{method:'POST',mode:'cors',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({
-        schema:'belavista.public-lead.v1',name,whatsapp,document:{type:documentType,value:documentValue},consent:true,
+         schema:'belavista.public-lead.v1',name,whatsapp,instagramHandle:instagram,document:{type:documentType,value:documentValue},consent:true,
         lot:{...ctx.selection},
         intent:{message:String(ctx.message||'').slice(0,1200),detectedAt:new Date().toISOString()},
         conversation:{id:String(ctx.memory?.id||''),history:Array.isArray(ctx.memory?.turns)?ctx.memory.turns.slice(-8):[]},

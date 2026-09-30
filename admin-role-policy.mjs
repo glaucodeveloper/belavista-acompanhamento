@@ -34,6 +34,17 @@ export const FOREMAN_EXTENSION_VIEWS = Object.freeze([
   "records",
 ]);
 
+// Superfícies retiradas da operação principal. Os módulos e dados continuam
+// preservados para não quebrar históricos, APIs ou integrações existentes.
+export const REMOVED_ADMIN_VIEWS = Object.freeze([
+  "materials",
+  "documents",
+  "personnel",
+  "leads",
+  "reports",
+]);
+const REMOVED_ADMIN_VIEW_SET = new Set(REMOVED_ADMIN_VIEWS);
+
 const BROKER_ROLES = new Set(["sales", "commercial", "broker", "corretor"]);
 const PRIVILEGED_ROLES = new Set(["owner", "admin", "developer"]);
 const FOREMAN_VIEWS = new Set([
@@ -62,6 +73,7 @@ export const normalizeOperationalRole = (value) => {
 
 export const roleCanOpenView = (role, view) => {
   const normalized = normalizeOperationalRole(role);
+  if (REMOVED_ADMIN_VIEW_SET.has(String(view || ""))) return false;
   if (normalized === "foreman") return FOREMAN_VIEWS.has(String(view || ""));
   if (BROKER_ROLES.has(normalized)) {
     return ["assistant", "contracts", "proposals", "messages"].includes(
@@ -73,6 +85,7 @@ export const roleCanOpenView = (role, view) => {
 
 export const navigationItemsForRole = (role, items = []) => {
   const normalized = normalizeOperationalRole(role);
+  items = items.filter(([id]) => !REMOVED_ADMIN_VIEW_SET.has(id));
   if (normalized === "foreman") {
     return items.filter(([id]) => FOREMAN_NAV_VIEWS.includes(id));
   }
