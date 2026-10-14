@@ -26,9 +26,25 @@ Também pode ser aberto pelo servidor local em [http://localhost:8080/docs/portf
 
 A PWA e o Service Worker precisam de `localhost` ou HTTPS. Não abra apenas via `file://`.
 
+### Instalar dependências
+
+Com Node.js e npm instalados, instale as dependências da aplicação principal:
+
+```bash
+npm run deps:install
+```
+
+Para preparar também os pacotes independentes do Capacitor, Firebase Functions e Wails:
+
+```bash
+npm run deps:install:all
+```
+
+As instalações por área também podem ser executadas separadamente: `npm run deps:install:capacitor`, `npm run deps:install:firebase` e `npm run deps:install:wails`. A etapa Wails requer Go 1.25 ou compatível com o `go.mod`; a compilação Android ainda requer JDK e Android SDK configurados.
+
 ```bash
 cd belavista-ai-monitor
-cp .env.example .env
+npm run deps:install
 # preencha GEMINI_API_KEY no ambiente (ou exporte-a)
 export GEMINI_API_KEY="sua-chave"
 npm start
