@@ -1,11 +1,13 @@
 // BELAVISTA_ADMIN_PUBLIC_MAP_SURFACE_V5352
 // v5.3.51 deferred after shell: import './admin-runtime-v11.js?v=admin-runtime-v11';
 // v5.3.51 deferred after shell: import './admin-lots-canvas-v1.js?v=admin-lots-canvas-v1';
-import './components.js?v=stage-map-mouse-v1';
+import './components.js?v=atlas-zip-front-structure-v2';
 import {appStore, persistUiState, restoreUiState, viewThemes} from './state.js?v=system-metrics-v1-20260919';
 import {apiFetch} from './api-client.mjs?v=instagram-api-live-v1';
-import {normalizeOperationalRole, roleCanOpenView} from './admin-role-policy.mjs?v=admin-role-policy-v1';
-import {readUsagePreferences} from './usage-settings-v1.mjs?v=1';
+import {actorCanOpenView, isLimitedOperationalActor, normalizeOperationalRole, resolveStartupActorV1} from './admin-role-policy.mjs?v=admin-role-policy-v3';
+import {readUsagePreferences} from './usage-settings-v1.mjs?v=2-labels';
+import {resolveApplicationRouteV1} from './components/shared/application-navigation-routes-v1.mjs?v=application-navigation-routes-v1';
+import {APPLICATION_SYSTEM_CONFIGURATION_V1,ApplicationStateProgramV1, driveApplicationStateProgramV1, WindowElement} from './bootstrap/application-state-program-v1.mjs';
 
 document.addEventListener('click',event=>{
   const back=event.target?.closest?.('.stage-v9-dedicated-page .stage-v9-back');
@@ -25,13 +27,14 @@ const ADMIN_DEFERRED_MODULES_V5351=[
   "./dashboard-map-tabs-v3.js?v=map-tabs-v3",
   "./admin-public-map-surface-v5352.mjs?v=5.3.54",
   "./public-leads-map-v50.mjs?v=admin-public-map-fixed-180-v1",
+  "./public-leads-context-v521.mjs?v=admin-public-map-raster-v1",
   "./admin-public-map-3d-status-v5353.mjs?v=5.3.53",
   "./finance-mobile-cash-v5358.mjs?v=5.3.58",
   "./chat-tab-widget-ghost-v5359.mjs?v=5.3.59",
   "./final-workspaces-v5360.mjs?v=5.3.60",
   "./stages-landing-v5361.mjs?v=5.3.61",
   "./belavista-final-ui-v5362.mjs?v=5.3.62",
-  "./records-activity-drill-in-v5377.mjs?v=control-stage-unified-form-v3-20260915"
+  "./records-activity-drill-in-v5377.mjs?v=lot-uv-hit-areas-v3"
 ];
 
 // O mapa administrativo abre primeiro como fotografia aérea estática. Os
@@ -43,6 +46,7 @@ const ADMIN_STATIC_FIRST_MAP_MODULES_V5370=new Set([
   "./dashboard-map-tabs-v3.js?v=map-tabs-v3",
   "./admin-public-map-surface-v5352.mjs?v=5.3.54",
   "./public-leads-map-v50.mjs?v=admin-public-map-fixed-180-v1",
+  "./public-leads-context-v521.mjs?v=admin-public-map-raster-v1",
   "./admin-public-map-3d-status-v5353.mjs?v=5.3.53"
 ]);
 
@@ -117,6 +121,7 @@ async function loadDeferredAdminModulesV5351({force=false}={}){
   globalThis.installBelavistaStagesLandingV5361?.();
   globalThis.installBelavistaRecordsActivityDrillInV5377?.();
   globalThis.installStageHomeRaidAiRecordsCalendarV1?.();
+  globalThis.installStageRecordCenterV1?.();
   try{
     appStore.set({lastAction:'Extensões administrativas renderizadas'});
   }catch{}
@@ -159,8 +164,8 @@ const qs=new URLSearchParams(location.search);
 // dispositivo ainda não tem atividades. O endpoint é local no servidor Node
 // e continua funcionando no PWA/URL visit; em uma visita sem SQL local, a
 // sessão permanece oculta até que uma base compatível seja detectada.
-const viewAliasesV1=Object.freeze({lotes:'brokers-board',repasse:'brokers-board',finance:'control'});
-const directViewsV1=new Set(['map','control','stages','agenda','activities','progress','actions','records','foremen','messages','proposals','contracts','brokers','brokers-board','commission-deal','cash-record','settings','activity-installation']);
+// Corretores possui listagem e ficha próprias. Não deve mais cair na Central
+// operacional, que era o alias usado antes de a página dedicada existir.
 async function refreshLocalSqlStateV1(requestedView=''){
   try{
     const response=await apiFetch('/api/health',{cache:'no-store'});
@@ -194,12 +199,10 @@ const startMapWarmup=()=>{
   if(qs.get('mapPreload')!=='1')return Promise.resolve([]);
   return mapWarmupPromise||(mapWarmupPromise=warmMapAssets());
 };
-const waitForMapWarmup=async(timeout=500)=>{
+const waitForMapWarmup=async()=>{
   startMapWarmup();
   const boot=document.querySelector('#boot'),text=boot?.querySelector('p');if(text)text.textContent='Abrindo painel operacional...';
   await Promise.race([mapWarmupPromise,new Promise(resolve=>setTimeout(resolve,220))]);
-  const started=performance.now();
-  await new Promise(resolve=>{const tick=()=>{const map=document.querySelector('map-scene[data-persistent-map="true"]'),ready=['ready','partial','uploading'].includes(map?.dataset.mapTexture);if(ready||performance.now()-started>=timeout)return resolve();setTimeout(tick,60);};tick();});
 };
 
 class CloudflareBootstrap extends HTMLElement {
@@ -222,35 +225,17 @@ if(!customElements.get('cloudflare-bootstrap')) customElements.define('cloudflar
 class BelavistaApp extends HTMLElement {
   connectedCallback(){ this.mountShell(); if(!this._bound){this._bound=true;this.bind();} }
   mountShell(){
-    if(this.querySelector('.app-shell'))return;
-    this.innerHTML=`<div class="app-shell ${appStore.get().sidebarCollapsed?'sidebar-collapsed':''}"><app-sidebar></app-sidebar><div class="app-main"><app-topbar></app-topbar><main class="scene"><map-scene data-persistent-map="true" data-public-map="" data-public-presentation="true" data-base-map="" data-stage="Aliança Park · comercial" data-overlay="urbanizacao" data-admin-shared-public-map="v5352" data-dashboard-progress-map="true" data-admin-record-selection="true" data-map-context="admin" aria-label="Mapa operacional do Aliança Park"></map-scene><div class="stage-map-accordion" data-stage-map-accordion role="group" aria-label="Controles do mapa da etapa"><span>MAPA DA OBRA · CENA CONTÍNUA</span><div><button type="button" data-stage-map-toggle aria-expanded="true" aria-controls="stage-map-viewport">Recolher mapa</button><button type="button" data-stage-map-fullscreen aria-label="Abrir mapa em tela cheia no dashboard inicial">Tela cheia ↗</button></div></div><view-layer></view-layer></main></div></div>`;
-    this.querySelector('map-scene[data-persistent-map]')?.setAttribute('id','stage-map-viewport');
+    // Remove the legacy shared map surface if an older shell left it mounted.
+    // Operational maps are owned by their active page and must not sit behind
+    // unrelated pages such as repasses, materials, or brokers.
+    this.querySelectorAll('.scene > map-scene[data-persistent-map="true"]').forEach(map=>map.remove());
+    if(this.querySelector('#app.app'))return;
+    this.innerHTML=`<div class="app" id="app" data-layout="atlas-zip"><app-sidebar></app-sidebar><div id="sidebarOverlay" class="sidebar-overlay" data-sidebar-overlay aria-hidden="true"></div><main class="workspace app-main atlas-workspace"><app-topbar></app-topbar><section class="scene"><view-layer></view-layer></section></main><nav class="mobile-bottom atlas-mobile-bottom" aria-label="Navegação mobile"><button data-mobile-view="control"><i data-lucide="layout-dashboard"></i><span>Início</span></button><button data-mobile-view="map"><i data-lucide="map"></i><span>Mapa</span></button><button data-mobile-view="records"><i data-lucide="scan-line"></i><span>OCR</span></button><button data-mobile-view="stages"><i data-lucide="calendar-days"></i><span>Cronograma</span></button></nav></div>`;
+     this.querySelectorAll('[data-atlas-view]').forEach(button=>button.classList.toggle('active',button.dataset.atlasView===appStore.get().view));
     window.lucide?.createIcons();
     queueMicrotask(()=>globalThis.__ensureStageContextChromeV1?.(this.querySelector('view-layer')));
   }
   bind(){
-    const stageMapViews=new Set(['stages','agenda','actions','activities','records','progress','foremen','activity-installation']);
-    const scene=this.querySelector('main.scene');
-    const syncStageMap=(state)=>{
-      const active=stageMapViews.has(state.view);
-      scene?.classList.toggle('has-stage-map',active);
-      if(!active)scene?.classList.remove('stage-map-collapsed');
-      const toggle=scene?.querySelector('[data-stage-map-toggle]');
-      if(toggle){const collapsed=scene.classList.contains('stage-map-collapsed');toggle.textContent=collapsed?'Expandir mapa':'Recolher mapa';toggle.setAttribute('aria-expanded',String(!collapsed));}
-    };
-    syncStageMap(appStore.get());
-    scene?.addEventListener('click',event=>{
-      if(event.target.closest('[data-stage-map-toggle]')){
-        const collapsed=scene.classList.toggle('stage-map-collapsed');
-        const button=scene.querySelector('[data-stage-map-toggle]');
-        button.textContent=collapsed?'Expandir mapa':'Recolher mapa';
-        button.setAttribute('aria-expanded',String(!collapsed));
-      }
-      if(event.target.closest('[data-stage-map-fullscreen]')){
-        appStore.set({view:'map',activityDedicated:false,stageActivityDedicatedV9:false,lastAction:'Expandiu o mesmo mapa no dashboard inicial'});
-        const url=new URL(location.href);url.searchParams.set('view','map');history.replaceState(history.state,'',url);
-      }
-    });
     let deferredExtensionsPromise=null;
     const ensureDeferredExtensions=()=>{
       const deferredState=document.documentElement.dataset.adminDeferredState;
@@ -268,23 +253,33 @@ class BelavistaApp extends HTMLElement {
     };
     appStore.subscribe(s=>{
       if(s.view==='finance'){
-        queueMicrotask(()=>{if(appStore.get().view==='finance')appStore.set({view:'control',lastAction:'Abriu Central operacional'});});
+        queueMicrotask(()=>{if(appStore.get().view==='finance')appStore.set({view:'control',lastAction:'Abriu Dashboard'});});
         return;
       }
-      syncStageMap(s);
       this.dataset.view=s.view;
       const role=normalizeOperationalRole(s.currentActor?.role||'owner');
       this.dataset.role=role;
-      const shell=this.querySelector('.app-shell');
-      shell?.classList.toggle('sidebar-collapsed',s.sidebarCollapsed);
+      const shell=this.querySelector('#app.app');
       shell?.classList.toggle('print-mode',!!s.printMode);
       if(shell){shell.dataset.shellView=s.view;shell.dataset.shellRole=role;}
+      this.querySelectorAll('[data-atlas-view]').forEach(button=>button.classList.toggle('active',button.dataset.atlasView===s.view));
+      this.querySelectorAll('[data-mobile-view]').forEach(button=>{
+        const view=button.dataset.mobileView;
+        button.hidden=!actorCanOpenView(s.currentActor||{},view);
+        button.classList.toggle('active',view===s.view||view==='stages'&&['agenda','actions','activities','progress','foremen','activity-installation'].includes(s.view));
+      });
+      queueMicrotask(()=>{
+        const current=appStore.get(),layer=this.querySelector('view-layer');
+        if(!layer||layer.dataset.view===current.view||typeof layer.render!=='function')return;
+        try{layer.render();}
+        catch(error){console.error('[Aliança Park navigation] page render failed',current.view,error);}
+      });
       queueMicrotask(()=>globalThis.__ensureStageContextChromeV1?.(this.querySelector('view-layer')));
-      if(role==='foreman'&&!roleCanOpenView(role,s.view)){
+      if(isLimitedOperationalActor(s.currentActor)&&!actorCanOpenView(s.currentActor,s.view)){
         queueMicrotask(()=>{
           const current=appStore.get();
-          if(current.currentActor?.role&&normalizeOperationalRole(current.currentActor.role)==='foreman'&&!roleCanOpenView('foreman',current.view))
-            appStore.set({view:'map',activityDedicated:false,stageActivityDedicatedV9:false,selectedActivity:null,lastAction:'Área indisponível para o perfil de encarregado'});
+          if(isLimitedOperationalActor(current.currentActor)&&!actorCanOpenView(current.currentActor,current.view))
+            appStore.set({view:'records',activityDedicated:false,stageActivityDedicatedV9:false,selectedActivity:null,lastAction:'Área indisponível para este perfil'});
         });
       }
       // A navegação deve continuar imediatamente responsiva. O lote legado de
@@ -296,6 +291,25 @@ class BelavistaApp extends HTMLElement {
       setTimeout(()=>window.lucide?.createIcons(),0);
     });
     this.addEventListener('click',event=>{
+      const menu=event.target?.closest?.('[data-sidebar-menu-toggle]');
+      if(menu){
+        event.preventDefault();
+        const sidebar=this.querySelector('app-sidebar'),open=!sidebar?.classList.contains('mobile-open');
+        sidebar?.setMobileNavigationOpen(open);
+        menu.setAttribute('aria-expanded',String(open));
+        menu.setAttribute('aria-label',open?'Fechar menu':'Abrir menu');
+        return;
+      }
+      if(event.target?.closest?.('[data-sidebar-overlay]')){
+        this.querySelector('app-sidebar')?.setMobileNavigationOpen(false);
+        this.querySelector('[data-sidebar-menu-toggle]')?.setAttribute('aria-expanded','false');
+        this.querySelector('[data-sidebar-menu-toggle]')?.setAttribute('aria-label','Abrir menu');
+        return;
+      }
+      const mobile=event.target?.closest?.('[data-mobile-view]');
+      if(mobile){event.preventDefault();appStore.set({view:mobile.dataset.mobileView,activityDedicated:false,stageActivityDedicatedV9:false,lastAction:`Abriu ${mobile.textContent.trim()}`});return;}
+      const atlas=event.target?.closest?.('[data-atlas-view]');
+      if(atlas){event.preventDefault();appStore.set({view:atlas.dataset.atlasView,activityDedicated:false,stageActivityDedicatedV9:false,lastAction:`Abriu ${atlas.textContent.trim()}`});return;}
       if(!event.target?.closest?.('[data-load-admin-extensions]'))return;
       ensureDeferredExtensions();
     },true);
@@ -306,45 +320,119 @@ class BelavistaApp extends HTMLElement {
 }
 if(!customElements.get('belavista-app')) customElements.define('belavista-app', BelavistaApp);
 
+// STAGE_TIMELINE_STRUCTURE_BRIDGE_V1: garante os controles mesmo quando uma
+// extensão legada reconstrói a timeline depois do render principal.
+const enhanceStagePersistentTimelineV1=()=>{
+  document.querySelectorAll('[data-stage-persistent-timeline]:not(.dashboard-stage-control)').forEach(timeline=>{
+    timeline.querySelectorAll('[data-persistent-stage-key]').forEach(card=>{
+      if(!card.querySelector('[data-persistent-stage-edit]')){
+        const edit=document.createElement('button');
+        edit.type='button';
+        edit.className='stage-persistent-timeline-edit';
+        edit.dataset.persistentStageEdit=card.dataset.persistentStageKey||'';
+        edit.setAttribute('aria-label',`Editar estrutura de ${card.querySelector('b')?.textContent?.trim()||'etapa'}`);
+        edit.textContent='✎';
+        edit.addEventListener('click',event=>{
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          window.location.href=`/admin/workers/stage?stage=${encodeURIComponent(edit.dataset.persistentStageEdit)}&mode=edit`;
+        },true);
+        card.append(edit);
+      }
+    });
+    if(!timeline.querySelector('[data-persistent-stage-add]')){
+      const addStage=document.createElement('button');
+      addStage.type='button';
+      addStage.className='stage-persistent-timeline-add-stage';
+      addStage.dataset.persistentStageAdd='true';
+      addStage.setAttribute('aria-label','Adicionar etapa');
+      addStage.innerHTML='<span>＋</span><b>Adicionar etapa</b><small>Nova estrutura e atividades</small>';
+      timeline.querySelector('.stage-persistent-timeline-track')?.append(addStage);
+    }
+  });
+};
+document.addEventListener('click',event=>{
+  const edit=event.target?.closest?.('[data-persistent-stage-edit]');
+  if(edit){
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    location.assign(`/admin/workers/stage?stage=${encodeURIComponent(edit.dataset.persistentStageEdit)}&mode=edit`);
+    return;
+  }
+  const addStage=event.target?.closest?.('[data-persistent-stage-add]');
+  if(addStage){
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    location.assign('/admin/workers/stage?mode=new&focus=stage');
+    return;
+  }
+},true);
+const stageTimelineObserverV1=new MutationObserver(enhanceStagePersistentTimelineV1);
+stageTimelineObserverV1.observe(document.body,{childList:true,subtree:true});
+setTimeout(enhanceStagePersistentTimelineV1,0);
+
 async function startApp(config){
-  if(globalThis.BELAVISTA_ADMIN_AUTH_REQUIRED){
-    const authenticated=await (globalThis.BELAVISTA_ADMIN_AUTH_READY||Promise.resolve(false));
-    if(!authenticated)return;
-  }
-  // BELAVISTA_PAT_STARTAPP_SANITIZE_V5364
-  if(config?.pat||config?.githubPat||config?.githubToken){
-    config={...config};
-    delete config.pat;
-    delete config.githubPat;
-    delete config.githubToken;
-  }
-  let boot=document.querySelector('#boot');
-  if(!boot){boot=document.createElement('div');boot.id='boot';boot.className='boot-screen';boot.setAttribute('aria-live','polite');boot.innerHTML='<div class="boot-orb"></div><p>Abrindo painel operacional...</p>';document.body.appendChild(boot);}
-  if (qs.get('view') === 'finance') {
-    qs.set('view', 'control');
-    const url = new URL(location.href); url.searchParams.set('view', 'control'); history.replaceState(history.state, '', url);
-  }
-  if (!qs.has('view')) qs.set('view', readUsagePreferences().defaultPage);
-  const app=document.querySelector('belavista-app'),savedUi=restoreUiState(),authActor=globalThis.BELAVISTA_ADMIN_ACTOR,rawRequestedView=qs.get('view'),aliasedView=viewAliasesV1[rawRequestedView]||rawRequestedView,requestedView=aliasedView==='assistant'?'map':['pert','raid','raci'].includes(aliasedView)?'stages':directViewsV1.has(aliasedView)?aliasedView:'map',actor=authActor||savedUi.currentActor||{},role=normalizeOperationalRole(actor.role||'owner'),safeView=!roleCanOpenView(role,requestedView)?'map':requestedView,initialView=safeView==='activity-installation'?'stages':safeView,linkedActivity=initialView==='activities'&&/^[a-z0-9_-]+:(front|execute|measure|release)$/i.test(qs.get('activity')||'')?qs.get('activity'):null; if(aliasedView!==rawRequestedView&&aliasedView) { qs.set('view',aliasedView); const url=new URL(location.href); url.searchParams.set('view',aliasedView); history.replaceState(history.state,'',url); } app.hidden=false; app.dataset.preloading='true'; app.dataset.role=role; globalThis.installStageHomeRaidAiRecordsCalendarV1?.(); appStore.set({...savedUi,config,currentActor:actor,view:initialView,mapMode:'overview',sidebarCollapsed:false,activityDedicated:false,stageActivityDedicatedV9:Boolean(linkedActivity),selectedActivity:linkedActivity||null,selectedStageV9:linkedActivity?.split(':')[0]||savedUi.selectedStageV9,proposalFormOpen:false,contractEditing:null,theme:'dark',lastAction:initialView==='map'?'Abriu o mapa operacional':`Abriu ${initialView}`}); if(initialView==='stages'){[0,500,1800,4200].forEach(delay=>setTimeout(()=>globalThis.ensureStageHomeRaidAiRecordsCalendarV1?.(),delay));} document.documentElement.dataset.theme='dark';
-  delete app.dataset.preloading; if(boot)boot.remove();
-  // Extensões administrativas são opcionais na abertura. Alguns módulos
-  // antigos instalam observadores de documento e não podem disputar o
-  // primeiro render com o shell autenticado. Eles continuam disponíveis para
-  // uma ativação explícita, sem transformar a navegação inicial em uma corrida.
-  globalThis.loadBelavistaAdminExtensionsV5351=loadDeferredAdminModulesV5351;
-  document.documentElement.dataset.adminDeferredState='idle-until-action';
-  // Carrega as extensões depois do primeiro desenho do shell. Sem este
-  // aquecimento, as ações de agenda, central, caixa e páginas de etapa ficam
-  // dependentes de um gatilho que não existe na interface principal.
-  setTimeout(()=>globalThis.loadBelavistaAdminExtensionsV5351?.(),900);
-  // O mapa é aquecido depois que o painel já está utilizável.
-  setTimeout(()=>waitForMapWarmup().catch(()=>{}),120);
-  // No celular a aplicação mantém toda a navegação disponível. A tela de
-  // Registros continua podendo ser aberta diretamente por `?mobile=records`,
-  // mas não substitui mais a página que o usuário deixou salva.
-  if(window.matchMedia?.('(max-width: 760px)').matches&&qs.get('mobile')==='records') appStore.set({view:'records',lastAction:'Modo mobile de registros ativado'});
-  if('serviceWorker' in navigator && location.protocol!=='file:') navigator.serviceWorker.register('./sw.js?v=full-image-3d-environment-v1',{updateViaCache:'none'}).catch(console.warn);
-  void refreshLocalSqlStateV1(requestedView);
+  const applicationWindow=WindowElement({windowRef:window,props:{id:'belavista-application-window'}});
+  return driveApplicationStateProgramV1(
+    ApplicationStateProgramV1.program({windowElement:applicationWindow,config}),
+    {
+      'resolve-window-element':({component})=>component.next().value,
+      'await-authentication':async()=>!globalThis.BELAVISTA_ADMIN_AUTH_REQUIRED||Boolean(await (globalThis.BELAVISTA_ADMIN_AUTH_READY||Promise.resolve(false))),
+      'sanitize-config':({config:input})=>{
+        if(!input?.pat&&!input?.githubPat&&!input?.githubToken)return input;
+        const safe={...input};
+        delete safe.pat;delete safe.githubPat;delete safe.githubToken;
+        return safe;
+      },
+      'initialize-application-state':({applicationWindow:root,config:safeConfig})=>{
+        const rootWindow=root.element,rootDocument=root.document;
+        let boot=rootDocument.querySelector('#boot');
+        if(!boot){boot=rootDocument.createElement('div');boot.id='boot';boot.className='boot-screen';boot.setAttribute('aria-live','polite');boot.innerHTML='<div class="boot-orb"></div><p>Abrindo painel operacional...</p>';rootDocument.body.appendChild(boot);}
+        if(qs.get('view')==='finance'){
+          qs.set('view','control');
+          const url=new URL(rootWindow.location.href);url.searchParams.set('view','control');rootWindow.history.replaceState(rootWindow.history.state,'',url);
+        }
+        if(!qs.has('view'))qs.set('view',readUsagePreferences().defaultPage);
+        const app=rootDocument.querySelector('belavista-app');
+        if(!app)throw new Error('Elemento da aplicação <belavista-app> não encontrado.');
+        const savedUi=restoreUiState(),authActor=globalThis.BELAVISTA_ADMIN_ACTOR,rawRequestedView=qs.get('view');
+        const {aliasedView,requestedView}=resolveApplicationRouteV1(rawRequestedView);
+        const actor=resolveStartupActorV1({authenticatedActor:authActor,restoredActor:savedUi.currentActor,fallbackActor:appStore.get().currentActor});
+        const role=normalizeOperationalRole(actor.role||'owner');
+        const safeView=!actorCanOpenView(actor,requestedView)?(isLimitedOperationalActor(actor)?'records':'map'):requestedView;
+        const initialView=safeView==='activity-installation'?'stages':safeView;
+        const linkedActivity=initialView==='activities'&&/^[a-z0-9_-]+:(front|execute|measure|release)$/i.test(qs.get('activity')||'')?qs.get('activity'):null;
+        if(aliasedView!==rawRequestedView&&aliasedView){qs.set('view',aliasedView);const url=new URL(rootWindow.location.href);url.searchParams.set('view',aliasedView);rootWindow.history.replaceState(rootWindow.history.state,'',url);}
+        if(requestedView!==safeView){qs.set('view',safeView);const url=new URL(rootWindow.location.href);url.searchParams.set('view',safeView);rootWindow.history.replaceState(rootWindow.history.state,'',url);}
+        app.dataset.preloading='true';app.dataset.role=role;
+        globalThis.installStageHomeRaidAiRecordsCalendarV1?.();
+        const system=APPLICATION_SYSTEM_CONFIGURATION_V1;
+        appStore.set({...savedUi,config:safeConfig,currentActor:actor,view:initialView,mapMode:system.initialMapMode,sidebarCollapsed:system.sidebarCollapsed,activityDedicated:system.activityDedicated,stageActivityDedicatedV9:Boolean(linkedActivity),selectedActivity:linkedActivity||null,selectedStageV9:linkedActivity?.split(':')[0]||savedUi.selectedStageV9,proposalFormOpen:system.proposalFormOpen,contractEditing:system.contractEditing,theme:system.initialTheme,lastAction:initialView==='map'?'Abriu o mapa operacional':`Abriu ${initialView}`});
+        if(initialView==='stages')system.stageActivityRefreshDelays.forEach(delay=>setTimeout(()=>globalThis.ensureStageHomeRaidAiRecordsCalendarV1?.(),delay));
+        rootDocument.documentElement.dataset.theme='dark';
+        return {app,boot,rootWindow,rootDocument,requestedView,initialView};
+      },
+      'mount-application':({state})=>{
+        state.app.hidden=false;
+        delete state.app.dataset.preloading;
+        if(state.boot)state.boot.remove();
+        return state;
+      },
+      'activate-application-services':({applicationWindow:root,state})=>{
+        const rootWindow=root.element,rootDocument=root.document;
+        // Optional modules stay behind the first committed application state.
+        globalThis.loadBelavistaAdminExtensionsV5351=loadDeferredAdminModulesV5351;
+        rootDocument.documentElement.dataset.adminDeferredState='idle-until-action';
+        setTimeout(()=>globalThis.loadBelavistaAdminExtensionsV5351?.(),APPLICATION_SYSTEM_CONFIGURATION_V1.deferredModuleActivationDelay);
+        setTimeout(()=>waitForMapWarmup().catch(()=>{}),APPLICATION_SYSTEM_CONFIGURATION_V1.mapWarmupDelay);
+        if(rootWindow.matchMedia?.('(max-width: 760px)').matches&&qs.get('mobile')==='records')appStore.set({view:'records',lastAction:'Modo mobile de registros ativado'});
+        if(!globalThis.BELAVISTA_DISABLE_SERVICE_WORKER&&'serviceWorker' in rootWindow.navigator&&rootWindow.location.protocol!=='file:')
+          rootWindow.navigator.serviceWorker.register('./sw.js?v=pdf-original-perimeter-v3',{updateViaCache:'none'}).catch(console.warn);
+        void refreshLocalSqlStateV1(state.requestedView);
+        return {status:'activated',view:appStore.get().view};
+      }
+    }
+  );
 }
 
 window.addEventListener('beforeinstallprompt',e=>{

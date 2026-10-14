@@ -1,4 +1,4 @@
-const AUTH_MODE=String(process.env.BELAVISTA_AUTH_MODE||'demo').trim().toLowerCase();
+const AUTH_MODE=String(process.env.BELAVISTA_AUTH_MODE||'firebase').trim().toLowerCase();
 const ROLE_ALIASES=new Map([
   ['owner','owner'],['dono','owner'],['proprietario','owner'],['proprietário','owner'],
   ['admin','admin'],['administrador','admin'],
@@ -22,34 +22,40 @@ const firebaseAuth=()=>adminAuthPromise||(adminAuthPromise=(async()=>{
   ]);
   if(!getApps().length){
     const inline=String(process.env.FIREBASE_SERVICE_ACCOUNT_JSON||'').trim();
-    initializeApp({credential:inline?cert(JSON.parse(inline)):applicationDefault(),databaseURL:process.env.FIREBASE_DATABASE_URL});
+    initializeApp({credential:inline?cert(JSON.parse(inline)):applicationDefault(),projectId:process.env.FIREBASE_PROJECT_ID||'belavista-3f887',databaseURL:process.env.FIREBASE_DATABASE_URL});
   }
   return getAuth();
 })());
 
 const normalizedRole=value=>ROLE_ALIASES.get(String(value||'').trim().toLocaleLowerCase('pt-BR'))||'';
+const normalizedUserType=value=>['encarregado','foreman'].includes(String(value||'').trim().toLocaleLowerCase('pt-BR'))?'foreman':'';
 
 export async function requestActor(req){
   if(AUTH_MODE==='firebase'){
     const token=String(req.headers.authorization||'').match(/^Bearer\s+(.+)$/i)?.[1];
     if(!token)throw Object.assign(new Error('Autenticação obrigatória.'),{statusCode:401});
     const decoded=await (await firebaseAuth()).verifyIdToken(token,true);
-    const claimedRole=normalizedRole(decoded.role);
-    const role=localHost(req)&&localDeveloperEmail(decoded.email)?'developer':claimedRole==='developer'?'':claimedRole;
+    const claimedRole=normalizedRole(decoded.role||decoded.userRole||decoded['https://belavista/role']);
+    const userType=normalizedUserType(decoded.userType||decoded.user_type||decoded['https://belavista/userType']||claimedRole);
+    const role=localHost(req)&&localDeveloperEmail(decoded.email)?'developer':claimedRole==='developer'?'':claimedRole==='foreman'?'admin':claimedRole;
     if(!role)throw Object.assign(new Error('Perfil operacional não configurado.'),{statusCode:403});
-    return {uid:decoded.uid,role,name:String(decoded.name||decoded.email||decoded.uid),email:String(decoded.email||''),commercialProfile:String(decoded.commercialProfile||decoded.profileId||''),mode:'firebase'};
+    return {uid:decoded.uid,role,userType,name:String(decoded.name||decoded.email||decoded.uid),email:String(decoded.email||''),commercialProfile:String(decoded.commercialProfile||decoded.profileId||''),mode:'firebase'};
   }
+  if(!localHost(req))throw Object.assign(new Error('Autenticação Firebase obrigatória fora do ambiente local.'),{statusCode:503});
   const requestedRole=normalizedRole(req.headers['x-belavista-role']);
   const fallbackRole=normalizedRole(process.env.BELAVISTA_DEMO_ROLE)||'owner';
-  const role=requestedRole==='developer'?(localHost(req)?'developer':fallbackRole):requestedRole||fallbackRole;
-  return {uid:String(req.headers['x-belavista-user']||'local-warley'),role,name:String(req.headers['x-belavista-name']||'Warley'),mode:'demo'};
+  const requestedUserType=normalizedUserType(req.headers['x-belavista-user-type']||requestedRole);
+  const role=(requestedRole==='developer'?(localHost(req)?'developer':fallbackRole):requestedRole||fallbackRole)==='foreman'?'admin':(requestedRole==='developer'?(localHost(req)?'developer':fallbackRole):requestedRole||fallbackRole);
+  return {uid:String(req.headers['x-belavista-user']||'local-warley'),role,userType:requestedUserType,name:String(req.headers['x-belavista-name']||'Warley'),mode:'demo'};
 }
 
 export async function requireRoles(req,allowed=[]){
   const actor=await requestActor(req);
+  if(actor.userType==='foreman'&&!allowed.includes('foreman'))throw Object.assign(new Error('O perfil de encarregado não possui permissão para esta operação.'),{statusCode:403});
+  if(actor.userType==='foreman'&&allowed.includes('foreman'))return actor;
   if(actor.role==='developer'&&localHost(req))return actor;
   if(!allowed.includes(actor.role))throw Object.assign(new Error('Seu perfil não possui permissão para esta operação.'),{statusCode:403});
   return actor;
 }
 
-export const authStatus=()=>({mode:AUTH_MODE,productionReady:AUTH_MODE==='firebase',roles:['owner','admin','foreman','developer'],localDeveloperScope:'localhost only'});
+export const authStatus=()=>({mode:AUTH_MODE,productionReady:AUTH_MODE==='firebase',roles:['owner','admin','foreman','sales','commercial','broker','corretor','developer'],localDeveloperScope:'localhost only'});

@@ -1,0 +1,518 @@
+/* Estrutura ativa portada do atlas-cronograma-projeto/index.html.
+   Mantém as rotas e serviços reais da aplicação Belavista no shell Atlas. */
+body.admin-shell-page{
+  --atlas-ink:#17191b;
+  --atlas-muted:#7b8085;
+  --atlas-line:#e7e8e9;
+  --atlas-panel:#fff;
+  --atlas-page:#101010;
+  min-width:310px;
+  min-height:100dvh;
+  height:auto!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  margin:0!important;
+  background:var(--atlas-page)!important;
+  color:#282b3b!important;
+  color-scheme:light;
+  font-family:Inter,"Geist",-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif!important;
+}
+body.admin-shell-page .app{
+  display:grid!important;
+  grid-template-columns:300px minmax(0,1fr)!important;
+  grid-template-rows:minmax(0,1fr);
+  width:100%;
+  max-width:none;
+  min-height:100dvh!important;
+  height:auto!important;
+  margin:0;
+  padding:20px 20px 20px 0!important;
+  overflow:visible!important;
+  border:0;
+  border-radius:0;
+  background:#101010!important;
+  box-shadow:none;
+}
+body.admin-shell-page .app:has(view-layer[data-view="materials"]),
+body.admin-shell-page .app:has(view-layer[data-view="repasses"]){
+  width:100%!important;
+  max-width:none!important;
+  margin:0!important;
+}
+body.admin-shell-page .app>app-sidebar{
+  display:block;
+  min-width:0;
+  min-height:calc(100dvh - 40px);
+  height:auto!important;
+  overflow:hidden;
+  border-right:0;
+  background:#101010;
+}
+body.admin-shell-page .app app-sidebar .sidebar{
+  position:sticky!important;
+  inset:auto!important;
+  top:0;
+  width:100%!important;
+  height:100dvh!important;
+  max-height:calc(100dvh - 42px);
+  min-height:0!important;
+  padding:41px 24px 24px 43px!important;
+  display:flex!important;
+  flex-direction:column;
+  gap:32px;
+  overflow:auto;
+  transform:none!important;
+  border:0!important;
+  border-radius:0;
+  background:#101010!important;
+  color:#fff!important;
+  box-shadow:none!important;
+}
+body.admin-shell-page .app .sidebar nav{display:grid;gap:4px;min-height:0;overflow:auto}
+body.admin-shell-page .app .sidebar-mode-label{display:grid;gap:10px;margin:0 9px 12px;padding:0 0 15px;border-bottom:1px solid #303030}
+body.admin-shell-page .app .sidebar-mode-label span{color:#595959;font-size:10px;letter-spacing:1.4px}
+body.admin-shell-page .app .sidebar-mode-label b{color:#eee;font-size:12px}
+body.admin-shell-page .app .nav-item{
+  position:relative;
+  min-height:43px;
+  padding:10px 11px!important;
+  border:1px solid transparent!important;
+  border-radius:12px!important;
+  background:transparent!important;
+  color:#838383!important;
+  font-size:15px!important;
+  font-weight:670;
+  text-align:left;
+}
+body.admin-shell-page .app .nav-item:hover{background:#202020!important;color:#fff!important}
+body.admin-shell-page .app .nav-item.active{background:#232323!important;color:#fff!important}
+body.admin-shell-page .app .nav-item.active:before{display:block;left:-3px;width:3px;height:18px;background:#fff;transform:translateY(-50%)}
+body.admin-shell-page .app .nav-counter{background:#282828;color:#b3b3b3;border-radius:7px}
+body.admin-shell-page .app .nav-subitems{margin:1px 0 7px 16px;padding-left:10px;border-left:1px solid #303030}
+body.admin-shell-page .app .nav-subitem{min-height:34px;border-radius:9px;color:#898989}
+body.admin-shell-page .app .nav-subitem.active{background:#252525;color:#fff}
+body.admin-shell-page .app .site-manual-link{margin-top:auto;border:1px solid #303030;background:#1c1c1c;color:#aaa}
+body.admin-shell-page .app .sidebar-foot{margin-top:0;border-color:#303030}
+body.admin-shell-page .app .sidebar-foot .profile{color:#fff}
+body.admin-shell-page .app .sidebar-foot .profile small{color:#7d7d7d}
+body.admin-shell-page .app .sidebar-foot .avatar{background:#343434;color:#fff}
+body.admin-shell-page .app .integration{color:#85898e}
+body.admin-shell-page .app .integration>span{background:#555}
+body.admin-shell-page .app .mobile-menu-trigger{display:none}
+body.admin-shell-page .app .logo{padding:0;gap:12px}
+body.admin-shell-page .app .logo-mark{background:#fff;color:#151515;border-radius:15px}
+body.admin-shell-page .app .logo-name{font-size:28px;color:#fff;letter-spacing:-1.5px}
+body.admin-shell-page .app .logo-sub{color:#777;font-size:9px;letter-spacing:1.05px}
+
+body.admin-shell-page .app>.workspace{
+  position:relative;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr);
+  grid-template-rows:65px minmax(0,1fr)!important;
+  width:100%;
+  min-width:0;
+  min-height:calc(100dvh - 40px)!important;
+  height:auto!important;
+  padding:0 clamp(25px,3.2vw,58px) 50px!important;
+  overflow:visible!important;
+  border-radius:0;
+  background:#fff!important;
+  color:#17191b!important;
+  box-shadow:none;
+}
+body.admin-shell-page .workspace>app-topbar{display:block;min-width:0;min-height:0;z-index:40}
+body.admin-shell-page .atlas-topbar{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  width:100%;
+  height:65px!important;
+  min-height:65px;
+  padding:0!important;
+  border-bottom:1px solid #eee!important;
+  background:#fff!important;
+  color:#17191b!important;
+  box-shadow:none!important;
+  backdrop-filter:none!important;
+}
+body.admin-shell-page .atlas-breadcrumbs{display:flex;align-items:center;gap:9px;min-width:150px;color:#91969b;font-size:11.6px;font-weight:660;white-space:nowrap}
+body.admin-shell-page .atlas-breadcrumbs strong{color:#42474b;font-weight:720}
+body.admin-shell-page .atlas-toolbar{display:flex;align-items:center;gap:4px;margin-left:auto;margin-right:8px;padding:4px;border:1px solid #efeff1;border-radius:13px;background:#f9f9fa}
+body.admin-shell-page .atlas-toolbar button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:34px;padding:7px 10px;border:0;border-radius:9px;background:transparent;color:#898d96;font-size:10.5px;font-weight:720;white-space:nowrap}
+body.admin-shell-page .atlas-toolbar button:hover{background:#ededf0;color:#262835}
+body.admin-shell-page .atlas-toolbar button.active{background:#272835;color:#fff;box-shadow:0 1px 2px #0001}
+body.admin-shell-page .atlas-toolbar button[hidden],body.admin-shell-page .atlas-mobile-bottom button[hidden]{display:none!important}
+body.admin-shell-page .atlas-toolbar svg{width:15px;height:15px}
+body.admin-shell-page .atlas-topbar .top-actions{display:flex;align-items:center;gap:9px;min-width:0}
+body.admin-shell-page .atlas-session{display:inline-flex;align-items:center;gap:7px;color:#7f858a;font-size:10px;white-space:nowrap}
+body.admin-shell-page .atlas-session i{width:7px;height:7px;border-radius:50%;background:#555}
+body.admin-shell-page .atlas-topbar .ghost,body.admin-shell-page .atlas-topbar .icon-btn{min-height:36px;border:1px solid #e5e6e9;border-radius:10px;background:#fff;color:#383b46}
+body.admin-shell-page .atlas-topbar .ghost{padding:0 11px;font-size:10px}
+body.admin-shell-page .atlas-topbar .icon-btn{width:36px;padding:0;justify-content:center}
+body.admin-shell-page .atlas-topbar .badge{top:-4px;right:-4px;background:#292c3f;color:white}
+body.admin-shell-page .atlas-topbar .top-profile{min-width:0;padding:3px 7px;border-radius:11px}
+body.admin-shell-page .atlas-topbar .top-profile:hover{background:#f6f6f7}
+body.admin-shell-page .atlas-topbar .top-profile>div{display:grid;gap:2px}
+body.admin-shell-page .atlas-topbar .top-profile strong{color:#292c3f;font-size:10px}
+body.admin-shell-page .atlas-topbar .top-profile small{color:#8d9098;font-size:9px}
+body.admin-shell-page .atlas-topbar .top-profile .avatar{background:#292c3f;color:#fff}
+body.admin-shell-page .atlas-topbar .top-admin-menu{z-index:80}
+body.admin-shell-page .workspace>main.scene{
+  position:relative!important;
+  inset:auto!important;
+  display:block!important;
+  width:100%!important;
+  height:auto!important;
+  min-width:0!important;
+  min-height:calc(100dvh - 105px)!important;
+  overflow:visible!important;
+  border-radius:0;
+  background:#fff!important;
+  isolation:isolate;
+}
+body.admin-shell-page .workspace>main.scene>view-layer[data-view]:not([data-view="map"]){
+  position:relative!important;
+  inset:auto!important;
+  display:block!important;
+  width:100%!important;
+  height:auto!important;
+  max-height:none!important;
+  min-height:calc(100dvh - 105px)!important;
+  overflow:visible!important;
+  overscroll-behavior:auto;
+  scrollbar-gutter:auto;
+  pointer-events:auto!important;
+}
+body.admin-shell-page .workspace>main.scene:has(>view-layer[data-view="map"]){
+  height:calc(100dvh - 142px)!important;
+  min-height:460px!important;
+  overflow:hidden!important;
+  background:#e9ecee!important;
+}
+body.admin-shell-page .workspace>main.scene>view-layer[data-view="map"]{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  overflow:hidden!important;
+}
+body.admin-shell-page .atlas-mobile-bottom{display:none}
+
+@media(max-width:1250px){
+  body.admin-shell-page .app{grid-template-columns:245px minmax(0,1fr)!important}
+  body.admin-shell-page .app>.workspace{padding-right:25px!important;padding-left:25px!important}
+  body.admin-shell-page .atlas-topbar{gap:9px}
+  body.admin-shell-page .atlas-breadcrumbs{min-width:120px}
+  body.admin-shell-page .atlas-toolbar button{padding:7px 8px}
+  body.admin-shell-page .atlas-toolbar button span{display:none}
+}
+@media(max-width:980px){
+  body.admin-shell-page .app{display:block!important;width:100%;min-height:100dvh!important;margin:0;padding:13px!important;border-radius:0}
+  body.admin-shell-page .app>app-sidebar{position:fixed;z-index:100;inset:0;width:100%;height:100dvh;overflow:visible;pointer-events:none;border:0;background:transparent}
+  body.admin-shell-page .app app-sidebar .sidebar{position:absolute!important;inset:0 auto 0 0!important;width:min(280px,86vw)!important;height:100dvh!important;max-height:100dvh;padding:30px 20px!important;border-right:1px solid #e2e4e6!important;border-radius:0!important;transform:translateX(-108%)!important;transition:transform .22s ease;pointer-events:auto;box-shadow:20px 0 80px #0002!important}
+  body.admin-shell-page .app app-sidebar.mobile-open{pointer-events:auto;background:#10101055}
+  body.admin-shell-page .app app-sidebar.mobile-open .sidebar{transform:translateX(0)!important}
+  body.admin-shell-page .app app-sidebar .mobile-menu-trigger{position:fixed;z-index:102;top:22px;left:20px;display:flex;align-items:center;gap:7px;min-height:37px;padding:0 10px;border:1px solid #ececf0;border-radius:10px;background:#fff;color:#303340;font-size:10px}
+  body.admin-shell-page .app>.workspace{display:grid!important;grid-template-rows:60px minmax(0,1fr)!important;width:100%;min-height:calc(100dvh - 52px)!important;padding:0 16px 25px!important;border-radius:20px;background:#fbfbfb!important}
+  body.admin-shell-page .atlas-topbar{height:60px!important;min-height:60px;padding-left:50px!important}
+  body.admin-shell-page .atlas-breadcrumbs{min-width:0;flex:1;font-size:10px}
+  body.admin-shell-page .atlas-toolbar{margin-left:auto}
+  body.admin-shell-page .atlas-toolbar button{width:34px;min-height:32px;padding:6px}
+  body.admin-shell-page .atlas-topbar .top-actions{gap:5px}
+  body.admin-shell-page .atlas-session,body.admin-shell-page .atlas-topbar .ghost span,body.admin-shell-page .atlas-topbar .top-profile>div,body.admin-shell-page .atlas-topbar .top-profile>svg{display:none}
+  body.admin-shell-page .atlas-topbar .ghost,body.admin-shell-page .atlas-topbar .icon-btn{width:34px;min-height:34px;padding:0;justify-content:center}
+  body.admin-shell-page .workspace>main.scene{min-height:calc(100dvh - 112px)!important}
+  body.admin-shell-page .workspace>main.scene:has(>view-layer[data-view="map"]){height:calc(100dvh - 142px)!important;min-height:420px!important}
+  body.admin-shell-page .atlas-mobile-bottom{position:fixed;z-index:95;inset:auto 0 0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));height:64px;padding:5px 8px max(5px,env(safe-area-inset-bottom));border-top:1px solid #e8e8eb;background:#fffffff5;backdrop-filter:blur(16px)}
+  body.admin-shell-page .atlas-mobile-bottom button{display:grid;justify-items:center;align-content:center;gap:4px;min-width:0;border:0;border-radius:10px;background:transparent;color:#8b8f97;font-size:9px;font-weight:700}
+  body.admin-shell-page .atlas-mobile-bottom button.active{background:#f1f1f3;color:#282a38}
+  body.admin-shell-page .atlas-mobile-bottom svg{width:18px;height:18px}
+  body.admin-shell-page .atlas-mobile-bottom button[hidden]{display:none!important}
+}
+@media(max-width:700px){
+  body.admin-shell-page .app{width:100%;min-height:100dvh!important;margin:0;padding:0!important;border:0;border-radius:0;background:#101010!important}
+  body.admin-shell-page .app:has(view-layer[data-view="materials"]),
+  body.admin-shell-page .app:has(view-layer[data-view="repasses"]){width:100%!important;margin:0!important}
+  body.admin-shell-page .app>.workspace{display:block!important;min-height:100dvh!important;padding:0 16px 82px!important;border-radius:0}
+  body.admin-shell-page .app>app-sidebar,body.admin-shell-page .atlas-topbar,body.admin-shell-page .atlas-mobile-bottom{display:block}
+  body.admin-shell-page .workspace>main.scene{min-height:calc(100dvh - 142px)!important}
+  body.admin-shell-page .workspace>main.scene:has(>view-layer[data-view="map"]){height:calc(100dvh - 142px)!important;min-height:360px!important}
+  body.admin-shell-page .atlas-toolbar{display:none}
+  body.admin-shell-page .workspace>main.scene>view-layer[data-view]:not([data-view="map"]){padding-bottom:18px!important}
+}
+@media(max-width:390px){
+  body.admin-shell-page .atlas-breadcrumbs>span:first-child{display:none}
+  body.admin-shell-page .atlas-topbar{gap:5px}
+  body.admin-shell-page .atlas-topbar .top-actions{gap:3px}
+}
+@media print{
+  body.admin-shell-page .app{display:block!important;width:100%!important;min-height:0!important;height:auto!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:#fff!important}
+  body.admin-shell-page .app>app-sidebar,body.admin-shell-page .atlas-topbar,body.admin-shell-page .atlas-mobile-bottom{display:none!important}
+  body.admin-shell-page .app>.workspace{display:block!important;width:100%!important;min-height:0!important;height:auto!important;padding:0!important;overflow:visible!important;border-radius:0;box-shadow:none}
+}
+
+/* Estrutura do shell Atlas do ZIP: navegação escura fixa ao lado do canvas branco arredondado. */
+@media screen {
+  body.admin-shell-page {
+    min-height: 100dvh !important;
+    height: auto !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    padding: 20px 0 !important;
+    background: #101010 !important;
+    color: #17191b !important;
+  }
+  body.admin-shell-page .app {
+    display: grid !important;
+    grid-template-columns: 286px minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    width: min(100% - 40px, 1660px) !important;
+    max-width: 1660px !important;
+    min-width: 0 !important;
+    min-height: calc(100dvh - 40px) !important;
+    height: auto !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #101010 !important;
+    box-shadow: none !important;
+  }
+  body.admin-shell-page .app > app-sidebar {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: calc(100dvh - 40px) !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: #101010 !important;
+  }
+  body.admin-shell-page .app app-sidebar .sidebar {
+    position: sticky !important;
+    top: 20px !important;
+    width: 100% !important;
+    height: calc(100dvh - 40px) !important;
+    max-height: calc(100dvh - 40px) !important;
+    min-height: 600px !important;
+    padding: 27px 17px 20px 19px !important;
+    gap: 24px !important;
+    overflow: auto !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #101010 !important;
+    color: #fff !important;
+  }
+  body.admin-shell-page .app .sidebar nav {
+    display: grid !important;
+    gap: 4px !important;
+    min-height: 0 !important;
+    overflow: auto !important;
+  }
+  body.admin-shell-page .app .nav-item {
+    min-height: 42px !important;
+    padding: 10px 12px !important;
+    border: 1px solid transparent !important;
+    border-radius: 12px !important;
+    background: transparent !important;
+    color: #85888d !important;
+    font-size: 13px !important;
+    font-weight: 640 !important;
+  }
+  body.admin-shell-page .app .nav-item:hover,
+  body.admin-shell-page .app .nav-item.active {
+    background: #222 !important;
+    color: #fff !important;
+  }
+  body.admin-shell-page .app .nav-item.active:before {
+    left: -3px !important;
+    width: 3px !important;
+    height: 18px !important;
+    background: #fff !important;
+  }
+  body.admin-shell-page .app .logo { padding: 0 11px !important; gap: 11px !important; }
+  body.admin-shell-page .app .logo-mark { background: #fff !important; color: #151515 !important; }
+  body.admin-shell-page .app .logo-name { font-size: 24px !important; color: #fff !important; }
+  body.admin-shell-page .app .logo-sub { color: #85888d !important; }
+  body.admin-shell-page .app .sidebar-foot { border-color: #303030 !important; }
+  body.admin-shell-page .app .sidebar-foot .profile { color: #fff !important; }
+  body.admin-shell-page .app .sidebar-foot .profile small { color: #85888d !important; }
+  body.admin-shell-page .app .sidebar-foot .avatar { background: #343434 !important; color: #fff !important; }
+  body.admin-shell-page .app .integration { color: #85888d !important; }
+  body.admin-shell-page .app .integration > span { background: #777 !important; }
+  body.admin-shell-page .app .site-manual-link { border-color: #303030 !important; background: #1c1c1c !important; color: #aaa !important; }
+  body.admin-shell-page .app > .workspace {
+    position: relative !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: 81px minmax(0, 1fr) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: calc(100dvh - 40px) !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 37px 35px !important;
+    overflow: visible !important;
+    border-radius: 34px !important;
+    background: #fbfbfb !important;
+    color: #17191b !important;
+    box-shadow: 0 24px 95px #0002 !important;
+  }
+  body.admin-shell-page .workspace > app-topbar { display: block !important; min-width: 0 !important; min-height: 0 !important; }
+  body.admin-shell-page .atlas-topbar {
+    height: 81px !important;
+    min-height: 81px !important;
+    gap: 10px !important;
+    padding: 0 !important;
+    border-bottom: 1px solid #eee !important;
+    background: #fbfbfb !important;
+    color: #17191b !important;
+  }
+  body.admin-shell-page .atlas-breadcrumbs { min-width: 0 !important; color: #91969b !important; }
+  body.admin-shell-page .atlas-toolbar { margin-left: auto !important; }
+  body.admin-shell-page .atlas-topbar .top-actions { gap: 9px !important; }
+  body.admin-shell-page .workspace > main.scene {
+    position: relative !important;
+    inset: auto !important;
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: calc(100dvh - 121px) !important;
+    height: auto !important;
+    overflow: visible !important;
+    border-radius: 0 0 24px 24px !important;
+    background: #fbfbfb !important;
+    isolation: isolate;
+  }
+  body.admin-shell-page .workspace > main.scene > view-layer[data-view]:not([data-view="map"]) {
+    position: relative !important;
+    inset: auto !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: calc(100dvh - 121px) !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  body.admin-shell-page .workspace > main.scene:has(> view-layer[data-view="map"]) {
+    height: calc(100dvh - 141px) !important;
+    min-height: 460px !important;
+    overflow: hidden !important;
+    background: #e9ecee !important;
+  }
+  body.admin-shell-page .workspace > main.scene > view-layer[data-view="map"] {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+}
+
+@media screen and (max-width: 1250px) {
+  body.admin-shell-page .app { grid-template-columns: 250px minmax(0, 1fr) !important; }
+  body.admin-shell-page .app > .workspace { padding-right: 25px !important; padding-left: 25px !important; }
+  body.admin-shell-page .atlas-toolbar button { padding-right: 8px !important; padding-left: 8px !important; }
+  body.admin-shell-page .atlas-toolbar button span { display: none !important; }
+}
+
+@media screen and (max-width: 980px) {
+  body.admin-shell-page { padding: 0 !important; }
+  body.admin-shell-page .app { display: block !important; width: 100% !important; min-height: 100dvh !important; margin: 0 !important; }
+  body.admin-shell-page .app > app-sidebar {
+    position: fixed !important;
+    z-index: 100 !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100dvh !important;
+    overflow: visible !important;
+    pointer-events: none;
+    background: transparent !important;
+  }
+  body.admin-shell-page .app app-sidebar .sidebar {
+    position: absolute !important;
+    inset: 0 auto 0 0 !important;
+    width: min(280px, 86vw) !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    min-height: 0 !important;
+    padding: 30px 20px !important;
+    border-right: 1px solid #303030 !important;
+    transform: translateX(-108%) !important;
+    transition: transform .22s ease !important;
+    pointer-events: auto;
+    box-shadow: 20px 0 80px #0002 !important;
+  }
+  body.admin-shell-page .app app-sidebar.mobile-open { pointer-events: auto; background: #10101088 !important; }
+  body.admin-shell-page .app app-sidebar.mobile-open .sidebar { transform: translateX(0) !important; }
+  body.admin-shell-page .app app-sidebar .mobile-menu-trigger {
+    position: fixed !important;
+    z-index: 102 !important;
+    top: 12px !important;
+    left: 12px !important;
+    display: flex !important;
+    align-items: center;
+    gap: 7px;
+    min-height: 37px;
+    padding: 0 10px;
+    border: 1px solid #ececf0;
+    border-radius: 10px;
+    background: #fff;
+    color: #303340;
+    font-size: 10px;
+  }
+  body.admin-shell-page .app > .workspace {
+    grid-template-rows: 60px minmax(0, 1fr) !important;
+    width: calc(100% - 20px) !important;
+    min-height: calc(100dvh - 20px) !important;
+    margin: 10px !important;
+    padding: 0 16px 82px !important;
+    border-radius: 22px !important;
+  }
+  body.admin-shell-page .atlas-topbar { height: 60px !important; min-height: 60px !important; padding-left: 50px !important; }
+  body.admin-shell-page .atlas-breadcrumbs { flex: 1; font-size: 10px; }
+  body.admin-shell-page .atlas-session,
+  body.admin-shell-page .atlas-topbar .ghost span,
+  body.admin-shell-page .atlas-topbar .top-profile > div,
+  body.admin-shell-page .atlas-topbar .top-profile > svg { display: none !important; }
+  body.admin-shell-page .atlas-topbar .ghost,
+  body.admin-shell-page .atlas-topbar .icon-btn { width: 34px; min-height: 34px; padding: 0; justify-content: center; }
+  body.admin-shell-page .workspace > main.scene { min-height: calc(100dvh - 162px) !important; }
+  body.admin-shell-page .workspace > main.scene:has(> view-layer[data-view="map"]) { height: calc(100dvh - 162px) !important; min-height: 420px !important; }
+  body.admin-shell-page .atlas-mobile-bottom {
+    position: fixed !important;
+    z-index: 95 !important;
+    inset: auto 0 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    height: 64px;
+    padding: 5px 8px max(5px, env(safe-area-inset-bottom));
+    border-top: 1px solid #e8e8eb;
+    background: #fffffff5;
+    backdrop-filter: blur(16px);
+  }
+  body.admin-shell-page .atlas-mobile-bottom button { display: grid; justify-items: center; align-content: center; gap: 4px; min-width: 0; border: 0; border-radius: 10px; background: transparent; color: #8b8f97; font-size: 9px; font-weight: 700; }
+  body.admin-shell-page .atlas-mobile-bottom button.active { background: #f1f1f3; color: #282a38; }
+  body.admin-shell-page .atlas-mobile-bottom svg { width: 18px; height: 18px; }
+}
+
+@media screen and (max-width: 700px) {
+  body.admin-shell-page .app > .workspace { width: 100% !important; min-height: 100dvh !important; margin: 0 !important; padding: 0 12px 82px !important; border-radius: 0 !important; }
+  body.admin-shell-page .atlas-toolbar { display: none !important; }
+  body.admin-shell-page .workspace > main.scene { min-height: calc(100dvh - 142px) !important; }
+  body.admin-shell-page .workspace > main.scene:has(> view-layer[data-view="map"]) { height: calc(100dvh - 142px) !important; min-height: 360px !important; }
+  body.admin-shell-page .workspace > main.scene > view-layer[data-view]:not([data-view="map"]) { padding-bottom: 18px !important; }
+}
+
+@media screen and (max-width: 390px) {
+  body.admin-shell-page .atlas-breadcrumbs > span:first-child { display: none !important; }
+  body.admin-shell-page .atlas-topbar { gap: 5px !important; }
+  body.admin-shell-page .atlas-topbar .top-actions { gap: 3px !important; }
+}
+

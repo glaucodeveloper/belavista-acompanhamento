@@ -7,11 +7,12 @@ import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 const components=read('components.js');
+const priorityChat=read('components/planning/control-center-priority-chat-v1.mjs');
 const workerChat=read('worker-context-chat.mjs');
 
 test('cards do grid de prioridades enviam cadeia guiada ao assistente operacional via API',()=>{
-  const block=components.slice(components.indexOf('const bindBeforeControlAiPriorityChatV1'),components.indexOf('// MATERIALS_AI_APPLICATION_PREVIEW_V7'));
-  assert.match(block,/globalThis\.belavistaWorkerAssistant/);
+  const block=priorityChat;
+  assert.match(block,/getWorkerAssistant = \(\) => globalThis\.belavistaWorkerAssistant/);
   assert.match(block,/\.stage-home-ai-grid \[data-stage-home-ai-action\]/);
   assert.match(block,/chat\.submit\(priorityChatRequestV1/);
   assert.match(block,/mode: "priority"/);
@@ -20,7 +21,7 @@ test('cards do grid de prioridades enviam cadeia guiada ao assistente operaciona
   assert.match(block,/executionChain: \[/);
   assert.match(block,/cardTone:/);
   assert.doesNotMatch(block,/document\.querySelector\("ai-chat"\)/);
-  const prompt=components.slice(components.indexOf('const priorityChatRequestV1'),components.indexOf('const bindBeforeControlAiPriorityChatV1'));
+  const prompt=priorityChat.slice(priorityChat.indexOf('const priorityChatRequestV1'),priorityChat.indexOf('/** Connects'));
   assert.match(prompt,/Conduza pelo chat a execução encadeada/);
   assert.match(prompt,/tone-done do card não prova/);
 });
@@ -28,7 +29,7 @@ test('cards do grid de prioridades enviam cadeia guiada ao assistente operaciona
 test('worker-context-assistant recebe política e pula fila de service-request para prioridade executável',()=>{
   assert.match(workerChat,/WORKER_OPERATIONAL_EXECUTION_INSTRUCTION_V2/);
   assert.match(workerChat,/options\?\.mode === 'priority'/);
-  assert.match(workerChat,/if\(!directOperational&&this\.isServiceRequest\(text\)\)/);
+  assert.match(workerChat,/if\(!directOperational&&\(this\.isServiceRequest\(text\)\|\|stageOnlyVisualSubmission\)\)/);
   assert.match(workerChat,/instruction: String\(options\?\.instruction \|\| WORKER_OPERATIONAL_EXECUTION_INSTRUCTION_V2\)/);
   assert.match(workerChat,/requestContext: options\?\.requestContext/);
 });

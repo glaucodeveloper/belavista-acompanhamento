@@ -1,0 +1,573 @@
+/* Mobile app shell and field pages. Desktop layout remains untouched. */
+html[data-belavista-user-type="foreman"] .worker-context-assistant,
+html[data-belavista-user-type="foreman"] ai-chat,
+html[data-belavista-user-type="foreman"] .chat-tab-toggle-v5359,
+html[data-belavista-user-type="foreman"] .top-admin-menu button:not(:last-child) {
+  display: none !important;
+}
+
+@media (max-width: 760px) {
+  .belavista-auth-gate {
+    align-items: start;
+    overflow-y: auto;
+    padding: max(12px, env(safe-area-inset-top)) 12px
+      max(12px, env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .belavista-auth-panel {
+    width: 100%;
+    margin: auto 0;
+    padding: 18px;
+  }
+
+  .belavista-auth-panel h1 {
+    font-size: clamp(21px, 7vw, 28px);
+  }
+
+  body.admin-shell-page {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  body.admin-shell-page > belavista-app:not([hidden]) {
+    display: block;
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+  }
+
+  .app-shell,
+  .app-shell.sidebar-collapsed {
+    display: block;
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+  }
+
+  .app-main {
+    width: 100%;
+    height: 100dvh;
+    grid-template-rows: 56px minmax(0, 1fr);
+  }
+
+  .topbar {
+    height: 56px;
+    min-width: 0;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 12px;
+  }
+
+  .session-header {
+    min-width: 0;
+  }
+
+  .session-header > div,
+  .session-header small,
+  .dashboard-mode-status,
+  .top-meta,
+  .session-health,
+  .auto-stamp,
+  .top-actions > #syncBtn,
+  .top-actions > .icon-btn {
+    display: none !important;
+  }
+
+  .session-header .session-mark {
+    width: 34px;
+    height: 34px;
+  }
+
+  .top-actions {
+    min-width: 0;
+    margin-left: auto;
+  }
+
+  .top-admin-wrap,
+  .top-profile {
+    min-width: 0;
+  }
+
+  .top-profile {
+    gap: 7px;
+    padding: 4px;
+  }
+
+  .top-profile > div {
+    display: block;
+  }
+
+  .top-profile > div strong {
+    max-width: 132px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+
+  .top-profile > div small {
+    display: block;
+  }
+
+  .scene {
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .scene:has(view-layer[data-view="materials"]) map-scene,
+  .scene:has(view-layer[data-view="agenda"]) map-scene,
+  .scene:has(view-layer[data-view="materials"]) .stage-map-accordion,
+  .scene:has(view-layer[data-view="agenda"]) .stage-map-accordion {
+    display: none !important;
+  }
+
+  view-layer {
+    position: relative;
+    inset: auto;
+    display: block;
+    width: 100%;
+    min-height: 100%;
+    height: auto;
+    overflow: visible;
+    padding: 0;
+    pointer-events: auto;
+  }
+
+  app-sidebar {
+    position: fixed;
+    z-index: 1200;
+    inset: 0;
+    display: block;
+    pointer-events: none;
+  }
+
+  app-sidebar .sidebar,
+  .app-shell.sidebar-collapsed > app-sidebar .sidebar {
+    position: absolute !important;
+    z-index: 1210;
+    inset: 0 auto 0 0 !important;
+    display: flex !important;
+    width: min(320px, 88vw) !important;
+    height: 100dvh !important;
+    min-height: 0;
+    padding: 58px 12px 14px !important;
+    border: 0;
+    border-right: 1px solid rgba(120, 169, 255, 0.28);
+    background: #07111f;
+    box-shadow: 10px 0 28px rgba(0, 0, 0, 0.3);
+    transform: translateX(-105%);
+    transition: transform 0.2s ease;
+    overflow: hidden;
+    pointer-events: auto;
+  }
+
+  app-sidebar.mobile-open {
+    background: rgba(0, 0, 0, 0.54);
+    pointer-events: auto;
+  }
+
+  app-sidebar.mobile-open .sidebar,
+  .app-shell.sidebar-collapsed > app-sidebar.mobile-open .sidebar {
+    transform: translateX(0);
+  }
+
+  body.admin-shell-page app-sidebar.mobile-open .sidebar {
+    inset: 0 auto 0 0 !important;
+    width: min(320px, 88vw) !important;
+    max-width: 88vw !important;
+    height: 100dvh !important;
+    padding: 58px 12px 14px !important;
+    border-right: 1px solid rgba(120, 169, 255, 0.28) !important;
+  }
+
+  .sidebar > .brand,
+  .sidebar > .sidebar-toggle,
+  .sidebar > .field-portal-link,
+  .sidebar > .sidebar-foot,
+  .sidebar nav > .sidebar-mode-label {
+    display: none !important;
+  }
+
+  .sidebar nav {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sidebar nav > .nav-item {
+    min-width: 0;
+    min-height: 46px;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 0 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 650;
+    touch-action: manipulation;
+  }
+
+  .sidebar .mobile-agenda-nav-item {
+    display: flex !important;
+    border-color: rgba(120, 169, 255, 0.24);
+    background: rgba(15, 98, 254, 0.1);
+  }
+
+  .sidebar .stage-agenda-nav-subitem {
+    display: none !important;
+  }
+
+  .sidebar nav > .nav-item svg {
+    width: 19px;
+    height: 19px;
+    flex: 0 0 auto;
+  }
+
+  .mobile-menu-trigger {
+    top: calc(8px + env(safe-area-inset-top)) !important;
+    left: calc(8px + env(safe-area-inset-left)) !important;
+    z-index: 1220 !important;
+    min-height: 40px;
+    border-radius: 10px;
+    background: rgba(7, 17, 31, 0.94) !important;
+    backdrop-filter: blur(12px);
+  }
+
+  .stage-persistent-timeline {
+    position: relative;
+    top: auto;
+    margin: 0 0 10px;
+    padding: 8px 10px;
+    border-radius: 0 0 10px 10px;
+    box-shadow: none;
+  }
+
+  .stage-persistent-timeline > header,
+  .stage-persistent-timeline-track {
+    display: none !important;
+  }
+
+  .stage-persistent-mobile-picker {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 8px;
+  }
+
+  .stage-persistent-mobile-picker label {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    color: #9fb1c7;
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .stage-persistent-mobile-picker select {
+    width: 100%;
+    min-width: 0;
+    min-height: 42px;
+    padding: 0 9px;
+    border: 1px solid #405167;
+    border-radius: 8px;
+    background: #0b121c;
+    color: #e7eef9;
+    color-scheme: dark;
+    font: 12px "IBM Plex Sans", sans-serif;
+  }
+
+  .stage-persistent-mobile-picker > div {
+    display: flex;
+    gap: 5px;
+  }
+
+  .stage-persistent-mobile-picker button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 42px;
+    padding: 0 8px;
+    border: 1px solid #405167;
+    border-radius: 8px;
+    background: #111b29;
+    color: #dce8f7;
+    font-size: 10px;
+  }
+
+  .stage-persistent-mobile-picker button svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .stage-view-tabs {
+    gap: 6px;
+    padding: 8px;
+    margin-bottom: 9px;
+    border-radius: 0 0 10px 10px;
+  }
+
+  .stage-view-context {
+    display: none;
+  }
+
+  .stage-view-links {
+    display: flex;
+    width: 100%;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .stage-view-links::-webkit-scrollbar {
+    display: none;
+  }
+
+  .stage-view-links button {
+    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 0 11px;
+    border-radius: 8px;
+  }
+
+  .materials-page {
+    min-height: 100%;
+    gap: 12px;
+    padding: 16px 12px 26px;
+  }
+
+  .materials-head {
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .materials-head h1 {
+    font-size: clamp(23px, 7vw, 30px);
+  }
+
+  .materials-head > button {
+    width: 100%;
+    min-height: 46px;
+    justify-content: center;
+  }
+
+  .materials-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding: 6px;
+    background: #0b1725;
+  }
+
+  .materials-tabs button {
+    min-height: 42px;
+    padding-inline: 8px;
+  }
+
+  .materials-toolbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+    gap: 10px;
+  }
+
+  .materials-toolbar label:first-child,
+  .materials-toolbar > span {
+    grid-column: 1 / -1;
+  }
+
+  .materials-toolbar label {
+    min-width: 0;
+  }
+
+  .materials-toolbar input,
+  .materials-toolbar select {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+
+  .materials-canvas-shell {
+    min-width: 0;
+    overflow: visible;
+  }
+
+  .materials-canvas {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .materials-canvas-links {
+    display: none;
+  }
+
+  .materials-canvas-column {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .materials-link-card,
+  .materials-stage-card {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .materials-list-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .materials-table {
+    min-width: 760px;
+  }
+
+  .materials-pagination {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .materials-pagination > span {
+    grid-column: 1 / -1;
+  }
+
+  .materials-pagination button {
+    min-height: 44px;
+  }
+
+  .stage-agenda-month-page-v3,
+  .stage-agenda-page {
+    min-width: 0;
+    padding: 12px 10px 28px;
+  }
+
+  .stage-agenda-month-page-v3 > header,
+  .stage-agenda-month-head-v3,
+  .stage-agenda-month-foot-v3 {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .stage-agenda-month-page-v3 h1,
+  .stage-agenda-month-page-v3 h2,
+  .stage-agenda-page h1 {
+    overflow-wrap: anywhere;
+  }
+
+  .stage-agenda-month-page-v3 button,
+  .agenda-page button {
+    min-height: 42px;
+    touch-action: manipulation;
+  }
+
+  .stage-agenda-week-grid,
+  .stage-agenda-timeline-v3,
+  .stage-agenda-month-grid-v3 {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .stage-agenda-week-grid > *,
+  .stage-agenda-month-grid-v3 > * {
+    min-width: 112px;
+  }
+
+  .stage-agenda-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .stage-agenda-material-sidebar,
+  .stage-agenda-create-sidebar {
+    position: static;
+    width: auto;
+    max-height: none;
+  }
+
+  .stage-agenda-activities {
+    min-width: 0;
+  }
+
+  .stage-agenda-activity-row {
+    grid-template-columns: 26px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .agenda-detail-page,
+  .agenda-detail-fields {
+    min-width: 0;
+  }
+
+  .agenda-detail-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .agenda-detail-fields .wide {
+    grid-column: auto;
+  }
+
+  .dashboard-agenda-week {
+    grid-template-columns: repeat(7, minmax(52px, 1fr));
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
+
+  .dashboard-agenda-day {
+    min-width: 52px;
+  }
+
+  .dashboard-agenda-task {
+    grid-template-columns: 62px minmax(0, 1fr) 16px;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .dashboard-agenda-task > .agenda-custom-status {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: start;
+  }
+
+  .dashboard-agenda-task > svg {
+    grid-column: 3;
+    grid-row: 1 / 3;
+  }
+}
+
+@media (max-width: 380px) {
+  .materials-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .materials-toolbar label:first-child,
+  .materials-toolbar > span {
+    grid-column: auto;
+  }
+
+  .top-profile > div strong {
+    max-width: 94px;
+  }
+}

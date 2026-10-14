@@ -54,8 +54,9 @@ test('atividade usa pintura persistente somente nos polígonos do modelo 3D',asy
     readFile(new URL('../../activity-map-layer.mjs',import.meta.url),'utf8'),
     readFile(new URL('../../persistence.mjs',import.meta.url),'utf8')
   ]);
-  assert.match(components,/setActivityLocationPaintMode/);
-  assert.match(components,/physicalMapPartAt/);
+  const operationalMap=await readFile(new URL('../../components/map/operational-record-map-v1.mjs',import.meta.url),'utf8');
+  assert.match(operationalMap,/setActivityLocationPaintMode/);
+  assert.match(operationalMap,/physicalMapPartAt/);
   assert.match(editor,/pointer|segure|pintando/i);
   assert.match(editor,/activityLocations/);
   assert.match(layer,/data-activity-map-legend/);
@@ -71,41 +72,54 @@ test('atividade dedicada oferece botão Voltar para o fluxo da etapa',async()=>{
 });
 
 test('atividades oferece destino Nova atividade preservando a etapa',async()=>{
-  const [components,client]=await Promise.all([
+  const [components,page,events,client]=await Promise.all([
     readFile(new URL('../../components.js',import.meta.url),'utf8'),
+    readFile(new URL('../../components/planning/stage-activity-page-v1.mjs',import.meta.url),'utf8'),
+    readFile(new URL('../../components/planning/stage-extension-events-v1.mjs',import.meta.url),'utf8'),
     readFile(new URL('../../stage-workbench.mjs',import.meta.url),'utf8')
   ]);
-  assert.match(components,/data-activity-new/);
-  assert.match(components,/workers\/activity/);
-  assert.match(components,/stageKey/);
-  assert.match(components,/activity=new/);
+  assert.match(page,/data-activity-new/);
+  assert.match(events,/workers\/activity/);
+  assert.match(events,/stageKey/);
+  assert.match(events,/activity=new/);
   assert.match(client,/activityId==='new'/);
   assert.match(client,/title:'Nova atividade'/);
 });
 
-test('admin abre a base leve e exige ativação explícita para o modelo 3D',async()=>{
-  const [components,styles]=await Promise.all([
-    readFile(new URL('../../components.js',import.meta.url),'utf8'),
-    readFile(new URL('../../styles.css',import.meta.url),'utf8')
+test('admin mostra a base leve antes do carregamento do modelo 3D',async()=>{
+  const [styles,standaloneStartup,mapActivation]=await Promise.all([
+    readFile(new URL('../../styles.css',import.meta.url),'utf8'),
+    readFile(new URL('../../components/map/admin-standalone-startup-v5370.mjs',import.meta.url),'utf8'),
+    readFile(new URL('../../components/map/map-scene-activation-v1.mjs',import.meta.url),'utf8')
   ]);
-  assert.match(components,/admin3dAutostart = "disabled-explicit-activation"/);
-  assert.match(components,/startAdminStandalone3DV5370\(\)/);
-  assert.match(components,/Mapa base preservado/);
+  assert.match(standaloneStartup,/admin3dAutostart = "after-static-first-paint"/);
+  assert.match(mapActivation,/mountAdminStandalone3DV5370\(\)/);
+  assert.match(standaloneStartup,/startAdminStandalone3DV5370\(\)/);
+  assert.match(standaloneStartup,/this\.installAdminMasterplanOverlayV1\(\)/);
+  assert.match(standaloneStartup,/button\.hidden = true/);
   assert.match(styles,/data-admin-standalone-boot/);
 });
 
 test('atividades antigas e agenda encaminham para a atividade com mapa físico',async()=>{
-  const components=await readFile(new URL('../../components.js',import.meta.url),'utf8');
-  assert.match(components,/ACTIVITY_LOCATION_ROUTE_BRIDGE_V1/);
-  assert.match(components,/data-v5362-activity/);
-  assert.match(components,/data-v5360-stage-card/);
-  assert.match(components,/data-v5356-stage-activity/);
-  assert.match(components,/data-activity-v9/);
-  assert.match(components,/data-activity-detail/);
-  assert.match(components,/data-activity-open/);
-  assert.match(components,/data-agenda-item/);
+  const [components,activityBridge,lifecycle,activityResolver]=await Promise.all([
+    readFile(new URL('../../components.js',import.meta.url),'utf8'),
+    readFile(new URL('../../components/planning/activity-route-bridge.mjs',import.meta.url),'utf8'),
+    readFile(new URL('../../components/planning/activity-route-bridge-lifecycle-v1.mjs',import.meta.url),'utf8'),
+    readFile(new URL('../../components/planning/activity-route-resolver.mjs',import.meta.url),'utf8')
+  ]);
+  assert.match(components,/installActivityRouteBridgeLifecycleV1\(\{/);
+  assert.match(activityBridge,/data-v5362-activity/);
+  assert.match(activityBridge,/data-v5360-stage-card/);
+  assert.match(activityBridge,/data-v5356-stage-activity/);
+  assert.match(activityBridge,/data-activity-v9/);
+  assert.match(activityBridge,/data-activity-detail/);
+  assert.match(activityBridge,/data-activity-open/);
+  assert.match(activityBridge,/data-agenda-item/);
   assert.match(components,/workbenchActivityRouteV1/);
-  assert.match(components,/legacyStage/);
-  assert.match(components,/data-activity-edit/);
-  assert.match(components,/runtimeRouteV1\('\/admin\/workers\/activity',/);
+  assert.match(activityResolver,/legacyStage/);
+  assert.match(activityBridge,/data-activity-edit/);
+  assert.match(lifecycle,/installActivityRouteBridgeV1\(this, workbenchActivityRouteV1\)/);
+  assert.match(lifecycle,/installActivityRouteBridgeV1\(root, workbenchActivityRouteV1\)/);
+  assert.match(activityBridge,/resolveActivityRoute\(activityValue, stageValue\)/);
+  assert.match(activityResolver,/runtimeRouteV1\(\s*["']\/admin\/workers\/activity["'],/);
 });

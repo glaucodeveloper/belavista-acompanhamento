@@ -6,7 +6,15 @@ import { fileURLToPath } from "node:url";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const root = process.env.BELAVISTA_ROOT || path.resolve(testDirectory, "../..");
-const components = fs.readFileSync(path.join(root, "components.js"), "utf8");
+const mapModules = fs
+  .readdirSync(path.join(root, "components/map"))
+  .filter((name) => name.endsWith(".mjs"))
+  .map((name) => fs.readFileSync(path.join(root, "components/map", name), "utf8"));
+const components = [
+  (fs.readFileSync(path.resolve('components/map/map-scene-composition-v1.mjs'), 'utf8') + (fs.readFileSync(path.join(root, 'components/map/map-scene-composition-v1.mjs'), 'utf8') + fs.readFileSync(path.join(root, 'components.js'), 'utf8'))),
+  fs.readFileSync(path.join(root, "components/map/georeference.mjs"), "utf8"),
+  ...mapModules,
+].join("\n");
 
 test("ambiente aéreo administrativo usa janela expandida e referencial único", () => {
   assert.match(components, /const ADMIN_REFERENCE_AERIAL_SITE_FRAME_V2\s*=\s*\{/);
@@ -16,7 +24,7 @@ test("ambiente aéreo administrativo usa janela expandida e referencial único",
   assert.match(components, /bottom:\s*0\.704/);
   assert.match(
     components,
-    /adminReferenceAerialFrameV1\(\)[\s\S]{0,260}\.\.\.ADMIN_REFERENCE_AERIAL_SITE_FRAME_V2/,
+    /adminReferenceAerialFrameV1\s*=\s*function\s*\(\)[\s\S]*?\.\.\.ADMIN_REFERENCE_AERIAL_SITE_FRAME_V2/,
   );
   assert.match(
     components,

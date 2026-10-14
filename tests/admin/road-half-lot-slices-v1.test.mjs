@@ -5,7 +5,12 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
-const source=fs.readFileSync(path.join(root,'components.js'),'utf8');
+const source=[
+  fs.readFileSync(path.join(root,'components.js'),'utf8'),
+  fs.readFileSync(path.join(root,'components/map/georeference.mjs'),'utf8'),
+  fs.readFileSync(path.join(root,'components/map/admin-road-geometry-v1.mjs'),'utf8'),
+  fs.readFileSync(path.join(root,'components/map/model-picking-v1.mjs'),'utf8'),
+].join('\n');
 
 test('ruas permanecem integralmente preenchidas e recebem divisões de meio lote',()=>{
   assert.match(source,/const ROAD_HALF_LOT_SLICE_WORLD_V1 = 5/);
@@ -30,7 +35,7 @@ test('ruas permanecem integralmente preenchidas e recebem divisões de meio lote
   assert.match(source,/somente filtro sobre a imagem · preenchimento 3D removido/);
   assert.match(source,/publicRoadFill = "removed"/);
   assert.match(source,/commonAreaFilterOnly/);
-  assert.match(source,/item\.visible = targetKey === "urbanizacao"/);
+  assert.match(source,/node\.visible\s*=\s*[\s\S]*?!node\.userData\.commonAreaFilterOnly/);
   assert.match(source,/alianca-park-aerial-realistic-preview-v2\.jpg/);
   assert.match(source,/adminSatelliteTextureResolution/);
   assert.match(source,/prévia realista da cena · base 4K/);
@@ -69,12 +74,12 @@ test('divisórias acompanham a direção local sem substituir o recorte exato',(
   assert.match(source,/this\.ensureOperationalStreetGeometry\(\)/);
 });
 
-test('a cena administrativa usa uma única classe MapScene com o patch viário',()=>{
+test('os pontos atuais de entrada carregam o MapScene sem módulo viário paralelo',()=>{
   const index=fs.readFileSync(path.join(root,'index.html'),'utf8');
   const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
   const records=fs.readFileSync(path.join(root,'records-activity-drill-in-v5377.mjs'),'utf8');
-  assert.match(index,/admin-original-bootstrap-v5351\.mjs\?stage-shared-header-v55/);
-  assert.match(app,/components\.js\?v=stage-shared-header-v55/);
-  assert.match(records,/components\.js\?v=stage-shared-header-v55/);
+  assert.match(index,/admin-original-bootstrap-v5351\.mjs\?pdf-original-perimeter-v3/);
+  assert.match(app,/components\.js\?v=mobile-agenda-v1/);
+  assert.match(records,/components\.js\?v=pdf-reviewed-lot-areas-v1/);
   assert.doesNotMatch(records,/from '\.\/components-road-integral-/);
 });

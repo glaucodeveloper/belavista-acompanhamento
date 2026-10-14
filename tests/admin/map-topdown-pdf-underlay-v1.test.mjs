@@ -3,131 +3,82 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const root=path.resolve(process.env.BELAVISTA_ROOT||process.cwd());
-const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
+const root = path.resolve(process.env.BELAVISTA_ROOT || process.cwd());
+const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
+const config = read('components/map/scene-presentation-config-v1.mjs');
+const navigation = read('components/map/scene-navigation-v1.mjs');
+const surfacePolicy = read('components/map/scene-surface-policy-v1.mjs');
+const georeference = read('components/map/georeference.mjs');
+const pdfPipeline = read('components/map/admin-pdf-masterplan-pipeline-v1.mjs');
+const dwgGeoreference = read('components/map/public-dwg-georeference-v1.mjs');
+const terrain = read('components/map/public-terrain-environment-v1.mjs');
 
-test('mapa administrativo libera vista superior sem travar no preset público',()=>{
-  const components=read('components.js');
-  assert.match(components,/MIN_SCENE_TILT=0, MAX_SCENE_TILT=72, SCENE_TILT_ADJUST_LIMIT=72/);
-  assert.match(components,/return this\.isPublicCustomerExperience\(\)&&this\.dataset\.publicCameraInteracted!==\'true\';/);
-  assert.match(components,/this\.hasAttribute\(\'data-admin-shared-public-map\'\)\?22/);
-  assert.match(components,/Math\.max\(\.5,Math\.min\(89\.5,90-tilt\)\)/);
+test('mapa administrativo conserva câmera de topo e o intervalo completo de inclinação', () => {
+  assert.match(config, /MIN_SCENE_TILT\s*=\s*0/);
+  assert.match(config, /MAX_SCENE_TILT\s*=\s*72/);
+  assert.match(config, /SCENE_TILT_ADJUST_LIMIT\s*=\s*72/);
+  assert.match(surfacePolicy, /isPublicCameraPreset\(\)[\s\S]*?this\.isAdminPublicMapV1\(\)/);
+  assert.match(navigation, /Math\.max\(0\.5,\s*Math\.min\(89\.5,\s*90\s*-\s*tilt\)\)/);
+  assert.match(navigation, /clampSceneTilt\(value\)[\s\S]*?Math\.max\(bounds\.min,\s*Math\.min\(bounds\.max/);
 });
 
-test('zoom out não reduz nem altera automaticamente a faixa de inclinação',()=>{
-  const components=read('components.js');
-  assert.match(components,/SCENE_TILT_ZOOM_OUT_FACTOR=1/);
-  assert.match(components,/this\.dataset\.sceneTiltZoomPolicy='independente do zoom · zoom out preserva inclinação'/);
-  assert.match(components,/return \{min:MIN_SCENE_TILT,max:Math\.min\(MAX_SCENE_TILT,MAX_SCENE_TILT\*tiltZoomFactor\)\}/);
-  assert.doesNotMatch(components,/const coverageMax=coverage>=3\.2\?MAX_SCENE_TILT:coverage>=2\.4\?44:38/);
+test('zoom out mantém a inclinação independente do fator de zoom', () => {
+  assert.match(config, /SCENE_TILT_ZOOM_OUT_FACTOR\s*=\s*1/);
+  assert.match(navigation, /sceneTiltZoomPolicy\s*=\s*["']independente do zoom · zoom out preserva inclinação["']/);
+  assert.match(navigation, /max:\s*Math\.min\(MAX_SCENE_TILT,\s*MAX_SCENE_TILT\s*\*\s*tiltZoomFactor\)/);
+  assert.doesNotMatch(navigation, /const coverageMax\s*=\s*coverage\s*>=\s*3\.2/);
 });
 
-test('perímetro verde sintético fica removido e áreas sociais seguem DWG',()=>{
-  const components=read('components.js');
-  assert.match(components,/ring\.visible=false/);
-  assert.match(components,/publicGreenMeshRemoved:true/);
-  assert.match(components,/6 DWG-aligned green clearings · rectangular perimeter disabled/);
+test('o perímetro verde sintético fica invisível e as clareiras seguem o DWG', () => {
+  assert.match(terrain, /ring\.visible\s*=\s*false/);
+  assert.match(terrain, /publicGreenMeshRemoved\s*:\s*true/);
+  assert.match(terrain, /6 DWG-aligned green clearings · rectangular perimeter disabled/);
 });
 
-test('PDF do loteamento é usado uma única vez como textura do GLB',()=>{
-  const components=read('components.js');
-  assert.match(components,/PDF_MASTERPLAN_UNDERLAY_ASSET='\/assets\/public\/alianca-park-masterplan-static-v535-no-photo\.webp'/);
-  assert.match(components,/PDF_MASTERPLAN_PAGE_SIZE_V1=\{width:1800,height:2098\}/);
-  assert.match(components,/PDF_MASTERPLAN_SITE_FRAME_V1=\{left:\.10,top:\.045,right:\.935,bottom:\.945\}/);
-  assert.match(components,/PDF_MASTERPLAN_TEXTURE_SHIFT_UP_V1=\.018/);
-  assert.match(components,/const pageFrame=this\.pdfMasterplanPageFrameV1\(sourceWidth,sourceDepth\)/);
-  assert.match(components,/frame:'full PDF page with DWG-aligned site window'/);
-  assert.match(components,/this\.syncAdminPdfMasterplanUnderlayV1\(\);/);
-  assert.match(components,/this\.dataset\.adminPdfUnderlayPlacement='none · cena quadrada · modelo centralizado · textura única'/);
-  assert.match(components,/this\.dataset\.adminPdfTextureMode='source image única · materiais dos objetos GLB'/);
-  assert.match(components,/this\.dataset\.adminPdfTextureVerticalShift=String\(PDF_MASTERPLAN_TEXTURE_SHIFT_UP_V1\)/);
-  assert.match(components,/const imageV=pageFrame\.siteCenterV\+\(point\.z\/Math\.max\(\.01,sourceDepth\)\)\*pageFrame\.siteDepth\+PDF_MASTERPLAN_TEXTURE_SHIFT_UP_V1/);
-  assert.match(components,/const v=pageFrame\.siteCenterV\+\(center\.z\/Math\.max\(\.01,sourceDepth\)\)\*pageFrame\.siteDepth/);
-  assert.match(components,/not rendered · source image bound to GLB semantic meshes/);
-  assert.match(components,/if\(group\)\{group\.removeFromParent\?\.\(\);/);
-  assert.match(components,/this\.dataset\.adminPdfDocumentTreatment='full page · photograph removed only'/);
-  assert.ok(fs.existsSync(path.join(root,'assets/public/alianca-park-masterplan-static-v535-no-photo.webp')));
-  assert.match(components,/texture\.wrapS=THREE\.ClampToEdgeWrapping;texture\.wrapT=THREE\.ClampToEdgeWrapping/);
-  assert.match(components,/texture\.repeat\.set\(1,ADMIN_PDF_DISPLAY_TEXTURE_V_FLIP\?-1:1\)/);
-  assert.match(components,/texture\.offset\.set\(0,ADMIN_PDF_DISPLAY_TEXTURE_V_FLIP\?1:0\)/);
-  assert.match(components,/textureFrame:'full image · UV 0\.\.1'/);
-  assert.match(components,/full page · UV 0\.\.1 · \$\{ADMIN_PDF_DISPLAY_TEXTURE_V_FLIP\?'eixo V corrigido':'sem inversão V'\} · sem crop/);
-  assert.doesNotMatch(components,/const plane=new THREE\.Mesh\(geometry,material\)/);
+test('a prancha mantém frame próprio e a superfície administrativa usa uma única referência aérea', () => {
+  assert.match(georeference, /PDF_MASTERPLAN_UNDERLAY_ASSET\s*=\s*["']\/assets\/public\/alianca-park-masterplan-static-v535-no-photo\.webp["']/);
+  assert.match(georeference, /PDF_MASTERPLAN_PAGE_SIZE_V1\s*=\s*\{\s*width:\s*1800,\s*height:\s*2098\s*\}/);
+  assert.match(georeference, /PDF_MASTERPLAN_SITE_FRAME_V1\s*=\s*\{\s*left:\s*0\.1,\s*top:\s*0\.045,\s*right:\s*0\.935,\s*bottom:\s*0\.945/);
+  assert.match(georeference, /PDF_MASTERPLAN_TEXTURE_SHIFT_UP_V1\s*=\s*0\.018/);
+  assert.match(pdfPipeline, /source:\s*ADMIN_REFERENCE_AERIAL_ASSET_V1/);
+  assert.match(pdfPipeline, /single surface · contain · no duplicate PDF\/image plane/);
+  assert.match(pdfPipeline, /single reference aerial · semantic objects only/);
+  assert.match(pdfPipeline, /syncAdminPdfMasterplanUnderlayV1\(\)/);
+  assert.match(pdfPipeline, /this\.adminPdfMasterplan3DGroupV1\s*=\s*group/);
+  assert.doesNotMatch(pdfPipeline, /new THREE\.Mesh\(geometry,\s*material\)/);
+  assert.ok(fs.existsSync(path.join(root, 'assets/public/alianca-park-masterplan-static-v535-no-photo.webp')));
 });
 
-test('elementos visíveis da prancha recebem camada 3D texturizada sem rasterizar o GLB',()=>{
-  const components=read('components.js');
-  assert.match(components,/PDF_MASTERPLAN_3D_LAYER_VERSION='pdf-derived-elements-v1'/);
-  assert.match(components,/BelavistaPdfMasterplan3DExtrusions/);
-  assert.match(components,/classifyPdfElementKindV1/);
-  assert.match(components,/pdfLotNumberV1/);
-  assert.match(components,/findPdfLotIntegrationV1/);
-  assert.match(components,/pdfElementImageAnchorV1/);
-  assert.match(components,/projectPdfElementGeometryV1/);
-  assert.match(components,/native semantic GLB mesh projected to the PDF page/);
-  assert.match(components,/semantic GLB elements identified first · full PDF page used as faithful texture/);
-  assert.match(components,/full page · projected UV 0\.\.1/);
-  assert.match(components,/BelavistaPdfVehicleExtrusions/);
-  assert.match(components,/pdfElementKind:'vehicle'/);
-  assert.match(components,/adminPdf3dElements=`lotes:\$\{counts\.lot\}\|ruas:\$\{counts\.street\}\|arvores:\$\{counts\.tree\}/);
-  assert.match(components,/node\.visible=true/);
-  assert.match(components,/materialForKind=kind=>/);
-  assert.match(components,/this\.createPdfVehicleExtrusionsV1\(THREE,group,texture\.image,sourceWidth,sourceDepth,pageFrame\)/);
-  assert.match(components,/pdfLotIntegrationKey=`lot:\$\{lotNumber\}`/);
-  assert.match(components,/pdfImageNumber:`Lote \$\{lotNumber\}`/);
-  assert.match(components,/imageAnchorField:'pdfImageAnchor'/);
-  assert.match(components,/this\.dataset\.adminPdfLotIntegration='lotNumber \+ pdfLotIntegrationKey \+ pdfImageAnchor'/);
-  assert.match(components,/pdf-lot-integration-ready/);
-  assert.match(components,/adminPdf3dTexturePolicy='full PDF page · projected per semantic element · no color-only inference'/);
-  assert.match(components,/metadata-only · source GLB visible/);
-  assert.match(components,/group\.traverse\(node=>\{if\(node\.isMesh\)node\.visible=false;\}\)/);
-  assert.match(components,/PDF_MODEL_TEXTURE_BRIGHTNESS=1\.35/);
-  assert.match(components,/transparent:false,\s*opacity:1,\s*alphaTest:0/);
-  assert.match(components,/bindPdfMapTextureToMasterplanV1/);
-  assert.match(components,/adminPdfModelTexture='bound to source GLB semantic meshes'/);
-  assert.match(components,/sourceModelTextureBinding:sourceModelTextureCount/);
-  assert.doesNotMatch(components,/buildPdfRasterExtrusionModelV1/);
-  assert.match(components,/publicRoadPolicy='pdf-derived-3d-elements'/);
-  assert.match(components,/!pdf3d/);
-  assert.match(components,/elements\.matrix\.copy\(model\.matrix\)/);
+test('elementos semânticos usam geometria GLB nativa, sem extrusão visual de lotes ou ruas', () => {
+  assert.match(georeference, /PDF_MASTERPLAN_3D_LAYER_VERSION\s*=\s*["']pdf-derived-elements-v1["']/);
+  for (const contract of [
+    'classifyPdfElementKindV1', 'pdfLotNumberV1', 'findPdfLotIntegrationV1',
+    'pdfElementImageAnchorV1', 'projectPdfElementGeometryV1',
+    'BelavistaPdfVehicleExtrusions', 'pdf-lot-integration-ready',
+    'native semantic GLB meshes + reference aerial vehicle crops',
+    'native semantic mesh reuse · projected duplicates disabled',
+    'only trees + structures + cars · no lot/street visual extrusion',
+    'lotNumber + pdfLotIntegrationKey + pdfImageAnchor',
+  ]) assert.ok(pdfPipeline.includes(contract), `missing semantic map contract: ${contract}`);
+  assert.doesNotMatch(pdfPipeline, /buildPdfRasterExtrusionModelV1/);
+  assert.match(pdfPipeline, /bindPdfMapTextureToMasterplanV1/);
 });
 
-test('mapa administrativo e modelo 3D usam giro fixo de 180 graus no eixo Y',()=>{
-  const components=read('components.js');
-  assert.match(components,/const MODEL_EXTRA_Y_ROTATION_DEG=180/);
-  assert.match(components,/const MODEL_EXTRA_Y_ROTATION_RAD=\s*MODEL_EXTRA_Y_ROTATION_DEG\*Math\.PI\/180/);
-  assert.match(components,/const ADMIN_FIXED_MAP_ROTATION_DEG=180/);
-  assert.match(components,/const ADMIN_PDF_DISPLAY_Y_ROTATION_DEG=180/);
-  assert.match(components,/const ADMIN_PDF_DISPLAY_Y_ROTATION_RAD=\s*ADMIN_PDF_DISPLAY_Y_ROTATION_DEG\*Math\.PI\/180/);
-  assert.match(components,/makeRotationY\(extraRotationRad\)/);
-  assert.match(components,/const extraRotationRad=this\.hasAttribute\('data-admin-shared-public-map'\)/);
-  assert.match(components,/adminPdfDisplay=this\.hasAttribute\('data-admin-shared-public-map'\)/);
-  assert.match(components,/adminPdfDisplay\s*\?ADMIN_PDF_DISPLAY_Y_ROTATION_RAD\s*:MODEL_EXTRA_Y_ROTATION_RAD/);
-  assert.match(components,/wrapper\.rotation\.set\(Math\.PI\/2,MODEL_EXTRA_Y_ROTATION_RAD,0\)/);
-   assert.match(components,/const ADMIN_PDF_DISPLAY_HORIZONTAL_FLIP=1/);
-   assert.match(components,/const horizontalFlip=adminPdfDisplay\s*\?ADMIN_PDF_DISPLAY_HORIZONTAL_FLIP\s*:PUBLIC_MODEL_HORIZONTAL_FLIP/);
-  assert.match(components,/this\.dataset\.publicModelOrientation=adminPdfDisplay/);
-  assert.match(components,/dwg-affine\|source-xz-frame\|flipX-1\|y\+\$\{extraRotationDeg\}deg\|north=loading-reference/);
-  assert.match(components,/similaridade 2D: translação \+ rotação \+ uma única/);
-  assert.match(components,/publicModelScalePolicy='similarity-2d · escala horizontal uniforme · proporção do PDF preservada'/);
-  assert.match(components,/const horizontalScale=publicGeoFrame\s*\?\(adminPdfDisplay\?localFrameScale:Math\.sqrt\(Math\.max\(\.0001,Math\.abs\(publicScaleX\*publicScaleZ\)\)\)\)/);
-  assert.match(components,/this\._adminPdfSourceFrameScale=localFrameScale/);
-  assert.match(components,/pdf-local-frame · escala uniforme X\/Z · proporção da prancha preservada/);
-   assert.match(components,/const horizontalScale=Math\.hypot\(cosScale,sinScale\)/);
-   assert.doesNotMatch(components,/const solveAxis=key=>/);
-   assert.match(components,/publicModelGeoFitScale=`similarity \$\{publicAffine\.horizontalScale\.toFixed\(3\)\}/);
-  assert.match(components,/extraRotationYDeg:extraRotationDeg/);
-  assert.match(components,/publicAffine\.orientation\.extraRotationYDeg===0/);
-  assert.match(components,/orientação do loading/);
-  assert.match(components,/elements\.matrix\.copy\(model\.matrix\)/);
-  const styles=read('styles.css');
-  assert.match(styles,/map-3d-loading-backdrop-page\{[^}]*transform:none/);
+test('rotação do mapa administrativo é distinta da rotação legada do modelo público', () => {
+  assert.match(config, /MODEL_EXTRA_Y_ROTATION_DEG\s*=\s*180/);
+  assert.match(config, /ADMIN_FIXED_MAP_ROTATION_DEG\s*=\s*180/);
+  assert.match(config, /ADMIN_PDF_DISPLAY_Y_ROTATION_DEG\s*=\s*0/);
+  assert.match(dwgGeoreference, /makeRotationY\(extraRotationRad\)/);
+  assert.match(dwgGeoreference, /const adminPdfDisplay\s*=\s*this\.hasAttribute\("data-admin-shared-public-map"\)/);
+  assert.match(dwgGeoreference, /extraRotationYDeg:\s*extraRotationDeg/);
+  assert.match(dwgGeoreference, /similarity-2d · escala horizontal uniforme · proporção do PDF preservada/);
+  assert.match(dwgGeoreference, /const horizontalScale\s*=\s*Math\.hypot\(cosScale,\s*sinScale\)/);
+  assert.match(dwgGeoreference, /this\.dataset\.publicModelOrientation\s*=\s*adminPdfDisplay/);
 });
 
-test('dashboard usa o frame X/Z do GLB sem inverter a implantação georreferenciada',()=>{
-  const components=read('components.js');
-  assert.match(components,/const orientationMatrix=adminPdfDisplay\s*\?new THREE\.Matrix4\(\)/);
-  assert.match(components,/const sourcePlaneY=adminPdfDisplay\s*\?\s*Number\(orientedLocal\.z\)\s*:\s*-Number\(orientedLocal\.z\)/);
-  assert.match(components,/source-xz-frame\|flipX-1\|y\+\$\{extraRotationDeg\}deg\|north=loading-reference/);
-  assert.match(components,/O export do GLB usa X\/Z como plano da implantação/);
+test('projeção do dashboard preserva o plano X/Z do GLB no frame georreferenciado', () => {
+  assert.match(dwgGeoreference, /const orientationMatrix\s*=\s*adminPdfDisplay[\s\S]{0,100}new THREE\.Matrix4\(\)/);
+  assert.match(dwgGeoreference, /const sourcePlaneY\s*=\s*adminPdfDisplay\s*\?\s*Number\(orientedLocal\.z\)\s*:\s*-Number\(orientedLocal\.z\)/);
+  assert.match(dwgGeoreference, /source-xz-frame\|flipX-1\|y\+\$\{extraRotationDeg\}deg\|north=loading-reference/);
+  assert.match(dwgGeoreference, /O export do GLB usa X\/Z como plano da implantação/);
 });

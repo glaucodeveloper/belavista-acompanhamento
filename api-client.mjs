@@ -27,7 +27,7 @@ function readSavedSettings(){
 }
 
 function isAiPath(path=''){
-  return /^\/api\/runtime$|^\/api\/ai(?:$|\/)|^\/api\/ai-tools$|^\/api\/ai\/status$|^\/api\/ai\/tools$|^\/api\/gemini(?:$|\/)|^\/api\/media\/attachment(?:$|\/)|^\/api\/public\/lead-chat(?:$|\/)/.test(String(path||''));
+  return /^\/api\/runtime$|^\/api\/ai(?:$|\/)|^\/api\/inference(?:$|\/)|^\/api\/ai-tools$|^\/api\/ai\/status$|^\/api\/ai\/tools$|^\/api\/gemini(?:$|\/)|^\/api\/media\/attachment(?:$|\/)|^\/api\/public\/lead-chat(?:$|\/)/.test(String(path||''));
 }
 
 export function apiBase(){

@@ -2,6 +2,8 @@ import {DatabaseSync} from 'node:sqlite';
 import {mkdirSync,writeFileSync,unlinkSync,existsSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import developmentSeedData from './data/development-seed.json' with {type:'json'};
+import {REPASSE_PRICE_CATALOG} from './repasse-price-catalog.mjs';
 
 const appRoot=fileURLToPath(new URL('.',import.meta.url));
 const dataRoot=process.env.BELAVISTA_DATA_ROOT||join(appRoot,'data');
@@ -125,6 +127,7 @@ db.exec(`
     id TEXT PRIMARY KEY,
     entry_date TEXT NOT NULL,
     kind TEXT NOT NULL CHECK(kind IN ('entrada','saida')),
+    lot_key TEXT NOT NULL DEFAULT '',
     category TEXT NOT NULL DEFAULT '',
     stage TEXT NOT NULL DEFAULT '',
     description TEXT NOT NULL DEFAULT '',
@@ -224,6 +227,28 @@ db.exec(`
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS agenda_events (
+    id TEXT PRIMARY KEY,
+    source_type TEXT NOT NULL CHECK(source_type IN ('manual','record','activity')),
+    source_id TEXT,
+    title TEXT NOT NULL,
+    stage_key TEXT NOT NULL DEFAULT '',
+    stage_name TEXT NOT NULL DEFAULT '',
+    activity_id TEXT NOT NULL DEFAULT '',
+    activity_name TEXT NOT NULL DEFAULT '',
+    owner TEXT NOT NULL DEFAULT '',
+    event_date TEXT NOT NULL,
+    start_time TEXT NOT NULL,
+    duration_hours REAL NOT NULL DEFAULT 1,
+    span_days INTEGER NOT NULL DEFAULT 1,
+    status TEXT NOT NULL DEFAULT 'Planejado',
+    related_from TEXT NOT NULL DEFAULT '',
+    user_edited INTEGER NOT NULL DEFAULT 0,
+    hidden INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL,
+    UNIQUE(source_type,source_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_agenda_events_date ON agenda_events(event_date,start_time);
   CREATE TABLE IF NOT EXISTS activity_relations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     from_activity_id TEXT NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
@@ -337,96 +362,135 @@ try { db.exec(`ALTER TABLE stage_workbench_state ADD COLUMN activity_locations_j
 try { db.exec(`ALTER TABLE stage_workbench_state ADD COLUMN input_sessions_json TEXT NOT NULL DEFAULT '[]'`); } catch {}
 try { db.exec(`ALTER TABLE stage_workbench_state ADD COLUMN calendar_date TEXT`); } catch {}
 for(const [name,type] of [
+  ['lot_key',"TEXT NOT NULL DEFAULT ''"],
   ['fiscal_document_type','TEXT'],['fiscal_document_number','TEXT'],
   ['fiscal_issuer','TEXT'],['fiscal_issue_date','TEXT'],
   ['fiscal_status',"TEXT NOT NULL DEFAULT 'pendente'"],
 ])try{db.exec(`ALTER TABLE cash_flow_entries ADD COLUMN ${name} ${type}`);}catch{}
+db.exec(`CREATE INDEX IF NOT EXISTS idx_cash_flow_lot_key ON cash_flow_entries(lot_key,entry_date DESC)`);
 
+// The agenda is a persisted projection of actual records and dated activities.
+// User edits win over subsequent source updates; deleting a source removes its card.
+db.exec(`
+  CREATE TRIGGER IF NOT EXISTS agenda_record_insert AFTER INSERT ON records BEGIN
+    INSERT INTO agenda_events(id,source_type,source_id,title,stage_key,stage_name,activity_id,activity_name,owner,event_date,start_time,status,updated_at)
+    VALUES('agenda-record-'||NEW.id,'record',NEW.id,
+      COALESCE(NULLIF(substr(NEW.details,1,instr(NEW.details||char(10),char(10))-1),''),'Registro da obra'),
+      COALESCE((SELECT name FROM stages WHERE id=NEW.stage_id),''),COALESCE((SELECT name FROM stages WHERE id=NEW.stage_id),''),
+      COALESCE(NEW.activity_id,''),COALESCE((SELECT name FROM activities WHERE id=NEW.activity_id),''),
+      NEW.responsible_name,NEW.record_date,NEW.record_time,NEW.status,datetime('now'));
+  END;
+  CREATE TRIGGER IF NOT EXISTS agenda_record_update AFTER UPDATE ON records BEGIN
+    UPDATE agenda_events SET
+      title=COALESCE(NULLIF(substr(NEW.details,1,instr(NEW.details||char(10),char(10))-1),''),'Registro da obra'),
+      stage_key=COALESCE((SELECT name FROM stages WHERE id=NEW.stage_id),''),
+      stage_name=COALESCE((SELECT name FROM stages WHERE id=NEW.stage_id),''),
+      activity_id=COALESCE(NEW.activity_id,''),activity_name=COALESCE((SELECT name FROM activities WHERE id=NEW.activity_id),''),
+      owner=NEW.responsible_name,event_date=NEW.record_date,start_time=NEW.record_time,status=NEW.status,updated_at=datetime('now')
+    WHERE source_type='record' AND source_id=NEW.id AND user_edited=0 AND hidden=0;
+  END;
+  CREATE TRIGGER IF NOT EXISTS agenda_record_delete AFTER DELETE ON records BEGIN
+    DELETE FROM agenda_events WHERE source_type='record' AND source_id=OLD.id;
+  END;
+  CREATE TRIGGER IF NOT EXISTS agenda_activity_insert AFTER INSERT ON activities
+  WHEN NEW.planned_start IS NOT NULL AND NEW.planned_start<>'' BEGIN
+    INSERT INTO agenda_events(id,source_type,source_id,title,stage_key,stage_name,activity_id,activity_name,owner,event_date,start_time,span_days,status,updated_at)
+    VALUES('agenda-activity-'||NEW.id,'activity',NEW.id,NEW.name,
+      COALESCE((SELECT name FROM stages WHERE id=NEW.stage_id),''),COALESCE((SELECT name FROM stages WHERE id=NEW.stage_id),''),
+      NEW.id,NEW.name,COALESCE((SELECT name FROM collaborators WHERE id=NEW.owner_id),''),
+      substr(NEW.planned_start,1,10),COALESCE(NULLIF(substr(NEW.planned_start,12,5),''),'08:00'),
+      MAX(1,CAST(julianday(substr(COALESCE(NEW.planned_end,NEW.planned_start),1,10))-julianday(substr(NEW.planned_start,1,10))+1 AS INTEGER)),
+      NEW.status,datetime('now'));
+  END;
+  CREATE TRIGGER IF NOT EXISTS agenda_activity_update AFTER UPDATE ON activities BEGIN
+    UPDATE agenda_events SET title=NEW.name,
+      stage_key=COALESCE((SELECT name FROM stages WHERE id=NEW.stage_id),''),stage_name=COALESCE((SELECT name FROM stages WHERE id=NEW.stage_id),''),
+      activity_name=NEW.name,owner=COALESCE((SELECT name FROM collaborators WHERE id=NEW.owner_id),''),
+      event_date=substr(NEW.planned_start,1,10),start_time=COALESCE(NULLIF(substr(NEW.planned_start,12,5),''),'08:00'),
+      span_days=MAX(1,CAST(julianday(substr(COALESCE(NEW.planned_end,NEW.planned_start),1,10))-julianday(substr(NEW.planned_start,1,10))+1 AS INTEGER)),
+      status=NEW.status,updated_at=datetime('now')
+    WHERE source_type='activity' AND source_id=NEW.id AND user_edited=0 AND hidden=0 AND NEW.planned_start IS NOT NULL AND NEW.planned_start<>'';
+    INSERT OR IGNORE INTO agenda_events(id,source_type,source_id,title,stage_key,stage_name,activity_id,activity_name,owner,event_date,start_time,span_days,status,updated_at)
+    SELECT 'agenda-activity-'||NEW.id,'activity',NEW.id,NEW.name,
+      COALESCE((SELECT name FROM stages WHERE id=NEW.stage_id),''),COALESCE((SELECT name FROM stages WHERE id=NEW.stage_id),''),
+      NEW.id,NEW.name,COALESCE((SELECT name FROM collaborators WHERE id=NEW.owner_id),''),
+      substr(NEW.planned_start,1,10),COALESCE(NULLIF(substr(NEW.planned_start,12,5),''),'08:00'),
+      MAX(1,CAST(julianday(substr(COALESCE(NEW.planned_end,NEW.planned_start),1,10))-julianday(substr(NEW.planned_start,1,10))+1 AS INTEGER)),
+      NEW.status,datetime('now') WHERE NEW.planned_start IS NOT NULL AND NEW.planned_start<>'';
+    DELETE FROM agenda_events WHERE source_type='activity' AND source_id=NEW.id AND user_edited=0
+      AND (NEW.planned_start IS NULL OR NEW.planned_start='');
+  END;
+  CREATE TRIGGER IF NOT EXISTS agenda_activity_delete AFTER DELETE ON activities BEGIN
+    DELETE FROM agenda_events WHERE source_type='activity' AND source_id=OLD.id;
+  END;
+  INSERT OR IGNORE INTO agenda_events(id,source_type,source_id,title,stage_key,stage_name,activity_id,activity_name,owner,event_date,start_time,status,updated_at)
+    SELECT 'agenda-record-'||r.id,'record',r.id,
+      COALESCE(NULLIF(substr(r.details,1,instr(r.details||char(10),char(10))-1),''),'Registro da obra'),
+      COALESCE(s.name,''),COALESCE(s.name,''),COALESCE(r.activity_id,''),COALESCE(a.name,''),
+      r.responsible_name,r.record_date,r.record_time,r.status,datetime('now')
+    FROM records r LEFT JOIN stages s ON s.id=r.stage_id LEFT JOIN activities a ON a.id=r.activity_id;
+  INSERT OR IGNORE INTO agenda_events(id,source_type,source_id,title,stage_key,stage_name,activity_id,activity_name,owner,event_date,start_time,span_days,status,updated_at)
+    SELECT 'agenda-activity-'||a.id,'activity',a.id,a.name,COALESCE(s.name,''),COALESCE(s.name,''),a.id,a.name,
+      COALESCE(c.name,''),substr(a.planned_start,1,10),COALESCE(NULLIF(substr(a.planned_start,12,5),''),'08:00'),
+      MAX(1,CAST(julianday(substr(COALESCE(a.planned_end,a.planned_start),1,10))-julianday(substr(a.planned_start,1,10))+1 AS INTEGER)),
+      a.status,datetime('now')
+    FROM activities a LEFT JOIN stages s ON s.id=a.stage_id LEFT JOIN collaborators c ON c.id=a.owner_id
+    WHERE a.planned_start IS NOT NULL AND a.planned_start<>'';
+`);
+
+db.prepare(`INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES(3,?)`).run(new Date().toISOString());
 const now=()=>new Date().toISOString();
-const commissionReasonSeed=[
-  ['signal','Sinal','Comissão vinculada ao recebimento do sinal/entrada.',40],
-  ['intermediate','Parcela intermediária','Comissão vinculada a parcela intermediária prevista no plano.',30],
-  ['monthly','Mensal','Comissão distribuída nas parcelas mensais recebidas.',30]
-];
-for(const [id,label,description,share] of commissionReasonSeed){
+const hasOperationalRows=()=>db.prepare(`
+  SELECT name FROM sqlite_master
+  WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name<>'schema_migrations'
+`).all().some(({name})=>db.prepare(`SELECT 1 FROM "${String(name).replaceAll('"','""')}" LIMIT 1`).get());
+
+export function initializeDevelopmentSeed(){
+  if(process.env.NODE_ENV!=='development')return {status:'skipped',reason:'not-development'};
+  if(hasOperationalRows())return {status:'skipped',reason:'database-not-clean'};
+  db.exec('BEGIN IMMEDIATE');
+  try{
+const projectId=developmentSeedData.project.id;
+for(const [id,label,description,share] of developmentSeedData.commissionReasons){
   db.prepare(`INSERT OR IGNORE INTO commission_reasons(id,label,description,share_percent,active,updated_at) VALUES(?,?,?,?,1,?)`).run(id,label,description,share,now());
 }
-const cashFlowSeedRows=[
-  ['CX-001','2026-08-01','entrada','Vendas','Geral','Recebimentos comerciais',31200000],
-  ['CX-002','2026-08-05','saida','Obra','Drenagem Pluvial','Medição e materiais de drenagem',11800000],
-  ['CX-003','2026-08-10','saida','Obra','Rede de Água','Reserva de materiais hidráulicos',8200000],
-  ['CX-004','2026-08-18','saida','Obra','Rede Elétrica','Sinal de postes e cabos',6400000]
-];
-for(const row of cashFlowSeedRows)db.prepare(`INSERT OR IGNORE INTO cash_flow_entries(id,entry_date,kind,category,stage,description,amount_cents,created_at) VALUES(?,?,?,?,?,?,?,?)`).run(...row,now());
-const materialSeedRows=[
-  ['mat-earth-dump','Caçambas','viagem',1365,920,860,'bom'],
-  ['mat-drain-pipes','Manilhas Ø600/800/1000 mm','m',800,540,430,'atencao'],
-  ['mat-drain-inlets','Bocas de lobo','un',49,32,18,'atencao'],
-  ['mat-water-pead','Tubos PEAD','m',2980,1480,900,'atencao'],
-  ['mat-water-cavaletes','Cavaletes','un',298,122,64,'critico'],
-  ['mat-water-ramais','Ramais','un',298,88,40,'critico'],
-  ['mat-curb-precast','Meio-fio pré-moldado','m',8000,2400,1100,'atencao'],
-  ['mat-pave-stones','Paralelepípedo','un',1512000,420000,120000,'critico'],
-  ['mat-elec-poles','Postes','un',120,48,16,'atencao'],
-  ['mat-elec-cables','Cabos elétricos','m',3600,1100,1250,'atencao']
-];
-for(const row of materialSeedRows)db.prepare(`INSERT OR IGNORE INTO materials(id,name,unit,planned_quantity,received_quantity,used_quantity,status) VALUES(?,?,?,?,?,?,?)`).run(...row);
-
-const projectId='project-alianca-park';
 const seed=()=>{
   const timestamp=now();
-  db.prepare(`INSERT OR IGNORE INTO projects(id,name,city,phase,created_at,updated_at) VALUES(?,?,?,?,?,?)`).run(projectId,'Aliança Park','Senador Canedo, GO','Fase 01',timestamp,timestamp);
+  const project=developmentSeedData.project;
+  db.prepare(`INSERT OR IGNORE INTO projects(id,name,city,phase,created_at,updated_at) VALUES(?,?,?,?,?,?)`).run(project.id,project.name,project.city,project.phase,timestamp,timestamp);
   db.prepare(`INSERT OR IGNORE INTO project_state(project_id,operational_state_cleared,updated_at) VALUES(?,?,?)`).run(projectId,0,timestamp);
-  const stages=[
-    [7,'Projeto executivo','andamento',72,'Prioridade','Engenharia / Projetos'],
-    [1,'Terraplanagem','andamento',68,'Frente 01','Equipe Terraplanagem'],
-    [2,'Drenagem Pluvial','andamento',42,'Frente 02','Carlos Mendes'],
-    [4,'Rede de Água','planejado',12,'Antes da pavimentação','João Pereira'],
-    [8,'Meio-fio','planejado',0,'Infraestrutura final','Equipe Infra'],
-    [5,'Rede Elétrica','prioridade',8,'Prioridade entre as frentes finais','Mariana Silva'],
-    [3,'Pavimentação','planejado',0,'Última etapa após redes','Mariana Lopes'],
-    [6,'Sinalização','planejado',0,'Pós-pavimentação','Equipe Infra']
-  ];
   const insertStage=db.prepare(`INSERT OR IGNORE INTO stages(id,project_id,name,status,progress,week,owner) VALUES(?,?,?,?,?,?,?)`);
-  for(const row of stages)insertStage.run(row[0],projectId,...row.slice(1));
-  const purchaseSeedRows=[
-    ['PE-2025-041','EletricSul Materiais','Poste de concreto 11m',5,4875000,'Atrasado','2026-08-24','8 dias'],
-    ['PE-2025-040','HidroTubos Ltda','Tubo PEAD Ø600mm',4,3286000,'Atrasado','2026-08-22','5 dias'],
-    ['PE-2025-039','ConcretaMix','Concreto FCK 25MPa (30m³)',3,2865000,'Em andamento','2026-08-30','—'],
-    ['PE-2025-038','Luz & Cia','Cabo de alumínio 16mm',5,1542000,'Em andamento','2026-08-31','—'],
-    ['PE-2025-042','Artefatos Goiás','Meio-fio pré-moldado',8,1960000,'Pendente','2026-09-03','—']
-  ];
-  for(const row of purchaseSeedRows)db.prepare(`INSERT OR IGNORE INTO purchases(id,supplier,description,stage_id,value_cents,status,expected_date,delay) VALUES(?,?,?,?,?,?,?,?)`).run(...row);
-  const people=[
-    ['collab-mariana','Mariana Silva','Engenharia Civil','Rede Elétrica',''],
-    ['collab-joao','João Pereira','Encarregado','Terraplanagem',''],
-    ['collab-carlos','Carlos Mendes','Engenharia','Drenagem',''],
-    ['collab-paula','Paula Nascimento','Planejamento','Pavimentação','']
-  ];
+  for(const row of developmentSeedData.stages)insertStage.run(row[0],projectId,...row.slice(1));
+  for(const row of developmentSeedData.cashFlow)db.prepare(`INSERT OR IGNORE INTO cash_flow_entries(id,entry_date,kind,category,stage,description,amount_cents,created_at) VALUES(?,?,?,?,?,?,?,?)`).run(...row,timestamp);
+  for(const row of developmentSeedData.materials)db.prepare(`INSERT OR IGNORE INTO materials(id,name,unit,planned_quantity,received_quantity,used_quantity,status) VALUES(?,?,?,?,?,?,?)`).run(...row);
+  for(const row of developmentSeedData.purchases)db.prepare(`INSERT OR IGNORE INTO purchases(id,supplier,description,stage_id,value_cents,status,expected_date,delay) VALUES(?,?,?,?,?,?,?,?)`).run(...row);
+  for(const row of developmentSeedData.collaborators){
   const insertPerson=db.prepare(`INSERT OR IGNORE INTO collaborators(id,name,role,specialty,phone) VALUES(?,?,?,?,?)`);
-  for(const row of people)insertPerson.run(...row);
+    insertPerson.run(...row);
+  }
   const cleared=Boolean(db.prepare(`SELECT operational_state_cleared AS cleared FROM project_state WHERE project_id=?`).get(projectId)?.cleared);
   if(cleared){
     db.prepare(`INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES(?,?)`).run(1,timestamp);
     db.prepare(`INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES(?,?)`).run(2,timestamp);
     return;
   }
-  const activities=[
-    ['activity-drenagem','Executar rede de drenagem',2,'Drenagem','andamento',82,'collab-carlos'],
-    ['activity-pavimentacao','Executar base e pavimento',3,'Pavimentação','planejado',35,'collab-paula'],
-    ['activity-rede-agua','Implantar rede de água',4,'Redes','planejado',20,'collab-joao'],
-    ['activity-rede-eletrica','Implantar rede elétrica',5,'Redes','planejado',18,'collab-mariana']
-  ];
   const insertActivity=db.prepare(`INSERT OR IGNORE INTO activities(id,name,stage_id,category,status,progress,owner_id) VALUES(?,?,?,?,?,?,?)`);
-  for(const row of activities)insertActivity.run(row[0],row[1],row[2],row[3],row[4],row[5],row[6]);
-  db.prepare(`INSERT OR IGNORE INTO activity_relations(from_activity_id,to_activity_id,label) VALUES(?,?,?)`).run('activity-pavimentacao','activity-drenagem','libera após');
-  db.prepare(`INSERT OR IGNORE INTO activity_relations(from_activity_id,to_activity_id,label) VALUES(?,?,?)`).run('activity-rede-eletrica','activity-pavimentacao','depende de');
+  for(const row of developmentSeedData.activities)insertActivity.run(...row);
+  const insertRelation=db.prepare(`INSERT OR IGNORE INTO activity_relations(from_activity_id,to_activity_id,label) VALUES(?,?,?)`);
+  for(const row of developmentSeedData.activityRelations)insertRelation.run(...row);
   const record=db.prepare(`SELECT id FROM records WHERE id=?`).get('REG-001');
-  if(!record)db.prepare(`INSERT INTO records(id,project_id,stage_id,activity_id,record_date,record_time,responsible_id,responsible_name,details,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).run('REG-001',projectId,2,'activity-drenagem','2024-06-06','08:30','collab-carlos','Carlos Mendes','Medição da rede principal','Pendente',timestamp,timestamp);
+  if(!record){const [id,recordDate,recordTime,stageId,activityId,responsibleId,responsibleName,details,status]=developmentSeedData.record;db.prepare(`INSERT INTO records(id,project_id,stage_id,activity_id,record_date,record_time,responsible_id,responsible_name,details,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,projectId,stageId,activityId,recordDate,recordTime,responsibleId,responsibleName,details,status,timestamp,timestamp);}
   db.prepare(`INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES(?,?)`).run(1,timestamp);
   db.prepare(`INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES(?,?)`).run(2,timestamp);
 };
 seed();
+    db.exec('COMMIT');
+    return {status:'seeded',reason:'clean-development-database'};
+  }catch(error){
+    db.exec('ROLLBACK');
+    throw error;
+  }
+}
 
 const recordSelect=`SELECT r.id,r.project_id AS projectId,r.stage_id AS stageId,r.activity_id AS activityId,
   p.name AS obra,s.name AS etapa,a.name AS atividade,r.record_date AS data,r.record_time AS hora,
@@ -504,11 +568,106 @@ export function listActivities(){
     LEFT JOIN stages s ON s.id=a.stage_id
     ORDER BY a.stage_id,a.name`).all().map(row=>({...row,properties:JSON.parse(row.propertiesJson||'{}')}));
 }
+const agendaSelect=`SELECT id,source_type AS sourceType,source_id AS sourceId,title,stage_key AS stageKey,
+  stage_name AS stageName,activity_id AS activityId,activity_name AS activityName,owner,
+  event_date AS date,start_time AS start,duration_hours AS durationHours,span_days AS spanDays,
+  status,related_from AS relatedFrom,user_edited AS userEdited,hidden,updated_at AS updatedAt FROM agenda_events`;
+export function listAgendaEvents(){
+  return db.prepare(`${agendaSelect} WHERE hidden=0 ORDER BY event_date,start_time,id`).all()
+    .map(({hidden,userEdited,...event})=>({...event,userEdited:Boolean(userEdited)}));
+}
+export function saveAgendaSnapshot(events){
+  if(!Array.isArray(events)||events.length>10000)throw Object.assign(new Error('Lista da agenda inválida.'),{statusCode:400});
+  const normalized=events.map(input=>{
+    const id=asText(input?.id).slice(0,160),title=asText(input?.title).slice(0,240),date=asText(input?.date),start=asText(input?.start,'08:00');
+    const durationHours=Number(input?.durationHours??1),spanDays=Number(input?.spanDays??1);
+    if(!/^[a-zA-Z0-9_-]+$/.test(id)||!title||!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(`${date}T00:00:00Z`))||!/^([01]\d|2[0-3]):[0-5]\d$/.test(start)||!Number.isFinite(durationHours)||durationHours<0.5||durationHours>24||!Number.isInteger(spanDays)||spanDays<1||spanDays>366)
+      throw Object.assign(new Error('Compromisso inválido: título, data, horário e duração são obrigatórios.'),{statusCode:400});
+    return {id,title,stageKey:asText(input.stageKey).slice(0,160),stageName:asText(input.stageName).slice(0,160),activityId:asText(input.activityId).slice(0,160),activityName:asText(input.activityName).slice(0,240),owner:asText(input.owner).slice(0,160),date,start,durationHours,spanDays,status:asText(input.status,'Planejado').slice(0,80),relatedFrom:asText(input.relatedFrom).slice(0,160)};
+  });
+  if(new Set(normalized.map(item=>item.id)).size!==normalized.length)throw Object.assign(new Error('IDs duplicados na agenda.'),{statusCode:400});
+  const current=db.prepare(`${agendaSelect}`).all(),byId=new Map(current.map(item=>[item.id,item]));
+  db.exec('BEGIN IMMEDIATE');
+  try{
+    for(const item of normalized){
+      const previous=byId.get(item.id);
+      if(previous){
+        if(!previous.hidden&&Object.entries(item).every(([key,value])=>previous[key]===value))continue;
+        db.prepare(`UPDATE agenda_events SET title=?,stage_key=?,stage_name=?,activity_id=?,activity_name=?,owner=?,event_date=?,start_time=?,duration_hours=?,span_days=?,status=?,related_from=?,user_edited=1,hidden=0,updated_at=? WHERE id=?`)
+          .run(item.title,item.stageKey,item.stageName,item.activityId,item.activityName,item.owner,item.date,item.start,item.durationHours,item.spanDays,item.status,item.relatedFrom,now(),item.id);
+        audit.run('agenda_events',item.id,'updated',JSON.stringify(item),now());
+      }else{
+        db.prepare(`INSERT INTO agenda_events(id,source_type,title,stage_key,stage_name,activity_id,activity_name,owner,event_date,start_time,duration_hours,span_days,status,related_from,user_edited,updated_at) VALUES(?,'manual',?,?,?,?,?,?,?,?,?,?,?,?,1,?)`)
+          .run(item.id,item.title,item.stageKey,item.stageName,item.activityId,item.activityName,item.owner,item.date,item.start,item.durationHours,item.spanDays,item.status,item.relatedFrom,now());
+        audit.run('agenda_events',item.id,'created',JSON.stringify(item),now());
+      }
+    }
+    const selected=new Set(normalized.map(item=>item.id));
+    for(const previous of current){
+      if(previous.hidden||selected.has(previous.id))continue;
+      if(previous.sourceType==='manual')db.prepare(`DELETE FROM agenda_events WHERE id=?`).run(previous.id);
+      else db.prepare(`UPDATE agenda_events SET hidden=1,user_edited=1,updated_at=? WHERE id=?`).run(now(),previous.id);
+      audit.run('agenda_events',previous.id,'deleted','{}',now());
+    }
+    db.exec('COMMIT');
+  }catch(error){db.exec('ROLLBACK');throw error;}
+  return listAgendaEvents();
+}
 export function listCollaborators(){
   return db.prepare(`SELECT id,name,role,specialty,phone,active FROM collaborators ORDER BY active DESC,name`).all().map(row=>({...row,active:Boolean(row.active)}));
 }
 export function listMaterials(){
   return db.prepare(`SELECT id,name,unit,planned_quantity AS plannedQuantity,received_quantity AS receivedQuantity,used_quantity AS usedQuantity,status FROM materials ORDER BY name`).all();
+}
+const materialQuantity=(value,fallback=0)=>{
+  if(value===undefined||value===null||value==='')return fallback;
+  const parsed=Number(String(value).trim().replace(',','.'));
+  return Number.isFinite(parsed)&&parsed>=0?parsed:NaN;
+};
+export function createMaterial(input={}){
+  const id=asText(input.id,`MAT-${Date.now().toString(36).toUpperCase()}`).slice(0,100),
+    name=asText(input.name).slice(0,160),unit=asText(input.unit,'un').slice(0,40),
+    planned=materialQuantity(input.plannedQuantity),received=materialQuantity(input.receivedQuantity),
+    used=materialQuantity(input.usedQuantity),status=asText(input.status,'Planejado').slice(0,60);
+  if(!name)throw Object.assign(new Error('Informe o nome do material.'),{statusCode:400});
+  if(![planned,received,used].every(Number.isFinite))throw Object.assign(new Error('Informe quantidades numéricas não negativas.'),{statusCode:400});
+  const timestamp=now();
+  db.exec('BEGIN');
+  try{
+    db.prepare(`INSERT INTO materials(id,name,unit,planned_quantity,received_quantity,used_quantity,status) VALUES(?,?,?,?,?,?,?)`).run(id,name,unit,planned,received,used,status);
+    audit.run('materials',id,'created',JSON.stringify({name,unit,plannedQuantity:planned,receivedQuantity:received,usedQuantity:used,status}),timestamp);
+    db.exec('COMMIT');
+  }catch(error){db.exec('ROLLBACK');throw error;}
+  return listMaterials().find(item=>item.id===id);
+}
+export function updateMaterial(id,input={}){
+  const current=db.prepare(`SELECT id,name,unit,planned_quantity AS plannedQuantity,received_quantity AS receivedQuantity,used_quantity AS usedQuantity,status FROM materials WHERE id=?`).get(asText(id));
+  if(!current)return null;
+  const next={name:asText(input.name,current.name).slice(0,160),unit:asText(input.unit,current.unit).slice(0,40),
+    planned:materialQuantity(input.plannedQuantity,current.plannedQuantity),received:materialQuantity(input.receivedQuantity,current.receivedQuantity),
+    used:materialQuantity(input.usedQuantity,current.usedQuantity),status:asText(input.status,current.status).slice(0,60)};
+  if(!next.name)throw Object.assign(new Error('Informe o nome do material.'),{statusCode:400});
+  if(![next.planned,next.received,next.used].every(Number.isFinite))throw Object.assign(new Error('Informe quantidades numéricas não negativas.'),{statusCode:400});
+  const timestamp=now();
+  db.exec('BEGIN');
+  try{
+    db.prepare(`UPDATE materials SET name=?,unit=?,planned_quantity=?,received_quantity=?,used_quantity=?,status=? WHERE id=?`).run(next.name,next.unit,next.planned,next.received,next.used,next.status,asText(id));
+    audit.run('materials',asText(id),'updated',JSON.stringify({before:current,after:{name:next.name,unit:next.unit,plannedQuantity:next.planned,receivedQuantity:next.received,usedQuantity:next.used,status:next.status}}),timestamp);
+    db.exec('COMMIT');
+  }catch(error){db.exec('ROLLBACK');throw error;}
+  return listMaterials().find(item=>item.id===asText(id));
+}
+export function deleteMaterial(id){
+  const current=db.prepare(`SELECT id,name FROM materials WHERE id=?`).get(asText(id));
+  if(!current)return false;
+  const timestamp=now();
+  db.exec('BEGIN');
+  try{
+    db.prepare(`DELETE FROM materials WHERE id=?`).run(asText(id));
+    audit.run('materials',asText(id),'deleted',JSON.stringify({name:current.name}),timestamp);
+    db.exec('COMMIT');
+  }catch(error){db.exec('ROLLBACK');throw error;}
+  return true;
 }
 export function listPurchases(){
   return db.prepare(`SELECT p.id,p.supplier,p.description,s.name AS stage,p.value_cents AS valueCents,p.status,p.expected_date AS expectedDate,p.delay
@@ -660,7 +819,7 @@ const parseCashAttachment=(input={})=>{
   return {bytes,mimeType:match[1],fileName:safeCashAttachmentName(attachment.fileName||'anexo-caixa'),ext:cashAttachmentMimeExt[match[1]]||''};
 };
 export function listCashFlowEntries(){
-  const rows=db.prepare(`SELECT id,entry_date AS date,kind,category,stage,description,amount_cents AS amountCents,fiscal_document_type AS fiscalDocumentType,fiscal_document_number AS fiscalDocumentNumber,fiscal_issuer AS fiscalIssuer,fiscal_issue_date AS fiscalIssueDate,fiscal_status AS fiscalStatus,created_at AS createdAt FROM cash_flow_entries ORDER BY entry_date DESC,created_at DESC`).all();
+  const rows=db.prepare(`SELECT id,entry_date AS date,kind,lot_key AS lotKey,category,stage,description,amount_cents AS amountCents,fiscal_document_type AS fiscalDocumentType,fiscal_document_number AS fiscalDocumentNumber,fiscal_issuer AS fiscalIssuer,fiscal_issue_date AS fiscalIssueDate,fiscal_status AS fiscalStatus,created_at AS createdAt FROM cash_flow_entries ORDER BY entry_date DESC,created_at DESC`).all();
   return rows.map(row=>{
     const attachments=db.prepare(`SELECT id,file_name AS fileName,mime_type AS mimeType,created_at AS createdAt FROM cash_flow_attachments WHERE cash_flow_id=? ORDER BY created_at DESC`).all(row.id)
       .map(file=>({...file,fileUrl:'/api/cash-flow/'+encodeURIComponent(row.id)+'/attachments/'+encodeURIComponent(file.id)+'/file'}));
@@ -729,6 +888,9 @@ export function listInstagramLeadReports(limit=50){
 export function createCashFlowEntry(input={}){
   const id=asText(input.id)||`CX-${Date.now().toString(36).toUpperCase()}`,timestamp=now(),kind=asText(input.kind,'saida')==='entrada'?'entrada':'saida';
   const amountCents=Math.max(0,Math.round(Number(input.amountCents)||0));
+  const lotKey=asText(input.lotKey).trim();
+  if(lotKey&&(!REPASSE_PRICE_CATALOG.some(lot=>lot.label===lotKey)||kind!=='entrada'))throw Object.assign(new Error('A entrada deve estar vinculada a um lote válido da tabela de preços.'),{statusCode:400});
+  if(!Number.isSafeInteger(amountCents)||amountCents<=0)throw Object.assign(new Error('Informe um valor de caixa maior que zero.'),{statusCode:400});
   const attachment=parseCashAttachment(input);
   const fiscalStatus=['pendente','em_conferencia','conferido','nao_aplicavel'].includes(input.fiscalStatus)?input.fiscalStatus:'pendente';
   const fiscalDocumentType=asText(input.fiscalDocumentType);
@@ -736,7 +898,7 @@ export function createCashFlowEntry(input={}){
   const fiscalIssuer=asText(input.fiscalIssuer);
   const fiscalIssueDate=asText(input.fiscalIssueDate);
   if(fiscalStatus==='conferido'&&(!fiscalDocumentType||!fiscalDocumentNumber||!fiscalIssuer||!fiscalIssueDate||!attachment))throw Object.assign(new Error('Conferência fiscal exige tipo, número, emitente, data e documento anexado.'),{statusCode:400});
-  db.prepare(`INSERT INTO cash_flow_entries(id,entry_date,kind,category,stage,description,amount_cents,fiscal_document_type,fiscal_document_number,fiscal_issuer,fiscal_issue_date,fiscal_status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,asText(input.date,new Date().toISOString().slice(0,10)),kind,asText(input.category),asText(input.stage),asText(input.description),amountCents,fiscalDocumentType,fiscalDocumentNumber,fiscalIssuer,fiscalIssueDate,fiscalStatus,timestamp);
+  db.prepare(`INSERT INTO cash_flow_entries(id,entry_date,kind,lot_key,category,stage,description,amount_cents,fiscal_document_type,fiscal_document_number,fiscal_issuer,fiscal_issue_date,fiscal_status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,asText(input.date,new Date().toISOString().slice(0,10)),kind,lotKey,asText(input.category),asText(input.stage),asText(input.description),amountCents,fiscalDocumentType,fiscalDocumentNumber,fiscalIssuer,fiscalIssueDate,fiscalStatus,timestamp);
   if(attachment){
     const ext=attachment.ext,base=attachment.fileName.toLowerCase().endsWith(ext)?attachment.fileName:`${attachment.fileName}${ext}`,storagePath=join(cashFlowAttachmentsRoot,`${id}-${base}`),attachmentId=`CXA-${Date.now().toString(36).toUpperCase()}`;
     try{
@@ -748,7 +910,7 @@ export function createCashFlowEntry(input={}){
       throw error;
     }
   }
-  audit.run('cash_flow_entries',id,'created',JSON.stringify({kind,amountCents,stage:asText(input.stage),fiscalStatus,fiscalDocumentType,fiscalDocumentNumber}),timestamp);
+  audit.run('cash_flow_entries',id,'created',JSON.stringify({kind,lotKey,amountCents,stage:asText(input.stage),fiscalStatus,fiscalDocumentType,fiscalDocumentNumber}),timestamp);
   return listCashFlowEntries().find(row=>row.id===id);
 }
 export function addCashFlowAttachment(id,input={}){
@@ -1054,6 +1216,84 @@ export function updateStageAdmin(stageId,input={}){
   db.prepare(`UPDATE stages SET name=?,owner=?,status=?,progress=?,week=? WHERE id=?`).run(name,owner,status,progress,week,stageId);
   audit.run('stages',String(stageId),'updated',JSON.stringify({name,owner,status,progress,week}),now());
   return getStageAdmin(stageId);
+}
+
+export function createStageAdmin(input={}){
+  const name=String(input.name||'').trim();
+  if(!name)throw new Error('Informe o nome da etapa.');
+  const owner=String(input.owner||'').trim(),status=String(input.status||'planejado').trim()||'planejado';
+  const progress=Math.max(0,Math.min(100,Number(input.progress)||0)),week=String(input.week||'').trim();
+  const existing=db.prepare(`SELECT id FROM stages WHERE project_id=? AND lower(name)=lower(?)`).get(projectId,name);
+  if(existing)throw new Error('Já existe uma etapa com este nome.');
+  const nextId=Number(db.prepare(`SELECT COALESCE(MAX(id),0)+1 AS id FROM stages`).get()?.id||1);
+  db.prepare(`INSERT INTO stages(id,project_id,name,status,progress,week,owner) VALUES(?,?,?,?,?,?,?)`).run(nextId,projectId,name,status,progress,week,owner);
+  audit.run('stages',String(nextId),'created',JSON.stringify({name,owner,status,progress,week}),now());
+  return getStageAdmin(nextId);
+}
+
+export function saveStageActivitiesAdmin(stageId,items=[]){
+  const stage=db.prepare(`SELECT id FROM stages WHERE id=?`).get(stageId);if(!stage)return null;
+  const list=Array.isArray(items)?items:[];
+  const saved=[];
+  for(const [index,input] of list.entries()){
+    const name=String(input?.name||'').trim();if(!name)continue;
+    const id=String(input?.id||`activity-stage-${stageId}-${Date.now()}-${index}`);
+    const category=String(input?.category||'Execução').trim()||'Execução';
+    const status=String(input?.status||'planejado').trim()||'planejado';
+    const progress=Math.max(0,Math.min(100,Number(input?.progress)||0));
+    const ownerId=String(input?.ownerId||'').trim()||null;
+    const plannedStart=String(input?.plannedStart||'').trim()||null,plannedEnd=String(input?.plannedEnd||'').trim()||null;
+    const properties=typeof input?.properties==='object'&&input.properties?JSON.stringify(input.properties):'{}';
+    const exists=db.prepare(`SELECT id FROM activities WHERE id=?`).get(id);
+    if(exists)db.prepare(`UPDATE activities SET stage_id=?,category=?,name=?,status=?,progress=?,owner_id=?,planned_start=?,planned_end=?,properties_json=? WHERE id=?`).run(stageId,category,name,status,progress,ownerId,plannedStart,plannedEnd,properties,id);
+    else db.prepare(`INSERT INTO activities(id,stage_id,category,name,status,progress,owner_id,planned_start,planned_end,properties_json) VALUES(?,?,?,?,?,?,?,?,?,?)`).run(id,stageId,category,name,status,progress,ownerId,plannedStart,plannedEnd,properties);
+    saved.push(id);
+  }
+  audit.run('activities',String(stageId),'saved',JSON.stringify({count:saved.length}),now());
+  return getStageAdmin(stageId);
+}
+
+export function getActivityAdmin(id){
+  return listActivities().find(item=>item.id===String(id))||null;
+}
+const activityAdminInput=(input={},previous={})=>{
+  const stageId=Number(input.stageId??previous.stageId);
+  if(!Number.isInteger(stageId)||!db.prepare(`SELECT id FROM stages WHERE id=?`).get(stageId))
+    throw Object.assign(new Error('Selecione uma etapa cadastrada.'),{statusCode:400});
+  const name=asText(input.name,previous.name).slice(0,200),category=asText(input.category,previous.category||'Execução').slice(0,100);
+  if(!name||!category)throw Object.assign(new Error('Nome e categoria da atividade são obrigatórios.'),{statusCode:400});
+  const progress=Number(input.progress??previous.progress??0);
+  if(!Number.isFinite(progress)||progress<0||progress>100)throw Object.assign(new Error('Progresso deve estar entre 0 e 100.'),{statusCode:400});
+  const plannedStart=asText(input.plannedStart,previous.plannedStart||'')||null,plannedEnd=asText(input.plannedEnd,previous.plannedEnd||'')||null;
+  if([plannedStart,plannedEnd].some(value=>value&&!/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2})?)?$/.test(value))||plannedStart&&plannedEnd&&plannedEnd<plannedStart)
+    throw Object.assign(new Error('Datas planejadas inválidas.'),{statusCode:400});
+  const ownerId=asText(input.ownerId,previous.ownerId||'')||null;
+  if(ownerId&&!db.prepare(`SELECT id FROM collaborators WHERE id=?`).get(ownerId))
+    throw Object.assign(new Error('Responsável não encontrado.'),{statusCode:400});
+  return {stageId,name,category,status:asText(input.status,previous.status||'planejado').slice(0,80),progress,ownerId,plannedStart,plannedEnd};
+};
+export function createActivityAdmin(input={}){
+  const value=activityAdminInput(input),id=`ACT-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
+  db.prepare(`INSERT INTO activities(id,stage_id,category,name,status,progress,owner_id,planned_start,planned_end) VALUES(?,?,?,?,?,?,?,?,?)`)
+    .run(id,value.stageId,value.category,value.name,value.status,value.progress,value.ownerId,value.plannedStart,value.plannedEnd);
+  audit.run('activities',id,'created',JSON.stringify(value),now());
+  return getActivityAdmin(id);
+}
+export function updateActivityAdmin(id,input={}){
+  const previous=getActivityAdmin(id);if(!previous)return null;
+  if(previous.properties?.source==='automation')throw Object.assign(new Error('Atividade gerada pelo planejamento: ajuste a origem operacional.'),{statusCode:409});
+  const value=activityAdminInput(input,previous);
+  db.prepare(`UPDATE activities SET stage_id=?,category=?,name=?,status=?,progress=?,owner_id=?,planned_start=?,planned_end=? WHERE id=?`)
+    .run(value.stageId,value.category,value.name,value.status,value.progress,value.ownerId,value.plannedStart,value.plannedEnd,id);
+  audit.run('activities',id,'updated',JSON.stringify(value),now());
+  return getActivityAdmin(id);
+}
+export function deleteActivityAdmin(id){
+  const previous=getActivityAdmin(id);if(!previous)return false;
+  if(previous.properties?.source==='automation')throw Object.assign(new Error('Atividade gerada pelo planejamento: ajuste a origem operacional.'),{statusCode:409});
+  db.prepare(`DELETE FROM activities WHERE id=?`).run(id);
+  audit.run('activities',id,'deleted','{}',now());
+  return true;
 }
 
 export function saveStageAiConfig(stageId,input={}){

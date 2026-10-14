@@ -1,0 +1,2112 @@
+{
+  "version": 1,
+  "coordinateSpace": "normalized-masterplan-overlay-top-left",
+  "source": {
+    "labels": "pdf-lot-labels-v1.json",
+    "polygons": "masterplan-lot-polygons-v2.json",
+    "overlay": "alianca-park-masterplan-lot-overlay-v2.webp",
+    "method": "homography PDF circles to green polygons; unique nearest polygon fallback",
+    "excludedOfficialLots": [
+      23,
+      41,
+      48,
+      69,
+      114,
+      133,
+      164,
+      195,
+      208,
+      212
+    ]
+  },
+  "mappings": [
+    {
+      "lotId": "Lote_001",
+      "number": 1,
+      "greenPolygonId": "Lote_194",
+      "u": 0.63294457,
+      "v": 0.64477555,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_002",
+      "number": 2,
+      "greenPolygonId": "Lote_200",
+      "u": 0.61872398,
+      "v": 0.65747485,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_003",
+      "number": 3,
+      "greenPolygonId": "Lote_294",
+      "u": 0.30314118,
+      "v": 0.91773013,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_004",
+      "number": 4,
+      "greenPolygonId": "Lote_292",
+      "u": 0.27679852,
+      "v": 0.9036985,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_005",
+      "number": 5,
+      "greenPolygonId": "Lote_215",
+      "u": 0.57882628,
+      "v": 0.69102807,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_006",
+      "number": 6,
+      "greenPolygonId": "Lote_218",
+      "u": 0.56583756,
+      "v": 0.70248639,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_007",
+      "number": 7,
+      "greenPolygonId": "Lote_256",
+      "u": 0.20842357,
+      "v": 0.86464793,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_008",
+      "number": 8,
+      "greenPolygonId": "Lote_279",
+      "u": 0.18772418,
+      "v": 0.85269979,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_009",
+      "number": 9,
+      "greenPolygonId": "Lote_275",
+      "u": 0.16811349,
+      "v": 0.841964,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_010",
+      "number": 10,
+      "greenPolygonId": "Lote_240",
+      "u": 0.51109931,
+      "v": 0.74929875,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_011",
+      "number": 11,
+      "greenPolygonId": "Lote_246",
+      "u": 0.49853731,
+      "v": 0.75972123,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_012",
+      "number": 12,
+      "greenPolygonId": "Lote_252",
+      "u": 0.48502416,
+      "v": 0.77135254,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_013",
+      "number": 13,
+      "greenPolygonId": "Lote_258",
+      "u": 0.4724018,
+      "v": 0.78262512,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_014",
+      "number": 14,
+      "greenPolygonId": "Lote_262",
+      "u": 0.4586493,
+      "v": 0.79392062,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_015",
+      "number": 15,
+      "greenPolygonId": "Lote_050",
+      "u": 0.34814152,
+      "v": 0.2846076,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_016",
+      "number": 16,
+      "greenPolygonId": "Lote_056",
+      "u": 0.32835312,
+      "v": 0.3054401,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_017",
+      "number": 17,
+      "greenPolygonId": "Lote_274",
+      "u": 0.4191334,
+      "v": 0.82877774,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_018",
+      "number": 18,
+      "greenPolygonId": "Lote_278",
+      "u": 0.40620851,
+      "v": 0.84044048,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_019",
+      "number": 19,
+      "greenPolygonId": "Lote_282",
+      "u": 0.39235888,
+      "v": 0.85103946,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_020",
+      "number": 20,
+      "greenPolygonId": "Lote_013",
+      "u": 0.38819533,
+      "v": 0.16802189,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_021",
+      "number": 21,
+      "greenPolygonId": "Lote_009",
+      "u": 0.39495345,
+      "v": 0.146399,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_022",
+      "number": 22,
+      "greenPolygonId": "Lote_007",
+      "u": 0.40222148,
+      "v": 0.12225019,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_024",
+      "number": 24,
+      "greenPolygonId": "Lote_002",
+      "u": 0.41509366,
+      "v": 0.07780221,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_025",
+      "number": 25,
+      "greenPolygonId": "Lote_001",
+      "u": 0.42867779,
+      "v": 0.03724192,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_026",
+      "number": 26,
+      "greenPolygonId": "Lote_004",
+      "u": 0.43084059,
+      "v": 0.10332932,
+      "anchor": "polygon-centroid-fallback"
+    },
+    {
+      "lotId": "Lote_027",
+      "number": 27,
+      "greenPolygonId": "Lote_286",
+      "u": 0.4803973,
+      "v": 0.8550358,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_028",
+      "number": 28,
+      "greenPolygonId": "Lote_280",
+      "u": 0.49391027,
+      "v": 0.84402183,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_029",
+      "number": 29,
+      "greenPolygonId": "Lote_276",
+      "u": 0.50695013,
+      "v": 0.83214486,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_030",
+      "number": 30,
+      "greenPolygonId": "Lote_272",
+      "u": 0.51935125,
+      "v": 0.82093803,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_031",
+      "number": 31,
+      "greenPolygonId": "Lote_267",
+      "u": 0.5332796,
+      "v": 0.80920354,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_032",
+      "number": 32,
+      "greenPolygonId": "Lote_264",
+      "u": 0.5466533,
+      "v": 0.79877404,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_033",
+      "number": 33,
+      "greenPolygonId": "Lote_260",
+      "u": 0.5595178,
+      "v": 0.78659547,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_034",
+      "number": 34,
+      "greenPolygonId": "Lote_254",
+      "u": 0.57291423,
+      "v": 0.7758661,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_035",
+      "number": 35,
+      "greenPolygonId": "Lote_248",
+      "u": 0.58550003,
+      "v": 0.76409805,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_036",
+      "number": 36,
+      "greenPolygonId": "Lote_244",
+      "u": 0.60026989,
+      "v": 0.75225659,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_037",
+      "number": 37,
+      "greenPolygonId": "Lote_237",
+      "u": 0.61267018,
+      "v": 0.7409655,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_038",
+      "number": 38,
+      "greenPolygonId": "Lote_232",
+      "u": 0.62616305,
+      "v": 0.72984089,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_039",
+      "number": 39,
+      "greenPolygonId": "Lote_227",
+      "u": 0.63835919,
+      "v": 0.71830645,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_040",
+      "number": 40,
+      "greenPolygonId": "Lote_221",
+      "u": 0.65140051,
+      "v": 0.70554357,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_042",
+      "number": 42,
+      "greenPolygonId": "Lote_161",
+      "u": 0.55283222,
+      "v": 0.57365494,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_043",
+      "number": 43,
+      "greenPolygonId": "Lote_172",
+      "u": 0.53461501,
+      "v": 0.58896029,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_044",
+      "number": 44,
+      "greenPolygonId": "Lote_176",
+      "u": 0.52098487,
+      "v": 0.60146744,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_045",
+      "number": 45,
+      "greenPolygonId": "Lote_180",
+      "u": 0.50812333,
+      "v": 0.61235089,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_046",
+      "number": 46,
+      "greenPolygonId": "Lote_182",
+      "u": 0.49462287,
+      "v": 0.62324175,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_047",
+      "number": 47,
+      "greenPolygonId": "Lote_187",
+      "u": 0.48168778,
+      "v": 0.63476206,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_049",
+      "number": 49,
+      "greenPolygonId": "Lote_199",
+      "u": 0.4568031,
+      "v": 0.65612004,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_050",
+      "number": 50,
+      "greenPolygonId": "Lote_205",
+      "u": 0.44270227,
+      "v": 0.66848062,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_051",
+      "number": 51,
+      "greenPolygonId": "Lote_210",
+      "u": 0.42990094,
+      "v": 0.67985451,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_052",
+      "number": 52,
+      "greenPolygonId": "Lote_216",
+      "u": 0.41559439,
+      "v": 0.69146599,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_053",
+      "number": 53,
+      "greenPolygonId": "Lote_219",
+      "u": 0.40307441,
+      "v": 0.70253134,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_054",
+      "number": 54,
+      "greenPolygonId": "Lote_226",
+      "u": 0.38955426,
+      "v": 0.71500834,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_056",
+      "number": 56,
+      "greenPolygonId": "Lote_234",
+      "u": 0.3632868,
+      "v": 0.73734772,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_057",
+      "number": 57,
+      "greenPolygonId": "Lote_239",
+      "u": 0.34994801,
+      "v": 0.74906758,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_058",
+      "number": 58,
+      "greenPolygonId": "Lote_247",
+      "u": 0.33680477,
+      "v": 0.76077213,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_059",
+      "number": 59,
+      "greenPolygonId": "Lote_253",
+      "u": 0.32387513,
+      "v": 0.77172893,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_060",
+      "number": 60,
+      "greenPolygonId": "Lote_259",
+      "u": 0.30988803,
+      "v": 0.78312427,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_061",
+      "number": 61,
+      "greenPolygonId": "Lote_243",
+      "u": 0.28322569,
+      "v": 0.80497096,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_062",
+      "number": 62,
+      "greenPolygonId": "Lote_265",
+      "u": 0.29985121,
+      "v": 0.81842093,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_063",
+      "number": 63,
+      "greenPolygonId": "Lote_271",
+      "u": 0.31615172,
+      "v": 0.8322436,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_064",
+      "number": 64,
+      "greenPolygonId": "Lote_277",
+      "u": 0.33337558,
+      "v": 0.84557453,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_065",
+      "number": 65,
+      "greenPolygonId": "Lote_273",
+      "u": 0.35630324,
+      "v": 0.82152056,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_066",
+      "number": 66,
+      "greenPolygonId": "Lote_268",
+      "u": 0.37008242,
+      "v": 0.80971638,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_067",
+      "number": 67,
+      "greenPolygonId": "Lote_263",
+      "u": 0.38287548,
+      "v": 0.79786968,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_068",
+      "number": 68,
+      "greenPolygonId": "Lote_261",
+      "u": 0.39680001,
+      "v": 0.78772489,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_070",
+      "number": 70,
+      "greenPolygonId": "Lote_250",
+      "u": 0.42350839,
+      "v": 0.76461978,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_071",
+      "number": 71,
+      "greenPolygonId": "Lote_245",
+      "u": 0.43625749,
+      "v": 0.75339988,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_072",
+      "number": 72,
+      "greenPolygonId": "Lote_238",
+      "u": 0.44983201,
+      "v": 0.74276721,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_073",
+      "number": 73,
+      "greenPolygonId": "Lote_233",
+      "u": 0.46350572,
+      "v": 0.73085136,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_074",
+      "number": 74,
+      "greenPolygonId": "Lote_228",
+      "u": 0.47891163,
+      "v": 0.71978959,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_075",
+      "number": 75,
+      "greenPolygonId": "Lote_222",
+      "u": 0.49033552,
+      "v": 0.70774035,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_076",
+      "number": 76,
+      "greenPolygonId": "Lote_217",
+      "u": 0.50390152,
+      "v": 0.69597081,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_077",
+      "number": 77,
+      "greenPolygonId": "Lote_211",
+      "u": 0.51727881,
+      "v": 0.68482145,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_078",
+      "number": 78,
+      "greenPolygonId": "Lote_207",
+      "u": 0.52987661,
+      "v": 0.67246611,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_079",
+      "number": 79,
+      "greenPolygonId": "Lote_203",
+      "u": 0.54320137,
+      "v": 0.66206381,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_080",
+      "number": 80,
+      "greenPolygonId": "Lote_197",
+      "u": 0.55673921,
+      "v": 0.65022644,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_081",
+      "number": 81,
+      "greenPolygonId": "Lote_192",
+      "u": 0.56990808,
+      "v": 0.63898193,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_082",
+      "number": 82,
+      "greenPolygonId": "Lote_188",
+      "u": 0.58258822,
+      "v": 0.62719991,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_083",
+      "number": 83,
+      "greenPolygonId": "Lote_184",
+      "u": 0.60034543,
+      "v": 0.61429079,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_084",
+      "number": 84,
+      "greenPolygonId": "Lote_179",
+      "u": 0.31930195,
+      "v": 0.63235938,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_085",
+      "number": 85,
+      "greenPolygonId": "Lote_190",
+      "u": 0.33593208,
+      "v": 0.64607629,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_086",
+      "number": 86,
+      "greenPolygonId": "Lote_196",
+      "u": 0.35320617,
+      "v": 0.65983137,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_087",
+      "number": 87,
+      "greenPolygonId": "Lote_202",
+      "u": 0.37020483,
+      "v": 0.67387229,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_088",
+      "number": 88,
+      "greenPolygonId": "Lote_220",
+      "u": 0.33171165,
+      "v": 0.70547198,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_089",
+      "number": 89,
+      "greenPolygonId": "Lote_231",
+      "u": 0.30648155,
+      "v": 0.7267258,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_090",
+      "number": 90,
+      "greenPolygonId": "Lote_214",
+      "u": 0.27884603,
+      "v": 0.75111446,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_091",
+      "number": 91,
+      "greenPolygonId": "Lote_236",
+      "u": 0.24817031,
+      "v": 0.77791486,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_092",
+      "number": 92,
+      "greenPolygonId": "Lote_249",
+      "u": 0.231116,
+      "v": 0.76425416,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_093",
+      "number": 93,
+      "greenPolygonId": "Lote_242",
+      "u": 0.21363816,
+      "v": 0.7497933,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_094",
+      "number": 94,
+      "greenPolygonId": "Lote_224",
+      "u": 0.19963445,
+      "v": 0.73810116,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_095",
+      "number": 95,
+      "greenPolygonId": "Lote_198",
+      "u": 0.23053165,
+      "v": 0.71124338,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_096",
+      "number": 96,
+      "greenPolygonId": "Lote_186",
+      "u": 0.25746057,
+      "v": 0.6887378,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_097",
+      "number": 97,
+      "greenPolygonId": "Lote_204",
+      "u": 0.28490421,
+      "v": 0.6653227,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_098",
+      "number": 98,
+      "greenPolygonId": "Lote_212",
+      "u": 0.14340823,
+      "v": 0.72407802,
+      "anchor": "polygon-centroid-fallback"
+    },
+    {
+      "lotId": "Lote_099",
+      "number": 99,
+      "greenPolygonId": "Lote_223",
+      "u": 0.16015724,
+      "v": 0.77580506,
+      "anchor": "polygon-centroid-fallback"
+    },
+    {
+      "lotId": "Lote_100",
+      "number": 100,
+      "greenPolygonId": "Lote_251",
+      "u": 0.16866887,
+      "v": 0.80753133,
+      "anchor": "polygon-centroid-fallback"
+    },
+    {
+      "lotId": "Lote_101",
+      "number": 101,
+      "greenPolygonId": "Lote_195",
+      "u": 0.42059057,
+      "v": 0.61108395,
+      "anchor": "polygon-centroid-fallback"
+    },
+    {
+      "lotId": "Lote_102",
+      "number": 102,
+      "greenPolygonId": "Lote_208",
+      "u": 0.40362194,
+      "v": 0.61944383,
+      "anchor": "polygon-centroid-fallback"
+    },
+    {
+      "lotId": "Lote_103",
+      "number": 103,
+      "greenPolygonId": "Lote_058",
+      "u": 0.46920776,
+      "v": 0.35249916,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_104",
+      "number": 104,
+      "greenPolygonId": "Lote_090",
+      "u": 0.50317218,
+      "v": 0.37944761,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_105",
+      "number": 105,
+      "greenPolygonId": "Lote_096",
+      "u": 0.51579319,
+      "v": 0.39108417,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_106",
+      "number": 106,
+      "greenPolygonId": "Lote_101",
+      "u": 0.52979136,
+      "v": 0.40239013,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_107",
+      "number": 107,
+      "greenPolygonId": "Lote_107",
+      "u": 0.54205135,
+      "v": 0.4140107,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_108",
+      "number": 108,
+      "greenPolygonId": "Lote_113",
+      "u": 0.55435343,
+      "v": 0.42515901,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_109",
+      "number": 109,
+      "greenPolygonId": "Lote_119",
+      "u": 0.56607211,
+      "v": 0.43719155,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_110",
+      "number": 110,
+      "greenPolygonId": "Lote_126",
+      "u": 0.58004384,
+      "v": 0.4494818,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_111",
+      "number": 111,
+      "greenPolygonId": "Lote_131",
+      "u": 0.59276774,
+      "v": 0.46113705,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_112",
+      "number": 112,
+      "greenPolygonId": "Lote_137",
+      "u": 0.60553732,
+      "v": 0.47326936,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_113",
+      "number": 113,
+      "greenPolygonId": "Lote_143",
+      "u": 0.61830757,
+      "v": 0.48435513,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_115",
+      "number": 115,
+      "greenPolygonId": "Lote_132",
+      "u": 0.64412726,
+      "v": 0.50855606,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_116",
+      "number": 116,
+      "greenPolygonId": "Lote_156",
+      "u": 0.65572848,
+      "v": 0.51998845,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_117",
+      "number": 117,
+      "greenPolygonId": "Lote_159",
+      "u": 0.66928875,
+      "v": 0.5321153,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_118",
+      "number": 118,
+      "greenPolygonId": "Lote_163",
+      "u": 0.68164712,
+      "v": 0.54382306,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_119",
+      "number": 119,
+      "greenPolygonId": "Lote_167",
+      "u": 0.69457659,
+      "v": 0.55560917,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_120",
+      "number": 120,
+      "greenPolygonId": "Lote_170",
+      "u": 0.70684647,
+      "v": 0.56767942,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_121",
+      "number": 121,
+      "greenPolygonId": "Lote_174",
+      "u": 0.71997823,
+      "v": 0.57966656,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_122",
+      "number": 122,
+      "greenPolygonId": "Lote_177",
+      "u": 0.73212222,
+      "v": 0.59142579,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_123",
+      "number": 123,
+      "greenPolygonId": "Lote_183",
+      "u": 0.75132936,
+      "v": 0.61255147,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_124",
+      "number": 124,
+      "greenPolygonId": "Lote_193",
+      "u": 0.72670039,
+      "v": 0.64460593,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_125",
+      "number": 125,
+      "greenPolygonId": "Lote_201",
+      "u": 0.70972163,
+      "v": 0.65836622,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_126",
+      "number": 126,
+      "greenPolygonId": "Lote_189",
+      "u": 0.67969738,
+      "v": 0.6307479,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_127",
+      "number": 127,
+      "greenPolygonId": "Lote_185",
+      "u": 0.66716095,
+      "v": 0.61863241,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_128",
+      "number": 128,
+      "greenPolygonId": "Lote_181",
+      "u": 0.65560415,
+      "v": 0.60520744,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_129",
+      "number": 129,
+      "greenPolygonId": "Lote_178",
+      "u": 0.64206031,
+      "v": 0.59429013,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_130",
+      "number": 130,
+      "greenPolygonId": "Lote_175",
+      "u": 0.62941029,
+      "v": 0.58318355,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_131",
+      "number": 131,
+      "greenPolygonId": "Lote_171",
+      "u": 0.61705606,
+      "v": 0.57067633,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_132",
+      "number": 132,
+      "greenPolygonId": "Lote_169",
+      "u": 0.60413245,
+      "v": 0.55931429,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_134",
+      "number": 134,
+      "greenPolygonId": "Lote_147",
+      "u": 0.57851594,
+      "v": 0.5358062,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_135",
+      "number": 135,
+      "greenPolygonId": "Lote_158",
+      "u": 0.56550067,
+      "v": 0.52398685,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_136",
+      "number": 136,
+      "greenPolygonId": "Lote_155",
+      "u": 0.55304071,
+      "v": 0.51184261,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_137",
+      "number": 137,
+      "greenPolygonId": "Lote_149",
+      "u": 0.53903316,
+      "v": 0.49829357,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_138",
+      "number": 138,
+      "greenPolygonId": "Lote_145",
+      "u": 0.52702276,
+      "v": 0.48749034,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_139",
+      "number": 139,
+      "greenPolygonId": "Lote_139",
+      "u": 0.51478091,
+      "v": 0.47629967,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_140",
+      "number": 140,
+      "greenPolygonId": "Lote_128",
+      "u": 0.50345335,
+      "v": 0.46477858,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_141",
+      "number": 141,
+      "greenPolygonId": "Lote_121",
+      "u": 0.48989764,
+      "v": 0.45318141,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_142",
+      "number": 142,
+      "greenPolygonId": "Lote_115",
+      "u": 0.47772464,
+      "v": 0.44112903,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_143",
+      "number": 143,
+      "greenPolygonId": "Lote_109",
+      "u": 0.46402303,
+      "v": 0.42845548,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_144",
+      "number": 144,
+      "greenPolygonId": "Lote_077",
+      "u": 0.4521113,
+      "v": 0.41729136,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_145",
+      "number": 145,
+      "greenPolygonId": "Lote_094",
+      "u": 0.43629216,
+      "v": 0.38898956,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_146",
+      "number": 146,
+      "greenPolygonId": "Lote_035",
+      "u": 0.5039329,
+      "v": 0.28250027,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_147",
+      "number": 147,
+      "greenPolygonId": "Lote_040",
+      "u": 0.51062035,
+      "v": 0.30959104,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_148",
+      "number": 148,
+      "greenPolygonId": "Lote_063",
+      "u": 0.52373149,
+      "v": 0.32140364,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_149",
+      "number": 149,
+      "greenPolygonId": "Lote_049",
+      "u": 0.53708803,
+      "v": 0.33303319,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_150",
+      "number": 150,
+      "greenPolygonId": "Lote_074",
+      "u": 0.54929473,
+      "v": 0.34482817,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_151",
+      "number": 151,
+      "greenPolygonId": "Lote_080",
+      "u": 0.56159054,
+      "v": 0.35657355,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_152",
+      "number": 152,
+      "greenPolygonId": "Lote_085",
+      "u": 0.57412597,
+      "v": 0.36883705,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_153",
+      "number": 153,
+      "greenPolygonId": "Lote_091",
+      "u": 0.58658377,
+      "v": 0.38085912,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_154",
+      "number": 154,
+      "greenPolygonId": "Lote_097",
+      "u": 0.59990292,
+      "v": 0.3928011,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_155",
+      "number": 155,
+      "greenPolygonId": "Lote_102",
+      "u": 0.61209493,
+      "v": 0.40492565,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_156",
+      "number": 156,
+      "greenPolygonId": "Lote_108",
+      "u": 0.62548401,
+      "v": 0.41585235,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_157",
+      "number": 157,
+      "greenPolygonId": "Lote_089",
+      "u": 0.63840048,
+      "v": 0.4283108,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_158",
+      "number": 158,
+      "greenPolygonId": "Lote_120",
+      "u": 0.65070109,
+      "v": 0.44016137,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_159",
+      "number": 159,
+      "greenPolygonId": "Lote_127",
+      "u": 0.6629331,
+      "v": 0.45151621,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_160",
+      "number": 160,
+      "greenPolygonId": "Lote_112",
+      "u": 0.67650327,
+      "v": 0.46305512,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_161",
+      "number": 161,
+      "greenPolygonId": "Lote_138",
+      "u": 0.68913468,
+      "v": 0.47524849,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_162",
+      "number": 162,
+      "greenPolygonId": "Lote_144",
+      "u": 0.70149487,
+      "v": 0.48727282,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_163",
+      "number": 163,
+      "greenPolygonId": "Lote_150",
+      "u": 0.71413902,
+      "v": 0.4986635,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_165",
+      "number": 165,
+      "greenPolygonId": "Lote_157",
+      "u": 0.73935917,
+      "v": 0.52266543,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_166",
+      "number": 166,
+      "greenPolygonId": "Lote_160",
+      "u": 0.75274789,
+      "v": 0.53400022,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_167",
+      "number": 167,
+      "greenPolygonId": "Lote_168",
+      "u": 0.76528029,
+      "v": 0.54612483,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_168",
+      "number": 168,
+      "greenPolygonId": "Lote_173",
+      "u": 0.77806967,
+      "v": 0.55741618,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_169",
+      "number": 169,
+      "greenPolygonId": "Lote_166",
+      "u": 0.80902123,
+      "v": 0.57365831,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_170",
+      "number": 170,
+      "greenPolygonId": "Lote_162",
+      "u": 0.83404398,
+      "v": 0.55146574,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_171",
+      "number": 171,
+      "greenPolygonId": "Lote_153",
+      "u": 0.84961215,
+      "v": 0.53805673,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_172",
+      "number": 172,
+      "greenPolygonId": "Lote_151",
+      "u": 0.81752089,
+      "v": 0.50741568,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_173",
+      "number": 173,
+      "greenPolygonId": "Lote_146",
+      "u": 0.80428475,
+      "v": 0.49572214,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_174",
+      "number": 174,
+      "greenPolygonId": "Lote_142",
+      "u": 0.79114811,
+      "v": 0.48378654,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_175",
+      "number": 175,
+      "greenPolygonId": "Lote_136",
+      "u": 0.77883099,
+      "v": 0.47228079,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_176",
+      "number": 176,
+      "greenPolygonId": "Lote_130",
+      "u": 0.76534684,
+      "v": 0.46031602,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_177",
+      "number": 177,
+      "greenPolygonId": "Lote_125",
+      "u": 0.75313921,
+      "v": 0.44864425,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_178",
+      "number": 178,
+      "greenPolygonId": "Lote_118",
+      "u": 0.74054777,
+      "v": 0.43655096,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_179",
+      "number": 179,
+      "greenPolygonId": "Lote_093",
+      "u": 0.72675016,
+      "v": 0.42467899,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_180",
+      "number": 180,
+      "greenPolygonId": "Lote_106",
+      "u": 0.71480457,
+      "v": 0.41289799,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_181",
+      "number": 181,
+      "greenPolygonId": "Lote_100",
+      "u": 0.70171849,
+      "v": 0.40121318,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_182",
+      "number": 182,
+      "greenPolygonId": "Lote_095",
+      "u": 0.68905419,
+      "v": 0.38906159,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_183",
+      "number": 183,
+      "greenPolygonId": "Lote_071",
+      "u": 0.67666169,
+      "v": 0.37785964,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_184",
+      "number": 184,
+      "greenPolygonId": "Lote_084",
+      "u": 0.66272173,
+      "v": 0.36527936,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_185",
+      "number": 185,
+      "greenPolygonId": "Lote_079",
+      "u": 0.65056204,
+      "v": 0.35392642,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_186",
+      "number": 186,
+      "greenPolygonId": "Lote_072",
+      "u": 0.63807842,
+      "v": 0.34202908,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_187",
+      "number": 187,
+      "greenPolygonId": "Lote_068",
+      "u": 0.62577326,
+      "v": 0.33026401,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_188",
+      "number": 188,
+      "greenPolygonId": "Lote_062",
+      "u": 0.6124461,
+      "v": 0.318208,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_189",
+      "number": 189,
+      "greenPolygonId": "Lote_057",
+      "u": 0.59961025,
+      "v": 0.30647098,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_190",
+      "number": 190,
+      "greenPolygonId": "Lote_053",
+      "u": 0.58794743,
+      "v": 0.29424939,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_191",
+      "number": 191,
+      "greenPolygonId": "Lote_037",
+      "u": 0.57496899,
+      "v": 0.28284637,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_192",
+      "number": 192,
+      "greenPolygonId": "Lote_045",
+      "u": 0.56267992,
+      "v": 0.2714811,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_193",
+      "number": 193,
+      "greenPolygonId": "Lote_031",
+      "u": 0.54942117,
+      "v": 0.25957618,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_194",
+      "number": 194,
+      "greenPolygonId": "Lote_025",
+      "u": 0.5200765,
+      "v": 0.23818111,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_196",
+      "number": 196,
+      "greenPolygonId": "Lote_019",
+      "u": 0.54577772,
+      "v": 0.19902047,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_197",
+      "number": 197,
+      "greenPolygonId": "Lote_027",
+      "u": 0.5585101,
+      "v": 0.2104401,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_198",
+      "number": 198,
+      "greenPolygonId": "Lote_020",
+      "u": 0.57124963,
+      "v": 0.2221923,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_199",
+      "number": 199,
+      "greenPolygonId": "Lote_034",
+      "u": 0.58404808,
+      "v": 0.234031,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_200",
+      "number": 200,
+      "greenPolygonId": "Lote_026",
+      "u": 0.59736837,
+      "v": 0.24635591,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_201",
+      "number": 201,
+      "greenPolygonId": "Lote_039",
+      "u": 0.60970553,
+      "v": 0.25826683,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_202",
+      "number": 202,
+      "greenPolygonId": "Lote_043",
+      "u": 0.62271621,
+      "v": 0.2697534,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_203",
+      "number": 203,
+      "greenPolygonId": "Lote_047",
+      "u": 0.63495119,
+      "v": 0.28107351,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_204",
+      "number": 204,
+      "greenPolygonId": "Lote_052",
+      "u": 0.64754132,
+      "v": 0.29338832,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_205",
+      "number": 205,
+      "greenPolygonId": "Lote_055",
+      "u": 0.66109232,
+      "v": 0.3050022,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_206",
+      "number": 206,
+      "greenPolygonId": "Lote_061",
+      "u": 0.67333693,
+      "v": 0.31675681,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_207",
+      "number": 207,
+      "greenPolygonId": "Lote_067",
+      "u": 0.68701828,
+      "v": 0.32792072,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_209",
+      "number": 209,
+      "greenPolygonId": "Lote_076",
+      "u": 0.71138145,
+      "v": 0.35242219,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_210",
+      "number": 210,
+      "greenPolygonId": "Lote_083",
+      "u": 0.72408643,
+      "v": 0.36455731,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_211",
+      "number": 211,
+      "greenPolygonId": "Lote_066",
+      "u": 0.73735496,
+      "v": 0.37618697,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_213",
+      "number": 213,
+      "greenPolygonId": "Lote_099",
+      "u": 0.76187529,
+      "v": 0.39926962,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_214",
+      "number": 214,
+      "greenPolygonId": "Lote_105",
+      "u": 0.77572201,
+      "v": 0.41178621,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_215",
+      "number": 215,
+      "greenPolygonId": "Lote_111",
+      "u": 0.78784763,
+      "v": 0.42299282,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_216",
+      "number": 216,
+      "greenPolygonId": "Lote_117",
+      "u": 0.80066871,
+      "v": 0.43509666,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_217",
+      "number": 217,
+      "greenPolygonId": "Lote_123",
+      "u": 0.81273565,
+      "v": 0.4467097,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_218",
+      "number": 218,
+      "greenPolygonId": "Lote_129",
+      "u": 0.8260292,
+      "v": 0.45869177,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_219",
+      "number": 219,
+      "greenPolygonId": "Lote_135",
+      "u": 0.84024337,
+      "v": 0.4707401,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_220",
+      "number": 220,
+      "greenPolygonId": "Lote_140",
+      "u": 0.85235793,
+      "v": 0.48124854,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_221",
+      "number": 221,
+      "greenPolygonId": "Lote_148",
+      "u": 0.88289589,
+      "v": 0.51097785,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_222",
+      "number": 222,
+      "greenPolygonId": "Lote_141",
+      "u": 0.89914468,
+      "v": 0.49686373,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_223",
+      "number": 223,
+      "greenPolygonId": "Lote_134",
+      "u": 0.91449387,
+      "v": 0.48307519,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_224",
+      "number": 224,
+      "greenPolygonId": "Lote_124",
+      "u": 0.93098172,
+      "v": 0.46963036,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_225",
+      "number": 225,
+      "greenPolygonId": "Lote_122",
+      "u": 0.9032528,
+      "v": 0.44417175,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_226",
+      "number": 226,
+      "greenPolygonId": "Lote_116",
+      "u": 0.89032941,
+      "v": 0.43218575,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_227",
+      "number": 227,
+      "greenPolygonId": "Lote_110",
+      "u": 0.87870395,
+      "v": 0.42026627,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_228",
+      "number": 228,
+      "greenPolygonId": "Lote_104",
+      "u": 0.86456373,
+      "v": 0.4084468,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_229",
+      "number": 229,
+      "greenPolygonId": "Lote_098",
+      "u": 0.85218598,
+      "v": 0.39594498,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_230",
+      "number": 230,
+      "greenPolygonId": "Lote_092",
+      "u": 0.83918602,
+      "v": 0.38469114,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_231",
+      "number": 231,
+      "greenPolygonId": "Lote_086",
+      "u": 0.82713933,
+      "v": 0.37305149,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_232",
+      "number": 232,
+      "greenPolygonId": "Lote_082",
+      "u": 0.81310159,
+      "v": 0.36164724,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_233",
+      "number": 233,
+      "greenPolygonId": "Lote_075",
+      "u": 0.80088121,
+      "v": 0.34911549,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_234",
+      "number": 234,
+      "greenPolygonId": "Lote_070",
+      "u": 0.78863138,
+      "v": 0.33750028,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_235",
+      "number": 235,
+      "greenPolygonId": "Lote_060",
+      "u": 0.77536497,
+      "v": 0.32533311,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_236",
+      "number": 236,
+      "greenPolygonId": "Lote_044",
+      "u": 0.76335613,
+      "v": 0.31362873,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_237",
+      "number": 237,
+      "greenPolygonId": "Lote_054",
+      "u": 0.75044421,
+      "v": 0.30220251,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_238",
+      "number": 238,
+      "greenPolygonId": "Lote_046",
+      "u": 0.73761356,
+      "v": 0.29004209,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_239",
+      "number": 239,
+      "greenPolygonId": "Lote_042",
+      "u": 0.724742,
+      "v": 0.27808621,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_240",
+      "number": 240,
+      "greenPolygonId": "Lote_030",
+      "u": 0.71187606,
+      "v": 0.26650977,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_241",
+      "number": 241,
+      "greenPolygonId": "Lote_038",
+      "u": 0.69973988,
+      "v": 0.25435037,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_242",
+      "number": 242,
+      "greenPolygonId": "Lote_036",
+      "u": 0.68704577,
+      "v": 0.24318937,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_243",
+      "number": 243,
+      "greenPolygonId": "Lote_032",
+      "u": 0.6741904,
+      "v": 0.23027295,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_244",
+      "number": 244,
+      "greenPolygonId": "Lote_029",
+      "u": 0.66070522,
+      "v": 0.2193374,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_245",
+      "number": 245,
+      "greenPolygonId": "Lote_018",
+      "u": 0.64909163,
+      "v": 0.20869138,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_246",
+      "number": 246,
+      "greenPolygonId": "Lote_024",
+      "u": 0.6345599,
+      "v": 0.19652342,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_247",
+      "number": 247,
+      "greenPolygonId": "Lote_021",
+      "u": 0.62077575,
+      "v": 0.18514841,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_248",
+      "number": 248,
+      "greenPolygonId": "Lote_010",
+      "u": 0.60873771,
+      "v": 0.17246906,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_249",
+      "number": 249,
+      "greenPolygonId": "Lote_015",
+      "u": 0.5965779,
+      "v": 0.16119564,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_250",
+      "number": 250,
+      "greenPolygonId": "Lote_014",
+      "u": 0.58490431,
+      "v": 0.14822466,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_251",
+      "number": 251,
+      "greenPolygonId": "Lote_005",
+      "u": 0.55333162,
+      "v": 0.12648862,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_252",
+      "number": 252,
+      "greenPolygonId": "Lote_011",
+      "u": 0.53778959,
+      "v": 0.17249192,
+      "anchor": "polygon-centroid-fallback"
+    },
+    {
+      "lotId": "Lote_253",
+      "number": 253,
+      "greenPolygonId": "Lote_017",
+      "u": 0.40849906,
+      "v": 0.20553419,
+      "anchor": "polygon-centroid-fallback"
+    },
+    {
+      "lotId": "Lote_254",
+      "number": 254,
+      "greenPolygonId": "Lote_051",
+      "u": 0.70715626,
+      "v": 0.33420421,
+      "anchor": "polygon-centroid-fallback"
+    },
+    {
+      "lotId": "Lote_255",
+      "number": 255,
+      "greenPolygonId": "Lote_088",
+      "u": 0.75815601,
+      "v": 0.38126752,
+      "anchor": "polygon-centroid-fallback"
+    },
+    {
+      "lotId": "Lote_256",
+      "number": 256,
+      "greenPolygonId": "Lote_069",
+      "u": 0.51933996,
+      "v": 0.35559583,
+      "anchor": "polygon-centroid-fallback"
+    },
+    {
+      "lotId": "Lote_257",
+      "number": 257,
+      "greenPolygonId": "Lote_114",
+      "u": 0.62584685,
+      "v": 0.45493777,
+      "anchor": "polygon-centroid-fallback"
+    },
+    {
+      "lotId": "Lote_258",
+      "number": 258,
+      "greenPolygonId": "Lote_059",
+      "u": 0.83693991,
+      "v": 0.31331664,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_259",
+      "number": 259,
+      "greenPolygonId": "Lote_081",
+      "u": 0.88831014,
+      "v": 0.36139125,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_260",
+      "number": 260,
+      "greenPolygonId": "Lote_103",
+      "u": 0.94124725,
+      "v": 0.40819676,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_261",
+      "number": 261,
+      "greenPolygonId": "Lote_154",
+      "u": 0.7349335,
+      "v": 0.50453552,
+      "anchor": "polygon-centroid-fallback"
+    },
+    {
+      "lotId": "Lote_262",
+      "number": 262,
+      "greenPolygonId": "Lote_033",
+      "u": 0.45731241,
+      "v": 0.25970706,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_263",
+      "number": 263,
+      "greenPolygonId": "Lote_028",
+      "u": 0.46655832,
+      "v": 0.23384756,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_264",
+      "number": 264,
+      "greenPolygonId": "Lote_022",
+      "u": 0.47240181,
+      "v": 0.21092181,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_265",
+      "number": 265,
+      "greenPolygonId": "Lote_016",
+      "u": 0.47975671,
+      "v": 0.18876942,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_266",
+      "number": 266,
+      "greenPolygonId": "Lote_012",
+      "u": 0.48665481,
+      "v": 0.16585124,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_267",
+      "number": 267,
+      "greenPolygonId": "Lote_008",
+      "u": 0.49361459,
+      "v": 0.14086429,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_268",
+      "number": 268,
+      "greenPolygonId": "Lote_006",
+      "u": 0.50011107,
+      "v": 0.11856893,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_269",
+      "number": 269,
+      "greenPolygonId": "Lote_003",
+      "u": 0.50620212,
+      "v": 0.09703296,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_270",
+      "number": 270,
+      "greenPolygonId": "Lote_065",
+      "u": 0.42365855,
+      "v": 0.32418709,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_271",
+      "number": 271,
+      "greenPolygonId": "Lote_078",
+      "u": 0.40366704,
+      "v": 0.3527054,
+      "anchor": "pdf-circle"
+    },
+    {
+      "lotId": "Lote_272",
+      "number": 272,
+      "greenPolygonId": "Lote_087",
+      "u": 0.37864448,
+      "v": 0.3730605,
+      "anchor": "pdf-circle"
+    }
+  ]
+}

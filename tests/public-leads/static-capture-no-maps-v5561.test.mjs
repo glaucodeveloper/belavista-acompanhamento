@@ -13,13 +13,13 @@ test('o HTML público não carrega Leaflet nem provedores de mapas',()=>{
 });
 
 test('a página pública usa a captura local centrada pelo DWG',()=>{
-  const components=read('components.js');
+  const components=[(read('components/map/map-scene-composition-v1.mjs') + read('components.js')),read('components/map/map-scene-sync-v1.mjs')].join('\n');
   const context=read('public-leads-context-v521.mjs');
   const build=read('scripts/build-public-pages.mjs');
   const image=path.join(root,'assets/public/dwg-satellite-treated-v5411.png');
 
   assert.ok(fs.statSync(image).size>10000);
-  assert.match(components,/GENERATED_AERIAL_ASSET='\/assets\/public\/dwg-satellite-treated-v5411\.png'/);
+  assert.match(components,/GENERATED_AERIAL_ASSET\s*=\s*["']\/assets\/public\/dwg-satellite-treated-v5411\.png["']/);
   assert.match(components,/static-capture-no-maps/);
   assert.match(components,/projectPublicStaticPointV1/);
   assert.match(context,/const mapMode='generated'/);
@@ -29,7 +29,7 @@ test('a página pública usa a captura local centrada pelo DWG',()=>{
 });
 
 test('Ctrl + arraste esquerdo mantém zoom sem depender do mapa',()=>{
-  const components=read('components.js');
-  assert.match(components,/zooming=!selecting&&!tilting&&event\.ctrlKey&&event\.button===0/);
-  assert.match(components,/setSceneZoomAt\(this\.sceneManualZoom-dy\*ZOOM_DRAG_SENSITIVITY/);
+  const components=(read('components/map/map-scene-composition-v1.mjs') + read('components.js'));
+  assert.match(components,/zooming\s*=\s*!selecting\s*&&\s*event\.button\s*===\s*0\s*&&\s*\(event\.shiftKey\s*\|\|\s*event\.ctrlKey\)/);
+  assert.match(components,/this\.setSceneZoomAt\(\s*this\.sceneManualZoom\s*-\s*dy\s*\*\s*ZOOM_DRAG_SENSITIVITY/);
 });

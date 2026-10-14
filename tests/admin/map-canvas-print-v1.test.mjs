@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
-const components=read('components.js');
+const components=[(read('components/map/map-scene-composition-v1.mjs') + read('components.js')),read('components/map/map-scene-controls-v1.mjs'),read('components/map/map-pdf-interface-v1.mjs')].join('\n');
 const styles=read('styles.css');
 const html=read('index.html');
 
@@ -35,5 +35,5 @@ test('interface PDF oculta a operação e preserva a superfície do mapa',()=>{
   assert.match(styles,/\.app-shell\.print-mode #belavista-map-widgets-v5/);
   assert.match(styles,/body\.map-pdf-interface-open #belavista-map-page-widgets/);
   assert.match(styles,/\.dashboard-map-navigation-global/);
-  assert.match(html,/admin-original-bootstrap-v5351\.mjs\?v=instagram-api-live-v25&full-image-3d-environment-v1&admin-map-static-first-v20-scene-only-168/);
+  assert.match(html,/admin-original-bootstrap-v5351\.mjs\?pdf-original-perimeter-v3/);
 });

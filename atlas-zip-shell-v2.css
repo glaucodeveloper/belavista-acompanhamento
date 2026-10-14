@@ -1,0 +1,189 @@
+/* Shell de navegação e conteúdo transposto da estrutura Atlas do ZIP. */
+body.admin-shell-page {
+  --atlas-page: #101010;
+  --atlas-panel: #fff;
+  min-width: 310px;
+  min-height: 100dvh;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  background: var(--atlas-page) !important;
+  color: #17191b !important;
+  color-scheme: light;
+  font-family: Inter, "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif !important;
+}
+
+body.admin-shell-page .app[data-layout="atlas-zip"] {
+  display: grid !important;
+  grid-template-columns: 300px minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  min-height: 100dvh !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 20px 20px 20px 0 !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body.admin-shell-page .app[data-layout="atlas-zip"] > app-sidebar {
+  display: block !important;
+  min-width: 0 !important;
+  min-height: calc(100dvh - 40px) !important;
+  height: auto !important;
+  overflow: visible !important;
+  background: transparent !important;
+}
+
+body.admin-shell-page .app[data-layout="atlas-zip"] app-sidebar > .sidebar {
+  position: sticky !important;
+  top: 20px !important;
+  width: 100% !important;
+  height: calc(100dvh - 40px) !important;
+  max-height: calc(100dvh - 40px) !important;
+  min-height: 580px !important;
+  padding: 32px 24px 20px 28px !important;
+  gap: 20px !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #101010 !important;
+  color: #fff !important;
+}
+
+body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar nav {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  gap: 16px !important;
+  min-height: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  scrollbar-width: thin;
+  scrollbar-color: #555 transparent;
+}
+
+body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar .mobile-agenda-nav-item { display: none !important; }
+body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar .navblock { display: grid !important; align-content: start !important; gap: 4px !important; min-width: 0 !important; }
+body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar .nav-label { padding: 0 12px 7px !important; color: #777b82 !important; font-size: 10px !important; font-weight: 750 !important; letter-spacing: .13em !important; }
+body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar .site-manual-link,
+body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar .sidebar-foot { flex: 0 0 auto !important; min-width: 0 !important; }
+body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar .profile-trigger { min-width: 0 !important; }
+body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar .profile-trigger > div { min-width: 0 !important; flex: 1 1 auto !important; }
+body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar .profile-trigger strong { display: block !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+
+body.admin-shell-page .app[data-layout="atlas-zip"] .logo { padding: 0 11px !important; gap: 11px !important; }
+body.admin-shell-page .app[data-layout="atlas-zip"] .logo-mark { background: #fff !important; color: #151515 !important; }
+body.admin-shell-page .app[data-layout="atlas-zip"] .logo-name { color: #fff !important; font-size: 24px !important; }
+body.admin-shell-page .app[data-layout="atlas-zip"] .logo-sub { color: #85888d !important; }
+body.admin-shell-page .app[data-layout="atlas-zip"] .nav-item { min-height: 42px !important; padding: 10px 12px !important; border: 1px solid transparent !important; border-radius: 12px !important; background: transparent !important; color: #85888d !important; font-size: 13px !important; font-weight: 640 !important; }
+body.admin-shell-page .app[data-layout="atlas-zip"] .nav-item:hover,
+body.admin-shell-page .app[data-layout="atlas-zip"] .nav-item.active { background: #222 !important; color: #fff !important; }
+body.admin-shell-page .app[data-layout="atlas-zip"] .nav-item.active:before { left: -3px !important; width: 3px !important; height: 18px !important; background: #fff !important; }
+body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar-foot { border-color: #303030 !important; }
+body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar-foot .profile { color: #fff !important; }
+body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar-foot .profile small,
+body.admin-shell-page .app[data-layout="atlas-zip"] .integration { color: #85888d !important; }
+body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar-foot .avatar { background: #343434 !important; color: #fff !important; }
+body.admin-shell-page .app[data-layout="atlas-zip"] .integration > span { background: #777 !important; }
+body.admin-shell-page .app[data-layout="atlas-zip"] .site-manual-link { border-color: #303030 !important; background: #1c1c1c !important; color: #aaa !important; }
+body.admin-shell-page .app[data-layout="atlas-zip"] .mobile-menu-trigger { display: none !important; }
+
+body.admin-shell-page .app[data-layout="atlas-zip"] > .atlas-workspace {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: 81px minmax(0, 1fr) !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: calc(100dvh - 40px) !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 0 clamp(25px, 3.2vw, 58px) 50px !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 32px !important;
+  background: var(--atlas-panel) !important;
+  color: #17191b !important;
+  box-shadow: 0 24px 95px #0002 !important;
+}
+
+body.admin-shell-page .atlas-workspace > app-topbar { display: block !important; min-width: 0 !important; min-height: 0 !important; }
+body.admin-shell-page .atlas-topbar { height: 81px !important; min-height: 81px !important; gap: 10px !important; padding: 0 !important; border-bottom: 1px solid #eee !important; background: var(--atlas-panel) !important; color: #17191b !important; }
+body.admin-shell-page .atlas-topbar-leading { display: flex !important; align-items: center !important; gap: 11px !important; min-width: 0 !important; }
+body.admin-shell-page .atlas-topbar .menu-toggle { display: none !important; }
+body.admin-shell-page .atlas-breadcrumbs { min-width: 0 !important; color: #91969b !important; }
+body.admin-shell-page .atlas-toolbar { margin-left: auto !important; }
+body.admin-shell-page .atlas-workspace > .scene { position: relative !important; inset: auto !important; display: block !important; width: 100% !important; min-width: 0 !important; min-height: calc(100dvh - 121px) !important; height: auto !important; overflow: visible !important; border-radius: 0 0 24px 24px !important; background: var(--atlas-panel) !important; isolation: isolate; }
+body.admin-shell-page .atlas-workspace > .scene > view-layer[data-view]:not([data-view="map"]) { position: relative !important; inset: auto !important; display: block !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; min-height: calc(100dvh - 121px) !important; height: auto !important; max-height: none !important; overflow: visible !important; }
+body.admin-shell-page .atlas-workspace > .scene:has(> view-layer[data-view="map"]) { height: calc(100dvh - 141px) !important; min-height: 460px !important; overflow: hidden !important; background: #e9ecee !important; }
+body.admin-shell-page .atlas-workspace > .scene > view-layer[data-view="map"] { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; min-height: 0 !important; overflow: hidden !important; }
+body.admin-shell-page .atlas-mobile-bottom { display: none !important; }
+
+body.admin-shell-page .app[data-layout="atlas-zip"] > .sidebar-overlay { display: none !important; }
+
+@media (max-width: 1250px) {
+  body.admin-shell-page .app[data-layout="atlas-zip"] { grid-template-columns: 245px minmax(0, 1fr) !important; }
+  body.admin-shell-page .app[data-layout="atlas-zip"] > app-sidebar > .sidebar { padding-right: 15px !important; padding-left: 23px !important; }
+  body.admin-shell-page .app[data-layout="atlas-zip"] > .atlas-workspace { padding-right: 25px !important; padding-left: 25px !important; }
+  body.admin-shell-page .atlas-toolbar button { padding-right: 8px !important; padding-left: 8px !important; }
+  body.admin-shell-page .atlas-toolbar button span { display: none !important; }
+}
+
+@media (max-width: 980px) {
+  body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar .mobile-agenda-nav-item { display: flex !important; }
+  body.admin-shell-page .app[data-layout="atlas-zip"] { display: block !important; width: 100% !important; min-height: 100dvh !important; padding: 13px !important; }
+  body.admin-shell-page .app[data-layout="atlas-zip"] > app-sidebar { position: fixed !important; z-index: 100 !important; inset: 0 !important; width: 100% !important; height: 100dvh !important; overflow: visible !important; pointer-events: none; background: transparent !important; }
+  body.admin-shell-page .app[data-layout="atlas-zip"] app-sidebar > .sidebar { position: absolute !important; inset: 0 auto 0 0 !important; width: min(280px, 86vw) !important; height: 100dvh !important; max-height: 100dvh !important; min-height: 0 !important; padding: 30px 20px !important; border-right: 1px solid #303030 !important; transform: translateX(-108%) !important; transition: transform .22s ease !important; pointer-events: auto; box-shadow: 20px 0 80px #0002 !important; }
+  body.admin-shell-page .app[data-layout="atlas-zip"] app-sidebar.mobile-open { pointer-events: auto; background: transparent !important; }
+  body.admin-shell-page .app[data-layout="atlas-zip"] app-sidebar.mobile-open > .sidebar { transform: translateX(0) !important; }
+  body.admin-shell-page .app[data-layout="atlas-zip"] .atlas-topbar .menu-toggle { display: inline-flex !important; flex: 0 0 auto; width: 36px; min-height: 36px; padding: 0; justify-content: center; pointer-events: auto !important; }
+  body.admin-shell-page .app[data-layout="atlas-zip"] > .sidebar-overlay { position: fixed !important; z-index: 99 !important; inset: 0 !important; display: none !important; background: #10101088 !important; }
+  body.admin-shell-page .app[data-layout="atlas-zip"]:has(> app-sidebar.mobile-open) > .sidebar-overlay { display: block !important; }
+  body.admin-shell-page .app[data-layout="atlas-zip"] > .atlas-workspace { grid-template-rows: 60px minmax(0, 1fr) !important; width: 100% !important; min-height: calc(100dvh - 26px) !important; margin: 0 !important; padding: 0 22px 25px !important; border-radius: 26px !important; }
+  body.admin-shell-page .atlas-topbar { height: 60px !important; min-height: 60px !important; padding-left: 0 !important; }
+  body.admin-shell-page .atlas-breadcrumbs { flex: 1; font-size: 10px; }
+  body.admin-shell-page .atlas-session,
+  body.admin-shell-page .atlas-topbar .ghost span,
+  body.admin-shell-page .atlas-topbar .top-profile > div,
+  body.admin-shell-page .atlas-topbar .top-profile > svg { display: none !important; }
+  body.admin-shell-page .atlas-topbar .ghost,
+  body.admin-shell-page .atlas-topbar .icon-btn { width: 34px; min-height: 34px; padding: 0; justify-content: center; }
+  body.admin-shell-page .atlas-workspace > .scene { min-height: calc(100dvh - 162px) !important; }
+  body.admin-shell-page .atlas-workspace > .scene:has(> view-layer[data-view="map"]) { height: calc(100dvh - 162px) !important; min-height: 420px !important; }
+  body.admin-shell-page .atlas-mobile-bottom { position: fixed !important; z-index: 95 !important; inset: auto 0 0 !important; display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)); height: 64px; padding: 5px 8px max(5px, env(safe-area-inset-bottom)); border-top: 1px solid #e8e8eb; background: #fffffff5; backdrop-filter: blur(16px); }
+  body.admin-shell-page .atlas-mobile-bottom button { display: grid; justify-items: center; align-content: center; gap: 4px; min-width: 0; border: 0; border-radius: 10px; background: transparent; color: #8b8f97; font-size: 9px; font-weight: 700; }
+  body.admin-shell-page .atlas-mobile-bottom button.active { background: #f1f1f3; color: #282a38; }
+  body.admin-shell-page .atlas-mobile-bottom svg { width: 18px; height: 18px; }
+}
+
+@media (max-width: 700px) {
+  body.admin-shell-page .app[data-layout="atlas-zip"] { padding: 0 !important; min-height: 100dvh !important; }
+  body.admin-shell-page .app[data-layout="atlas-zip"] > .atlas-workspace { width: 100% !important; min-height: 100dvh !important; margin: 0 !important; padding: 0 16px 82px !important; border-radius: 0 !important; }
+  body.admin-shell-page .atlas-toolbar { display: none !important; }
+  body.admin-shell-page .atlas-workspace > .scene { min-height: calc(100dvh - 142px) !important; }
+  body.admin-shell-page .atlas-workspace > .scene:has(> view-layer[data-view="map"]) { height: calc(100dvh - 142px) !important; min-height: 360px !important; }
+  body.admin-shell-page .atlas-workspace > .scene > view-layer[data-view]:not([data-view="map"]) { padding-bottom: 18px !important; }
+}
+
+@media (max-width: 390px) {
+  body.admin-shell-page .atlas-breadcrumbs > span:first-child { display: none !important; }
+  body.admin-shell-page .atlas-topbar { gap: 5px !important; }
+  body.admin-shell-page .atlas-topbar .top-actions { gap: 3px !important; }
+}
+
+@media print {
+  body.admin-shell-page { padding: 0 !important; background: #fff !important; }
+  body.admin-shell-page .app[data-layout="atlas-zip"] { display: block !important; width: 100% !important; min-height: 0 !important; margin: 0 !important; }
+  body.admin-shell-page .app[data-layout="atlas-zip"] > app-sidebar,
+  body.admin-shell-page .atlas-topbar,
+  body.admin-shell-page .atlas-mobile-bottom { display: none !important; }
+  body.admin-shell-page .app[data-layout="atlas-zip"] > .atlas-workspace { display: block !important; width: 100% !important; min-height: 0 !important; height: auto !important; padding: 0 !important; overflow: visible !important; border-radius: 0 !important; box-shadow: none !important; }
+}

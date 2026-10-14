@@ -33,7 +33,7 @@ export function parseLotStatusCommand(message) {
   return { lotKey, status: matches[0][0] };
 }
 
-export function applyLotStatusCommand(store, command) {
+export function applyLotStatusCommand(store, command, { renderBrokerBoard } = {}) {
   if (!store?.get || !store?.set || !command?.lotKey || !statuses.some(([status]) => status === command.status) || !lotByKey.has(command.lotKey)) {
     throw new Error('Comando de status inválido ou estado indisponível.');
   }
@@ -44,6 +44,9 @@ export function applyLotStatusCommand(store, command) {
     lastAction: `Chat atualizou ${command.lotKey} para ${command.status}`,
   });
   if (store.get().lotStatuses?.[command.lotKey]?.status !== command.status) throw new Error('Não foi possível confirmar a gravação do status.');
-  if (store.get().view === 'brokers-board') document.querySelector('view-layer')?.render?.();
+  if (store.get().view === 'brokers-board') {
+    if (typeof renderBrokerBoard === 'function') renderBrokerBoard();
+    else document.querySelector('view-layer')?.render?.();
+  }
   return `${command.lotKey}: status alterado para ${command.status}.`;
 }

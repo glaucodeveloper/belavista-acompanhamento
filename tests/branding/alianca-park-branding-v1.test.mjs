@@ -7,9 +7,9 @@ const root=resolve(import.meta.dirname,'../..');
 const read=relative=>readFile(join(root,relative),'utf8');
 
 test('marca visível do produto usa Aliança Park',async()=>{
-  const [index,app,components,state,foreman,records,manifest,recordsManifest,library]=await Promise.all([
+  const [index,app,components,state,records,manifest,recordsManifest,library]=await Promise.all([
     read('index.html'),read('app.js'),read('components.js'),read('state.js'),
-    read('encarregados.html'),read('public-records.html'),read('manifest.webmanifest'),
+    read('public-records.html'),read('manifest.webmanifest'),
     read('records-manifest.webmanifest'),read('belavista-ui/index.html')
   ]);
 
@@ -24,7 +24,6 @@ test('marca visível do produto usa Aliança Park',async()=>{
   assert.match(components,/ALIANÇA PARK LOTEAMENTO/);
   assert.doesNotMatch(components,/>Belavista<|IA · Belavista|BELAVISTA LOTEAMENTO|Belavista Desenvolvimento/);
   assert.match(state,/name: 'Empreendimento Aliança Park'/);
-  assert.match(foreman,/Portal de acompanhamento dos encarregados do Aliança Park/);
   assert.match(records,/<strong>Aliança Park<\/strong>/);
   assert.match(records,/sistema operacional Aliança Park/);
   assert.match(manifest,/"name": "Aliança Park · Acompanhamento com IA"/);

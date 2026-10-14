@@ -24,22 +24,6 @@ test.describe('telas operacionais Aliança Park',()=>{
     expect(errors,errors.join('\n')).toEqual([]);
   });
 
-  test('portal do encarregado exige autenticação antes de expor conversa e confirmação',async({page})=>{
-    await page.goto('/encarregados.html',{waitUntil:'domcontentloaded'});
-    await expect(page.locator('.belavista-auth-gate')).toBeVisible();
-    await expect(page.getByRole('heading',{name:/entrar no portal móvel de campo/i})).toBeVisible();
-    await expect(page.getByLabel('E-mail')).toBeVisible();
-    await expect(page.getByLabel('Senha')).toBeVisible();
-    await expect(page.getByRole('button',{name:'Entrar com segurança'})).toBeVisible();
-  });
-
-  test('portal mantém conversa e propagação ocultas até o perfil ser autorizado',async({page})=>{
-    await page.goto('/encarregados.html',{waitUntil:'domcontentloaded'});
-    await expect(page.locator('.belavista-auth-gate')).toBeVisible();
-    await expect(page.getByRole('heading',{name:/confirme o que foi executado/i})).not.toBeVisible();
-    await expect(page.getByRole('button',{name:/confirmar serviço e propagar/i})).not.toBeVisible();
-  });
-
   test('leads conserva letreiro público, mapa e atendimento ao visitante',async({page})=>{
     await page.goto('/',{waitUntil:'domcontentloaded'});
     await enterDemo(page);
@@ -66,16 +50,19 @@ test.describe('telas operacionais Aliança Park',()=>{
     await expect(page.locator('map-scene[data-persistent-map="true"]')).toBeVisible();
   });
 
-  test('comercial e configurações de uso preservam a navegação administrativa',async({page})=>{
-    await page.goto('/',{waitUntil:'domcontentloaded'});
+  test('corretores e configurações preservam a navegação administrativa',async({page})=>{
+    await page.goto('/admin?demo=1&view=map',{waitUntil:'domcontentloaded'});
     await enterDemo(page);
+    await expect(page.locator('view-layer')).toHaveAttribute('data-view','map');
     await page.locator('app-sidebar [data-view="brokers"]').click();
-    await expect(page.locator('[data-commission-record-open]').first()).toBeVisible();
+    await expect(page.locator('view-layer')).toHaveAttribute('data-view','brokers');
+    await expect(page.locator('.activity-header > div > span').first()).toHaveText('Corretores');
+    await expect(page.locator('[data-broker-row]')).not.toHaveCount(0);
     await expect(page.locator('app-sidebar [data-view="finance"]')).toHaveCount(0);
     await page.locator('app-sidebar [data-view="settings"]').click();
-    await expect(page.getByRole('heading',{name:'Configurações de uso'})).toBeVisible();
-    await expect(page.locator('[data-usage-settings-form]')).toBeVisible();
-    await expect(page.locator('[data-calibration-form]')).toHaveCount(0);
+    await expect(page.locator('view-layer')).toHaveAttribute('data-view','settings');
+    await expect(page.locator('.settings-commercial-workspace')).toBeVisible();
+    await expect(page.locator('[data-settings-rule-form]')).not.toHaveCount(0);
   });
 
   test('página dedicada da etapa preserva o portão de autenticação',async({page})=>{
@@ -418,8 +405,18 @@ test.describe('telas operacionais Aliança Park',()=>{
     await expect(page.getByRole('button',{name:'Abrir navegação'})).toBeVisible();
     await expect(page.locator('map-scene[data-persistent-map="true"]')).toBeVisible();
     await page.getByRole('button',{name:'Abrir navegação'}).click();
-    await page.locator('app-sidebar [data-view="finance"]').click();
-    await expect(page.getByRole('heading',{name:'Caixa e distribuição da obra'})).toBeVisible();
-    await expect(page.locator('.finance-master-grid')).toBeVisible();
+    const mobileDrawer=await page.locator('app-sidebar .sidebar').evaluate(element=>{
+      const rect=element.getBoundingClientRect();
+      return {width:rect.width,height:rect.height,viewportWidth:innerWidth,viewportHeight:innerHeight};
+    });
+    expect(mobileDrawer.width).toBeGreaterThanOrEqual(mobileDrawer.viewportWidth-1);
+    expect(mobileDrawer.height).toBeGreaterThanOrEqual(mobileDrawer.viewportHeight-1);
+    await expect.poll(()=>page.locator('app-sidebar .sidebar').evaluate(element=>Math.round(element.getBoundingClientRect().x))).toBe(0);
+    await expect(page.locator('app-sidebar.mobile-open .nav-item span').first()).toBeVisible();
+    await expect(page.getByRole('button',{name:'Fechar navegação'})).toHaveAttribute('aria-expanded','true');
+    await page.screenshot({path:'output/screens/mobile-sidebar-full-width.png',fullPage:false});
+    await page.getByRole('button',{name:'Fechar navegação'}).click();
+    await expect(page.locator('app-sidebar')).not.toHaveClass(/mobile-open/);
+    await expect(page.getByRole('button',{name:'Abrir navegação'})).toHaveAttribute('aria-expanded','false');
   });
 });

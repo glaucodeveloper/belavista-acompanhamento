@@ -30,7 +30,7 @@ Sem `assetlinks.json` válido, o Android abre a URL em Custom Tab; com a verific
 
 ## TWA administrativo · login e campo
 
-O TWA administrativo usa `admin-twa-manifest.webmanifest`, abre em `/admin?twa=admin` e exige Firebase Auth. O claim customizado `role` deve ser `admin`, `foreman` (ou `owner` no painel geral). O portal móvel `/encarregados.html` aceita `foreman` e `admin`; o encarregado recebe uma tela compacta de confirmação, chat e evidências.
+O TWA administrativo usa `admin-twa-manifest.webmanifest`, abre em `/admin?twa=admin` e exige Firebase Auth. O claim customizado `role` define o nível (`admin`, `owner` etc.); a função de encarregado é declarada separadamente em `userType: "foreman"` (ou `user_type`). Esse usuário abre o mesmo aplicativo administrativo, restrito a **Mapa** e **Etapas**. Não há portal móvel separado.
 
 Inicialização do pacote administrativo:
 

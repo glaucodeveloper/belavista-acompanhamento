@@ -8,7 +8,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const tileRoot=path.join(root,'assets/public/alianca-park-aerial-realistic-tiles-v2');
 
 test('prévia e troca coordenada dos recortes são usadas pela cena',()=>{
-  const scene=fs.readFileSync(path.join(root,'components.js'),'utf8');
+  const scene=[fs.readFileSync(path.join(root,'components.js'),'utf8'),fs.readFileSync(path.join(root,'components/map/georeference.mjs'),'utf8'),fs.readFileSync(path.join(root,'components/map/admin-standalone-camera-v1.mjs'),'utf8')].join('\n');
   const preview=path.join(root,'assets/public/alianca-park-aerial-realistic-preview-v2.jpg');
   assert.ok(fs.statSync(preview).size>100_000);
   assert.match(scene,/ADMIN_AERIAL_TILE_PREFETCH_RATIO_V2 = 1\.3/);

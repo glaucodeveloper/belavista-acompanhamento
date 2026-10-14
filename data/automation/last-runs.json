@@ -1,0 +1,27 @@
+{
+  "notification-dispatch": {
+    "at": "2026-10-13T17:28:35.132Z",
+    "ok": true,
+    "result": {
+      "processed": 50,
+      "delivered": 0,
+      "pending": 50,
+      "failed": 0,
+      "firebaseConfigured": false
+    }
+  },
+  "activity-condition-notifications": {
+    "at": "2026-10-13T17:28:35.128Z",
+    "ok": true,
+    "result": {
+      "jobId": "JOB-MV6YG1JJ-VEJF",
+      "referenceDate": "2026-10-13",
+      "dryRun": false,
+      "sessionsChecked": 24,
+      "conditionsChecked": 0,
+      "matches": 0,
+      "queued": 0,
+      "notifications": []
+    }
+  }
+}

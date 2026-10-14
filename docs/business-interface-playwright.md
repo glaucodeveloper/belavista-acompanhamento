@@ -7,6 +7,18 @@ npm run test:interface:business
 npx playwright show-report output/business-interface-report
 ```
 
+## Suíte visual operacional
+
+Execute `npm run test:visual:operational`. Ela abre cada fluxo em um navegador isolado, registra screenshots e gera `output/operational-visual-report/index.html`.
+
+| Fluxo do usuário | Evidência visual e regra verificada |
+|---|---|
+| Mapa e lotes | A planta PDF é posicionada sobre o satélite, 298 áreas UV existem, os números só aparecem acima de 1,5× e o clique prepara o contexto do chat sem enviar mensagem. |
+| Registro e nota | Anexo de nota é lido, a verificação é exibida, o material é alocado na etapa e abre suas propriedades na Central. |
+| Controle de lote | A tabela abre ficha e modal CRUD; status, entrada, parcela, documentos e controle pelo mapa permanecem associados ao lote. |
+| Relatórios | Gastos e completude são consolidados; exportação Excel e impressão timbrada mantêm marca e dados comerciais. |
+| Agenda e notificações | A agenda troca de dia, navega pela semana e preserva a lista de tarefas programadas. |
+
 Configuração: `playwright.business.config.mjs`. Cenários: `tests/screen/business-interface.spec.mjs`.
 O servidor local é iniciado pela configuração se não houver um em execução na porta 8080.
 

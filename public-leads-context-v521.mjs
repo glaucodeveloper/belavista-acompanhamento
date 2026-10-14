@@ -17,6 +17,11 @@ const HERO_SELECTOR='[data-hero-letter],.public-hero-letter,.public-map-copy';
 const PUBLIC_SATELLITE_DWG_ZOOM=18;
 const VERSION='v5.3.30';
 const SUNNY_SCENE_VERSION='v5.4.8';
+const SATELLITE_UTM_TO_UV_HOMOGRAPHY_V1=[
+  [-2.94306335e-7,-6.87434193e-8,7.15685809e-1],
+  [3.56353169e-11,3.82122918e-7,-3.27219102],
+  [7.83358933e-8,-1.2079129e-7,1]
+];
 
 const isPublicMap=map=>Boolean(map?.matches?.(PUBLIC_MAP_SELECTOR));
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({
@@ -44,6 +49,100 @@ function installStyles(){
     map-scene[data-public-presentation] .map-gesture-legend{
       pointer-events:none;
     }
+    map-scene[data-public-static-only] .three-overlay,
+    map-scene[data-public-static-only] .map-tint{
+      display:none!important;
+      opacity:0!important;
+      visibility:hidden!important;
+      pointer-events:none!important;
+    }
+    map-scene[data-public-static-only] .map-host{
+      display:block!important;
+      visibility:visible!important;
+      opacity:1!important;
+      background-image:linear-gradient(90deg,rgba(3,17,12,.24),rgba(3,17,12,.02) 64%),url('/assets/public/dwg-satellite-treated-v5411.png')!important;
+      background-size:cover,cover!important;
+      background-position:center,center!important;
+      background-repeat:no-repeat!important;
+      background-color:#07101e!important;
+      pointer-events:none!important;
+      z-index:0!important;
+    }
+    map-scene[data-public-static-only] .public-static-lot-markers,
+    body.public-leads-page .public-static-lot-markers{
+      position:absolute;
+      inset:0;
+      z-index:12;
+      pointer-events:none;
+      overflow:hidden;
+    }
+    map-scene[data-public-static-only] .public-static-lot-marker,
+    body.public-leads-page .public-static-lot-marker{
+      position:absolute;
+      width:18px;
+      height:18px;
+      padding:0;
+      transform:translate(-50%,-50%);
+      border:1px solid rgba(255,255,255,.82);
+      border-radius:50%;
+      background:#2fbd72;
+      color:#071b12;
+      box-shadow:0 1px 5px rgba(0,0,0,.42),0 0 0 1px rgba(0,0,0,.18);
+      font:700 7px/16px ui-monospace,SFMono-Regular,Menlo,monospace;
+      text-align:center;
+      cursor:pointer;
+      pointer-events:auto;
+      transition:transform .16s ease,box-shadow .16s ease,filter .16s ease;
+    }
+    map-scene[data-public-static-only] .public-static-lot-marker[data-status="reserved"],
+    body.public-leads-page .public-static-lot-marker[data-status="reserved"]{background:#f2c14e;color:#2e2100}
+    map-scene[data-public-static-only] .public-static-lot-marker[data-status="negotiation"],
+    body.public-leads-page .public-static-lot-marker[data-status="negotiation"]{background:#5e9ee8;color:#06182c}
+    map-scene[data-public-static-only] .public-static-lot-marker[data-status="sold"],
+    body.public-leads-page .public-static-lot-marker[data-status="sold"]{background:#e76557;color:#2c0906}
+    map-scene[data-public-static-only] .public-static-lot-marker:hover,
+    map-scene[data-public-static-only] .public-static-lot-marker:focus-visible,
+    map-scene[data-public-static-only] .public-static-lot-marker.is-selected,
+    body.public-leads-page .public-static-lot-marker:hover,
+    body.public-leads-page .public-static-lot-marker:focus-visible,
+    body.public-leads-page .public-static-lot-marker.is-selected{
+      z-index:2;
+      transform:translate(-50%,-50%) scale(1.45);
+      filter:brightness(1.14);
+      box-shadow:0 2px 10px rgba(0,0,0,.55),0 0 0 2px rgba(255,255,255,.95);
+      outline:none;
+    }
+    map-scene[data-public-static-only] .map-rotation-controls,
+    map-scene[data-public-static-only] .map-pan-pad,
+    map-scene[data-public-static-only] [data-scene-pan]{
+      display:none!important;
+    }
+    map-scene[data-public-static-only],
+    .scene>map-scene[data-persistent-map="true"][data-public-static-only]{
+      position:relative;
+      pointer-events:auto!important;
+    }
+    map-scene[data-public-static-only] .public-static-lot-markers{
+      pointer-events:auto!important;
+    }
+    map-scene[data-public-static-only] .public-lot-info-v5318{
+      display:block;
+      position:absolute;
+      right:18px;
+      bottom:18px;
+      width:min(360px,calc(100% - 36px));
+      max-height:calc(100% - 36px);
+      overflow:auto;
+      z-index:58;
+      padding:18px 18px 16px;
+      border:1px solid rgba(187,238,209,.30);
+      background:rgba(2,35,27,.94);
+      color:#e7f6ee;
+      box-shadow:0 18px 50px rgba(0,0,0,.36);
+      backdrop-filter:blur(16px);
+      border-radius:4px;
+    }
+    map-scene[data-public-static-only] .public-lot-info-v5318[hidden]{display:none!important}
     .public-map-static-bg[data-three-texture-active="true"]{
       opacity:0!important;
       visibility:hidden!important;
@@ -416,6 +515,11 @@ function ensureStaticFallback(){
   const sticky=document.querySelector('.public-map-sticky');
   const map=sticky?.querySelector(PUBLIC_MAP_SELECTOR)||document.querySelector(PUBLIC_MAP_SELECTOR);
   if(!map)return null;
+  const satelliteImageOnly=document.body.classList.contains('public-leads-page');
+  if(satelliteImageOnly){
+    map.setAttribute('data-public-static-only','true');
+    map.dataset.publicSatelliteImageOnly='true';
+  }
   let bg=sticky?.querySelector('.public-map-static-bg');
   if(sticky&&!bg){
     bg=document.createElement('div');
@@ -427,18 +531,32 @@ function ensureStaticFallback(){
     bg.dataset.publicFallback='DWG-centred treated satellite raster';
     sticky.prepend(bg);
   }
+  const staticOnly=map.hasAttribute('data-public-static-only');
   const leaflet=map.querySelector('.map-host');
   if(leaflet){
-    leaflet.style.opacity='0';
+    leaflet.style.backgroundImage="linear-gradient(90deg,rgba(3,17,12,.24),rgba(3,17,12,.02) 64%),url('/assets/public/dwg-satellite-treated-v5411.png')";
+    leaflet.style.backgroundSize='cover,cover';
+    leaflet.style.backgroundPosition='center,center';
+    leaflet.style.backgroundRepeat='no-repeat';
+    leaflet.style.setProperty('opacity',staticOnly?'1':'0','important');
+    leaflet.style.setProperty('visibility',staticOnly?'visible':'hidden','important');
     leaflet.style.pointerEvents='none';
   }
   map.removeAttribute('data-base-map');
-  // A tela "Dashboard Inicial" usa a leitura aérea do entorno. A mesma base
-  // passa a ser renderizada no plano Three.js, alinhada ao GLB por GPS.
-  map.removeAttribute('data-public-static-base');
-  map.setAttribute('data-public-satellite-base','true');
+  if(staticOnly){
+    map.style.setProperty('pointer-events','auto','important');
+    map.setAttribute('data-public-static-base','true');
+    map.removeAttribute('data-public-satellite-base');
+    map.dataset.renderMode='static-satellite-markers';
+    map.dataset.publicMapBase='static-treated-satellite';
+  }else{
+    // A tela "Dashboard Inicial" usa a leitura aérea do entorno. A mesma base
+    // passa a ser renderizada no plano Three.js, alinhada ao GLB por GPS.
+    map.removeAttribute('data-public-static-base');
+    map.setAttribute('data-public-satellite-base','true');
+    map.dataset.publicMapBase='satellite-georeferenced-dashboard-reference';
+  }
   map.setAttribute('data-public-presentation','true');
-  map.dataset.publicMapBase='satellite-georeferenced-dashboard-reference';
   return {map,bg};
 }
 
@@ -517,7 +635,8 @@ function applySunnyPublicScene(map,attempt=0){
 
 async function applyDwgSatelliteFrame(map,attempt=0){
   if(!map)return;
-  if(!map.THREE||!map.mapSurface){
+  const staticOnly=map.hasAttribute('data-public-static-only');
+  if(!staticOnly&&(!map.THREE||!map.mapSurface)){
     if(attempt<24)setTimeout(()=>applyDwgSatelliteFrame(map,attempt+1),350);
     return;
   }
@@ -539,6 +658,28 @@ async function applyDwgSatelliteFrame(map,attempt=0){
     const gpsBounds=geo.drawingBounds?.gps;
     if(gpsBounds&&['south','west','north','east'].every(key=>Number.isFinite(Number(gpsBounds[key])))){
       map.dataset.publicDwgBounds=`${Number(gpsBounds.south).toFixed(7)},${Number(gpsBounds.west).toFixed(7)}|${Number(gpsBounds.north).toFixed(7)},${Number(gpsBounds.east).toFixed(7)}`;
+    }
+    if(staticOnly){
+      map.dataset.renderMode=map.dataset.publicSatelliteImageOnly==='true'?'static-satellite-image-only':'static-satellite-markers';
+      map.dataset.mapRasterMode='static-css-background';
+      map.dataset.publicMapTexture='local captured satellite image · static-only · no Maps';
+      if(map.dataset.publicSatelliteImageOnly==='true'){
+        const visualSurface=map.closest('.public-map-sticky')||map;
+        visualSurface.querySelectorAll('.satellite-lot-plan-overlay,[data-public-static-lot-markers],.public-lot-info-v5318,[data-public-lot-details-v5335],[data-selected-lot]').forEach(node=>node.remove());
+        map.dataset.publicStaticLotMarkers='0';
+        map.dataset.publicLotPolygonCount='0';
+        map.dataset.publicCommercialMarkerState='disabled-satellite-image-only';
+        clearCommercialMarkers(map);
+      }else{
+        // A camada PDF e seus marcadores continuam disponíveis nos mapas
+        // administrativos estáticos. A página pública pede somente a foto.
+        await map.installSatelliteLotPlanOverlayV1?.({markers:false});
+        installStaticLotMarkers(map,geo);
+        loadPublicCommercialDeals()
+          .then(entries=>updateStaticLotMarkerStatuses(map,entries))
+          .catch(()=>{});
+      }
+      return;
     }
     // A base aérea não depende da URL nem de preferência persistida do shell.
     // Mantê-la fixa evita que uma navegação reative uma fonte cartográfica
@@ -883,6 +1024,161 @@ function publicDwgLotRecords(map){
     if(!Array.isArray(row))return row;
     return Object.fromEntries(fields.map((field,index)=>[field,row[index]]));
   }).filter(item=>item&&typeof item==='object');
+}
+
+function staticLotIdentity(record,index){
+  const id=String(record?.glbObject||`Lote_${String(index+1).padStart(3,'0')}`).trim();
+  const digits=lotDigits(id);
+  const number=digits.length?digits[digits.length-1]:index+1;
+  return {id,label:`Lote ${String(number).padStart(3,'0')}`};
+}
+
+function staticLotSource(record,index,status='available'){
+  const identity=staticLotIdentity(record,index);
+  const normalized=normalizePublicMarkerStatus(status);
+  return {
+    name:identity.id,
+    userData:{
+      partId:identity.id,
+      lotId:identity.id,
+      partLabel:identity.label,
+      partKind:'lots',
+      areaM2:Number(record?.areaM2)||null,
+      publicCommercialStatus:normalized,
+      publicCommercialLabel:PUBLIC_STATUS_LABELS[normalized],
+      block:String(record?.sourceLayer||''),
+      lat:Number(record?.lat)||null,
+      lng:Number(record?.lng)||null,
+      dwgAlignmentErrorM:Number(record?.alignmentErrorM)||0
+    }
+  };
+}
+
+function staticLotPosition(record,bounds,index,total){
+  const utmEast=Number(record?.utmEast),northing=Number(record?.utmNorth);
+  if(Number.isFinite(utmEast)&&Number.isFinite(northing)){
+    const h=SATELLITE_UTM_TO_UV_HOMOGRAPHY_V1;
+    const w=h[2][0]*utmEast+h[2][1]*northing+h[2][2];
+    if(Number.isFinite(w)&&Math.abs(w)>1e-12){
+      const u=(h[0][0]*utmEast+h[0][1]*northing+h[0][2])/w;
+      const v=(h[1][0]*utmEast+h[1][1]*northing+h[1][2])/w;
+      if(Number.isFinite(u)&&Number.isFinite(v))return {
+        left:`${Math.max(0,Math.min(100,u*100))}%`,
+        top:`${Math.max(0,Math.min(100,v*100))}%`
+      };
+    }
+  }
+  const south=Number(bounds?.south),west=Number(bounds?.west),north=Number(bounds?.north),east=Number(bounds?.east);
+  const lat=Number(record?.lat),lng=Number(record?.lng);
+  const validBounds=[south,west,north,east].every(Number.isFinite)&&north>south&&east>west;
+  const fallbackTotal=Math.max(1,total||1);
+  const x=validBounds&&Number.isFinite(lng)?((lng-west)/(east-west))*100:((index+.5)/fallbackTotal)*100;
+  const y=validBounds&&Number.isFinite(lat)?((north-lat)/(north-south))*100:50;
+  return {
+    left:`${Math.max(1,Math.min(99,x))}%`,
+    top:`${Math.max(1,Math.min(99,y))}%`
+  };
+}
+
+function updateStaticLotMarkerStatuses(map,entries=[]){
+  const markers=map?.__publicStaticLotMarkers||[];
+  if(!markers.length)return;
+  const byLot=new Map((Array.isArray(entries)?entries:[]).map(entry=>[
+    normalizeCommercialLot(entry?.lot||entry?.lotId||''),entry
+  ]).filter(([key])=>key));
+  const counts={available:0,reserved:0,negotiation:0,sold:0};
+  markers.forEach(marker=>{
+    const entry=byLot.get(normalizeCommercialLot(marker.dataset.lotId||''));
+    const status=normalizePublicMarkerStatus(entry?.status||'available');
+    marker.dataset.status=status;
+    marker.title=`${marker.dataset.lotLabel||marker.dataset.lotId} · ${PUBLIC_STATUS_LABELS[status]}`;
+    counts[status]=(counts[status]||0)+1;
+  });
+  map.dataset.publicStaticLotStatusCounts=Object.entries(counts).map(([key,value])=>`${key}:${value}`).join('|');
+}
+
+function selectStaticLot(map,record,index,marker){
+  if(!map||!marker)return false;
+  clearPublicSelection(map,true);
+  const source=staticLotSource(record,index,marker.dataset.status||'available');
+  marker.classList.add('is-selected');
+  map.__publicStaticLotMarker=marker;
+  map.dataset.selectedPart=source.userData.partLabel;
+  map.dataset.selectedKind='lots';
+  map.dataset.selectedLotCount='1';
+  map.dataset.selectedLots=source.userData.partId;
+  map.dataset.publicSelectionFocus='static-marker';
+  map.__publicSelectedLotContextV5330=selectedLotAgentContext(map,source);
+  renderLotWidget(map,source);
+  document.body.dataset.publicWidgetsVisible='true';
+  document.body.dataset.publicControlsVisible='true';
+  return true;
+}
+
+function installStaticLotMarkers(map,geo){
+  const sticky=document.querySelector('.public-map-sticky');
+  const surface=sticky||map;
+  if(!map||!surface)return false;
+  if(!document.__belavistaStaticLotMarkerClickV1){
+    document.__belavistaStaticLotMarkerClickV1=true;
+    document.addEventListener('click',event=>{
+      const marker=event.target?.closest?.('[data-public-static-lot-marker]');
+      const owner=marker?.closest?.('map-scene[data-public-static-only]');
+      const selection=marker?.__publicStaticLotRecord;
+      if(!marker||!owner||!selection)return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      selectStaticLot(owner,selection.record,selection.index,marker);
+    },true);
+  }
+  const records=publicDwgLotRecords({dwgGeo:geo});
+  const fittedSatellite=surface.querySelector('.satellite-lot-plan-fit');
+  const markerSurface=fittedSatellite||surface;
+  let layer=markerSurface.querySelector('[data-public-static-lot-markers]');
+  if(layer)layer.style.setProperty('pointer-events','auto','important');
+  if(layer&&map.__publicStaticLotMarkers?.length)return true;
+  if(!layer){
+    layer=document.createElement('div');
+    layer.className='public-static-lot-markers';
+    layer.style.setProperty('pointer-events','auto','important');
+    layer.dataset.publicStaticLotMarkers='true';
+    layer.setAttribute('aria-label','Marcações dos lotes');
+    markerSurface.append(layer);
+  }
+  layer.replaceChildren();
+  const bounds=geo?.drawingBounds?.gps||{};
+  const markers=[];
+  records.forEach((record,index)=>{
+    const identity=staticLotIdentity(record,index);
+    const marker=document.createElement('button');
+    marker.type='button';
+    marker.className='public-static-lot-marker';
+    marker.dataset.publicStaticLotMarker=identity.id;
+    marker.dataset.lotId=identity.id;
+    marker.dataset.lotLabel=identity.label;
+    marker.dataset.status='available';
+    marker.__publicStaticLotRecord={record,index};
+    marker.setAttribute('aria-label',`${identity.label} · Disponível`);
+    marker.textContent=identity.label.replace(/^Lote\s*/i,'');
+    Object.assign(marker.style,staticLotPosition(record,bounds,index,records.length));
+    marker.addEventListener('click',event=>{
+      event.preventDefault();
+      event.stopPropagation();
+      selectStaticLot(map,record,index,marker);
+    });
+    marker.addEventListener('keydown',event=>{
+      if(event.key==='Enter'||event.key===' '){
+        event.preventDefault();
+        selectStaticLot(map,record,index,marker);
+      }
+    });
+    layer.append(marker);
+    markers.push(marker);
+  });
+  map.__publicStaticLotMarkers=markers;
+  map.dataset.publicStaticLotMarkers=String(markers.length);
+  map.dataset.publicStaticLotMarkerMapping='DWG GPS bounds · treated satellite raster';
+  return markers.length>0;
 }
 
 function commercialLotReference(value=''){
@@ -1373,6 +1669,11 @@ function clearCommercialMarkers(map){
 }
 
 function ensurePublicCommercialMarkers(map){
+  if(map?.dataset?.publicSatelliteImageOnly==='true'){
+    clearCommercialMarkers(map);
+    map.dataset.publicCommercialMarkerState='disabled-satellite-image-only';
+    return false;
+  }
   if(!map?.THREE||!map?.sceneStage||!map.modelReady||!map.modelParts?.lots?.length)return false;
   const expected=publicLotParts(map).length;
   const group=map.__publicCommercialMarkersV5330;
@@ -1464,6 +1765,11 @@ async function installCommercialMapState(map){
 
 function scheduleCommercialMapState(map,attempt=0){
   if(!map)return;
+  if(map.dataset?.publicSatelliteImageOnly==='true'){
+    clearCommercialMarkers(map);
+    map.dataset.publicCommercialMarkerState='disabled-satellite-image-only';
+    return;
+  }
   const current=map.__publicCommercialMarkersV5330;
   const expected=map.modelParts?.lots?.length?publicLotParts(map).length:0;
   if(map.__publicCommercialStateReadyV5330&&current?.parent===map.sceneStage&&current.children?.length===expected)return;
@@ -1545,10 +1851,11 @@ function sendSelectedLotToAgent(map,source,requestKind){
 function renderLotWidget(map,source){
   let host=document.querySelector('[data-public-lot-details-v5335]');
   const sticky=document.querySelector('.public-map-sticky');
-  if(!host&&sticky){
+  const surface=sticky||map;
+  if(!host&&surface){
     host=document.createElement('aside');
     host.setAttribute('data-public-lot-details-v5335','');
-    sticky.append(host);
+    surface.append(host);
   }
   if(!host)return;
   const info=lotDetails(source);
@@ -1639,6 +1946,9 @@ function restoreView(map){
 
 function clearPublicSelection(map,restore=true){
   if(!map)return false;
+  map.__publicStaticLotMarker?.classList.remove('is-selected');
+  delete map.__publicStaticLotMarker;
+  delete map.dataset.publicSelectionFocus;
   const ids=map.selectedLotIds||new Set();
   for(const id of ids){
     const matches=(map.modelParts?.lots||[]).filter(item=>(item.userData?.partId||item.name)===id);
@@ -2116,7 +2426,7 @@ function setScrollSection(section){
   if(map){
     syncPublicMapControls(map,normalized==='map');
     map.fitPublicGapView?.();
-    if(!ensurePublicCommercialMarkers(map))scheduleCommercialMapState(map);
+    if(map.dataset.publicSatelliteImageOnly!=='true'&&!ensurePublicCommercialMarkers(map))scheduleCommercialMapState(map);
   }
   scheduleSelectionGate();
 }
@@ -2489,6 +2799,27 @@ function installMap(){
   if(!map.dataset.publicSelectionEnabled)map.dataset.publicSelectionEnabled='false';
 
   installPrototypeGuards();
+  if(map.hasAttribute('data-public-static-only')){
+    if(!document.getElementById('belavista-static-only-final-v1')){
+      const style=document.createElement('style');
+      style.id='belavista-static-only-final-v1';
+      style.textContent=`
+        body[data-public-scroll-section="map"] map-scene[data-public-static-only] .map-rotation-controls,
+        body[data-public-scroll-section="map"] map-scene[data-public-static-only] .map-gesture-legend,
+        body[data-public-scroll-section="map"] map-scene[data-public-static-only] .map-category-switcher{
+          display:none!important;
+          visibility:hidden!important;
+          pointer-events:none!important;
+        }
+      `;
+      document.head.append(style);
+    }
+    map.dataset.renderMode='static-satellite-markers';
+    map.dataset.publicThree='disabled-static-only';
+    applyDwgSatelliteFrame(map);
+    updateSelectionGate();
+    return true;
+  }
   // O mapa é uma única cena: imagem aérea real no plano inferior e o modelo
   // vivo por cima, sem a antiga malha verde sintética.
   applyDwgSatelliteFrame(map);
@@ -2559,6 +2890,13 @@ import {apiFetch} from './api-client.mjs';
   const lotVisualStyle=document.createElement('style');
   lotVisualStyle.id='belavista-lot-left-v5337';
   lotVisualStyle.textContent=`
+    body[data-public-scroll-section="map"] map-scene[data-public-static-only] .map-rotation-controls,
+    body[data-public-scroll-section="map"] map-scene[data-public-static-only] .map-gesture-legend,
+    body[data-public-scroll-section="map"] map-scene[data-public-static-only] .map-category-switcher{
+      display:none!important;
+      visibility:hidden!important;
+      pointer-events:none!important;
+    }
     body.public-leads-page [data-public-lot-details-v5335].public-lot-info-v5318,
     body.public-leads-page [data-public-lot-details-v5335],
     body.public-leads-page [data-selected-lot].public-lot-info-v5318{
@@ -2591,6 +2929,13 @@ import {apiFetch} from './api-client.mjs';
   const titlePickStyle=document.createElement('style');
   titlePickStyle.id='belavista-title-pick-v5338';
   titlePickStyle.textContent=`
+    body[data-public-scroll-section="map"] map-scene[data-public-static-only] .map-rotation-controls,
+    body[data-public-scroll-section="map"] map-scene[data-public-static-only] .map-gesture-legend,
+    body[data-public-scroll-section="map"] map-scene[data-public-static-only] .map-category-switcher{
+      display:none!important;
+      visibility:hidden!important;
+      pointer-events:none!important;
+    }
     body.public-leads-page .public-hero-letter{
       pointer-events:none!important;
     }

@@ -11,13 +11,19 @@ test('recursos públicos usam o prefixo do túnel e não URLs absolutas quebrada
   const context=read('public-leads-context-v521.mjs');
   const activityLayer=read('activity-map-layer.mjs');
   const components=read('components.js');
+  const modelCache=read('components/map/model-client-cache.mjs');
+  const routing=read('components/shared/routing.mjs');
   assert.match(context,/runtime-url-v1\.mjs/);
   assert.match(context,/runtimeUrlV1\('\/assets\/data\/dwg-georeference\.json'/);
   assert.match(context,/runtimeUrlV1\('\/assets\/data\/public-record-stage-state-v5330\.json'/);
   assert.match(context,/runtimeUrlV1\('\/api\/records'/);
   assert.match(context,/runtimeUrlV1\('\/assets\/public\/alianca-park-logo-mark-transparent-v551\.png\?edited=20260915'/);
   assert.match(activityLayer,/runtimeUrlV1\('\/api\/workbench\/state\?resource=activity-map'/);
-  assert.match(components,/runtimeRouteV1\('\/assets\/model\/alianca_park_masterplan_preview\.glb'/);
+  assert.match(components,/import \{ runtimeRouteV1 \} from "\.\/components\/shared\/routing\.mjs"/);
+  assert.match(components,/components\/map\/model-client-cache\.mjs/);
+  assert.match(modelCache,/runtimeRouteV1\(\s*CLIENT_MODEL_ASSET_V14/);
+  assert.match(routing,/embeddedPrefix/);
+  assert.match(routing,/ngrok/);
 });
 
 test('build público inclui o resolvedor de URLs do ngrok',()=>{

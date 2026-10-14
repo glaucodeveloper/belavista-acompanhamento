@@ -8,9 +8,11 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 const app=read('app.js');
 const components=read('components.js');
+const chat=read('components/chat/ai-chat.mjs');
+const sidebar=read('components/shared/app-sidebar.mjs');
 const styles=read('styles.css');
 const html=read('index.html');
-const bootstrap=read('admin-original-bootstrap-v5351.mjs');
+const bootstrap=read('bootstrap/admin-application-entry.mjs');
 const worker=read('sw.js');
 
 test('shell administrativo não monta o chat flutuante global',()=>{
@@ -20,24 +22,25 @@ test('shell administrativo não monta o chat flutuante global',()=>{
   assert.match(bootstrap,/app\.js\?v=map-pdf-texture-bright-aligned-v26-20260915/);
 });
 
-test('histórico e monitoramento reagem à navegação e ao estado do sistema',()=>{
-  assert.match(components,/CHAT_HISTORY_STORAGE_KEY/);
-  assert.match(components,/restoreChatHistory\(\)/);
-  assert.match(components,/observeSystemState\(state\)/);
-  assert.match(components,/belavista:test-case-completed/);
-  assert.match(components,/Navegação detectada/);
-  assert.match(components,/O caixa mestre foi atualizado/);
+test('chat inicia limpo e monitoramento reage à navegação e ao estado do sistema',()=>{
+  assert.match(chat,/CHAT_HISTORY_STORAGE_KEY/);
+  assert.match(chat,/this\.clearChatHistory\(\)/);
+  assert.match(chat,/browserStorage\.removeItem\(CHAT_HISTORY_STORAGE_KEY\)/);
+  assert.match(chat,/observeSystemState\(state\)/);
+  assert.match(chat,/belavista:test-case-completed/);
+  assert.match(chat,/Navegação detectada/);
+  assert.match(chat,/O caixa mestre foi atualizado/);
 });
 
 test('respostas manuais e contexto do mapa entram no histórico',()=>{
-  assert.match(components,/appendConversationMessage\('user',userMessage\)/);
-  assert.match(components,/this\.persistChatMessage\('assistant',answerText\)/);
-  assert.match(components,/appendConversationMessage\('user','🗺️ Contexto de lotes 3D aberto'\)/);
+  assert.match(chat,/this\.appendConversationMessage\("user",\s*userMessage\)/);
+  assert.match(chat,/this\.persistChatMessage\("assistant",\s*answerText\)/);
+  assert.match(chat,/"🗺️ Contexto de lotes 3D aberto"/);
 });
 
 test('sidebar fica identificada como pronta e continua acessível no shell',()=>{
-  assert.match(components,/aria-label="Navegação principal"/);
-  assert.match(components,/this\.dataset\.sidebarReady='true'/);
+  assert.match(sidebar,/aria-label="Navegação principal"/);
+  assert.match(sidebar,/this\.dataset\.sidebarReady = "true"/);
   assert.match(styles,/BELAVISTA_AI_CHAT_SHELL_PERSISTENT_V1/);
   assert.match(styles,/app-shell:not\(\.print-mode\) app-sidebar/);
   assert.match(styles,/chat-monitoring-dot/);

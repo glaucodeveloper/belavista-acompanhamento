@@ -4,22 +4,24 @@ import { readFileSync } from 'node:fs';
 
 const root = new URL('../../', import.meta.url);
 const code = readFileSync(new URL('components.js', root), 'utf8');
+const liveReports = readFileSync(new URL('components/finance/live-report-builders-v1.mjs', root), 'utf8');
+const contracts = readFileSync(new URL('components/commercial/contracts-page-v1.mjs', root), 'utf8');
 const styles = readFileSync(new URL('styles.css', root), 'utf8');
 
 test('system report derives metrics from current operational state', () => {
-  assert.match(code, /function syncLiveSystemReportV1\(state\)/);
-  assert.match(code, /state\.cashSummary\?\.balanceCents/);
-  assert.match(code, /state\.operationalState\?\.stages/);
-  assert.match(code, /state\.publicLeads/);
-  assert.match(code, /id: "system-live"/);
+  assert.match(liveReports, /const syncLiveSystemReportV1 = \(state\) =>/);
+  assert.match(liveReports, /state\.cashSummary\?\.balanceCents/);
+  assert.match(liveReports, /state\.operationalState\?\.stages/);
+  assert.match(liveReports, /state\.publicLeads/);
+  assert.match(liveReports, /id: "system-live"/);
   assert.match(code, /syncLiveSystemReportV1\(appStore\.get\(\)\);/);
 });
 
 test('finance exports and prints; contracts rows open the editable form', () => {
   assert.match(code, /data-v7-finance-print/);
   assert.match(code, /data-v7-finance-export/);
-  assert.match(code, /page\.querySelectorAll\("\[data-contract-row\]"\)/);
-  assert.match(code, /data-contract-preview-tab/);
+  assert.match(contracts, /page\.querySelectorAll\("\[data-contract-row\]"\)/);
+  assert.match(contracts, /data-contract-preview-tab/);
 });
 
 test('leads embeds public page at two-thirds width and control accepts evidence', () => {

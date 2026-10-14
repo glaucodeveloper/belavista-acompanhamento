@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
 const root = new URL('../../', import.meta.url);
-const css = readFileSync(new URL('stage-map-transition-v1.css', root), 'utf8');
 const components = readFileSync(new URL('components.js', root), 'utf8');
+const app = readFileSync(new URL('app.js', root), 'utf8');
 
 test('mapa reduzido das etapas recebe gestos e mapa recolhido não captura o mouse', () => {
   assert.match(css, /has-stage-map>map-scene\[data-persistent-map="true"\][\s\S]*?pointer-events:auto!important/);
@@ -13,11 +13,22 @@ test('mapa reduzido das etapas recebe gestos e mapa recolhido não captura o mou
 });
 
 test('renderer administrativo aceita roda comum e Ctrl+roda no zoom', () => {
-  const start = components.indexOf('      canvas.addEventListener(\n        "wheel",');
-  const end = components.indexOf('      canvas.addEventListener("pointerdown",', start);
+  const start = components.indexOf('const factor = event.ctrlKey ? 1.06 : 1.12;');
+  const end = components.indexOf('canvas.addEventListener("pointerdown",', start);
   assert.ok(start >= 0 && end > start);
-  const wheel = components.slice(start, end);
+  const wheel = components.slice(Math.max(0, start - 260), end);
   assert.match(wheel, /event\.preventDefault\(\)/);
   assert.match(wheel, /event\.ctrlKey \? 1\.06 : 1\.12/);
   assert.doesNotMatch(wheel, /if \(!event\.ctrlKey\) return/);
+});
+
+test('páginas de etapa iniciam com o mapa retraído e o detalhe não expõe aba Lotes', () => {
+  assert.match(app, /const enteringStageWorkspace=active&&!this\._stageMapWorkspaceActive/);
+  assert.match(app, /if\(enteringStageWorkspace\)scene\?\.classList\.add\('stage-map-collapsed'\)/);
+  const tabStart = components.indexOf('tabs.className = "activity-detail-tabs-v1"');
+  const tabEnd = components.indexOf('const newRecord = document.createElement("button")', tabStart);
+  assert.ok(tabStart >= 0 && tabEnd > tabStart);
+  const tabDefinitions = components.slice(tabStart, tabEnd);
+  assert.doesNotMatch(tabDefinitions, /["']Lotes["']/);
+  assert.doesNotMatch(tabDefinitions, /["']lots["']/i);
 });

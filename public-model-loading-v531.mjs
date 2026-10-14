@@ -115,9 +115,11 @@ function syncModelAreaSpinner(spinner,map){
   if(!spinner)return false;
   const modelReady=isModelReady(map),complete=isReady(map),fallback=hasError(map);
   const satelliteReady=isSatelliteReady(map),vegetationReady=isVegetationReady(map),roadReady=isRoadTextureReady(map);
-  const completion=modelReady
-    ? (satelliteReady&&vegetationReady&&roadReady?100:80+(Number(satelliteReady)+Number(vegetationReady)+Number(roadReady))/3*20)
-    : Math.min(79,Number(map?.dataset?.modelProgress||0)*.55+20);
+  const completion=complete
+    ? 100
+    : modelReady
+      ? (satelliteReady&&vegetationReady&&roadReady?100:80+(Number(satelliteReady)+Number(vegetationReady)+Number(roadReady))/3*20)
+      : Math.min(79,Number(map?.dataset?.modelProgress||0)*.55+20);
   map.dataset.modelAreaProgress=completion.toFixed(1);
   spinner.style.setProperty('--model-area-progress',`${completion.toFixed(1)}%`);
   spinner.hidden=complete||fallback;
@@ -162,8 +164,18 @@ function isRoadTextureReady(map){
   return ['ready','fallback'].includes(map?.dataset?.publicRoadTexture||'');
 }
 
+function isStaticPresentationReady(map){
+  // Em modo estático, a imagem satélite e os marcadores já são a experiência
+  // entregue ao visitante; o 3D permanece deliberadamente desativado.
+  if(!map?.hasAttribute?.('data-public-static-only'))return false;
+  return map?.dataset?.publicStaticImage==='loaded' ||
+    map?.dataset?.publicStaticState==='static-base-loaded' ||
+    map?.dataset?.publicStaticBaseReady==='true';
+}
+
 function isReady(map){
-  return isModelReady(map) && isSatelliteReady(map) && isVegetationReady(map) && isRoadTextureReady(map);
+  return isStaticPresentationReady(map) ||
+    (isModelReady(map) && isSatelliteReady(map) && isVegetationReady(map) && isRoadTextureReady(map));
 }
 
 function hasError(map){
@@ -274,7 +286,7 @@ async function attach(){
   continueBtn.addEventListener('click',()=>close('fallback-manual'));
 
   const safeStart=()=>{
-    if(closed || isModelReady(map) || hasError(map)) return;
+    if(closed || isReady(map) || hasError(map)) return;
     try{
       if(typeof map.startPublic3D==='function') map.startPublic3D();
       else if(typeof map.scheduleThree==='function') map.scheduleThree();
@@ -290,7 +302,7 @@ async function attach(){
   safeStart();
 
   const starter=setInterval(()=>{
-    if(closed || isModelReady(map) || hasError(map)){
+    if(closed || isReady(map) || hasError(map)){
       clearInterval(starter);
       return;
     }

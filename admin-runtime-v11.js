@@ -168,7 +168,7 @@ function patchAdminMap(){
     MapScene.prototype.__adminMapV11=true;
     const previous=MapScene.prototype.setMapContext;
     MapScene.prototype.setMapContext=function(view){
-      const result=previous?.call(this,view);const pub=this.hasAttribute('data-public-presentation');this.dataset.mapContext=pub?'public-leads':view;
+      const result=previous?.call(this,view);const pub=this.hasAttribute('data-public-presentation')&&!this.isAdminPublicMapV1?.();this.dataset.mapContext=pub?'public-leads':view;
       const category=this.querySelector('.map-category-switcher'),rotation=this.querySelector('.map-rotation-controls'),legend=this.querySelector('.map-gesture-legend'),badge=this.querySelector('.map-badge');
       const adminInteractive=new Set(['assistant','map','records']);
       if(category)category.hidden=pub||!adminInteractive.has(view);
@@ -183,7 +183,7 @@ function patchAdminMap(){
     ViewLayer.prototype.__adminMapViewV11=true;const old=ViewLayer.prototype.map;
     ViewLayer.prototype.map=function(){return String(old.call(this)).replace('<stage-cash-dashboard></stage-cash-dashboard>','');};
   }
-  document.querySelectorAll('map-scene').forEach(map=>map.setMapContext?.(map.hasAttribute('data-public-presentation')?'public-leads':(document.querySelector('view-layer')?.dataset.view||'map')));
+   document.querySelectorAll('map-scene').forEach(map=>map.setMapContext?.(map.hasAttribute('data-public-presentation')&&!map.isAdminPublicMapV1?.()?'public-leads':(document.querySelector('view-layer')?.dataset.view||'map')));
 }
 customElements.whenDefined('map-scene').then(patchAdminMap);customElements.whenDefined('view-layer').then(patchAdminMap);
 new MutationObserver(()=>{enhanceFinance();if(document.querySelector('view-layer[data-view="map"]'))patchAdminMap();}).observe(document.documentElement,{childList:true,subtree:true});

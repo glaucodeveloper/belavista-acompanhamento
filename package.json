@@ -12,11 +12,15 @@
     "desktop:start": "electron .",
     "desktop:check": "node --check electron/main.mjs && node --check electron/preload.mjs && node --check desktop/instagram-bridge.mjs",
     "desktop:package": "electron-builder --linux AppImage",
+    "desktop:package:win": "electron-builder --win nsis --x64 --publish never",
     "test:desktop": "node --test --test-concurrency=1 tests/desktop/*.test.mjs",
     "instagram:bridge": "npx @askjo/camofox-browser",
-    "build:public": "node scripts/build-public-pages.mjs",
+    "build:public": "node scripts/build-stage-knowledge.mjs && node scripts/build-public-pages.mjs",
     "twa:admin:init": "npx --yes @bubblewrap/cli init --manifest=https://belavista-3f887.web.app/admin-twa-manifest.webmanifest --directory=mobile/twa/android-admin",
     "twa:admin:build": "cd mobile/twa/android-admin && npx --yes @bubblewrap/cli build",
+    "capacitor:install": "npm --prefix mobile/capacitor install",
+    "capacitor:sync": "npm --prefix mobile/capacitor run cap:sync",
+    "capacitor:apk": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build-capacitor-apk.ps1",
     "public:preview": "node server.mjs",
     "check:worker": "node --check worker/src/index.js && node --check worker/src/routes.js && node --check worker/src/nvidia.js && node --check worker/src/workflows.js",
     "worker:deploy": "npx wrangler deploy --config worker/wrangler.jsonc",
@@ -50,6 +54,7 @@
     "test:admin:foreman-surface": "node --test --test-concurrency=1 tests/admin/foreman-reduced-surface-v1.test.mjs",
     "test:admin:proposal-vision": "node --test --test-concurrency=1 tests/admin/proposal-vision-inference-v1.test.mjs",
     "test:visual-suite": "node --test tests/visual/system-flow-suite.test.mjs",
+    "test:visual:operational": "playwright test --config=playwright.operational-visual.config.mjs",
     "test:map-filters": "node --test tests/admin/map-multi-layer-filters-v1.test.mjs",
     "test:inference:real": "node --test --test-concurrency=1 tests/inference/02-initial-state.test.mjs tests/inference/03-meta-counterfactual.test.mjs tests/inference/04-cash-and-provision.test.mjs tests/inference/05-receipts-material-propagation.test.mjs tests/inference/06-field-diary-continuation.test.mjs tests/inference/07-stage-unlock-chain.test.mjs tests/inference/08-personnel-locality.test.mjs tests/inference/09-event-matrix.test.mjs tests/inference/10-full-journey.test.mjs",
     "test:inference:application": "node --env-file-if-exists=.env tests/inference/application-state.run.mjs",
@@ -100,6 +105,26 @@
       ],
       "category": "Office",
       "synopsis": "Estação operacional Aliança Park"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Aliança Park Desktop",
+      "uninstallDisplayName": "Aliança Park Desktop",
+      "deleteAppDataOnUninstall": false
     },
     "artifactName": "${productName}-${version}-${arch}.${ext}"
   },

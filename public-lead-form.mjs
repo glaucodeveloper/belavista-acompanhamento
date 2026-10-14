@@ -244,7 +244,7 @@ const pageMarkup=()=>`<div class="public-leads-experience">
   <section class="public-map-story" data-map-story>
     <div class="public-map-sticky">
       <div class="public-map-static-bg" aria-hidden="true"></div>
-      <map-scene data-public-map data-public-presentation data-stage="Aliança Park · comercial" aria-label="Mapa interativo do loteamento" data-public-static-base="true" data-public-static-capture="/assets/public/dwg-satellite-treated-v5411.png"></map-scene>
+      <map-scene data-public-map data-public-presentation data-public-static-only="true" data-stage="Aliança Park · comercial" aria-label="Mapa interativo do loteamento" data-public-static-base="true" data-public-static-capture="/assets/public/dwg-satellite-treated-v5411.png"></map-scene>
       <div class="public-map-vignette"></div>
 
       <div class="public-hero-letter" data-hero-letter>

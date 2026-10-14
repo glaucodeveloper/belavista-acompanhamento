@@ -266,7 +266,9 @@ export async function runOperationalAssistant(env,{message,view='assistant',cont
   const requestMessage=truncate(message)||'Analise a imagem anexada e descreva os fatos visíveis e seus impactos operacionais.',
     requestInstruction=truncate(instruction,5000)||OPERATIONAL_CHAT_EXECUTION_POLICY_V1,
     tools=OPERATIONAL_CHAT_TOOLS_V1.map(item=>`${item.name}(${item.arguments}) — ${item.description}`).join('\n');
-  const prompt=`Tela: ${view}. Analise a operação do Aliança Park usando somente os dados fornecidos. Contexto: ${truncate(JSON.stringify(context||{}),8000)}. Contexto do disparo: ${truncate(JSON.stringify(requestContext||{}),4000)}. Pedido: ${requestMessage}.\n\nINSTRUÇÃO OPERACIONAL PERMANENTE:\n${OPERATIONAL_CHAT_EXECUTION_POLICY_V1}\n\nINSTRUÇÃO ENVIADA NESTA REQUISIÇÃO:\n${requestInstruction}\n\nFERRAMENTAS DISPONÍVEIS NO CLIENTE:\n${tools}\n\n${image?'Há uma imagem anexada. Use raciocínio visual para ler primeiro os fatos visíveis, diferenciar observação de inferência e relacionar a resposta ao contexto da tela. Raciocine internamente, mas não exponha cadeia de pensamento; entregue somente a síntese operacional.':''} ${explain?'Inclua prioridade, causa e próximo passo.':''} Responda SOMENTE em JSON válido com {"text":"resposta curta ao usuário","risk":"low|medium|high","nextAction":"próximo passo","toolCalls":[{"name":"ferramenta permitida","arguments":{}}]}. Use toolCalls somente para ações que a aplicação pode representar. Se algo for completamente externo, toolCalls deve ser [] e o text deve pedir o documento/evidência necessária. Não altere valores financeiros.`;
+  const interpretation=context?.recordInterpretation||requestContext?.recordInterpretation||null;
+  const interpretationPolicy=interpretation?`\n\nINTERPRETAÇÃO DE ANEXO (OCR + DESCRIÇÃO): ${truncate(JSON.stringify(interpretation),10000)}. Use conjuntamente a descrição original e os campos/itens do OCR. Uma etapa explicitamente citada pela pessoa prevalece sobre etapa sugerida pelo OCR ou etapa selecionada. A etapa selecionada é apenas contexto de navegação. Restrinja a alocação às etapas candidatas fornecidas; sem correspondência segura, não crie toolCall de alocação e pergunte qual etapa/atividade usar. OCR é sugestão sujeita a revisão humana; não afirme que o anexo foi persistido.`:'';
+  const prompt=`Tela: ${view}. Analise a operação do Aliança Park usando somente os dados fornecidos. Contexto: ${truncate(JSON.stringify(context||{}),12000)}. Contexto do disparo: ${truncate(JSON.stringify(requestContext||{}),6000)}. Pedido: ${requestMessage}.${interpretationPolicy}\n\nINSTRUÇÃO OPERACIONAL PERMANENTE:\n${OPERATIONAL_CHAT_EXECUTION_POLICY_V1}\n\nINSTRUÇÃO ENVIADA NESTA REQUISIÇÃO:\n${requestInstruction}\n\nFERRAMENTAS DISPONÍVEIS NO CLIENTE:\n${tools}\n\n${image?'Há uma imagem anexada. Use raciocínio visual para ler primeiro os fatos visíveis, diferenciar observação de inferência e relacionar a resposta ao contexto da tela. Raciocine internamente, mas não exponha cadeia de pensamento; entregue somente a síntese operacional.':''} ${explain?'Inclua prioridade, causa e próximo passo.':''} Responda SOMENTE em JSON válido com {"text":"resposta curta ao usuário","risk":"low|medium|high","nextAction":"próximo passo","toolCalls":[{"name":"ferramenta permitida","arguments":{}}]}. Use toolCalls somente para ações que a aplicação pode representar. Se algo for completamente externo, toolCalls deve ser [] e o text deve pedir o documento/evidência necessária. Não altere valores financeiros.`;
   const userContent=image?[{type:'text',text:prompt},{type:'image_url',image_url:{url:image.dataUrl}}]:prompt;
   const messages=[
     {role:'system',content:'Você explica decisões operacionais de obras. Cálculos e autorizações pertencem ao backend. Responda SOMENTE em formato JSON válido.'},
@@ -482,29 +484,26 @@ const sleepRecordOcrV25=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
 function recordOcrSettingsV25(env){
   const apiKey=nvidiaKey(env);
+  const primaryModel=String(
+    env.NVIDIA_RECORD_OCR_MODEL||
+    'meta/llama-3.2-11b-vision-instruct'
+  ).trim();
 
   const configured=String(
-    env.NVIDIA_RECORD_OCR_MODELS||
-    [
-      env.NVIDIA_RECORD_OCR_MODEL,
-      env.NVIDIA_RECORD_OCR_FALLBACK_MODEL
-    ].filter(Boolean).join(',')
+    [primaryModel,env.NVIDIA_RECORD_OCR_MODELS,env.NVIDIA_RECORD_OCR_FALLBACK_MODEL]
+      .filter(Boolean)
+      .join(',')
   )
     .split(',')
     .map(value=>value.trim())
     .filter(Boolean);
 
-  const defaults=[
-    'meta/llama-3.2-11b-vision-instruct',
-    'google/gemma-3-27b-it',
-    'meta/llama-3.2-90b-vision-instruct'
-  ];
+  const defaults=[primaryModel];
 
   // Modelos que já provaram estar indisponíveis ou inadequados neste fluxo
   // não entram novamente por configuração antiga.
   const rejected=new Set([
-    'nvidia/nemotron-nano-12b-v2-vl',
-    'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning'
+    'nvidia/nemotron-nano-12b-v2-vl'
   ]);
 
   const models=[...configured,...defaults]
@@ -860,6 +859,40 @@ function parseOcrJsonV26b(value){
   return {value:null,mode:'failed'};
 }
 
+// Alguns VLMs obedecem ao conteúdo do esquema, mas antecedem o JSON com uma
+// explicação em Markdown. Quando há campos explicitamente rotulados, preserve
+// somente o que foi lido, em vez de chamar um segundo modelo e arriscar perda
+// ou invenção de dados.
+function parseLabeledMarkdownOcrV26b(value){
+  const text=String(value||'');
+  if(!/\*\*\s*(?:nota fiscal|tipo de documento|n[uú]mero da nota|descri[cç][aã]o)\b/i.test(text))return null;
+  const field=label=>{
+    const match=text.match(new RegExp('\\*\\*\\s*'+label+'\\s*:?\\s*\\*\\*\\s*([^\\r\\n]+)','i'));
+    return match?match[1].replace(/[*_`]/g,'').trim():'';
+  };
+  const itemPattern=/\*\*\s*Descri[cç][aã]o\s*:\s*\*\*\s*([^\r\n]+)[\s\S]{0,260}?\*\*\s*Quantidade\s*:\s*\*\*\s*([^\r\n]+)[\s\S]{0,160}?\*\*\s*Unidade\s*:\s*\*\*\s*([^\r\n]+)/gi;
+  const items=[];
+  for(const match of text.matchAll(itemPattern)){
+    const description=String(match[1]||'').replace(/[*_`]/g,'').trim();
+    const quantityToken=String(match[2]||'').replace(/[*_`]/g,'').match(/-?\d+(?:[.,]\d+)?/)?.[0]||'';
+    const quantity=Number(quantityToken.replace(',','.'));
+    const unit=String(match[3]||'').replace(/[*_`]/g,'').trim();
+    if(!description||/^(?:n[aã]o especificada|item \d+)$/i.test(description)||items.some(item=>item.description===description))continue;
+    items.push({
+      itemKind:'material',description,materialName:description,
+      // Números longos sem separador são normalmente código/linha OCR, não
+      // quantidade. Não os propague ao estoque sem revisão humana.
+      quantity:Number.isFinite(quantity)&&Math.abs(quantity)<=100000?quantity:null,
+      unit:/^\d{3,}$/.test(unit)||/^n[aã]o especificada$/i.test(unit)?'':unit,
+      confidence:.25
+    });
+  }
+  const invoiceNumber=field('N[uú]mero da Nota Fiscal')||field('N[uú]mero da NF');
+  const supplier=field('Fornecedor');
+  if(!invoiceNumber&&!supplier&&!items.length)return null;
+  return {documentType:'purchase_invoice',invoiceNumber,supplier,items,confidence:.25};
+}
+
 async function repairOcrJsonWithTextModelV26b(env,rawText){
   const apiKey=nvidiaKey(env);
   if(!apiKey)return null;
@@ -938,19 +971,48 @@ export async function extractInstantRecordOcr(env,{attachment,context=null}={}){
   const settings=recordOcrSettingsV25(env);
   if(!settings.apiKey){const error=new Error('OCR de registro: NVIDIA_API_KEY não configurada.');error.statusCode=502;throw error;}
 
-  const prompt=[
-    'Leia o documento anexado como OCR estruturado para um formulário operacional de obra.',
-    'Não invente valores que não estejam visíveis. O resultado será revisado por uma pessoa antes de ser gravado.',
-    'Se for nota fiscal, extraia número, série, emissão, fornecedor, CNPJ, chave de acesso, valor total e todos os itens.',
-    'Para itens, preserve código/materialId impresso quando existir; quantidade e valores devem ser numéricos.',
-    'Valores monetários DEVEM ser retornados em centavos inteiros.',
-    'Para cada item, classifique itemKind como material, servico ou outro. Quando houver evidência suficiente, sugira stageKey/stageName, activityId/activityName e materialId/materialName. Nunca trate sugestão como confirmação; use vazio quando não houver correspondência segura.',
-    'servico deve representar mão de obra/serviço contratado; material deve representar insumo, equipamento ou componente físico.',
-    'Além dos campos conhecidos, devolva dynamicFields para qualquer propriedade adicional realmente visível.',
+  const stageCandidates=(Array.isArray(context?.stages)?context.stages:[]).slice(0,40).map(stage=>{
+    const profile=stage?.executionProfile||stage?.aiConfig||{};
+    const strings=value=>(Array.isArray(value)?value:[]).map(item=>typeof item==='string'?item:[item?.name,item?.title,item?.description].filter(Boolean).join(': ')).filter(Boolean).map(value=>truncate(value,180)).slice(0,8);
+    return {
+      key:truncate(stage?.key,100),
+      name:truncate(stage?.name,160),
+      executionDescription:truncate(stage?.description||profile.typicalDescription||profile.executionDescription||'',420),
+      activityHints:[...strings(stage?.activityHints),...strings(profile.requestHints),...strings(profile.evidenceFocus),...strings(stage?.activities?.map?.(activity=>({name:activity?.name||activity?.title,description:activity?.description})))].slice(0,12),
+      materials:strings(stage?.materials).slice(0,8)
+    };
+  }).filter(stage=>stage.key&&stage.name);
+  const userDescription=truncate(context?.userDescription,2000);
+  const ocrContext=JSON.stringify({
+    userDescription,
+    selectedStage:{key:truncate(context?.selectedStageKey,100),name:truncate(context?.selectedStageName,160),role:'navigation-context-only-never-allocation-fallback'},
+    stageCandidates
+  });
+  const detailedPrompt=[
+    'Leia a imagem anexada junto com a descrição escrita pela pessoa e produza OCR estruturado para um registro operacional de obra.',
+    'Primeiro classifique a imagem: nota fiscal/recibo de compra, foto de evidência de serviço executado, ou outro documento. Não trate uma fotografia de serviço como nota fiscal nem uma linha de serviço faturada como prova de execução.',
+    'Não invente valores, itens, datas, horários, quantidades, atividades ou associações que não estejam legíveis ou informados. Toda leitura fica Pendente para revisão humana.',
+    'Para nota fiscal/recibo, extraia número, série, data de emissão, fornecedor, CNPJ, chave de acesso, valor total e todos os itens visíveis. Preserve código/materialId impresso; quantidade, unidade e valores devem refletir o documento. Valores monetários DEVEM ser centavos inteiros. Classifique cada item físico como material e mão de obra/serviço comprado como servico.',
+    'Para foto de serviço, use uma descrição explícita da pessoa como relato principal da ação quando existir. Se a mensagem contiver somente "Etapa: NOME" ou "Stage: NAME", isso identifica EXCLUSIVAMENTE o destino: não é descrição da ação e você NUNCA deve copiar o nome da etapa para actionDescription, activityName, description ou materialName. Nesse caso, identifique uma ação concreta somente pelo que a foto mostra (por exemplo, escavação/movimentação de solo quando houver evidência visual); se a operação não for identificável, deixe a ação vazia e peça esclarecimento. Registre separadamente o que a imagem realmente mostra. Não deduza data/hora pelos metadados nem invente equipe, quantidade ou conclusão. Retorne serviceEvidence com actionDescription, visualDescription, observedDate e observedTime; deixe data/hora vazias se não estiverem escritas na mensagem ou visíveis na imagem.',
+    'Ao associar um item ou ação, compare a descrição da pessoa, o que está visível e os executionDescription/activityHints/materials das etapas candidatas. Use somente o key e o name canônicos da etapa compatível; preencha activityName/activityId apenas se houver correspondência sustentada. A descrição da ação de serviço deve ser comparada às atividades e à descrição típica das etapas, não apenas ao nome da etapa.',
+    'A etapa selecionada na interface é apenas contexto de navegação: NUNCA a use como destino automático. Se nenhuma candidata combinar com segurança, deixe stageKey, stageName, activityId e activityName vazios. Não escolha a etapa mais próxima e não crie registro órfão; o assistente deve perguntar ao usuário qual etapa/atividade usar.',
+    'Para foto de serviço, retorne item itemKind=servico quando uma ação concreta for identificada no texto explícito ou na imagem; use description/activityName para essa ação (nunca apenas o nome da etapa), details para observação visual e pointer para evidência textual/visual que sustenta a classificação. Não invente quantidade; use null se não houver quantidade explícita.',
+    'Além dos campos conhecidos, devolva dynamicFields apenas para propriedades adicionais realmente visíveis ou declaradas pela pessoa.',
     'Responda SOMENTE JSON no formato:',
-    JSON.stringify({documentType:'purchase_invoice|purchase_receipt|other',confidence:0,invoiceNumber:'',series:'',issueDate:'',supplier:'',supplierCnpj:'',accessKey:'',totalAmountCents:0,items:[{itemKind:'material|servico|outro',materialId:'',materialName:'',description:'',quantity:0,unit:'',unitPriceCents:0,totalPriceCents:0,stageKey:'',stageName:'',activityId:'',activityName:'',confidence:0}],dynamicFields:[{key:'',label:'',type:'text|number|date|currency',value:'',confidence:0}]}),
-    'Contexto da interface: '+truncate(JSON.stringify(context||{}),1200)
+    JSON.stringify({documentType:'purchase_invoice|purchase_receipt|service_evidence|other',confidence:0,invoiceNumber:'',series:'',issueDate:'',supplier:'',supplierCnpj:'',accessKey:'',totalAmountCents:0,serviceEvidence:{actionDescription:'',visualDescription:'',observedDate:'',observedTime:'',stageKey:'',stageName:'',activityId:'',activityName:'',confidence:0},items:[{itemKind:'material|servico|outro',materialId:'',materialName:'',description:'',details:'',pointer:'',quantity:null,unit:'',unitPriceCents:0,totalPriceCents:0,stageKey:'',stageName:'',activityId:'',activityName:'',confidence:0}],dynamicFields:[{key:'',label:'',type:'text|number|date|currency',value:'',confidence:0}]}),
+    'Contexto real da requisição (a descrição acompanha a própria imagem; etapa selecionada é somente navegação): '+truncate(ocrContext,7000),
+    'Se a descrição escrita nomear uma etapa candidata, essa indicação explícita prevalece. Caso contrário, só sugira etapa pela compatibilidade semântica entre ação/item e descrições/pistas das candidatas; nunca pela seleção atual.'
   ].join('\n');
+  const likelyPurchase=/\b(?:nota|nf-?e|recibo|compra|fornecedor|danfe)\b/i.test(userDescription);
+  const prompt=likelyPurchase?[
+    'Você é um extrator OCR multimodal de notas fiscais de materiais de obra.',
+    'Leia somente o que estiver visível. Não invente campos e deixe valores ilegíveis vazios.',
+    'Classifique cada item físico como material; linha de mão de obra/serviço comprado é servico.',
+    'Responda SOMENTE JSON com documentType, confidence, invoiceNumber, series, issueDate, supplier, supplierCnpj, accessKey, totalAmountCents e items.',
+    'Cada item deve conter itemKind, materialId, materialName, description, quantity, unit, unitPriceCents, totalPriceCents, details, pointer e confidence. Valores monetários são centavos inteiros; use null ou string vazia quando não legíveis.',
+    'Contexto de destino: '+truncate(ocrContext,4000),
+    'A etapa mencionada pela pessoa é destino explícito para revisão; não copie a etapa como nome de material.'
+  ].join('\n'):detailedPrompt;
 
   const ocrRequestV25=await recordOcrNvidiaRequestV25(env,[{
     role:'user',
@@ -978,6 +1040,11 @@ export async function extractInstantRecordOcr(env,{attachment,context=null}={}){
   let repairModelV26b='';
 
   if(!parsed||typeof parsed!=='object'){
+    const labeled=parseLabeledMarkdownOcrV26b(response);
+    if(labeled){parsed=labeled;parseModeV26b='labeled-markdown';}
+  }
+
+  if(!parsed||typeof parsed!=='object'){
     const repairedV26b=await repairOcrJsonWithTextModelV26b(env,response);
     if(repairedV26b?.value){
       parsed=repairedV26b.value;
@@ -997,11 +1064,35 @@ export async function extractInstantRecordOcr(env,{attachment,context=null}={}){
   }
 
   const confidence=Math.max(0,Math.min(1,cleanOcrNumberV21(parsed.confidence,0)));
+  const rawDocumentType=cleanOcrTextV21(parsed.documentType||'other',50).toLowerCase();
+  const documentType=/service|servi[cç]o|execu[cç][aã]o|field.?photo/.test(rawDocumentType)?'service_evidence':/nota\s*fiscal|nf-?e|danfe|invoice|recibo\s*(?:de\s*)?(?:compra|fiscal)?/.test(rawDocumentType)?'purchase_invoice':rawDocumentType;
+  const rawServiceEvidence=parsed.serviceEvidence&&typeof parsed.serviceEvidence==='object'?parsed.serviceEvidence:{};
+  const stageOnlyInput=userDescription.match(/^\s*(?:etapa|stage)\s*:\s*([^.!?\r\n]+)[.!]?\s*$/i)?.[1]||'';
+  const normalizeVisualLabel=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR').replace(/[^a-z0-9]+/g,' ').trim();
+  const modelAction=cleanOcrTextV21(rawServiceEvidence.actionDescription||rawServiceEvidence.action||rawServiceEvidence.activityName,1000);
+  const modelActivityName=cleanOcrTextV21(rawServiceEvidence.activityName,160);
+  const imageObservedDescription=cleanOcrTextV21(rawServiceEvidence.visualDescription||rawServiceEvidence.observation,1200);
+  const actionEchoesDestination=Boolean(stageOnlyInput&&normalizeVisualLabel(modelAction)===normalizeVisualLabel(stageOnlyInput));
+  const visualOperationPattern=/escava|movimenta[cç][aã]o?\s+(?:de\s+)?solo|terraplen|nivelamento|conforma[cç][aã]o|aterro|compacta[cç][aã]o|drenagem|pavimenta[cç][aã]o|instala[cç][aã]o|assentamento|corte\s+de\s+solo/i;
+  const imageDerivedAction=actionEchoesDestination&&visualOperationPattern.test(imageObservedDescription)?imageObservedDescription:modelAction;
+  const serviceEvidence={
+    actionDescription:imageDerivedAction,
+    visualDescription:imageObservedDescription,
+    observedDate:cleanOcrTextV21(rawServiceEvidence.observedDate||rawServiceEvidence.date,80),
+    observedTime:cleanOcrTextV21(rawServiceEvidence.observedTime||rawServiceEvidence.time,40),
+    stageKey:cleanOcrTextV21(rawServiceEvidence.stageKey,100),
+    stageName:cleanOcrTextV21(rawServiceEvidence.stageName,160),
+    activityId:cleanOcrTextV21(rawServiceEvidence.activityId,100),
+    activityName:stageOnlyInput&&normalizeVisualLabel(modelActivityName)===normalizeVisualLabel(stageOnlyInput)
+      ? (actionEchoesDestination&&visualOperationPattern.test(imageObservedDescription)?imageObservedDescription:'')
+      : modelActivityName,
+    confidence:Math.max(0,Math.min(1,cleanOcrNumberV21(rawServiceEvidence.confidence,confidence)))
+  };
   const items=(Array.isArray(parsed.items)?parsed.items:[]).slice(0,50).map((item,index)=>({
     index,
     materialId:cleanOcrTextV21(item?.materialId||item?.code||item?.codigo,120),
     description:cleanOcrTextV21(item?.description||item?.name||item?.descricao,240),
-    quantity:cleanOcrNumberV21(item?.quantity||item?.quantidade,0),
+    quantity:item?.quantity==null&&item?.quantidade==null?null:cleanOcrNumberV21(item?.quantity??item?.quantidade,0),
     unit:cleanOcrTextV21(item?.unit||item?.unidade,30),
     unitPriceCents:cleanOcrCentsV21(item?.unitPriceCents??item?.unitPrice??item?.valorUnitario),
     totalPriceCents:cleanOcrCentsV21(item?.totalPriceCents??item?.totalPrice??item?.valorTotal),
@@ -1011,8 +1102,28 @@ export async function extractInstantRecordOcr(env,{attachment,context=null}={}){
     stageName:cleanOcrTextV21(item?.stageName||item?.etapa,160),
     activityId:cleanOcrTextV21(item?.activityId||item?.atividadeId,100),
     activityName:cleanOcrTextV21(item?.activityName||item?.atividade||item?.serviceName,160),
+    details:cleanOcrTextV21(item?.details||item?.visualDescription,1200),
+    pointer:cleanOcrTextV21(item?.pointer||item?.evidence,800),
     confidence:Math.max(0,Math.min(1,cleanOcrNumberV21(item?.confidence,confidence)))
   }));
+  if(documentType==='service_evidence'&&serviceEvidence.actionDescription){
+    const serviceItem=items.find(item=>/^(servico|serviço|service|labor)$/.test(item.itemKind));
+    if(!serviceItem)items.unshift({
+      index:0,materialId:'',description:serviceEvidence.actionDescription,quantity:null,unit:'registro',unitPriceCents:0,totalPriceCents:0,
+      itemKind:'servico',materialName:'',stageKey:serviceEvidence.stageKey,stageName:serviceEvidence.stageName,
+      activityId:serviceEvidence.activityId,activityName:serviceEvidence.activityName||serviceEvidence.actionDescription,
+      details:serviceEvidence.visualDescription,pointer:serviceEvidence.actionDescription,
+      confidence:serviceEvidence.confidence||confidence
+    });
+    else {
+      const itemActionEchoesDestination=Boolean(stageOnlyInput&&normalizeVisualLabel(serviceItem.description)===normalizeVisualLabel(stageOnlyInput));
+      if(!serviceItem.description||itemActionEchoesDestination)serviceItem.description=serviceEvidence.actionDescription;
+      if(!serviceItem.activityName||normalizeVisualLabel(serviceItem.activityName)===normalizeVisualLabel(stageOnlyInput))serviceItem.activityName=serviceEvidence.activityName||serviceEvidence.actionDescription;
+      if(normalizeVisualLabel(serviceItem.materialName)===normalizeVisualLabel(stageOnlyInput))serviceItem.materialName='';
+      if(!serviceItem.details)serviceItem.details=serviceEvidence.visualDescription;
+      if(!serviceItem.pointer)serviceItem.pointer=serviceEvidence.actionDescription;
+    }
+  }
 
   const base=[
     ['invoiceNumber','Número da NF','text',cleanOcrTextV21(parsed.invoiceNumber||parsed.documentNumber,80)],
@@ -1032,8 +1143,9 @@ export async function extractInstantRecordOcr(env,{attachment,context=null}={}){
   }
   properties.push(ocrPropertyV21('items','Itens','items',items,confidence));
   return {
-    documentType:cleanOcrTextV21(parsed.documentType||'other',50),
+    documentType,
     confidence,
+    serviceEvidence,
     properties,
     items,
     reviewRequired:true,

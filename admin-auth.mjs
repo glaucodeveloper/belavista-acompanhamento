@@ -1,18 +1,17 @@
-import {ADMIN_LOGIN_ROLES,FIELD_PORTAL_ROLES} from './admin-role-policy.mjs?v=admin-role-policy-v1';
+import {ADMIN_LOGIN_ROLES,normalizeUserType} from './admin-role-policy.mjs?v=admin-role-policy-v3';
 
 const path=String(location.pathname||'');
-const isFieldPortal=/\/encarregados(?:\.html)?(?:\/|$)/i.test(path);
 const isAdminSurface=/\/admin(?:\/|$)/i.test(path)||new URLSearchParams(location.search).get('twa')==='admin';
-const required=isFieldPortal||isAdminSurface;
-const allowedRoles=isFieldPortal?FIELD_PORTAL_ROLES:ADMIN_LOGIN_ROLES;
+const required=true;
+const allowedRoles=ADMIN_LOGIN_ROLES;
 globalThis.BELAVISTA_ADMIN_AUTH_REQUIRED=required;
 const loginProfile=globalThis.BELAVISTA_LOGIN_PROFILE;
 const profileMark=(name,detail={})=>loginProfile?.mark(name,detail);
 profileMark('auth.module.start',{required,route:path});
 
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-const roleLabel=role=>role==='foreman'?'Encarregado':role==='admin'?'Administrador':role==='developer'?'TI · Desenvolvimento':['sales','commercial','broker','corretor'].includes(role)?'Corretor':'Dono';
-const viewLabel=isFieldPortal?'portal móvel de campo':'painel administrativo';
+const roleLabel=(role,userType)=>userType==='foreman'?'Encarregado':role==='admin'?'Administrador':role==='developer'?'TI · Desenvolvimento':['sales','commercial','broker','corretor'].includes(role)?'Corretor':'Dono';
+const viewLabel='painel administrativo';
 const style=document.createElement('style');
 style.textContent=`
   .belavista-auth-gate{position:fixed;inset:0;z-index:100000;display:grid;place-items:center;padding:18px;background:#161616;color:#f4f4f4;font:14px "IBM Plex Sans",Arial,sans-serif}
@@ -46,7 +45,8 @@ const setupProfilePanel=(gate,statusElement)=>{
 };
 
 const createGate=()=>{
-  const gate=document.createElement('section');gate.className='belavista-auth-gate';gate.setAttribute('aria-label','Login Aliança Park');gate.innerHTML=`<div class="belavista-auth-panel"><div class="belavista-auth-brand"><b>◢</b><span><strong>Aliança Park</strong><small>${isFieldPortal?'PORTAL MÓVEL · ENCARREGADO':'TWA ADMINISTRATIVO · ACESSO RESTRITO'}</small></span></div><span class="belavista-auth-kicker">AUTENTICAÇÃO FIREBASE</span><h1>Entrar no ${viewLabel}</h1><p>Use o e-mail institucional. O Firebase valida o perfil e libera somente as funções atribuídas ao usuário.</p><form class="belavista-auth-form"><label>E-mail<input name="email" type="email" autocomplete="username" required placeholder="voce@empresa.com"></label><label>Senha<input name="password" type="password" autocomplete="current-password" required placeholder="Senha do Firebase"></label><button type="submit">Entrar com segurança</button><div class="belavista-auth-status" aria-live="polite"></div></form></div>`;
+  const surfaceLabel=globalThis.BELAVISTA_CAPACITOR_NATIVE===true?'CAPACITOR MOBILE · ACESSO RESTRITO':isAdminSurface?'TWA ADMINISTRATIVO · ACESSO RESTRITO':'WEB OPERACIONAL · ACESSO RESTRITO';
+  const gate=document.createElement('section');gate.className='belavista-auth-gate';gate.setAttribute('aria-label','Login Aliança Park');gate.innerHTML=`<div class="belavista-auth-panel"><div class="belavista-auth-brand"><b>◢</b><span><strong>Aliança Park</strong><small>${surfaceLabel}</small></span></div><span class="belavista-auth-kicker">AUTENTICAÇÃO FIREBASE</span><h1>Entrar no ${viewLabel}</h1><p>Use o e-mail institucional. O Firebase valida o nível de acesso e as funções atribuídas ao usuário.</p><form class="belavista-auth-form"><label>E-mail<input name="email" type="email" autocomplete="username" required placeholder="voce@empresa.com"></label><label>Senha<input name="password" type="password" autocomplete="current-password" required placeholder="Senha do Firebase"></label><button type="submit">Entrar com segurança</button><div class="belavista-auth-status" aria-live="polite"></div></form></div>`;
   const persistence=document.createElement('small');persistence.className='belavista-auth-persistence';persistence.textContent='A sessão autorizada permanece neste dispositivo com o Firebase.';
   gate.querySelector('.belavista-auth-form').append(persistence);
   document.body.appendChild(gate);profileMark('auth.gate.visible');setupProfilePanel(gate,gate.querySelector('.belavista-auth-status'));return gate;
@@ -54,10 +54,17 @@ const createGate=()=>{
 
 const finish=(session,gate,resolve)=>{
   const user=session.user;
-  globalThis.BELAVISTA_ADMIN_ACTOR={uid:user.uid,name:user.displayName||user.email||user.uid,email:user.email||'',role:session.role,label:roleLabel(session.role),commercialProfile:session.claims?.commercialProfile||session.claims?.profileId||'',claims:session.claims||{},mode:'firebase'};
+  const userType=normalizeUserType(session.userType||session.claims?.userType||session.claims?.user_type||'');
+  globalThis.BELAVISTA_ADMIN_ACTOR={uid:user.uid,name:user.displayName||user.email||user.uid,email:user.email||'',role:session.role,userType,label:roleLabel(session.role,userType),commercialProfile:session.claims?.commercialProfile||session.claims?.profileId||'',claims:session.claims||{},mode:'firebase'};
   globalThis.BELAVISTA_GET_ID_TOKEN=()=>user.getIdToken();
+  if(userType==='foreman'||['sales','commercial','broker','corretor'].includes(session.role)){
+    const primarySurface=['/','/index.html','/admin','/admin/'].includes(path.toLocaleLowerCase('pt-BR'));
+    if(!primarySurface){location.replace('/admin?view=records');return;}
+  }
   document.documentElement.dataset.belavistaAuth='ready';
   document.documentElement.dataset.belavistaAuthRole=session.role;
+  if(userType)document.documentElement.dataset.belavistaUserType=userType;
+  else delete document.documentElement.dataset.belavistaUserType;
   // The pending flag hides the application while Firebase restores or validates
   // the session. Clear it on success or the authorized shell stays invisible
   // even though the gate has already been removed.

@@ -1,1 +1,124 @@
-import {test,expect} from '@playwright/test';import fs from 'node:fs';import path from 'node:path';const root=path.resolve(process.cwd());const image=path.join(root,'assets','Testes Notas','nf-diesel-18452.png');const ocr={documentType:'purchase_invoice',confidence:.99,provider:'nvidia-api',vision:true,model:'fixture-vision-v21',reviewRequired:true,properties:[{key:'invoiceNumber',label:'Número da NF',type:'text',value:'18452',confidence:.99},{key:'series',label:'Série',type:'text',value:'1',confidence:.99},{key:'supplier',label:'Fornecedor',type:'text',value:'Bahia Materiais de Obra LTDA',confidence:.99},{key:'supplierCnpj',label:'CNPJ do fornecedor',type:'text',value:'12.345.678/0001-23',confidence:.99},{key:'totalAmountCents',label:'Valor total da nota',type:'currency',value:1500000,confidence:.99},{key:'items',label:'Itens',type:'items',value:[{materialId:'diesel',description:'Diesel S10',quantity:1200,unit:'L',unitPriceCents:1250,totalPriceCents:1500000}],confidence:.99}],items:[{materialId:'diesel',description:'Diesel S10',quantity:1200,unit:'L',unitPriceCents:1250,totalPriceCents:1500000}]};async function enterDemo(page){const demo=page.getByRole('button',{name:/abrir modo demonstração/i});try{await demo.waitFor({state:'visible',timeout:5000});await demo.click();}catch{}await expect(page.locator('belavista-app')).toBeVisible({timeout:10000});}test('imagem no chat propaga OCR para a interface de registro',async({page})=>{if(!fs.existsSync(image))throw new Error('Fixture ausente: '+image);await page.route('**/api/ai/vision-reasoning',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({text:'Nota fiscal lida e pronta para revisão.',provider:'nvidia-api',vision:true,model:'fixture-vision-v21',attachment:{id:'IMG-TEST',name:'nf-diesel-18452.png',mimeType:'image/png',stored:false,storage:'worker-ephemeral'},recordOcr:ocr,toolCalls:[]})}));await page.goto('/',{waitUntil:'domcontentloaded'});await enterDemo(page);await page.locator('[data-chat-camera-input]').setInputFiles(image);await page.locator('.chat-form input[aria-label="Mensagem para IA"]').fill('Leia esta nota fiscal e prepare um registro.');await page.locator('.chat-form').evaluate(form=>form.requestSubmit());await expect(page.locator('[data-chat-apply="record"]')).toBeVisible();await page.locator('[data-chat-apply="record"]').click();await expect(page.locator('.records-entry-panel-v1 .record-form')).toBeVisible();await expect(page.locator('[data-record-dynamic-field][data-key="invoiceNumber"]')).toHaveValue('18452');await expect(page.locator('[data-record-ocr-item] [data-item-key="materialId"]')).toHaveValue('diesel');});test('imagem anexada diretamente no registro cria campos dinâmicos e itens',async({page})=>{if(!fs.existsSync(image))throw new Error('Fixture ausente: '+image);await page.route('**/api/records/ocr',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(ocr)}));await page.goto('/',{waitUntil:'domcontentloaded'});await enterDemo(page);await page.locator('app-sidebar [data-view="records"]').click();const form=page.locator('.records-entry-panel-v1 .record-form');await expect(form).toBeVisible();await form.locator('[data-record-ocr-file]').setInputFiles(image);await expect(form.locator('[data-record-dynamic-field][data-key="invoiceNumber"]')).toHaveValue('18452');await expect(form.locator('[data-record-dynamic-field][data-key="supplier"]')).toHaveValue('Bahia Materiais de Obra LTDA');await expect(form.locator('[data-record-ocr-item] [data-item-key="quantity"]')).toHaveValue('1200');await form.locator('[name="responsavel"]').fill('Teste OCR');await form.locator('[name="detalhes"]').fill('Registro criado a partir de nota simulada.');await form.evaluate(f=>{f.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));});const properties=await form.locator('input[name="properties"]').inputValue();const parsed=JSON.parse(properties);const items=parsed.find(item=>item.key==='items')?.value||[];expect(items[0].materialId).toBe('diesel');expect(items[0].quantity).toBe(1200);});
+import { test, expect } from '@playwright/test';
+import path from 'node:path';
+
+test.setTimeout(120000);
+test.use({ serviceWorkers: 'block' });
+
+const image = path.resolve(process.cwd(), 'assets', 'Testes Notas', 'nf-diesel-18452.png');
+
+const recordOcr = {
+  documentType: 'purchase_invoice',
+  confidence: 0.99,
+  provider: 'nvidia-api',
+  vision: true,
+  model: 'fixture-record-ocr-v21',
+  reviewRequired: true,
+  properties: [
+    { key: 'invoiceNumber', label: 'Número da NF', type: 'text', value: '18452', confidence: 0.99 },
+    { key: 'supplier', label: 'Fornecedor', type: 'text', value: 'Bahia Materiais de Obra LTDA', confidence: 0.99 },
+    {
+      key: 'items', label: 'Itens', type: 'items', confidence: 0.99,
+      value: [{ materialId: 'diesel', description: 'Diesel S10', quantity: 1200, unit: 'L' }],
+    },
+  ],
+  items: [{
+    materialId: 'diesel', description: 'Diesel S10', itemKind: 'material',
+    quantity: 1200, unit: 'L', stageKey: 'water', stageName: 'Rede de Água',
+    activityName: 'Abastecimento da frente', materialName: 'Diesel S10',
+  }],
+};
+
+test('nota no chat: inferência visual cria registro e aloca material na etapa correta', async ({ page }, testInfo) => {
+  const saved = [];
+  const inferenceRequests = [];
+  await page.addInitScript(() => {
+    globalThis.BELAVISTA_DISABLE_SERVICE_WORKER = true;
+    globalThis.BELAVISTA_ADMIN_ACTOR = { uid: 'ocr-e2e', name: 'Teste OCR', role: 'developer', label: 'Teste' };
+  });
+  await page.route('**/admin-auth.mjs*', (route) => route.fulfill({
+    contentType: 'text/javascript',
+    body: 'globalThis.BELAVISTA_ADMIN_AUTH_REQUIRED=false;globalThis.BELAVISTA_ADMIN_AUTH_READY=Promise.resolve(true);',
+  }));
+
+  await page.route('**/api/records', async route => {
+    if (route.request().method() === 'POST') {
+      const record = { ...route.request().postDataJSON(), id: 'REG-OCR-UI-01' };
+      saved.push(record);
+      await route.fulfill({ json: record });
+      return;
+    }
+    await route.fulfill({ json: { records: [] } });
+  });
+
+  await page.route('**/api/ai/vision-reasoning', async route => {
+    inferenceRequests.push(route.request().postDataJSON());
+    await route.fulfill({ json: {
+      text: 'Nota 18452 lida; Diesel S10 alocado para revisão em Rede de Água.',
+      provider: 'nvidia-api',
+      vision: true,
+      model: 'fixture-record-ocr-v21',
+      attachment: { id: 'IMG-OCR-18452', name: 'nf-diesel-18452.png', stored: false },
+      recordOcr,
+      toolCalls: [{ name: 'stage.allocate_visual_record', arguments: {
+        target: 'material', stageKey: 'water', stageName: 'Rede de Água',
+        materialName: 'Diesel S10', activityName: 'Abastecimento da frente',
+        quantity: 1200, unit: 'L', details: 'Item identificado na nota fiscal.',
+        pointer: 'linha de item Diesel S10', confidence: 0.99,
+      } }],
+    } });
+  });
+
+  await page.goto('/');
+  await expect(page.locator('belavista-app')).toBeVisible();
+  await expect(page.locator('[data-worker-chat-file-input]')).toHaveCount(1);
+  await page.locator('[data-worker-chat-file-input]').setInputFiles(image);
+  await page.locator('[data-worker-chat-form] textarea').fill(
+    'Leia esta nota e aloque o Diesel S10 na etapa Rede de Água.',
+  );
+  await page.locator('[data-worker-chat-submit]').click();
+
+  await expect(page.locator('[data-record-verification]')).toBeVisible();
+  await expect(page.locator('[data-worker-chat-log]')).toContainText('Alocou a leitura visual');
+  await expect.poll(() => inferenceRequests.length).toBe(1);
+  expect(inferenceRequests[0].message).toContain('Rede de Água');
+  await expect.poll(() => saved.length).toBe(1);
+
+  expect(saved[0].allocationTarget).toBe('material');
+  expect(saved[0].stageKey).toBe('water');
+  expect(saved[0].quantity).toBe(1200);
+  expect(saved[0].properties.find(property => property.id === 'allocation_material')?.value).toBe('Diesel S10');
+  expect(saved[0].properties.find(property => property.id === 'allocation_stage')?.value).toBe('Rede de Água');
+
+  // A página de Etapas possui URL própria; navegar por ela preserva o
+  // apontamento salvo e exercita a montagem completa da visão de recursos.
+  await page.goto('/admin?demo=1&view=stages&visual-suite=ocr-allocation', { waitUntil: 'domcontentloaded' });
+  await page.evaluate((records) => globalThis.__belavistaAppStore.set({
+    records,
+    materialCatalogAdditions: [{
+      id: 'material:REG-OCR-UI-01', sourceRecordId: 'REG-OCR-UI-01', source: 'chat-visual',
+      stageKey: 'water', stageName: 'Rede de Água', name: 'Diesel S10', materialName: 'Diesel S10',
+      activityName: 'Abastecimento da frente', quantity: 1200, unit: 'L', status: 'Pendente',
+      scope: 'Item identificado na nota fiscal.', properties: records[0]?.properties || [], attachments: records[0]?.attachments || [],
+    }],
+    selectedStageV9: 'water',
+    selectedStage: 'water',
+    activityDedicated: false,
+    controlStageCenterTab: 'materials',
+  }), saved);
+  const center = page.locator('[data-stage-home-record-resources]');
+  await expect(center).toBeVisible();
+  await center.locator('[data-stage-home-resource-stage]').selectOption('water');
+  await expect(center.locator('[data-stage-center-material-row]')).toContainText('Diesel S10');
+  const row = center.locator('[data-stage-center-material-row]').filter({ hasText: 'Diesel S10' });
+  await expect(row).toContainText('Rede de Água');
+  await row.click();
+  const dialog = page.locator('dialog[data-stage-center-item-dialog]');
+  await expect(dialog).toContainText('Diesel S10');
+  await expect(dialog).toContainText('nf-diesel-18452.png');
+  const screenshot = testInfo.outputPath('nota-material-alocada-na-central.png');
+  await page.screenshot({ path: screenshot, fullPage: false });
+  await testInfo.attach('nota-material-alocada-na-central.png', {
+    path: screenshot,
+    contentType: 'image/png',
+  });
+});

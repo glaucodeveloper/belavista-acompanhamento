@@ -23,8 +23,8 @@ globalThis.BELAVISTA_DISABLE_SERVICE_WORKER=true;
   <script src="./pat-freeze-guard-v5364.js?v=5.3.64"></script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#07111f" />
-  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#101010" />
+  <meta name="color-scheme" content="light" />
   <meta name="belavista-api-base" content="" />
   <meta name="belavista-ai-base" content="https://belavista-cloudflare-worker.icaroglaucooliveira.workers.dev" />
   <meta name="belavista-fcm-vapid-key" content="" />
@@ -36,7 +36,7 @@ globalThis.BELAVISTA_DISABLE_SERVICE_WORKER=true;
   <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <link rel="stylesheet" href="./styles.css?v=stage-shared-header-v98" />
+    <link rel="stylesheet" href="./styles.css?v=limited-role-surface-v1" />
   <link rel="stylesheet" href="./map-page-widgets-v5.css?v=widget-blue-smoke-v1" />
   <link rel="stylesheet" href="./dashboard-map-tabs-v3.css?v=map-dashboard-modes-v2" />
   <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
@@ -58,11 +58,10 @@ globalThis.BELAVISTA_DISABLE_SERVICE_WORKER=true;
   <link rel="stylesheet" href="./admin-runtime-v11.css?v=admin-runtime-v11">
   <link rel="stylesheet" href="./finance-mobile-cash-v5358.css?v=5.3.58">
   <link rel="stylesheet" href="./chat-tab-widget-ghost-v5359.css?v=5.3.59">
-  <link rel="stylesheet" href="./worker-context-chat.css?v=worker-chat-image-reasoning-v3">
   <link rel="stylesheet" href="./admin-workers.css?v=admin-messages-v1">
   <link rel="stylesheet" href="./admin-communications.css?v=admin-messages-v1">
   <link rel="stylesheet" href="./final-workspaces-v5360.css?v=5.3.61-stage-context-home">
-  <link rel="stylesheet" href="./stages-landing-v5361.css?v=5.3.61">
+  <link rel="stylesheet" href="./stages-landing-v5361.css?v=atlas-timeline-v2">
   <link rel="stylesheet" href="./stages-navigation-v5374.css?v=5.3.74">
 <script data-belavista-worker-direct-v5362>
 (() => {
@@ -73,13 +72,12 @@ globalThis.BELAVISTA_DISABLE_SERVICE_WORKER=true;
 })();
 </script>
 <link rel="stylesheet" href="./belavista-final-ui-v5362.css?v=5.3.64-stage-context-home">
-<link rel="stylesheet" href="./admin-brand-style-v1.css?v=alianza-brand-v11-edited-mark-v551-20260915">
 <link rel="stylesheet" href="./admin-test-controls.css?v=1">
 <link rel="stylesheet" href="./activity-map-layer.css?v=lead-number-markers-v3">
 <link rel="stylesheet" href="./records-activity-drill-in-v5377.css?v=record-detail-page-v3">
-<link rel="stylesheet" href="./stage-map-transition-v1.css?v=4">
 <link rel="stylesheet" href="./control-record-accordion-v1.css?v=1">
 <link rel="stylesheet" href="./material-transition-v1.css?v=2">
+  <link rel="stylesheet" href="./mobile-operational-v1.css?v=mobile-agenda-v2">
 <script>
 /* BELAVISTA_NGROK_SW_PURGE_V5372 */
 (()=>{
@@ -115,6 +113,10 @@ globalThis.BELAVISTA_DISABLE_SERVICE_WORKER=true;
 })();
 </script>
 <link rel="stylesheet" href="./record-ocr-dynamic-v21.css?v=21">
+<link rel="stylesheet" href="./atlas-application-v1.css?v=atlas-live-pages-v9">
+<link rel="stylesheet" href="./atlas-zip-shell-v2.css?v=atlas-zip-front-structure-v5">
+ <link rel="stylesheet" href="./atlas-operational-design-v1.css?v=atlas-shell-consistency-v16">
+<link rel="stylesheet" href="./worker-context-chat.css?v=codex-floating-v3">
 
 </head>
 <body class="admin-shell-page">
@@ -123,13 +125,34 @@ globalThis.BELAVISTA_DISABLE_SERVICE_WORKER=true;
   </div>
   <cloudflare-bootstrap hidden></cloudflare-bootstrap>
   <belavista-app hidden></belavista-app>
-  <script type="module" src="./admin-auth.mjs?v=admin-auth-v3"></script>
+  <script type="module" src="./admin-auth.mjs?v=admin-auth-v4"></script>
   <script type="module" src="./admin-twa-runtime.mjs?v=admin-twa-runtime-v1"></script>
-<script type="module" src="./admin-original-bootstrap-v5351.mjs?stage-map-mouse-v1"></script>
-<script type="module" src="./records-activity-drill-in-v5377.mjs?v=record-detail-page-v7-road-surface"></script>
+<script type="module" src="./bootstrap/admin-application-entry.mjs?v=admin-map-modules-v39"></script>
+<script>
+/* BELAVISTA_STAGE_RECORD_CENTER_CACHE_RESET_V1 */
+(() => {
+  if (!/^(?:localhost|127\.0\.0\.1)$/i.test(location.hostname)) return;
+  const key = "belavista.map-original-pdf-perimeter.cache-reset.v3";
+  if (sessionStorage.getItem(key) === "1") return;
+  sessionStorage.setItem(key, "1");
+  const clear = async () => {
+    try {
+      const registrations = await navigator.serviceWorker?.getRegistrations?.();
+      await Promise.all((registrations || []).map((registration) => registration.unregister()));
+      if (globalThis.caches) {
+        await Promise.all((await caches.keys()).map((cacheKey) => caches.delete(cacheKey)));
+      }
+    } catch {}
+    location.reload();
+  };
+  void clear();
+})();
+</script>
+<script type="module" src="./records-activity-drill-in-v5377.mjs?v=lot-development-v1"></script>
+<script type="module" src="./map-drag-calibration-v1.mjs?v=13"></script>
   <script type="module" src="./admin-test-controls.mjs?v=1"></script>
   <script type="module" src="./activity-map-layer.mjs?v=lead-number-markers-v3"></script>
-  <script type="module" src="./worker-context-chat.mjs?v=general-event-review-v1"></script>
+  <script type="module" src="./worker-context-chat.mjs?v=codex-floating-v2"></script>
   <script type="module" src="./admin-communications.mjs?v=admin-messages-v1"></script>
 <script type="module" src="./record-ocr-dynamic-v21.mjs?v=21"></script>
 <script type="module" src="./glauco-shell-bridge-v58.mjs"></script>

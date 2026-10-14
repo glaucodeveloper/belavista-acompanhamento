@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
-const components=read('components.js');
+const components=(read('components/map/map-scene-composition-v1.mjs') + read('components.js'));
 const app=read('app.js');
 
 test('mapa administrativo usa projeção ortográfica sem alterar o mapa público',()=>{

@@ -57,10 +57,12 @@ test('fontes de registro, mapa, caixa, agenda e notificações existem', () => {
 test('fluxo de compreensão preserva requisitos, impacto e decisão de agenda', () => {
   const planning = read('production-planning.mjs');
   const stage = read('stage-workbench.mjs');
-  const components = read('components.js');
+  const stageComposition = read('components/planning/stage-pages-application-composition-v1.mjs');
+  const actionReflection = read('components/planning/ai-action-reflection-v1.mjs');
   assert.match(stage, /requestHints|typicalDescription|evidenceFocus/i);
   assert.match(planning, /agenda|dependency|sector-overlap/i);
-  assert.match(components, /inferScheduleImpactV1|impacto.*cronograma|aiActionPositionChanges/i);
+  assert.match(stageComposition, /installAiActionReflectionV1/);
+  assert.match(actionReflection, /inferScheduleImpact|impacto.*cronograma|aiActionPositionChanges/i);
 });
 
 test('entrada de registro tem validação contra duplicação e conflito', () => {

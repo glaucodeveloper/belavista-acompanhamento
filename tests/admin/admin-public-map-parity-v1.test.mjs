@@ -5,7 +5,8 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
-const components=fs.readFileSync(path.join(root,'components.js'),'utf8');
+const mapModules=fs.readdirSync(path.join(root,'components/map')).filter(name=>name.endsWith('.mjs')).map(name=>fs.readFileSync(path.join(root,'components/map',name),'utf8'));
+const components=[(fs.readFileSync(path.resolve('components/map/map-scene-composition-v1.mjs'), 'utf8') + (fs.readFileSync(path.join(root, 'components/map/map-scene-composition-v1.mjs'), 'utf8') + fs.readFileSync(path.join(root, 'components.js'), 'utf8'))),...mapModules].join('\n');
 const activityMapEditor=fs.readFileSync(path.join(root,'activity-map-editor.mjs'),'utf8');
 const bridge=fs.readFileSync(path.join(root,'admin-public-map-surface-v5352.mjs'),'utf8');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
@@ -60,9 +61,9 @@ test('map-scene alterna extensão de etapas e seleção de polígonos nos regist
 });
 
 test('admin executa o app uma única vez pelo bootstrap original',()=>{
-  assert.match(html,/admin-original-bootstrap-v5351\.mjs/);
+  assert.match(html,/bootstrap\/admin-application-entry\.mjs/);
   assert.doesNotMatch(html,/app\.js\?v=/);
-  assert.match(fs.readFileSync(path.join(root,'admin-original-bootstrap-v5351.mjs'),'utf8'),/app\.js\?v=map-multi-layer-v1/);
+  assert.match(fs.readFileSync(path.join(root,'bootstrap/admin-application-entry.mjs'),'utf8'),/app\.js\?v=map-multi-layer-v1/);
 });
 
 test('extensões administrativas são carregadas depois do shell',()=>{
@@ -71,7 +72,7 @@ test('extensões administrativas são carregadas depois do shell',()=>{
   assert.deepEqual(scripts,[
     './admin-auth.mjs?v=admin-auth-v3',
     './admin-twa-runtime.mjs?v=admin-twa-runtime-v1',
-    './admin-original-bootstrap-v5351.mjs?v=map-multi-layer-v1',
+    './bootstrap/admin-application-entry.mjs?v=map-multi-layer-v1',
     './records-activity-drill-in-v5377.mjs?v=records-stage-entry-v3',
     './admin-test-controls.mjs?v=1',
     './activity-map-layer.mjs?v=1',

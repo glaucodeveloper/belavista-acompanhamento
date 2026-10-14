@@ -35,34 +35,37 @@ test('limite do pan acompanha a inclinação real da câmera',()=>{
   assert.match(components,/target=this\.clampScenePan\(requested\.x,requested\.y\)/);
 });
 
-test('Ctrl + roda controla o zoom e Ctrl + arraste mantém a inclinação',()=>{
+test('roda do mouse e Shift/Ctrl + arraste controlam o zoom',()=>{
   const components=read('components.js');
-  assert.match(components,/const zoomSceneAtCursorByCtrlWheel=event=>\{/);
-  assert.match(components,/if\(!event\.ctrlKey\|\|event\.defaultPrevented\)return;/);
-  assert.match(components,/event\.preventDefault\(\);\s*event\.stopPropagation\(\);/);
-  assert.match(components,/this\.addEventListener\('wheel',zoomSceneAtCursorByCtrlWheel,\{capture:true,passive:false\}\)/);
-  assert.match(components,/this\.setSceneZoomAt\(nextZoom,event\.clientX,event\.clientY,false\)/);
-  assert.match(components,/this\.dataset\.sceneWheelZoom='ctrl-wheel · cursor-ground'/);
-  assert.match(components,/setSceneZoomAt\(value,clientX,clientY,animate=false\)/);
-  assert.match(components,/mapZoomAnchor='cursor-ground · rotation-aware'/);
-  assert.match(components,/this\.queueSceneBoundsCommit\('ctrl-wheel-zoom'\)/);
-  assert.doesNotMatch(components,/queueSceneBoundsCommit\('wheel'\)/);
-  assert.match(components,/tilting=!selecting&&event\.button===0&&event\.shiftKey/);
-  assert.match(components,/else if\(tilting\)this\.setSceneTiltAdjust\(this\.sceneTiltAdjust\+dy\*TILT_DRAG_SENSITIVITY,false\)/);
-  assert.match(components,/MIN_SCENE_TILT=0, MAX_SCENE_TILT=72/);
-  assert.match(components,/Math\.max\(\.5,Math\.min\(89\.5,90-tilt\)\)/);
-  assert.match(components,/tiltSafety=1\+Math\.sin\(tilt\*Math\.PI\/180\)\*\.58/);
-  assert.match(components,/sceneTiltBounds=`\$\{bounds\.min\}–\$\{bounds\.max\}deg`/);
-  assert.match(components,/publicCameraInteracted!=='true'/);
-  assert.doesNotMatch(components,/if\(this\.isPublicCustomerExperience\(\)\)return;/);
+  const has=(pattern)=>assert.ok(pattern.test(components),`components.js deve corresponder a ${pattern}`);
+  has(/const zoomSceneAtCursorByCtrlWheel\s*=\s*\(event\)\s*=>\s*\{/);
+  has(/if\s*\(event\.defaultPrevented\)\s*return/);
+  has(/event\.preventDefault\(\);\s*event\.stopPropagation\(\);/);
+  has(/this\.addEventListener\(\s*"wheel",\s*zoomSceneAtCursorByCtrlWheel,\s*\{\s*capture:\s*true,\s*passive:\s*false/);
+  has(/this\.setSceneZoomAt\(nextZoom,\s*event\.clientX,\s*event\.clientY,\s*false\)/);
+  has(/this\.dataset\.sceneWheelZoom\s*=\s*event\.ctrlKey\s*\?\s*"ctrl-wheel · cursor-ground · precise"\s*:\s*"wheel · cursor-ground"/);
+  has(/setSceneZoomAt\(value,\s*clientX,\s*clientY,\s*animate\s*=\s*false\)/);
+  has(/mapZoomAnchor\s*=\s*"cursor-ground · rotation-aware"/);
+  has(/this\.queueSceneBoundsCommit\("wheel-zoom"\)/);
+  has(/zooming\s*=\s*!selecting\s*&&\s*event\.button\s*===\s*0\s*&&\s*\(event\.shiftKey\s*\|\|\s*event\.ctrlKey\)/);
+  has(/event\.shiftKey\s*\?\s*"shift-drag-zoom"\s*:\s*"ctrl-drag-zoom"/);
+  has(/this\.sceneManualZoom\s*-\s*dy\s*\*\s*ZOOM_DRAG_SENSITIVITY/);
+  has(/event\.deltaY\s*<\s*0\s*\?\s*1\s*:\s*-1\)\s*\*\s*\(event\.ctrlKey\s*\?\s*0\.025\s*:\s*0\.07/);
+  assert.match(components,/MIN_SCENE_TILT\s*=\s*0,\s*MAX_SCENE_TILT\s*=\s*72/);
+  assert.match(components,/Math\.max\(0\.5,\s*Math\.min\(89\.5,\s*90\s*-\s*tilt\)\)/);
+  assert.match(components,/tiltSafety\s*=\s*1\s*\+\s*Math\.sin\(\(tilt\s*\*\s*Math\.PI\)\s*\/\s*180\)\s*\*\s*0\.58/);
+  assert.match(components,/sceneTiltBounds\s*=\s*`\$\{bounds\.min\}–\$\{bounds\.max\}deg`/);
+  assert.match(components,/publicCameraInteracted\s*!==\s*"true"/);
+  assert.doesNotMatch(components,/if\s*\(this\.isPublicCustomerExperience\(\)\)\s*return/);
 });
 
-test('a roda só aplica zoom com Ctrl no mapa principal, compacto e Leaflet',()=>{
+test('a roda aplica zoom sem Ctrl e mantém Ctrl como ajuste fino',()=>{
   const components=read('components.js');
-  assert.match(components,/if\(!event\.ctrlKey\)return;event\.preventDefault\(\);const source=sharedMapScene/);
-  assert.match(components,/scrollWheelZoom:false/);
-  assert.match(components,/if\(!event\.ctrlKey\|\|event\.defaultPrevented\)return;/);
-  assert.match(components,/this\.addEventListener\('wheel',zoomSceneAtCursorByCtrlWheel,\{capture:true,passive:false\}\)/);
+  assert.match(components,/event\.preventDefault\(\);\s*const source\s*=\s*sharedMapScene/);
+  assert.doesNotMatch(components,/if\s*\(!event\.ctrlKey\)\s*return;\s*event\.preventDefault\(\);\s*const source = sharedMapScene/);
+  assert.match(components,/scrollWheelZoom:\s*false/);
+  assert.match(components,/event\.ctrlKey\s*\?\s*0\.025\s*:\s*0\.07/);
+  assert.match(components,/this\.addEventListener\(\s*"wheel",\s*zoomSceneAtCursorByCtrlWheel,\s*\{\s*capture:\s*true,\s*passive:\s*false/);
 });
 
 test('filtros informacionais entram e saem do modelo 3D com transição',()=>{

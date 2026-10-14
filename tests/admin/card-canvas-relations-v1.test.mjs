@@ -5,17 +5,18 @@ import fs from 'node:fs';
 const read = file => fs.readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
 
 test('PERT cria card e relação somente após formulário, com prévia Bézier', () => {
-  const source = read('components.js');
-  assert.match(source, /const beginCardCanvasLinkV1 =/);
-  assert.match(source, /path\.setAttribute\("d", `M .* C /);
-  assert.match(source, /card-canvas-link-ghost/);
+  const source = read('components/planning/pert-workspace-v1.mjs');
+  const gesture = read('components/planning/card-canvas-link-v1.mjs');
+  assert.match(gesture, /export const createCardCanvasLinkV1/);
+  assert.match(gesture, /path\.setAttribute\("d", `M .* C /);
+  assert.match(gesture, /card-canvas-link-ghost/);
   assert.match(source, /data-pert-link-form/);
   assert.match(source, /pertCustomNodes: \[/);
   assert.match(source, /pertRelations: \[/);
 });
 
 test('Agenda preserva arraste de dia e hora e cria novo card vinculado', () => {
-  const source = read('components.js');
+  const source = read('components/planning/agenda-calendar-v8.mjs');
   assert.match(source, /data-agenda-link-from/);
   assert.match(source, /if \(target\.closest\("\[data-agenda-link-from\]"\)\) return/);
   assert.match(source, /beginCardCanvasLinkV1\(\{[\s\S]*?surface: track/);

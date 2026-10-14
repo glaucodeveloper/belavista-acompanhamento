@@ -5,9 +5,10 @@ import path from 'node:path';
 
 const root=process.env.BELAVISTA_ROOT;
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
+const mapModules=fs.readdirSync(path.join(root,'components/map')).filter(name=>name.endsWith('.mjs')).map(name=>read(`components/map/${name}`));
 
 test('mapa administrativo mantém orientação fixa de 180 graus',()=>{
-  const components=read('components.js');
+  const components=[(read('components/map/map-scene-composition-v1.mjs') + read('components.js')),...mapModules].join('\n');
   const bridge=read('admin-public-map-surface-v5352.mjs');
   const publicMap=read('public-leads-map-v50.mjs');
 

@@ -35,7 +35,7 @@ test('registro público preserva a área e os partIds na submissão', () => {
 });
 
 test('renderer administrativo usa fallback quando WebGL não está disponível', () => {
-  const components = read('components.js');
+  const components = (read('components/map/map-scene-composition-v1.mjs') + read('components.js'));
   assert.match(components, /WebGL indisponível no mapa administrativo/);
   assert.match(components, /context: webglContext/);
 });

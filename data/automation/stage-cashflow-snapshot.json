@@ -1,0 +1,444 @@
+{
+  "generatedAt": "2026-10-13T17:07:45.135Z",
+  "cash": {
+    "entriesCents": 31325450,
+    "exitsCents": 98531620,
+    "balanceCents": -67206170
+  },
+  "documents": {
+    "purchaseReceipts": 2,
+    "purchaseReceiptCents": 250900,
+    "outsourcingReceipts": 2,
+    "outsourcingReceiptCents": 182850
+  },
+  "operational": {
+    "snapshotId": "SNP-MV6XP8YT",
+    "calibrationVersion": 1,
+    "allocatableCents": 0,
+    "stages": [
+      {
+        "key": "project",
+        "name": "Projeto executivo",
+        "priority": 100,
+        "status": "andamento",
+        "progress": 72,
+        "owner": "Engenharia / Projetos",
+        "budgetCents": 14000000,
+        "spentCents": 0,
+        "needCents": 14000000,
+        "allocatedCents": 0,
+        "coverage": 0,
+        "eligible": true,
+        "blockedBy": []
+      },
+      {
+        "key": "earthwork",
+        "name": "Terraplanagem",
+        "priority": 95,
+        "status": "andamento",
+        "progress": 68,
+        "owner": "Equipe Terraplanagem",
+        "budgetCents": 42000000,
+        "spentCents": 45200,
+        "needCents": 41954800,
+        "allocatedCents": 0,
+        "coverage": 0,
+        "eligible": false,
+        "blockedBy": [
+          "project"
+        ]
+      },
+      {
+        "key": "drainage",
+        "name": "Drenagem Pluvial",
+        "priority": 90,
+        "status": "execucao",
+        "progress": 56,
+        "owner": "Carlos Mendes",
+        "budgetCents": 50400000,
+        "spentCents": 11886420,
+        "needCents": 38513580,
+        "allocatedCents": 0,
+        "coverage": 0,
+        "eligible": false,
+        "blockedBy": [
+          "earthwork"
+        ]
+      },
+      {
+        "key": "water",
+        "name": "Rede de Água",
+        "priority": 88,
+        "status": "planejado",
+        "progress": 12,
+        "owner": "João Pereira",
+        "budgetCents": 39200000,
+        "spentCents": 8200000,
+        "needCents": 31000000,
+        "allocatedCents": 0,
+        "coverage": 0,
+        "eligible": false,
+        "blockedBy": [
+          "drainage"
+        ]
+      },
+      {
+        "key": "curbs",
+        "name": "Meio-fio",
+        "priority": 76,
+        "status": "planejado",
+        "progress": 0,
+        "owner": "Equipe Infra",
+        "budgetCents": 22400000,
+        "spentCents": 0,
+        "needCents": 22400000,
+        "allocatedCents": 0,
+        "coverage": 0,
+        "eligible": false,
+        "blockedBy": [
+          "water"
+        ]
+      },
+      {
+        "key": "paving",
+        "name": "Pavimentação",
+        "priority": 70,
+        "status": "planejado",
+        "progress": 0,
+        "owner": "Mariana Lopes",
+        "budgetCents": 56000000,
+        "spentCents": 0,
+        "needCents": 56000000,
+        "allocatedCents": 0,
+        "coverage": 0,
+        "eligible": false,
+        "blockedBy": [
+          "curbs",
+          "water"
+        ]
+      },
+      {
+        "key": "electrical",
+        "name": "Rede Elétrica",
+        "priority": 60,
+        "status": "prioridade",
+        "progress": 8,
+        "owner": "Mariana Silva",
+        "budgetCents": 44800000,
+        "spentCents": 6400000,
+        "needCents": 38400000,
+        "allocatedCents": 0,
+        "coverage": 0,
+        "eligible": false,
+        "blockedBy": [
+          "paving"
+        ]
+      },
+      {
+        "key": "signage",
+        "name": "Sinalização",
+        "priority": 50,
+        "status": "planejado",
+        "progress": 0,
+        "owner": "Equipe Infra",
+        "budgetCents": 11200000,
+        "spentCents": 0,
+        "needCents": 11200000,
+        "allocatedCents": 0,
+        "coverage": 0,
+        "eligible": false,
+        "blockedBy": [
+          "electrical"
+        ]
+      }
+    ]
+  },
+  "automation": {
+    "jobId": "JOB-MV6XP94C-732R",
+    "summary": {
+      "stages": 7,
+      "criticalStages": 7,
+      "materialsTracked": 12,
+      "purchasesTracked": 5,
+      "receiptsTracked": 2,
+      "nextNotifications": 22,
+      "cash": {
+        "entriesCents": 31325450,
+        "exitsCents": 98531620,
+        "balanceCents": -67206170,
+        "reserveCents": 2000000,
+        "allocatableCents": 0,
+        "unallocatedCents": 0
+      },
+      "lots": 298,
+      "physicalPlans": 7,
+      "registeredActivePeople": 4
+    },
+    "notifications": [
+      {
+        "role": "owner",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Projeto executivo sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "desktop-owner",
+          "rtdb/owner"
+        ]
+      },
+      {
+        "role": "admin",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Projeto executivo sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "desktop-admin",
+          "rtdb/admin"
+        ]
+      },
+      {
+        "role": "foreman",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Projeto executivo sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "mobile-foreman",
+          "rtdb/foreman"
+        ]
+      },
+      {
+        "role": "owner",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Terraplanagem sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "desktop-owner",
+          "rtdb/owner"
+        ]
+      },
+      {
+        "role": "admin",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Terraplanagem sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "desktop-admin",
+          "rtdb/admin"
+        ]
+      },
+      {
+        "role": "foreman",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Terraplanagem sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "mobile-foreman",
+          "rtdb/foreman"
+        ]
+      },
+      {
+        "role": "supplies",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Terraplanagem sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "desktop-supplies",
+          "rtdb/supplies"
+        ]
+      },
+      {
+        "role": "owner",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Drenagem Pluvial sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "desktop-owner",
+          "rtdb/owner"
+        ]
+      },
+      {
+        "role": "admin",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Drenagem Pluvial sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "desktop-admin",
+          "rtdb/admin"
+        ]
+      },
+      {
+        "role": "foreman",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Drenagem Pluvial sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "mobile-foreman",
+          "rtdb/foreman"
+        ]
+      },
+      {
+        "role": "supplies",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Drenagem Pluvial sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "desktop-supplies",
+          "rtdb/supplies"
+        ]
+      },
+      {
+        "role": "owner",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Rede de Água sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "desktop-owner",
+          "rtdb/owner"
+        ]
+      },
+      {
+        "role": "admin",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Rede de Água sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "desktop-admin",
+          "rtdb/admin"
+        ]
+      },
+      {
+        "role": "foreman",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Rede de Água sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "mobile-foreman",
+          "rtdb/foreman"
+        ]
+      },
+      {
+        "role": "sales",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Rede de Água sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "desktop-commercial",
+          "rtdb/commercial"
+        ]
+      },
+      {
+        "role": "owner",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Meio-fio sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "desktop-owner",
+          "rtdb/owner"
+        ]
+      },
+      {
+        "role": "admin",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Meio-fio sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "desktop-admin",
+          "rtdb/admin"
+        ]
+      },
+      {
+        "role": "foreman",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Meio-fio sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "mobile-foreman",
+          "rtdb/foreman"
+        ]
+      },
+      {
+        "role": "owner",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Rede Elétrica sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "desktop-owner",
+          "rtdb/owner"
+        ]
+      },
+      {
+        "role": "admin",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Rede Elétrica sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "desktop-admin",
+          "rtdb/admin"
+        ]
+      },
+      {
+        "role": "foreman",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Rede Elétrica sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "mobile-foreman",
+          "rtdb/foreman"
+        ]
+      },
+      {
+        "role": "utility",
+        "type": "cash.coverage.low",
+        "severity": "warning",
+        "title": "Rede Elétrica sem cobertura suficiente",
+        "message": "Cobertura atual de 0%. Administração superior do caixa deve revisar a alocação.",
+        "actionUrl": "/?view=finance",
+        "destinations": [
+          "desktop-utility",
+          "rtdb/utility"
+        ]
+      }
+    ]
+  }
+}

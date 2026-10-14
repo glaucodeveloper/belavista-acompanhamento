@@ -20,10 +20,10 @@ const SETTINGS_KEY='belavista.integrations.v1';
 const DEFAULT_PROJECT_ID='project-alianca-park';
 const loadRuntime=()=>runtimePromise||(runtimePromise=(async()=>{
   const [appSdk,databaseSdk,authSdk,storageSdk]=await Promise.all([
-    import(`https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-app.js`),
-    import(`https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-database.js`),
-    import(`https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-auth.js`),
-    import(`https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-storage.js`)
+    import(/* @vite-ignore */ `https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-app.js`),
+    import(/* @vite-ignore */ `https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-database.js`),
+    import(/* @vite-ignore */ `https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-auth.js`),
+    import(/* @vite-ignore */ `https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-storage.js`)
   ]);
   const app=appSdk.initializeApp(FIREBASE_CONFIG);
   // Prefer RTDB WebSocket in browser/TWA. Firebase long-polling creates a
@@ -32,14 +32,21 @@ const loadRuntime=()=>runtimePromise||(runtimePromise=(async()=>{
     databaseSdk.forceWebSockets();
   }
   const auth=authSdk.getAuth(app);
-  // Keep the authenticated operational session across TWA/browser restarts.
-  // The fallback is intentionally non-fatal: restricted WebViews can refuse
-  // persistent storage, in which case Firebase keeps its normal session mode.
-  if(typeof authSdk.setPersistence==='function'&&authSdk.browserLocalPersistence){
-    try{await authSdk.setPersistence(auth,authSdk.browserLocalPersistence);}
-    catch(error){console.info('Persistência local do Firebase indisponível neste contexto.',error);}
+  // Capacitor mobile requires a durable Firebase session. Never report a
+  // successful mobile login if WebView storage cannot persist across restarts.
+  const persistentAuthPersistence=authSdk.indexedDBLocalPersistence||authSdk.browserLocalPersistence;
+  if(typeof authSdk.setPersistence==='function'&&persistentAuthPersistence){
+    try{await authSdk.setPersistence(auth,persistentAuthPersistence);}
+    catch(error){
+      if(globalThis.BELAVISTA_CAPACITOR_NATIVE===true){
+        throw new Error('Não foi possível habilitar o login persistente neste aparelho. Verifique o armazenamento do aplicativo e tente novamente.',{cause:error});
+      }
+      console.info('Persistência local do Firebase indisponível neste contexto.',error);
+    }
+  }else if(globalThis.BELAVISTA_CAPACITOR_NATIVE===true){
+    throw new Error('O Firebase não disponibilizou um mecanismo de login persistente para este aplicativo.');
   }
-  import(`https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-analytics.js`).then(sdk=>{try{sdk.getAnalytics(app);}catch(error){console.info('Firebase Analytics indisponível neste contexto.',error);}}).catch(()=>{});
+  import(/* @vite-ignore */ `https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-analytics.js`).then(sdk=>{try{sdk.getAnalytics(app);}catch(error){console.info('Firebase Analytics indisponível neste contexto.',error);}}).catch(()=>{});
   const db=databaseSdk.getDatabase(app);
   return {app,auth,db,storage:storageSdk.getStorage(app),...authSdk,...storageSdk,...databaseSdk,ref:databaseSdk.ref,storageRef:storageSdk.ref};
 })().catch(error=>{runtimePromise=null;throw error;}));
@@ -309,6 +316,8 @@ const normalizeAuthRole=value=>{
   const role=String(value||'').trim().toLocaleLowerCase('pt-BR');
   return role==='administrador'?'admin':role==='encarregado'?'foreman':['developer','desenvolvimento','desenvolvedor','ti','dev'].includes(role)?'developer':['corretor','corretora','vendedor','vendedora','sales'].includes(role)?'sales':role==='comercial'?'commercial':role;
 };
+const normalizeAuthUserType=value=>['encarregado','foreman'].includes(String(value||'').trim().toLocaleLowerCase('pt-BR'))?'foreman':'';
+const userTypeFromClaims=(claims={},role='')=>normalizeAuthUserType(claims.userType||claims.user_type||claims['https://belavista/userType']||role);
 const LOCAL_DEVELOPER_EMAIL='icaroglaucooliveira@gmail.com';
 const isLocalDeveloper=(email)=>typeof location!=='undefined'&&/^(localhost|127\.0\.0\.1|\[::1\])$/i.test(String(location.hostname||''))&&String(email||'').trim().toLocaleLowerCase('pt-BR')===LOCAL_DEVELOPER_EMAIL;
 export async function signInOperationalUser(email,password,allowedRoles=['admin','foreman','owner','developer','sales','commercial']){
@@ -316,12 +325,13 @@ export async function signInOperationalUser(email,password,allowedRoles=['admin'
   const credential=await runtime.signInWithEmailAndPassword(runtime.auth,String(email||'').trim(),String(password||''));
   const tokenResult=await credential.user.getIdTokenResult(true);
   const claimedRole=normalizeAuthRole(tokenResult.claims?.role||tokenResult.claims?.userRole||tokenResult.claims?.['https://belavista/role']);
-  const role=isLocalDeveloper(credential.user.email||email)?'developer':claimedRole;
+  const userType=userTypeFromClaims(tokenResult.claims||{},claimedRole);
+  const role=isLocalDeveloper(credential.user.email||email)?'developer':claimedRole==='foreman'?'admin':claimedRole;
   if(!allowedRoles.includes(role)){
     await runtime.signOut(runtime.auth);
     throw new Error('Usuário autenticado sem perfil administrativo autorizado.');
   }
-  return {user:credential.user,role,token:await credential.user.getIdToken(),claims:tokenResult.claims||{}};
+  return {user:credential.user,role,userType,token:await credential.user.getIdToken(),claims:tokenResult.claims||{}};
 }
 export async function restoreOperationalUser(allowedRoles=['admin','foreman','owner','developer','sales','commercial']){
   const runtime=await loadRuntime();
@@ -342,9 +352,10 @@ export async function restoreOperationalUser(allowedRoles=['admin','foreman','ow
   if(!user)return null;
   const tokenResult=await user.getIdTokenResult();
   const claimedRole=normalizeAuthRole(tokenResult.claims?.role||tokenResult.claims?.userRole||tokenResult.claims?.['https://belavista/role']);
-  const role=isLocalDeveloper(user.email)?'developer':claimedRole;
+  const userType=userTypeFromClaims(tokenResult.claims||{},claimedRole);
+  const role=isLocalDeveloper(user.email)?'developer':claimedRole==='foreman'?'admin':claimedRole;
   if(!allowedRoles.includes(role))return null;
-  return {user,role,token:await user.getIdToken(),claims:tokenResult.claims||{}};
+  return {user,role,userType,token:await user.getIdToken(),claims:tokenResult.claims||{}};
 }
 export async function signOutOperationalUser(){
   const runtime=await loadRuntime();

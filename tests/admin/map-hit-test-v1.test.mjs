@@ -5,7 +5,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
-const components=fs.readFileSync(path.join(root,'components.js'),'utf8');
+const components=(fs.readFileSync(path.resolve('components/map/map-scene-composition-v1.mjs'), 'utf8') + (fs.readFileSync(path.join(root, 'components/map/map-scene-composition-v1.mjs'), 'utf8') + fs.readFileSync(path.join(root, 'components.js'), 'utf8')));
 const pickStart=components.indexOf('  pickModelAt(point){');
 const pickEnd=components.indexOf('  isDashboardStatusContext(){',pickStart);
 const pickSource=components.slice(pickStart,pickEnd);

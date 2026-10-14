@@ -62,7 +62,7 @@ async function notifyRoles(database, decisionId, decision, roles = ['owner', 'ad
   const targets = Object.entries(registrations).filter(([, item]) => item?.enabled !== false && roles.includes(item?.role));
   const message = decision.model?.summary || 'Nova decisão operacional requer sua ciência.';
   await Promise.all(targets.map(async ([id, item]) => {
-    const notification = {id: decisionId, type: 'agent.decision', title: 'Decisão da IA aguardando confirmação', message, actionUrl: '/encarregados.html', status: 'unread', createdAt: now()};
+    const notification = {id: decisionId, type: 'agent.decision', title: 'Decisão da IA aguardando confirmação', message, actionUrl: '/admin?view=stages', status: 'unread', createdAt: now()};
     await database.ref(`notifications/${item.uid}/${decisionId}`).set(notification);
     if (item.fcmToken) await getMessaging().send({token: item.fcmToken, notification: {title: notification.title, body: notification.message}, data: {notificationId: decisionId, actionUrl: notification.actionUrl, type: notification.type}}).catch(() => null);
     await database.ref(`operationalDevices/${id}/lastNotifiedAt`).set(now());

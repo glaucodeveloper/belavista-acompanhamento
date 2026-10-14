@@ -43,6 +43,7 @@ import {getNvidiaRuntime,
   runWholeWorkJourneyExplanation,
   extractInstantRecordOcr
 } from './nvidia.js';
+import {buildRecordInterpretationV1} from '../../record-stage-interpretation-v1.mjs';
 import {runPlanningCycle} from './planning-service.js';
 import {runOperationalLoop} from './operational-loop.js';
 import {runPublicLeadConversation} from './public-lead-ai.js';
@@ -52,6 +53,7 @@ import {readPublicCatalog} from './public-commercial-store.js';
 import {createLiveTestSession,readLiveTestSession,saveLiveTestSession,deleteLiveTestSession,applyLiveTestEvent} from './live-test-session.js';
 
 import {saveCashEvidence} from './cash-evidence.js';
+import {saveLotDocument} from './lot-document-store.js';
 import {webhookVerification,parseWebhook,saveInboundSocialMessages,socialRuntime,listSocialConversations,listSocialMessages,sendSocialMessage,saveInstagramCommercialLead,listInstagramFeed,replyInstagramComment,getInstagramAutomationPolicy,saveInstagramAutomationPolicy} from './social.js';
 import {getHeldImage,holdImageInWorker,readHeldImageDataUrl,normalizeImageAttachment} from './media-attachments.js';
 
@@ -352,6 +354,13 @@ export async function routeRequest(request,env,ctx){
     return json({proof},201);
   }
 
+  if(pathname==='/api/lot-documents/upload'&&request.method==='POST'){
+    await requireAdminRequest(request,env);
+    const payload=await body(request);
+    const document=await saveLotDocument(env,payload);
+    return json({document},201);
+  }
+
   if(pathname==='/api/operational-loop'&&request.method==='POST'){
     await requireAdminRequest(request,env);
     const payload=await body(request);
@@ -377,18 +386,21 @@ export async function routeRequest(request,env,ctx){
     const image=payload.attachment?normalizeImageAttachment(payload.attachment):null;
     if(payload.attachment&&!image)return json({error:'Imagem inválida. Use PNG, JPEG ou WEBP de até 6 MB.'},400);
     const serializedImage=image?{id:image.id,name:image.name,mimeType:image.mimeType,sizeBytes:image.sizeBytes,dataUrl:image.dataUrl,stored:false,storage:'request-ephemeral',transport:'inline-data-url'}:null;
+    const recordOcrV21=image?await extractInstantRecordOcr(env,{attachment:serializedImage,context:{userDescription:payload.message,stages:payload.context?.stages||[],selectedStageKey:payload.context?.selectedStageKey||'',selectedStageName:payload.context?.selectedStageName||''}}).catch(error=>({error:String(error?.message||error),reviewRequired:true})):null;
+    const recordInterpretationV21=image?buildRecordInterpretationV1({message:payload.message,stages:payload.context?.stages,selectedStageKey:payload.context?.selectedStageKey,recordOcr:recordOcrV21}):payload.context?.recordInterpretation||null;
+    const modelContextV21=recordInterpretationV21?{...(payload.context||snapshot||{}),recordInterpretation:recordInterpretationV21}:payload.context||snapshot;
+    const modelRequestContextV21=recordInterpretationV21?{...(payload.requestContext||{}),recordInterpretation:recordInterpretationV21}:payload.requestContext;
     if(payload.requestContext?.intent==='explain-current-work-state-and-next-step'){
       const result=await runWholeWorkJourneyExplanation(env,{
         message:payload.message,
-        context:payload.context||snapshot,
+        context:modelContextV21,
         instruction:payload.instruction||'',
-        requestContext:payload.requestContext||null
+        requestContext:modelRequestContextV21||null
       });
-      return json(result);
+      return json({...result,recordOcr:recordOcrV21});
     }
-    const result=await runOperationalAssistant(env,{message:payload.message,view:payload.view,context:payload.context||snapshot,instruction:payload.instruction,requestContext:payload.requestContext,explain:url.searchParams.get('explain')==='1',reasoning:reasoningVision,attachment:serializedImage});
+    const result=await runOperationalAssistant(env,{message:payload.message,view:payload.view,context:modelContextV21,instruction:payload.instruction,requestContext:modelRequestContextV21,explain:url.searchParams.get('explain')==='1',reasoning:reasoningVision,attachment:serializedImage});
     const heldAttachmentV21=image?await holdImageInWorker(env,payload.attachment,{channel:'admin-chat',purpose:'record-ocr'}).catch(()=>null):null;
-    const recordOcrV21=image?await extractInstantRecordOcr(env,{attachment:serializedImage,context:{view:payload.view,source:'chat'}}).catch(error=>({error:String(error?.message||error),reviewRequired:true})):null;
     return json({...result,endpoint:result.endpoint||env.NVIDIA_REASONING_API_URL||env.NVIDIA_API_URL||'https://integrate.api.nvidia.com/v1/chat/completions',reasoning:Boolean(reasoningVision&&image),recordOcr:recordOcrV21,attachment:heldAttachmentV21?{...heldAttachmentV21,dataUrl:undefined}:serializedImage?{...serializedImage,dataUrl:undefined}:null,attachmentStorage:heldAttachmentV21?.storage||(image?'request-ephemeral':null)});
   }
 

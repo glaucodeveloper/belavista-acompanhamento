@@ -4,7 +4,15 @@ import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const serverRoot=fileURLToPath(new URL('.', import.meta.url));
-try { const env = await readFile(join(serverRoot, '.env'), 'utf8'); for (const line of env.split(/\r?\n/)) { const match=line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/); if(match && !process.env[match[1]]) process.env[match[1]]=match[2].replace(/^['"]|['"]$/g,''); } } catch {}
+const configRoot=process.env.BELAVISTA_CONFIG_ROOT?resolve(process.env.BELAVISTA_CONFIG_ROOT):serverRoot;
+if(process.env.BELAVISTA_CONFIG_ROOT){
+  try {
+    const settings=JSON.parse(await readFile(join(configRoot,'settings.json'),'utf8'));
+    for(const [key,value] of Object.entries(settings))if(/^[A-Z][A-Z0-9_]*$/.test(key)&&typeof value==='string'&&!process.env[key])process.env[key]=value;
+  } catch {}
+}else{
+  try { const env = await readFile(join(serverRoot, '.env'), 'utf8'); for (const line of env.split(/\r?\n/)) { const match=line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/); if(match && !process.env[match[1]]) process.env[match[1]]=match[2].replace(/^['"]|['"]$/g,''); } } catch {}
+}
 const root = process.env.BELAVISTA_FRONTEND_ROOT ? resolve(process.env.BELAVISTA_FRONTEND_ROOT) : fileURLToPath(new URL('.', import.meta.url));
 const port = Number(process.env.PORT || 8080);
 const host = process.env.HOST || '0.0.0.0';
@@ -20,13 +28,20 @@ const nvidiaReasoningVisionModel = process.env.NVIDIA_REASONING_VISION_MODEL || 
 const nvidiaReasoningApiUrl = process.env.NVIDIA_REASONING_API_URL || nvidiaApiUrl;
 const nvidiaReasoningBudget = Math.max(256,Math.min(16384,Number(process.env.NVIDIA_REASONING_BUDGET)||2048));
 const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.glb':'model/gltf-binary','.pdf':'application/pdf','.xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'};
-const {health,entitySummary,listRecords,createRecord,createMaterialTransition,createFieldConfirmation,updateRecord,deleteRecord,listServiceRequests,getServiceRequest,createServiceRequest,updateServiceRequest,addServiceRequestFiles,getServiceRequestFile,listPurchaseReceipts,purchaseReceiptSummary,createPurchaseReceipt,getPurchaseReceiptFile,deletePurchaseReceipt,listCommercialSales,createCommercialSale,updateCommercialSale,getCommercialSaleFile,deleteCommercialSale,listCashFlowEntries,createCashFlowEntry,addCashFlowAttachment,getCashFlowAttachment,cashFlowSummary,listCommissionReasons,updateCommissionReason,listOutsourcingReceipts,createOutsourcingReceipt,getOutsourcingReceiptFile,listLeadMessages,createLeadMessage,getDesktopSetup,saveDesktopSetup,ingestInstagramDirect,listInstagramLeadReports,getInstagramLeadReport,listStagesAdmin,getStageAdmin,updateStageAdmin,saveStageAiConfig,getStageReport,getStageWorkbenchState,saveStageWorkbenchState,listWorkbenchActivityLocations,listWorkbenchDiary,createWorkbenchDiary,listWorkbenchAttachments,createWorkbenchAttachment,getWorkbenchAttachmentFile,deleteWorkbenchAttachment}=await import('./persistence.mjs');
+const {health,entitySummary,listRecords,createRecord,createMaterialTransition,createFieldConfirmation,updateRecord,deleteRecord,listMaterials,createMaterial,updateMaterial,deleteMaterial,listAgendaEvents,saveAgendaSnapshot,createActivityAdmin,updateActivityAdmin,deleteActivityAdmin,listServiceRequests,getServiceRequest,createServiceRequest,updateServiceRequest,addServiceRequestFiles,getServiceRequestFile,listPurchaseReceipts,purchaseReceiptSummary,createPurchaseReceipt,getPurchaseReceiptFile,deletePurchaseReceipt,listCommercialSales,createCommercialSale,updateCommercialSale,getCommercialSaleFile,deleteCommercialSale,listCashFlowEntries,createCashFlowEntry,addCashFlowAttachment,getCashFlowAttachment,cashFlowSummary,listCommissionReasons,updateCommissionReason,listOutsourcingReceipts,createOutsourcingReceipt,getOutsourcingReceiptFile,listLeadMessages,createLeadMessage,getDesktopSetup,saveDesktopSetup,ingestInstagramDirect,listInstagramLeadReports,getInstagramLeadReport,listStagesAdmin,getStageAdmin,createStageAdmin,updateStageAdmin,saveStageActivitiesAdmin,saveStageAiConfig,getStageReport,getStageWorkbenchState,saveStageWorkbenchState,listWorkbenchActivityLocations,listWorkbenchDiary,createWorkbenchDiary,listWorkbenchAttachments,createWorkbenchAttachment,getWorkbenchAttachmentFile,deleteWorkbenchAttachment,initializeDevelopmentSeed}=await import('./persistence.mjs');
+const {ServerInitializationProgramV1,driveServerInitializationProgramV1}=await import('./bootstrap/server-initialization-program-v1.mjs');
+await driveServerInitializationProgramV1(ServerInitializationProgramV1.program(),{
+  'initialize-clean-development-database':()=>initializeDevelopmentSeed(),
+  'server-system-initialized':()=>undefined
+});
 const {agentTree,evaluateAgentTree}=await import('./agent-tree.js');
 const {requestActor,requireRoles,authStatus}=await import('./auth-service.mjs');
+const {limitedActorCanAccessApi}=await import('./api-access-policy.mjs');
 const {getCalibration,updateCalibration,recordAgentEvent,recalculateOperationalState,latestOperationalState,listNotifications,acknowledgeNotification,registerDevice,buildAutomationPanorama,runAutomationPlanner,runOperationalLoop,buildWorkerMonitor,markEventProcessed}=await import('./operational-engine.mjs');
 const {getProductionBaseline,getProductionPlan}=await import('./production-planning.mjs');
 const {publishBridgeEvent}=await import('./firebase-bridge.mjs');
-const {runOperationalAssistant}=await import('./worker/src/nvidia.js');
+const {runOperationalAssistant,extractInstantRecordOcr}=await import('./worker/src/nvidia.js');
+const {buildRecordInterpretationV1}=await import('./record-stage-interpretation-v1.mjs');
 const {getCamofoxBridgeStatus,openInstagramInbox,fallbackInstagramDraft}=await import('./desktop/instagram-bridge.mjs');
 const {listInstagramFeed,replyInstagramComment,defaultInstagramAutomationPolicy}=await import('./worker/src/social.js');
 
@@ -46,22 +61,24 @@ function bridgeAgentEvent(input){
   return stored;
 }
 
-const OPERATIONAL_CHAT_EXECUTION_POLICY_V1=`Trate pedidos operacionais como intenção de execução, não apenas como perguntas. Use somente as ferramentas permitidas e faça no sistema tudo que for seguro e representável sem inventar fatos. Quando houver compreensão suficiente de etapa ou atividade, mas faltarem dados, crie ou prepare um apontamento pendente no cronograma e pergunte somente os detalhes faltantes. Quando a ação depender de evidência, peça o documento e abra a inclusão de documento quando isso ajudar. Se a compreensão indicar algo completamente externo ao sistema e não houver ação interna segura, não fabrique registro, conclusão, compra ou agenda: peça apenas o documento ou evidência necessária. Nunca confirme como executado algo que nenhuma ferramenta confirmou.`;
+const OPERATIONAL_CHAT_EXECUTION_POLICY_V1=`Trate pedidos operacionais como intenção de execução, usando somente ferramentas permitidas e sem inventar fatos. Leia a imagem junto com o texto disponível e primeiro classifique-a como nota/recibo, foto de evidência de serviço ou outro documento. Para nota, extraia todos os itens e separe material físico de serviço faturado. Para foto de campo, se a pessoa informar somente a etapa, use-a apenas como destino e identifique a ação pela imagem; use descrição da pessoa como relato apenas quando existir. Separe observação visual, relato e inferência; nunca deduza data/hora, equipe, quantidade ou conclusão que não estejam visíveis ou informadas. Compare ação/item com a descrição típica, pistas e atividades das etapas candidatas; associe atividade quando houver evidência visual/textual. A etapa selecionada/aberta é somente contexto de navegação e nunca pode ser fallback. Só aloque em etapa canônica se o encaixe estiver sustentado. Se a ação visual não for identificável com segurança, ou não houver candidata de etapa segura, não escolha a etapa mais próxima, não crie solicitação/adição órfã e mantenha toolCalls vazio: pergunte apenas o dado necessário. Quando alocar, use stage.allocate_visual_record com target material para insumo/equipamento/entrega/falta/comprovante e target service para ação visualmente identificada ou serviço faturado; envie etapa e atividade/material sustentados, detalhes, trecho, confiança e referência ao anexo. Mantenha como Pendente para revisão humana. Quando faltarem dados após entendimento seguro, prepare apontamento Pendente e pergunte só o que falta. Nunca confirme execução que ferramenta não confirmou.`;
 
 // These tools are intentionally executed in the browser, where the live map
 // and UI state exist. The server only asks the model for validated intent; it
 // never lets a prompt execute shell, SQL, network or arbitrary JavaScript.
 const clientTools=[
-  {name:'ui.navigate',description:'Abre uma área da aplicação.',args:{view:'map|control|materials|documents|stages|agenda|actions|activities|records|progress|personnel|leads|contracts|brokers|brokers-board|finance|reports|settings'}},
+  {name:'ui.navigate',description:'Abre uma área da aplicação.',args:{view:'map|control|lot-development|materials|documents|stages|agenda|actions|activities|records|progress|personnel|leads|contracts|brokers|brokers-board|finance|reports|settings'}},
   {name:'ui.open_form',description:'Abre o formulário de adição da área indicada para revisão humana; não salva dados.',args:{view:'materials|documents|agenda|activities|progress|contracts|brokers|reports'}},
   {name:'map.set_overlay',description:'Destaca uma frente no GLB compartilhado.',args:{category:'terraplanagem|drenagem|rede-agua|rede-eletrica|pavimentacao|urbanizacao|clear'}},
   {name:'map.adjust_view',description:'Ajusta a vista 3D do mapa por deltas pequenos.',args:{rotationDelta:'number opcional',tiltDelta:'number opcional',zoomDelta:'number opcional',fit:'boolean opcional'}},
   {name:'map.set_tiles',description:'Alterna a base cartográfica.',args:{mode:'satellite|osm'}},
   {name:'records.open_form',description:'Abre a ficha de evento geral na Central operacional, com sugestões para revisão humana; não grava dados.',args:{activity:'nome do evento opcional',responsible:'responsável opcional',details:'descrição inferida opcional',category:'ocorrencia|vistoria|reuniao|comunicacao|decisao|outro opcional'}},
+  {name:'stage.allocate_visual_record',description:'Aloca item de nota ou ação visualmente identificada em foto como adição Pendente em Materiais ou Serviços da etapa. Associe pela evidência da imagem/OCR com descrição típica, pistas e atividades das etapas candidatas; a etapa indicada pela pessoa é destino explícito, mas nunca evidência da ação. Só chame com etapa canônica e ação sustentadas e revisão humana; sem encaixe seguro pergunte e mantenha toolCalls vazio. Informe atividade/material, detalhes, trecho e confiança quando sustentados.',args:{target:'material|service',stageKey:'chave canônica da etapa obrigatória',stageName:'nome canônico da etapa obrigatório',activityId:'atividade opcional',activityName:'serviço ou atividade opcional',materialName:'material ou equipamento opcional',quantity:'quantidade explicitamente identificada opcional',unit:'unidade opcional',details:'descrição da pessoa e observação OCR/visual',confidence:'0 a 1 opcional',pointer:'trecho ou indicação que sustentou a classificação'}},
   {name:'agenda.create_pending',description:'Cria apontamento Pendente no cronograma quando etapa/atividade já são compreendidas e abre o item para completar dados.',args:{title:'título',stageKey:'etapa opcional',stageName:'nome da etapa opcional',activityId:'atividade opcional',activityName:'nome da atividade opcional',owner:'responsável opcional',date:'AAAA-MM-DD opcional',start:'HH:MM opcional',detailsNeeded:'detalhes que faltam',evidenceRequired:'boolean',notes:'contexto'}},
   {name:'documents.open_form',description:'Abre a inclusão de documento/evidência.',args:{reason:'motivo',documentType:'tipo opcional'}},
   {name:'reports.select',description:'Abre um relatório salvo.',args:{family:'Financeiro|Construção|Suprimentos|Comercial|Governança',reportType:'id opcional'}},
   {name:'commissions.filter',description:'Filtra a carteira comercial.',args:{query:'texto opcional',status:'Reserva|Em análise|Proposta|Assinado|all opcional',profile:'id opcional'}},
+  {name:'lot-development.upsert_profile',description:'Cria ou atualiza, para revisão humana, o perfil de um lote existente ou de uma área comum na página Loteamento. Para lote, informe o lote da tabela; para área comum, descreva uso e localização sem inventar medidas.',args:{kind:'lot|common-area',lot:'rótulo ou número do lote quando kind=lot',title:'nome do perfil',description:'descrição factual ou solicitada',status:'situação opcional',area:'m² somente se informado',value:'valor somente se informado',quadra:'quadra opcional'}},
   {name:'ui.print',description:'Solicita impressão do escopo visível; exige confirmação humana.',args:{scope:'current|map|contract'}}
 ];
 const toolNames=new Set(clientTools.map(tool=>tool.name));
@@ -74,9 +91,23 @@ function normalizeToolCall(call){
     const category=source.includes('dren')?'drenagem':source.includes('terra')?'terraplanagem':source.includes('água')||source.includes('agua')?'rede-agua':source.includes('elétr')||source.includes('eletr')?'rede-eletrica':source.includes('pav')?'pavimentacao':source.includes('praça')||source.includes('praca')||source.includes('urban')||source.includes('lazer')?'urbanizacao':source==='clear'?'clear':null;
     if(!category)return null;args.category=category;
   }
-  if(call.name==='ui.navigate'&&!['map','control','materials','documents','stages','agenda','actions','activities','records','progress','personnel','leads','contracts','brokers','brokers-board','finance','reports','settings'].includes(args.view))return null;
+  if(call.name==='ui.navigate'&&!['map','control','lot-development','materials','documents','stages','agenda','actions','activities','records','progress','personnel','leads','contracts','brokers','brokers-board','finance','reports','settings'].includes(args.view))return null;
   if(call.name==='ui.open_form'&&!['materials','documents','agenda','activities','progress','contracts','brokers','reports'].includes(args.view))return null;
   if(call.name==='map.set_tiles'&&!['satellite','osm'].includes(args.mode))return null;
+  if(call.name==='stage.allocate_visual_record'){
+    const target=String(args.target||'').toLocaleLowerCase('pt-BR');
+    args.target=/material|insumo|equipamento/.test(target)?'material':/servi[cç]|atividade|execu/.test(target)?'service':null;
+    if(!args.target)return null;
+    for(const key of ['stageKey','stageName','activityId','activityName','materialName','unit','details','pointer'])if(key in args)args[key]=String(args[key]??'').trim().slice(0,1200);
+    if('quantity' in args){const value=Number(String(args.quantity).replace(',','.'));args.quantity=Number.isFinite(value)?value:null;}
+    if('confidence' in args){const value=Number(args.confidence);args.confidence=Number.isFinite(value)?Math.max(0,Math.min(1,value)):null;}
+  }
+  if(call.name==='lot-development.upsert_profile'){
+    args.kind=/common|área|area/i.test(String(args.kind||''))?'common-area':'lot';
+    for(const key of ['lot','lotLabel','title','name','description','status','quadra'])if(key in args)args[key]=String(args[key]??'').trim().slice(0,key==='description'?2000:160);
+    for(const key of ['area','value'])if(key in args){const value=Number(String(args[key]).replace(',','.'));args[key]=Number.isFinite(value)&&value>=0?value:undefined;}
+    if(args.kind==='lot'&&!String(args.lot||args.lotLabel||'').trim())return null;
+  }
   if(call.name==='ui.print')args.scope=['current','map','contract'].includes(args.scope)?args.scope:'current';
   if(call.name==='map.adjust_view')for(const key of ['rotationDelta','tiltDelta','zoomDelta'])if(key in args){const value=Number(args[key]);if(!Number.isFinite(value))delete args[key];else args[key]=Math.max(key==='zoomDelta'?-1:key==='tiltDelta'?-24:-90,Math.min(key==='zoomDelta'?1:key==='tiltDelta'?24:90,value));}
   return {name:call.name,arguments:args};
@@ -97,14 +128,20 @@ function inferredToolCalls(message){
   if(!/\b(abra|abrir|mostre|mostrar|acesse|acessar|ir para|navegue|navegar|novo|nova|criar|adicionar|registre|registrar|filtre|filtrar|destaque|destacar|aproxime|aproximar|afaste|afastar|gire|girar|imprima|imprimir)\b/.test(text))return [];
   const go=(view)=>calls.push({name:'ui.navigate',arguments:{view}});
   const explicitOpen=/\b(abra|abrir|mostre|mostrar|acesse|acessar|ir para|navegue|navegar|novo|nova|criar|adicionar)\b/.test(text);
+  const profileIntent=/\b(perfil|ficha|cadastro)\b/.test(text)&&/\b(loteamento|lote|área comum|area comum|praça|praca|portaria|lazer|vi[aá]rio)\b/.test(text);
+  if(profileIntent&&/\b(novo|nova|criar|adicionar|atualizar|editar)\b/.test(text)){
+    const lotMatch=String(message||'').match(/\b(?:lote\s*)?([a-z]{1,3}[-\s]?\d{1,3}|\d{1,3})\b/i);
+    const isCommon=/área comum|area comum|praça|praca|portaria|lazer|vi[aá]rio/i.test(String(message||''));
+    calls.push({name:'lot-development.upsert_profile',arguments:{kind:isCommon?'common-area':'lot',lot:isCommon?'':lotMatch?.[1]||'',title:isCommon?String(message||'').replace(/^.*?(?:perfil|área comum|area comum)\s*/i,'').slice(0,120)||'Área comum do loteamento':`Perfil do lote ${lotMatch?.[1]||''}`.trim(),description:String(message||'').trim()}});
+  } else if(profileIntent&&explicitOpen) go('lot-development');
   const formView=[['documents',/documento/],['materials',/materia(is|l)/],['agenda',/compromisso/],['activities',/atividade/],['progress',/apontamento/],['contracts',/contrato/],['brokers',/negocia[cç][aã]o|venda/],['reports',/relat[oó]rio/]].find(([,pattern])=>pattern.test(text))?.[0];
   if(explicitOpen&&/\b(novo|nova|criar|adicionar)\b/.test(text)&&formView&&!/\b(evento|ocorr[eê]ncia|registro geral)\b/.test(text))return [{name:'ui.open_form',arguments:{view:formView}}];
   if(explicitOpen){
-    const destination=[['documents',/documento/],['materials',/materia(is|l)/],['contracts',/contrato/],['brokers-board',/corretor/],['reports',/relat[oó]rio/],['finance',/finan[cç]|caixa|dre/],['personnel',/encarregado|pessoal|equipe/],['leads',/lead|cliente/],['map',/mapa/],['settings',/configura[cç]/],['control',/central operacional/],['agenda',/agenda/],['actions',/a[cç][oõ]es ia/],['activities',/atividade/],['progress',/andamento/],['records',/registro/],['stages',/etapa|cronograma/],['brokers',/comiss[aã]o|negocia[cç][aã]o/]].find(([,pattern])=>pattern.test(text))?.[0];
+    const destination=[['lot-development',/loteamento|perfil.*lote|área comum|area comum/],['documents',/documento/],['materials',/materia(is|l)/],['contracts',/contrato/],['brokers-board',/corretor/],['reports',/relat[oó]rio/],['finance',/finan[cç]|caixa|dre/],['personnel',/encarregado|pessoal|equipe/],['leads',/lead|cliente/],['map',/mapa/],['settings',/configura[cç]/],['control',/central operacional|dashboard/],['agenda',/agenda/],['actions',/a[cç][oõ]es ia/],['activities',/atividade/],['progress',/andamento/],['records',/registro/],['stages',/etapa|cronograma/],['brokers',/comiss[aã]o|negocia[cç][aã]o/]].find(([,pattern])=>pattern.test(text))?.[0];
     if(destination)go(destination);
   }
   if(/\b(registr\w*|cri\w*|adicion\w*|novo|nova)\b/.test(text)&&/\b(evento|ocorr[eê]ncia|registro\s+geral)\b/.test(text))calls.push({name:'records.open_form',arguments:{details:String(message||'').trim()}});
-  else if(/\b(central\s+operacional|tabelas?\s+(de\s+)?(materiais|comiss[oõ]es|finan[cç]as)|escuta\s+(do\s+)?(agente|firebase))\b/.test(text))go('control');
+  else if(/\b(central\s+operacional|dashboard|tabelas?\s+(de\s+)?(materiais|comiss[oõ]es|finan[cç]as)|escuta\s+(do\s+)?(agente|firebase))\b/.test(text))go('control');
   else if(/\b(registro|apontamento|di[aá]rio)\b/.test(text))go('records');
   else if(/\b(dre|fluxo de caixa|balan[cç]o|financeir)\b/.test(text))go('finance');
   else if(/\b(relat[oó]rio)\b/.test(text))go('reports');
@@ -133,7 +170,14 @@ function inferredToolCalls(message){
 
 async function body(req,maxBytes=16_000_000){ let data='',size=0; for await (const chunk of req){size+=chunk.length;if(size>maxBytes){const error=new Error('Corpo da requisição excede o limite permitido.');error.statusCode=413;throw error;}data+=chunk;} return JSON.parse(data||'{}'); }
 async function rawBody(req,maxBytes=16_000_000){ const chunks=[]; let size=0; for await (const chunk of req){size+=chunk.length;if(size>maxBytes){const error=new Error('Corpo da requisição excede o limite permitido.');error.statusCode=413;throw error;}chunks.push(chunk);} return Buffer.concat(chunks); }
-const recordRoles=['owner','admin','foreman'];
+const recordRoles=['owner','admin','foreman','sales','commercial','broker','corretor'];
+const limitedApiPublicPaths=new Set(['/api/health','/api/runtime','/api/ai/status','/api/inference/status','/api/ai/tools','/api/public/catalog']);
+async function authorizeApiSurface(req,pathname){
+  if(!pathname.startsWith('/api/')||limitedApiPublicPaths.has(pathname)||pathname.startsWith('/api/public/'))return;
+  const actor=await requestActor(req);
+  const url=new URL(req.url,'http://localhost');
+  if(!limitedActorCanAccessApi(actor,pathname,req.method,url.search))throw Object.assign(new Error('Este perfil só pode acessar registros e a linha do tempo do cronograma.'),{statusCode:403});
+}
 function inferenceTokens(value){return String(value||'').toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').split(/[^a-z0-9]+/).filter(token=>token.length>2);}
 const productionBasisLabels={volume:'Volume executado',area:'Área executada',comprimento:'Comprimento executado',contagem:'Itens ou unidades executados',registro:'Registro confirmado'};
 const productionBasisForUnit=unit=>/m³/i.test(unit)?'volume':/m²/i.test(unit)?'area':/^m$|\bm\b/i.test(unit)?'comprimento':/viagem|lote|ramal|cavalete|un|ponto|trecho|setor|ensaio|processo/i.test(unit)?'contagem':'registro';
@@ -212,27 +256,34 @@ async function workbenchInferenceApi(req,res){
 function operationalPrompt(message,view,mapContext,context={},instruction='',requestContext=null){
   const available=clientTools.map(tool=>`${tool.name}(${Object.keys(tool.args).join(', ')})`).join('; ');
   const dwgSnapshot=JSON.stringify({source:aiProductionBaseline.source,site:aiProductionBaseline.site,derived:aiProductionBaseline.derived,assumptions:aiProductionBaseline.assumptions});
+  const interpretationPolicy=context?.recordInterpretation?`INTERPRETAÇÃO DE ANEXO (OCR + IMAGEM + INDICAÇÃO): ${JSON.stringify(context.recordInterpretation).slice(0,12000)}. Use indicação explícita de etapa como destino do registro, não como prova da ação; a etapa selecionada na tela nunca é fallback. Se não houver descrição textual da ação, identifique-a apenas pela evidência visual e OCR, sem inferir data/hora, equipe, quantidade ou conclusão que não estejam visíveis. Se a ação não for identificável com segurança, não aloque e pergunte apenas qual atividade representa a foto. Use somente as etapas candidatas fornecidas. Trate OCR e inferência visual como proposta para revisão humana; não afirme que gravou ou persistiu o arquivo.`:'';
   return `Você é o assistente operacional do empreendimento Aliança Park. Responda em português do Brasil, de forma objetiva e prática. Contexto da tela: ${view}.${mapContext?' O usuário abriu o mapa 3D de lotes e pode estar relacionando a pergunta a uma superfície selecionada.':''}
 
 FONTE OPERACIONAL OBRIGATÓRIA — siga o documento abaixo como protocolo de execução, produção, equipe, materiais, cronograma e propagação. O documento é a fonte única da ordem das atividades; se um dado do estado entrar em conflito com ele, sinalize a divergência e peça validação humana.\n${aiConstructionDocument.slice(0,30000)}
 
 BASE DWG CALCULADA PELO MOTOR (JSON): ${dwgSnapshot.slice(0,9000)}
-Estado resumido da sessão: ${JSON.stringify(context).slice(0,5000)}. Contexto específico do disparo: ${JSON.stringify(requestContext||{}).slice(0,3000)}. Dados gerais disponíveis: 2 etapas atrasadas, 3 compras críticas, completude de 63%, 28 colaboradores, inventário de R$ 1.842.560,45. Não invente dados fora desse contexto. INSTRUÇÃO OPERACIONAL PERMANENTE: ${OPERATIONAL_CHAT_EXECUTION_POLICY_V1} INSTRUÇÃO ENVIADA NESTA REQUISIÇÃO: ${String(instruction||OPERATIONAL_CHAT_EXECUTION_POLICY_V1).slice(0,5000)}. Quando a pessoa pedir uma ação disponível, responda SOMENTE com JSON válido no formato {"reply":"texto curto","toolCalls":[{"name":"ferramenta","arguments":{}}]}. Ferramentas permitidas: ${available}. Nunca sugira ferramenta inexistente. ui.print apenas deve ser solicitado, nunca confirmado como já impresso. Para pergunta somente informativa, use {"reply":"...","toolCalls":[]}. Se o fato for completamente externo ao sistema, não invente ação: peça o documento/evidência e use toolCalls vazio. Pergunta: ${message}`;
+Estado resumido da sessão: ${JSON.stringify(context).slice(0,5000)}. Contexto específico do disparo: ${JSON.stringify(requestContext||{}).slice(0,3000)}. ${interpretationPolicy} Dados gerais disponíveis: 2 etapas atrasadas, 3 compras críticas, completude de 63%, 28 colaboradores, inventário de R$ 1.842.560,45. Não invente dados fora desse contexto. INSTRUÇÃO OPERACIONAL PERMANENTE: ${OPERATIONAL_CHAT_EXECUTION_POLICY_V1} INSTRUÇÃO ENVIADA NESTA REQUISIÇÃO: ${String(instruction||OPERATIONAL_CHAT_EXECUTION_POLICY_V1).slice(0,5000)}. Quando a pessoa pedir uma ação disponível, responda SOMENTE com JSON válido no formato {"reply":"texto curto","toolCalls":[{"name":"ferramenta","arguments":{}}]}. Ferramentas permitidas: ${available}. Nunca sugira ferramenta inexistente. ui.print apenas deve ser solicitado, nunca confirmado como já impresso. Para pergunta somente informativa, use {"reply":"...","toolCalls":[]}. Se o fato for completamente externo ao sistema, não invente ação: peça o documento/evidência e use toolCalls vazio. Pergunta: ${message}`;
 }
 async function gemini(req,res){
   if(!process.env.GEMINI_API_KEY) return send(res,503,{error:'GEMINI_API_KEY não configurada no servidor.'});
-  const {message,view='assistant',mapContext=false,attachment=null,context={},instruction='',requestContext=null}=await body(req);
+  const {message,view='assistant',mapContext=false,attachment=null,context={},instruction='',requestContext=null,jevDecision=null,systemModel=null}=await body(req);
   if(typeof message!=='string'||!message.trim()) return send(res,400,{error:'Mensagem inválida.'});
-  const prompt=operationalPrompt(message,view,mapContext,context,instruction,requestContext);
+  const image=attachment?normalizeNvidiaImageAttachment(attachment):null;
+  if(attachment&&!image)return send(res,400,{error:'Imagem inválida. Use PNG, JPEG ou WEBP de até 6 MB.'});
+  const recordOcr=image?await extractInstantRecordOcr(process.env,{attachment:{...attachment,mimeType:image.mimeType,dataUrl:image.dataUrl},context:{userDescription:message,stages:context?.stages||[],selectedStageKey:context?.selectedStageKey||'',selectedStageName:context?.selectedStageName||''}}).catch(error=>({error:String(error?.message||error),reviewRequired:true})):null;
+  const recordInterpretation=image?buildRecordInterpretationV1({message,stages:context?.stages,selectedStageKey:context?.selectedStageKey,recordOcr}):context?.recordInterpretation||null;
+  const modelContext=recordInterpretation?{...context,recordInterpretation}:context;
+  const modelRequestContext=recordInterpretation?{...(requestContext||{}),recordInterpretation}:requestContext;
+  const prompt=operationalPrompt(message,view,mapContext,modelContext,instruction,modelRequestContext);
   const parts=[{text:prompt}];
-  const imageMatch=typeof attachment?.dataUrl==='string'&&attachment.dataUrl.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
+  const imageMatch=typeof image?.dataUrl==='string'&&image.dataUrl.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
   if(imageMatch&&imageMatch[2].length<=8_000_000)parts.push({inlineData:{mimeType:imageMatch[1]==='image/jpg'?'image/jpeg':imageMatch[1],data:imageMatch[2]}});
   const upstream=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':process.env.GEMINI_API_KEY},body:JSON.stringify({contents:[{parts}],generationConfig:{temperature:.35,maxOutputTokens:500}})});
   const json=await upstream.json();
   if(!upstream.ok) return send(res,502,{error:json?.error?.message||'Gemini recusou a solicitação.'});
   const result=parseToolEnvelope(json?.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'Gemini não retornou texto.');
   result.toolCalls=mergeToolCalls(result.toolCalls,inferredToolCalls(message));
-  return send(res,200,{...result,provider:'gemini',model:geminiModel});
+  return send(res,200,{...result,provider:'gemini',model:geminiModel,vision:Boolean(image),recordOcr,attachment:image?{name:String(attachment?.name||'imagem'),mimeType:image.mimeType,stored:false,storage:'local-ephemeral'}:null,inference:{protocol:'belavista-operational-inference/v1',endpoint:new URL(req.url||'','http://localhost').pathname,systemModel,systemRuntime:'open-jev',jev:jevDecision}});
 }
 function normalizeNvidiaImageAttachment(attachment){
   const source=String(attachment?.dataUrl||'').trim();
@@ -243,27 +294,95 @@ function normalizeNvidiaImageAttachment(attachment){
   if(!base64||base64.length>8_400_000)return null;
   return {mimeType,dataUrl:`data:${mimeType};base64,${base64}`};
 }
+function receiptMaterialAllocationCalls(recordOcr,recordInterpretation){
+  const documentType=String(recordOcr?.documentType||'');
+  const explicitStage=recordInterpretation?.explicitStage;
+  if(!['purchase_invoice','purchase_receipt'].includes(documentType)||!explicitStage?.key)return [];
+  return (Array.isArray(recordOcr?.items)?recordOcr.items:[])
+    .map(item=>{
+      const description=String(item?.materialName||item?.description||item?.name||item?.materialId||'').trim();
+      const kind=String(item?.itemKind||item?.type||'material').toLocaleLowerCase('pt-BR');
+      if(!description||/servi[cç]|m[aã]o de obra|labor/.test(kind))return null;
+      const quantity=Number(item?.quantity);
+      const confidence=Number(item?.confidence??recordOcr?.confidence);
+      return {name:'stage.allocate_visual_record',arguments:{
+        target:'material',stageKey:String(explicitStage.key),stageName:String(explicitStage.name||explicitStage.key),
+        activityId:String(item?.activityId||''),activityName:String(item?.activityName||'Registro de material por nota fiscal'),
+        materialName:description,...(Number.isFinite(quantity)?{quantity}:{}),unit:String(item?.unit||'un.'),
+        details:String(item?.details||recordOcr?.text||`Item reconhecido na nota fiscal: ${description}`).slice(0,1200),
+        pointer:String(item?.pointer||item?.description||description).slice(0,1200),
+        ...(Number.isFinite(confidence)?{confidence:Math.max(0,Math.min(1,confidence))}:{})
+      }};
+    })
+    .filter(Boolean)
+    .slice(0,4);
+}
 async function nvidia(req,res){
   if(!process.env.NVIDIA_API_KEY) return send(res,503,{error:'NVIDIA_API_KEY não configurada no servidor.'});
-  const reasoningVision=req.url&&new URL(req.url,'http://localhost').pathname==='/api/ai/vision-reasoning';
-  const {message,view='assistant',mapContext=false,attachment=null,context={},instruction='',requestContext=null}=await body(req);
+  const {message,view='assistant',mapContext=false,attachment=null,context={},instruction='',requestContext=null,jevDecision=null,systemModel=null}=await body(req);
+  const requestPath=new URL(req.url||'','http://localhost').pathname;
+  const reasoningVision=requestPath==='/api/ai/vision-reasoning'||(requestPath==='/api/inference'&&Boolean(attachment));
   if(reasoningVision&&!attachment)return send(res,400,{error:'A rota de reasoning exige uma imagem.'});
   if((typeof message!=='string'||!message.trim())&&!attachment)return send(res,400,{error:'Mensagem inválida.'});
   const image=attachment?normalizeNvidiaImageAttachment(attachment):null;
   if(attachment&&!image)return send(res,400,{error:'Imagem inválida. Use PNG, JPEG ou WEBP de até 6 MB.'});
   const requestMessage=typeof message==='string'&&message.trim()?message:'Analise a imagem anexada e descreva os fatos visíveis e seus impactos operacionais.';
-  const prompt=operationalPrompt(requestMessage,view,mapContext,context,instruction,requestContext);
+  const recordOcr=image?await extractInstantRecordOcr(process.env,{attachment:{...attachment,mimeType:image.mimeType,dataUrl:image.dataUrl},context:{userDescription:requestMessage,stages:context?.stages||[],selectedStageKey:context?.selectedStageKey||'',selectedStageName:context?.selectedStageName||''}}).catch(error=>({error:String(error?.message||error),reviewRequired:true})):null;
+  const recordInterpretation=image?buildRecordInterpretationV1({message:requestMessage,stages:context?.stages,selectedStageKey:context?.selectedStageKey,recordOcr}):context?.recordInterpretation||null;
+  const receiptAllocations=receiptMaterialAllocationCalls(recordOcr,recordInterpretation);
+  const attachmentRef=image?{id:`IMG-LOCAL-${Date.now().toString(36).toUpperCase()}`,name:String(attachment?.name||'imagem'),mimeType:image.mimeType,sizeBytes:Math.floor(image.dataUrl.split(',')[1].length*3/4),stored:false,storage:'local-ephemeral',reference:'local://ai-attachment',warning:'O servidor local aguarda a tela persistir o original junto ao registro.'}:null;
+  // A nota já foi lida pelo VLM. Para uma etapa indicada explicitamente, a
+  // alocação é determinística e auditável a partir dos itens OCR; não bloqueie
+  // a pessoa com uma segunda chamada ao modelo que apenas repetiria esses dados.
+  if(reasoningVision&&receiptAllocations.length)return send(res,200,{
+    text:`OCR concluído: ${receiptAllocations.length} material(is) proposto(s) para ${recordInterpretation.explicitStage.name}, pendente(s) de revisão humana.`,
+    toolCalls:receiptAllocations,provider:'nvidia',model:recordOcr?.model||nvidiaVisionModel,vision:true,reasoning:false,
+    recordOcr,ocrAllocation:'deterministic-from-vision-ocr',visionPipeline:{ocrModel:recordOcr?.model||null,ocrImageSent:true,assistantImageSent:false,assistantModel:null},
+    attachmentAccepted:Boolean(image),attachment:attachmentRef,attachmentStorage:'local-ephemeral',inference:{protocol:'belavista-operational-inference/v1',endpoint:requestPath,systemModel,systemRuntime:'open-jev',jev:jevDecision}
+  });
+  if(reasoningVision&&['purchase_invoice','purchase_receipt'].includes(String(recordOcr?.documentType||''))&&Array.isArray(recordOcr?.items)&&recordOcr.items.length)return send(res,200,{
+    text:'A nota foi lida, mas não há uma etapa única indicada com segurança. Informe a etapa de destino antes de criar qualquer registro.',
+    toolCalls:[],provider:'nvidia',model:recordOcr?.model||nvidiaVisionModel,vision:true,reasoning:false,recordOcr,
+    attachmentAccepted:Boolean(image),attachment:attachmentRef,attachmentStorage:'local-ephemeral',inference:{protocol:'belavista-operational-inference/v1',endpoint:requestPath,systemModel,systemRuntime:'open-jev',jev:jevDecision}
+  });
+  const recordOcrHasItems=Boolean(recordOcr&&!recordOcr.error&&Array.isArray(recordOcr.items)&&recordOcr.items.some(item=>{
+    const description=String(item?.description||item?.name||item?.materialName||item?.materialId||'').trim();
+    const kind=String(item?.itemKind||item?.type||'').toLocaleLowerCase('pt-BR');
+    return description.length>=3&&/^(material|materiais|servico|serviço|serviços|servicos|service|labor|m[aã]o de obra)$/.test(kind);
+  }));
+  const servicePhotoNeedsVisualFallback=String(recordOcr?.documentType||'')==='service_evidence'&&!/\b(?:a[cç][aã]o(?:\s+de\s+servi[cç]o)?|servi[cç]o|atividade|descri[cç][aã]o)\s*:/i.test(requestMessage);
+  const assistantReceivesImage=Boolean(image&&(!reasoningVision||!recordOcrHasItems||servicePhotoNeedsVisualFallback));
+  const modelContext=recordInterpretation?{...context,recordInterpretation}:context;
+  const modelRequestContext=recordInterpretation?{...(requestContext||{}),recordInterpretation}:requestContext;
+  const explicitVisualStage=recordInterpretation?.explicitStage||null;
+  const indicatedStageProfile=(Array.isArray(context?.stages)?context.stages:[]).find(stage=>String(stage?.key||'')===String(explicitVisualStage?.key||''))||null;
+  const visualStageProfile=indicatedStageProfile?{
+    key:String(indicatedStageProfile.key||''),name:String(indicatedStageProfile.name||''),
+    description:String(indicatedStageProfile.description||indicatedStageProfile.executionProfile?.typicalDescription||'').slice(0,500),
+    activities:(Array.isArray(indicatedStageProfile.activities)?indicatedStageProfile.activities:[]).slice(0,12).map(activity=>({id:String(activity?.id||activity?.key||''),name:String(activity?.name||activity?.title||''),description:String(activity?.description||'').slice(0,180)})),
+    activityHints:(Array.isArray(indicatedStageProfile.activityHints)?indicatedStageProfile.activityHints:[]).slice(0,8)
+  }:null;
+  const visualServicePrompt=servicePhotoNeedsVisualFallback?[
+    'Você é um inferidor visual de evidências de obra. Analise a FOTO anexada; não trate esta tarefa como conversa geral.',
+    `Mensagem enviada: ${requestMessage}. Ela contém somente o destino. O nome da etapa NÃO descreve a atividade.`,
+    `Etapa-destino indicada pela pessoa: ${JSON.stringify(explicitVisualStage)}. Perfil canônico resumido: ${JSON.stringify(visualStageProfile)}.`,
+    `OCR visual prévio (evidência auxiliar, não substitui olhar a imagem): ${JSON.stringify({visualDescription:recordOcr?.serviceEvidence?.visualDescription||'',observedDate:recordOcr?.serviceEvidence?.observedDate||'',observedTime:recordOcr?.serviceEvidence?.observedTime||'',items:(recordOcr?.items||[]).slice(0,6).map(item=>({itemKind:item.itemKind,description:item.description,details:item.details,pointer:item.pointer}))})}.`,
+    'Identifique, pelos pixels da foto, uma ação concreta em formato verbo + objeto (por exemplo, “escavação e movimentação de solo”). NUNCA copie “Terraplanagem” ou qualquer nome da etapa como activityName. Use a etapa somente como destino e confirme que a ação visível é compatível com o perfil informado. Não invente data, horário, equipe, quantidade, conclusão nem material.',
+    'Se a ação não estiver visualmente identificável com segurança ou não couber na etapa, não gere registro: retorne toolCalls vazio e faça uma pergunta curta de esclarecimento. Caso contrário, a alocação fica Pendente para revisão humana.',
+    'Responda somente JSON válido, sem Markdown, no formato exato: {"reply":"síntese visual curta","toolCalls":[{"name":"stage.allocate_visual_record","arguments":{"target":"service","stageKey":"chave canônica","stageName":"nome canônico","activityName":"ação observada em verbo + objeto","details":"observação visual factual","pointer":"evidência visível específica","confidence":0.0}}]}. Não inclua nenhum outro tipo de ferramenta; use toolCalls [] quando incerto.'
+  ].join('\n') : '';
+  const prompt=visualServicePrompt||operationalPrompt(requestMessage,view,mapContext,modelContext,instruction,modelRequestContext);
   const userContent=[{type:'text',text:prompt}];
-  if(image)userContent.push({type:'image_url',image_url:{url:image.dataUrl}});
-  const model=image?(reasoningVision?nvidiaReasoningVisionModel:nvidiaVisionModel):nvidiaModel;
-  const endpoint=image&&reasoningVision?nvidiaReasoningApiUrl:nvidiaApiUrl;
-  const upstream=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','Authorization':`Bearer ${process.env.NVIDIA_API_KEY}`},body:JSON.stringify({model,messages:[{role:'system',content:'Você é um assistente operacional objetivo. Para imagens, use raciocínio visual interno, não exponha cadeia de pensamento e siga exatamente o protocolo JSON de ferramentas entregue no pedido do usuário.'},{role:'user',content:image?userContent:prompt}],temperature:image&&reasoningVision?.6:.15,top_p:image&&reasoningVision?.95:.9,max_tokens:image&&reasoningVision?4096:700,reasoning_budget:image&&reasoningVision?nvidiaReasoningBudget:undefined,stream:false}),signal:AbortSignal.timeout(120000)});
+  if(assistantReceivesImage)userContent.push({type:'image_url',image_url:{url:image.dataUrl}});
+  const assistantUsesVision=Boolean(assistantReceivesImage&&reasoningVision);
+  const model=assistantUsesVision?nvidiaReasoningVisionModel:assistantReceivesImage?nvidiaVisionModel:nvidiaModel;
+  const endpoint=assistantUsesVision?nvidiaReasoningApiUrl:nvidiaApiUrl;
+  const upstream=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','Authorization':`Bearer ${process.env.NVIDIA_API_KEY}`},body:JSON.stringify({model,messages:[{role:'system',content:'Você é um assistente operacional objetivo. Para imagens, use raciocínio visual interno, não exponha cadeia de pensamento e siga exatamente o protocolo JSON de ferramentas entregue no pedido do usuário.'},{role:'user',content:assistantReceivesImage?userContent:prompt}],temperature:assistantUsesVision?(servicePhotoNeedsVisualFallback?.15:.6):.15,top_p:assistantUsesVision?.95:.9,max_tokens:assistantUsesVision?(servicePhotoNeedsVisualFallback?1400:4096):700,reasoning_budget:assistantUsesVision?nvidiaReasoningBudget:undefined,stream:false}),signal:AbortSignal.timeout(120000)});
   const json=await upstream.json();
   if(!upstream.ok) return send(res,502,{error:json?.detail||json?.message||json?.error?.message||'NVIDIA NIM recusou a solicitação.'});
   const result=parseToolEnvelope(json?.choices?.[0]?.message?.content||'NVIDIA NIM não retornou texto.');
   result.toolCalls=mergeToolCalls(result.toolCalls,inferredToolCalls(requestMessage));
-  const attachmentRef=image?{id:`IMG-LOCAL-${Date.now().toString(36).toUpperCase()}`,name:String(attachment?.name||'imagem'),mimeType:image.mimeType,sizeBytes:Math.floor(image.dataUrl.split(',')[1].length*3/4),stored:false,storage:'local-ephemeral',reference:'local://ai-attachment',warning:'O servidor local não persiste anexos; use o endpoint do Cloudflare Worker com R2 para aceitar como evidência.'}:null;
-  return send(res,200,{...result,provider:'nvidia',model,endpoint,vision:Boolean(image),reasoning:Boolean(image&&reasoningVision),attachmentAccepted:Boolean(image),attachment:attachmentRef,attachmentStorage:'local-ephemeral'});
+  return send(res,200,{...result,provider:'nvidia',model,endpoint,vision:Boolean(image),reasoning:Boolean(image&&reasoningVision),recordOcr,visionPipeline:image?{ocrModel:recordOcr?.model||null,ocrImageSent:true,assistantImageSent:assistantReceivesImage,assistantModel:model}:null,attachmentAccepted:Boolean(image),attachment:attachmentRef,attachmentStorage:'local-ephemeral',inference:{protocol:'belavista-operational-inference/v1',endpoint:requestPath,systemModel,systemRuntime:'open-jev',jev:jevDecision}});
 }
 async function ai(req,res){
   if(aiProvider==='nvidia') return nvidia(req,res);
@@ -273,6 +392,15 @@ async function ai(req,res){
 function aiStatus(){
   const configured=aiProvider==='nvidia'?Boolean(process.env.NVIDIA_API_KEY):aiProvider==='gemini'?Boolean(process.env.GEMINI_API_KEY):false;
   return {provider:aiProvider,model:aiProvider==='nvidia'?nvidiaModel:geminiModel,visionModel:nvidiaVisionModel,reasoningVisionModel:nvidiaReasoningVisionModel,reasoningVisionEndpoint:nvidiaReasoningApiUrl,reasoningBudget:nvidiaReasoningBudget,configured,supportsImages:aiProvider==='nvidia'||aiProvider==='gemini',supportsImageReasoning:aiProvider==='nvidia',attachmentStorage:'local-ephemeral',toolProtocol:'belavista-client-tools/v1',toolCount:clientTools.length};
+}
+function inferenceStatus(){
+  return {
+    ...aiStatus(),
+    protocol:'belavista-operational-inference/v1',
+    endpoint:'/api/inference',
+    systemModel:{id:process.env.RUBY_SYSTEM_MODEL||'kev-0.6b',runtime:'open-jev',role:'local-intent-router'},
+    serverRole:'response-and-tool-inference'
+  };
 }
 function requestOrigin(req){
   if(publicOrigin)return publicOrigin;
@@ -290,7 +418,7 @@ function pageForPath(pathname){
   return pathname==='/'?'index.html':pathname;
 }
 function send(res,status,data,headers={}){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto',...headers});res.end(JSON.stringify(data));}
-const proxiedApiPrefixes=['/api/records','/api/field-confirmations','/api/purchase-receipts','/api/budget-lines','/api/agenda-items','/api/notifications','/api/stages','/api/stage-correlations','/api/communications'];
+const proxiedApiPrefixes=['/api/records','/api/field-confirmations','/api/purchase-receipts','/api/budget-lines','/api/agenda-items','/api/notifications','/api/stages','/api/stage-correlations','/api/communications','/api/lot-documents'];
 function shouldProxyApi(pathname){
   // A instalação local sem BELAVISTA_API_TOKEN precisa gravar os registros na
   // base SQLite local. Sem esta exceção, o HTML de campo era encaminhado ao
@@ -353,28 +481,82 @@ async function materialTransitionsApi(req,res){
   }catch(error){for(const attachment of created){try{deleteWorkbenchAttachment(attachment.id);}catch{}}throw error;}
 }
 
+function refreshPlanningAfter(reason,role){
+  try{return {plannerStatus:'generated',agenda:runOperationalLoop({reason,role:role||'owner',publishNotifications:true,syncActivities:true}).agenda||[]};}
+  catch(error){console.warn(`[${reason} planner]`,error);return {plannerStatus:'pending',plannerError:error.message};}
+}
+async function agendaEventsApi(req,res){
+  if(req.method==='GET'){
+    await requireRoles(req,recordRoles);
+    return send(res,200,{events:listAgendaEvents()});
+  }
+  if(req.method==='PUT'){
+    const actor=await requireRoles(req,['owner','admin','foreman']);
+    const events=saveAgendaSnapshot((await body(req)).events);
+    bridgeAgentEvent({type:'agenda.updated',entity:'agenda_events',entityId:'snapshot',actor,payload:{count:events.length}});
+    return send(res,200,{events});
+  }
+  return send(res,405,{error:'Método não permitido.'});
+}
+async function activitiesApi(req,res,pathname){
+  const actor=await requireRoles(req,['owner','admin']);
+  if(pathname==='/api/activities'&&req.method==='POST'){
+    const activity=createActivityAdmin(await body(req));
+    bridgeAgentEvent({type:'activity.created',entity:'activities',entityId:activity.id,actor,payload:activity});
+    return send(res,201,{activity});
+  }
+  const match=pathname.match(/^\/api\/activities\/([^/]+)$/);
+  if(!match)return send(res,404,{error:'Atividade não encontrada.'});
+  const id=decodeURIComponent(match[1]);
+  if(req.method==='PUT'){
+    const activity=updateActivityAdmin(id,await body(req));
+    if(!activity)return send(res,404,{error:'Atividade não encontrada.'});
+    bridgeAgentEvent({type:'activity.updated',entity:'activities',entityId:id,actor,payload:activity});
+    return send(res,200,{activity});
+  }
+  if(req.method==='DELETE'){
+    if(!deleteActivityAdmin(id))return send(res,404,{error:'Atividade não encontrada.'});
+    bridgeAgentEvent({type:'activity.deleted',entity:'activities',entityId:id,actor,payload:{id}});
+    return send(res,200,{ok:true,id});
+  }
+  return send(res,405,{error:'Método não permitido.'});
+}
 async function recordsApi(req,res,pathname){
-  if(req.method==='GET'&&pathname==='/api/records')return send(res,200,{records:listRecords(),entities:entitySummary()});
-  if(req.method==='POST'&&pathname==='/api/records'){const actor=await requireRoles(req,recordRoles),record=createRecord(await body(req));bridgeAgentEvent({type:'record.created',entity:'records',entityId:record.id,actor,payload:record});recalculateOperationalState('record.created');return send(res,201,record);}
+  if(req.method==='GET'&&pathname==='/api/records'){await requireRoles(req,recordRoles);return send(res,200,{records:listRecords(),entities:entitySummary()});}
+  if(req.method==='POST'&&pathname==='/api/records'){const actor=await requireRoles(req,recordRoles),record=createRecord(await body(req));bridgeAgentEvent({type:'record.created',entity:'records',entityId:record.id,actor,payload:record});return send(res,201,{...record,...refreshPlanningAfter('record.created',actor.role)});}
   const match=pathname.match(/^\/api\/records\/([^/]+)$/); if(!match)return send(res,404,{error:'Registro não encontrado.'});
   const id=decodeURIComponent(match[1]);
   if(req.method==='PUT'){
-    const actor=await requireRoles(req,recordRoles),record=updateRecord(id,await body(req));if(record){bridgeAgentEvent({type:'record.updated',entity:'records',entityId:id,actor,payload:record});recalculateOperationalState('record.updated');}return record?send(res,200,record):send(res,404,{error:'Registro não encontrado.'});
+    const actor=await requireRoles(req,recordRoles),record=updateRecord(id,await body(req));if(record){bridgeAgentEvent({type:'record.updated',entity:'records',entityId:id,actor,payload:record});}return record?send(res,200,{...record,...refreshPlanningAfter('record.updated',actor.role)}):send(res,404,{error:'Registro não encontrado.'});
   }
-  if(req.method==='DELETE'){await requireRoles(req,['owner','admin']);return deleteRecord(id)?send(res,200,{ok:true,id}):send(res,404,{error:'Registro não encontrado.'});}
+  if(req.method==='DELETE'){const actor=await requireRoles(req,['owner','admin']);if(!deleteRecord(id))return send(res,404,{error:'Registro não encontrado.'});bridgeAgentEvent({type:'record.deleted',entity:'records',entityId:id,actor,payload:{id}});return send(res,200,{ok:true,id,...refreshPlanningAfter('record.deleted',actor.role)});}
   return send(res,405,{error:'Método não permitido.'});
 }
 async function stagesAdminApi(req,res,pathname){
   if(pathname==='/api/stages-admin'){
-    if(req.method!=='GET')return send(res,405,{error:'Método não permitido.'});
-    return send(res,200,{stages:listStagesAdmin()});
+    if(req.method==='GET'){await requireRoles(req,recordRoles);return send(res,200,{stages:listStagesAdmin()});}
+    if(req.method==='POST'){
+      const actor=await requireRoles(req,['owner','admin']),stage=createStageAdmin(await body(req));
+      bridgeAgentEvent({type:'stage.created',entity:'stages',entityId:String(stage.id),actor,payload:{stageId:stage.id,name:stage.name}});
+      recalculateOperationalState('stage.created');
+      return send(res,201,{stage});
+    }
+    return send(res,405,{error:'Método não permitido.'});
   }
-  const match=pathname.match(/^\/api\/stages-admin\/(\d+)(?:\/(ai|report))?$/);
+  const match=pathname.match(/^\/api\/stages-admin\/(\d+)(?:\/(ai|report|activities))?$/);
   if(!match)return send(res,404,{error:'Etapa não encontrada.'});
   const stageId=Number(match[1]),resource=match[2]||'';
+  if(resource==='activities'){
+    if(req.method!=='PUT')return send(res,405,{error:'Método não permitido.'});
+    const actor=await requireRoles(req,['owner','admin']),stage=saveStageActivitiesAdmin(stageId,(await body(req)).activities);
+    if(!stage)return send(res,404,{error:'Etapa não encontrada.'});
+    bridgeAgentEvent({type:'stage.activities.saved',entity:'activities',entityId:String(stageId),actor,payload:{stageId,count:stage.activities.length}});
+    recalculateOperationalState('stage.activities.saved');
+    return send(res,200,{stage});
+  }
   if(resource==='report'){
     if(req.method!=='GET')return send(res,405,{error:'Método não permitido.'});
-    const report=getStageReport(stageId);
+    await requireRoles(req,recordRoles);const report=getStageReport(stageId);
     return report?send(res,200,{report}):send(res,404,{error:'Etapa não encontrada.'});
   }
   if(resource==='ai'){
@@ -387,7 +569,7 @@ async function stagesAdminApi(req,res,pathname){
     return send(res,200,{stage});
   }
   if(req.method==='GET'){
-    const stage=getStageAdmin(stageId);
+    await requireRoles(req,recordRoles);const stage=getStageAdmin(stageId);
     return stage?send(res,200,{stage}):send(res,404,{error:'Etapa não encontrada.'});
   }
   if(req.method==='PUT'){
@@ -416,11 +598,11 @@ async function workbenchApi(req,res,pathname){
   }
   if(pathname==='/api/workbench/diary'&&resource==='attachment'&&req.method==='DELETE'){await requireRoles(req,['owner','admin']);const id=inputUrl.searchParams.get('id')||'';return deleteWorkbenchAttachment(id)?send(res,200,{ok:true,id}):send(res,404,{error:'Anexo não encontrado.'});}
   if(pathname==='/api/workbench/state'){
-    if(req.method==='GET')return send(res,200,{state:getStageWorkbenchState(stageKey)});
+    if(req.method==='GET'){await requireRoles(req,recordRoles);return send(res,200,{state:getStageWorkbenchState(stageKey)});}
     if(req.method==='PUT'){await requireRoles(req,['owner','admin','foreman']);return send(res,200,{state:saveStageWorkbenchState(stageKey,await body(req))});}
   }
   if(pathname==='/api/workbench/diary'){
-    if(req.method==='GET')return send(res,200,{entries:listWorkbenchDiary(stageKey,inputUrl.searchParams.get('activity')||'')});
+    if(req.method==='GET'){await requireRoles(req,recordRoles);return send(res,200,{entries:listWorkbenchDiary(stageKey,inputUrl.searchParams.get('activity')||'')});}
     if(req.method==='POST'){const actor=await requireRoles(req,recordRoles),entry=createWorkbenchDiary({...await body(req),stageKey});bridgeAgentEvent({type:'record.created',entity:'workbench_diary',entityId:entry.id,actor,payload:entry});recalculateOperationalState('record.created');return send(res,201,{entry});}
   }
   if(pathname==='/api/workbench/attachments'){
@@ -476,6 +658,34 @@ async function cashFlowApi(req,res,pathname){
     return send(res,201,{entry});
   }
   if(req.method==='POST'&&pathname==='/api/cash-flow'){const actor=await requireRoles(req,['owner']),entry=createCashFlowEntry(await body(req));bridgeAgentEvent({type:'cash.changed',entity:'cash_flow_entries',entityId:entry.id,actor,payload:entry});return send(res,201,{entry,summary:cashFlowSummary(),operational:recalculateOperationalState('cash.changed')});}
+  return send(res,405,{error:'Método não permitido.'});
+}
+async function materialsApi(req,res,pathname){
+  const roles=['owner','admin','foreman'];
+  if(req.method==='GET'&&pathname==='/api/materials'){
+    await requireRoles(req,roles);
+    return send(res,200,{materials:listMaterials()});
+  }
+  if(req.method==='POST'&&pathname==='/api/materials'){
+    const actor=await requireRoles(req,roles),material=createMaterial(await body(req));
+    bridgeAgentEvent({type:'material.created',entity:'materials',entityId:material.id,actor,payload:material});
+    return send(res,201,{material,materials:listMaterials(),...refreshPlanningAfter('material.created',actor.role)});
+  }
+  const match=pathname.match(/^\/api\/materials\/([^/]+)$/);
+  if(!match)return send(res,404,{error:'Material não encontrado.'});
+  const id=decodeURIComponent(match[1]);
+  if(req.method==='PUT'){
+    const actor=await requireRoles(req,roles),material=updateMaterial(id,await body(req));
+    if(!material)return send(res,404,{error:'Material não encontrado.'});
+    bridgeAgentEvent({type:'material.updated',entity:'materials',entityId:material.id,actor,payload:material});
+    return send(res,200,{material,materials:listMaterials(),...refreshPlanningAfter('material.updated',actor.role)});
+  }
+  if(req.method==='DELETE'){
+    const actor=await requireRoles(req,['owner','admin']);
+    if(!deleteMaterial(id))return send(res,404,{error:'Material não encontrado.'});
+    bridgeAgentEvent({type:'material.deleted',entity:'materials',entityId:id,actor,payload:{id}});
+    return send(res,200,{ok:true,materials:listMaterials(),...refreshPlanningAfter('material.deleted',actor.role)});
+  }
   return send(res,405,{error:'Método não permitido.'});
 }
 async function leadMessagesApi(req,res,pathname){
@@ -831,7 +1041,7 @@ startBelavistaCronJobs({root,dbPath:process.env.BELAVISTA_DB||join(process.env.B
 
 async function brokerReportsApi(req,res){
   if(req.method!=='GET')return send(res,405,{error:'Método não permitido.'});
-  const base=join(root,'output','broker-reports');
+  const base=join(process.env.BELAVISTA_DATA_ROOT||join(root,'data'),'output','broker-reports');
   const files=[];
   const walk=async(dir,prefix='')=>{for(const entry of await readdir(dir,{withFileTypes:true}).catch(()=>[])){const rel=prefix?`${prefix}/${entry.name}`:entry.name;if(entry.isDirectory())await walk(join(dir,entry.name),rel);else if(/\.(xlsx|pdf)$/i.test(entry.name))files.push({name:entry.name,month:prefix.split('/')[0]||'',url:`/output/broker-reports/${rel.replace(/\\/g,'/')}`});}};
   await walk(base);
@@ -839,9 +1049,17 @@ async function brokerReportsApi(req,res){
 }
 
 createServer(async (req,res)=>{
+  if(new URL(req.url,'http://localhost').pathname.startsWith('/api/activities')){
+    try{const pathname=new URL(req.url,'http://localhost').pathname;await authorizeApiSurface(req,pathname);return await activitiesApi(req,res,pathname);}
+    catch(error){return send(res,error?.statusCode||500,{error:error?.message||'Falha nas atividades.'});}
+  }
+  if(new URL(req.url,'http://localhost').pathname==='/api/agenda-events'){
+    try{await authorizeApiSurface(req,'/api/agenda-events');return await agendaEventsApi(req,res);}
+    catch(error){return send(res,error?.statusCode||500,{error:error?.message||'Falha na agenda.'});}
+  }
   if(new URL(req.url,'http://localhost').pathname.startsWith('/api/service-requests')){
-    try{return await serviceRequestsApi(req,res,new URL(req.url,'http://localhost').pathname);}
+    try{await authorizeApiSurface(req,new URL(req.url,'http://localhost').pathname);return await serviceRequestsApi(req,res,new URL(req.url,'http://localhost').pathname);}
     catch(error){return send(res,error?.statusCode||500,{error:error?.message||'Falha na solicitação de serviço.'});}
   }
-  try { const pathname=new URL(req.url,'http://localhost').pathname; if(shouldProxyApi(pathname))return await proxyApi(req,res,pathname); if(publicCatalogApi(req,res,pathname))return; if(pathname==='/api/health'&&req.method==='GET')return send(res,200,{...health(),ai:aiStatus(),auth:authStatus(),origin:requestOrigin(req),forwarded:Boolean(req.headers['x-forwarded-host']),belavistaApiBase}); if(pathname==='/api/runtime'&&req.method==='GET')return send(res,200,{origin:requestOrigin(req),host,port,forwardedHost:req.headers['x-forwarded-host']||null,forwardedProto:req.headers['x-forwarded-proto']||null,firebaseMessagingVapidKey:process.env.FIREBASE_MESSAGING_VAPID_KEY||'',belavistaApiBase}); if(pathname==='/api/ai/status'&&req.method==='GET')return send(res,200,aiStatus()); if(pathname==='/api/ai/tools'&&req.method==='GET')return send(res,200,{protocol:'belavista-client-tools/v1',tools:clientTools}); if(pathname==='/api/agent/tree'||pathname==='/api/agent/evaluate')return await agentTreeApi(req,res,pathname); if(pathname==='/api/operational-loop'||pathname==='/api/operational-state'||pathname==='/api/calibrations'||pathname==='/api/automation/panorama'||pathname==='/api/automation/run'||pathname==='/api/devices'||pathname==='/api/notifications'||pathname.startsWith('/api/notifications/'))return await operationalApi(req,res,pathname); if(pathname==='/api/stages-admin'||pathname.startsWith('/api/stages-admin/'))return await stagesAdminApi(req,res,pathname); if(pathname==='/api/workbench/infer'&&req.method==='POST')return await workbenchInferenceApi(req,res); if(pathname.startsWith('/api/communications'))return await communicationsApi(req,res,pathname); if(pathname==='/api/workbench/state'||pathname==='/api/workbench/diary')return await workbenchApi(req,res,pathname); if(pathname==='/api/desktop/setup'||pathname.startsWith('/api/instagram/'))return await instagramDesktopApi(req,res,pathname); if(pathname.startsWith('/api/leads/'))return await leadMessagesApi(req,res,pathname); if(pathname==='/api/entities'&&req.method==='GET')return send(res,200,{entities:entitySummary()}); if(pathname==='/api/broker-reports')return await brokerReportsApi(req,res); if(pathname==='/api/field-confirmations')return await fieldConfirmationsApi(req,res); if(pathname==='/api/records'||pathname.startsWith('/api/records/'))return await recordsApi(req,res,pathname); if(pathname==='/api/cash-flow'||pathname.startsWith('/api/cash-flow/'))return await cashFlowApi(req,res,pathname); if(pathname==='/api/commission-reasons'||pathname.startsWith('/api/commission-reasons/'))return await commissionReasonsApi(req,res,pathname); if(pathname==='/api/outsourcing-receipts'||pathname.startsWith('/api/outsourcing-receipts/'))return await outsourcingReceiptsApi(req,res,pathname); if(pathname==='/api/purchase-receipts'||pathname.startsWith('/api/purchase-receipts/'))return await purchaseReceiptsApi(req,res,pathname); if(pathname==='/api/commercial-sales'||pathname.startsWith('/api/commercial-sales/'))return await commercialSalesApi(req,res,pathname); if(req.method==='POST'&&(pathname==='/api/gemini'||pathname==='/api/ai'||pathname==='/api/ai/vision-reasoning')) return await ai(req,res); if(req.method!=='GET') return send(res,405,{error:'Método não permitido.'}); const requested=normalize(pageForPath(pathname)).replace(/^[/\\]+/,''); const file=join(root,requested); if(!file.startsWith(root)) return send(res,403,{error:'Acesso negado.'}); const data=await readFile(file); res.writeHead(200,{'Content-Type':types[extname(file)]||'application/octet-stream','Content-Length':data.length,'Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto'}); res.end(data); } catch (error) { if(String(req.url||'').startsWith('/api/')) return send(res,error?.statusCode||500,{error:error?.message||'Falha no serviço local.'}); const data=await readFile(join(root,'index.html')); res.writeHead(200,{'Content-Type':types['.html'],'Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto'}); res.end(data); }
+  try { const pathname=new URL(req.url,'http://localhost').pathname; await authorizeApiSurface(req,pathname); if(shouldProxyApi(pathname))return await proxyApi(req,res,pathname); if(publicCatalogApi(req,res,pathname))return; if(pathname==='/api/health'&&req.method==='GET')return send(res,200,{...health(),ai:aiStatus(),inference:inferenceStatus(),auth:authStatus(),origin:requestOrigin(req),forwarded:Boolean(req.headers['x-forwarded-host']),belavistaApiBase}); if(pathname==='/api/runtime'&&req.method==='GET')return send(res,200,{origin:requestOrigin(req),host,port,forwardedHost:req.headers['x-forwarded-host']||null,forwardedProto:req.headers['x-forwarded-proto']||null,firebaseMessagingVapidKey:process.env.FIREBASE_MESSAGING_VAPID_KEY||'',belavistaApiBase}); if(pathname==='/api/ai/status'&&req.method==='GET')return send(res,200,aiStatus()); if(pathname==='/api/inference/status'&&req.method==='GET')return send(res,200,inferenceStatus()); if(pathname==='/api/ai/tools'&&req.method==='GET')return send(res,200,{protocol:'belavista-client-tools/v1',tools:clientTools}); if(pathname==='/api/agent/tree'||pathname==='/api/agent/evaluate')return await agentTreeApi(req,res,pathname); if(pathname==='/api/operational-loop'||pathname==='/api/operational-state'||pathname==='/api/calibrations'||pathname==='/api/automation/panorama'||pathname==='/api/automation/run'||pathname==='/api/devices'||pathname==='/api/notifications'||pathname.startsWith('/api/notifications/'))return await operationalApi(req,res,pathname); if(pathname==='/api/stages-admin'||pathname.startsWith('/api/stages-admin/'))return await stagesAdminApi(req,res,pathname); if(pathname==='/api/workbench/infer'&&req.method==='POST')return await workbenchInferenceApi(req,res); if(pathname.startsWith('/api/communications'))return await communicationsApi(req,res,pathname); if(pathname==='/api/workbench/state'||pathname==='/api/workbench/diary')return await workbenchApi(req,res,pathname); if(pathname==='/api/desktop/setup'||pathname.startsWith('/api/instagram/'))return await instagramDesktopApi(req,res,pathname); if(pathname.startsWith('/api/leads/'))return await leadMessagesApi(req,res,pathname); if(pathname==='/api/entities'&&req.method==='GET')return send(res,200,{entities:entitySummary()}); if(pathname==='/api/broker-reports')return await brokerReportsApi(req,res); if(pathname==='/api/field-confirmations')return await fieldConfirmationsApi(req,res); if(pathname==='/api/records'||pathname.startsWith('/api/records/'))return await recordsApi(req,res,pathname); if(pathname==='/api/materials'||pathname.startsWith('/api/materials/'))return await materialsApi(req,res,pathname); if(pathname==='/api/cash-flow'||pathname.startsWith('/api/cash-flow/'))return await cashFlowApi(req,res,pathname); if(pathname==='/api/commission-reasons'||pathname.startsWith('/api/commission-reasons/'))return await commissionReasonsApi(req,res,pathname); if(pathname==='/api/outsourcing-receipts'||pathname.startsWith('/api/outsourcing-receipts/'))return await outsourcingReceiptsApi(req,res,pathname); if(pathname==='/api/purchase-receipts'||pathname.startsWith('/api/purchase-receipts/'))return await purchaseReceiptsApi(req,res,pathname); if(pathname==='/api/commercial-sales'||pathname.startsWith('/api/commercial-sales/'))return await commercialSalesApi(req,res,pathname); if(req.method==='POST'&&(pathname==='/api/gemini'||pathname==='/api/ai'||pathname==='/api/ai/vision-reasoning'||pathname==='/api/inference')) return await ai(req,res); if(req.method!=='GET') return send(res,405,{error:'Método não permitido.'}); const requested=normalize(pageForPath(pathname)).replace(/^[/\\]+/,''); const file=join(root,requested); if(!file.startsWith(root)) return send(res,403,{error:'Acesso negado.'}); const data=await readFile(file); res.writeHead(200,{'Content-Type':types[extname(file)]||'application/octet-stream','Content-Length':data.length,'Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto'}); res.end(data); } catch (error) { if(String(req.url||'').startsWith('/api/')) return send(res,error?.statusCode||500,{error:error?.message||'Falha no serviço local.'}); const data=await readFile(join(root,'index.html')); res.writeHead(200,{'Content-Type':types['.html'],'Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto'}); res.end(data); }
  }).listen(port,host,()=>console.log(`Aliança Park local: http://localhost:${port} · rede: http://10.75.216.173:${port} · bind: ${host}`));

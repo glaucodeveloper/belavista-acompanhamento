@@ -16,7 +16,7 @@ test('registros expõe navegação drill-in de etapa para atividade e apontament
   assert.match(app, /installBelavistaRecordsActivityDrillInV5377/);
   assert.match(app, /Extensões administrativas renderizadas/);
   assert.match(html, /records-activity-drill-in-v5377\.css/);
-  assert.match(html, /records-activity-drill-in-v5377\.mjs\?v=record-detail-page-v3/);
+  assert.match(html, /records-activity-drill-in-v5377\.mjs\?v=lot-development-v1/);
   assert.match(module, /data-records-drill-stage/);
   assert.match(module, /data-records-drill-activity/);
   assert.match(module, /activity-record-form-v5377/);
@@ -42,7 +42,9 @@ test('registros expõe navegação drill-in de etapa para atividade e apontament
   assert.match(module, /selectedRecordsStageV5377/);
   assert.match(module, /selectedRecordsActivityV5377/);
   assert.match(module, /data-records-open-new/);
-  assert.match(read('components.js'), /data-records-open-new/);
+  const root = read('components.js');
+  assert.doesNotMatch(root, /installRecordsPageV1|createStageRecordContextPageV1/);
+  assert.match(root, /installStageRecordEntryPageV1\(ViewLayer/);
 });
 
 test('propriedades dinâmicas de registros persistem localmente e no worker', () => {

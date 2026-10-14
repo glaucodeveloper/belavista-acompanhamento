@@ -11,9 +11,11 @@ test('prioridades da Central são uma lista clicável enviada ao chat operaciona
   assert.match(page,/data-stage-home-ai-action=/);
   assert.match(page,/Lista executável/);
   assert.match(styles,/control-ai-priorities \.stage-home-ai-grid\{display:grid!important;grid-template-columns:1fr!important/);
-  assert.match(components,/priorityChatRequestV1/);
-  assert.match(components,/chat\.respond\(priorityChatRequestV1\(action\), null,/);
-  assert.match(components,/source: "control-ai-priority"/);
+  assert.match(components,/installControlCenterPriorityChatV1\(ViewLayer/);
+  const priorityChat=await read('components/planning/control-center-priority-chat-v1.mjs');
+  assert.match(priorityChat,/priorityChatRequestV1/);
+  assert.match(priorityChat,/chat\.submit\(priorityChatRequestV1\(action\), null,/);
+  assert.match(priorityChat,/source: "stage-home-ai-priority"/);
 });
 
 test('toda requisição de chat leva política de execução e ferramentas de agenda/documento',async()=>{
@@ -21,12 +23,13 @@ test('toda requisição de chat leva política de execução e ferramentas de ag
     read('components.js'),read('worker/src/nvidia.js'),read('worker/src/routes.js'),read('server.mjs')
   ]);
   assert.match(components,/CHAT_OPERATIONAL_EXECUTION_INSTRUCTION_V1/);
-  assert.match(components,/instruction: CHAT_OPERATIONAL_EXECUTION_INSTRUCTION_V1/);
-  assert.match(components,/name === "agenda\.create_pending"/);
-  assert.match(components,/name === "documents\.open_form"/);
+  const priorityChat=await read('components/planning/control-center-priority-chat-v1.mjs');
+  assert.match(priorityChat,/CHAT_OPERATIONAL_EXECUTION_INSTRUCTION_V1/);
+  assert.match(priorityChat,/instruction: CHAT_OPERATIONAL_EXECUTION_INSTRUCTION_V1/);
   assert.match(worker,/OPERATIONAL_CHAT_EXECUTION_POLICY_V1/);
   assert.match(worker,/agenda\.create_pending/);
   assert.match(worker,/documents\.open_form/);
-  assert.match(routes,/instruction:payload\.instruction,requestContext:payload\.requestContext/);
+  assert.match(routes,/instruction:payload\.instruction,requestContext:modelRequestContextV21/);
   assert.match(server,/agenda\.create_pending/);
+  assert.match(server,/documents\.open_form/);
 });

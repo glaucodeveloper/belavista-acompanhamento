@@ -12,13 +12,15 @@ const read = (file) => fs.readFileSync(new URL(`../../${file}`, import.meta.url)
 
 test("contrato da inferência visual está ligado ao formulário e ao endpoint NVIDIA", () => {
   const components = read("components.js");
+  const contracts = read("components/commercial/contracts-page-v1.mjs");
   const server = read("server.mjs");
   const firebase = read("firebase.mjs");
 
-  assert.match(components, /\/api\/ai\/vision-reasoning/);
-  assert.match(components, /readProposalImageAsDataUrl/);
-  assert.match(components, /parseProposalVisionPayload/);
-  assert.match(components, /inference: form\._proposalInference/);
+  assert.match(components, /installCommercialDirectoryContractsRegistrationV1\(\{/);
+  assert.match(contracts, /\/api\/ai\/vision-reasoning/);
+  assert.match(contracts, /readProposalImageAsDataUrl/);
+  assert.match(contracts, /parseProposalVisionPayload/);
+  assert.match(contracts, /inference: form\._proposalInference/);
   assert.match(server, /return \{\.\.\.parsed,\.\.\.toolEnvelope/);
   assert.match(firebase, /inference:input\.inference/);
   for (const field of ["client", "lot", "value", "payment"]) {

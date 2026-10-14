@@ -2,14 +2,26 @@
 // Assistente local e persistente para o monitor de workers e suas rotas
 // dedicadas. O módulo não depende do shell que cada página reconstrói.
 import { parseLotStatusCommand, applyLotStatusCommand } from './lot-status-command.mjs';
+import { buildRecordInterpretationV1, resolveRequestStageV1, resolveStageMentionV1, resolveVisualStageV1 } from './record-stage-interpretation-v1.mjs';
 
 const THREAD_KEY = 'belavista.worker-context-chat.v1';
 const SERVICE_KEY = 'belavista.worker-context-chat.service-id.v1';
 const VOICE_KEY = 'belavista.worker-context-chat.voice.v1';
+const SPEAKER_PROFILE_KEY = 'belavista.worker-context-chat.speaker-profile.v1';
 const NAV_KEY = 'belavista.worker-context-chat.last-route.v1';
 const MAX_MESSAGES = 60;
 const CHAT_IMAGE_MAX_BYTES = 6 * 1024 * 1024;
-const WORKER_OPERATIONAL_EXECUTION_INSTRUCTION_V2 = `Trate pedidos operacionais como intenção de execução, não apenas como perguntas. Execute no sistema tudo que estiver representado por ferramentas seguras e não invente fatos. Quando compreender etapa ou atividade, mas faltarem dados para concluir, crie um apontamento Pendente no cronograma com o que já é conhecido e pergunte somente os detalhes faltantes. Quando depender de evidência, nota, projeto, autorização ou outro documento, peça esse documento e abra o fluxo documental quando isso ajudar. Se a compreensão indicar algo completamente externo ao sistema e não houver ação interna segura, não fabrique registro, conclusão, compra ou agenda: peça apenas a evidência/documento necessário. Nunca afirme que executou algo que nenhuma ferramenta confirmou. Diferencie fato observado, inferência e dado a confirmar.`;
+// Perfis são uma camada sobre as vozes instaladas no navegador/dispositivo.
+// Eles não exigem chave de TTS nem enviam o conteúdo da conversa a terceiros.
+const SPEAKER_PROFILES = [
+  { id: 'operacional', label: 'Operacional · neutra', rate: .98, pitch: 1, terms: [] },
+  { id: 'narradora', label: 'Narradora · clara', rate: .94, pitch: 1.06, terms: ['maria', 'francisca', 'luciana', 'helena', 'female', 'femin'] },
+  { id: 'diretoria', label: 'Diretoria · grave', rate: .92, pitch: .9, terms: ['daniel', 'antonio', 'felipe', 'ricardo', 'male', 'mascul'] },
+  { id: 'natural', label: 'Natural · preferir neural', rate: .96, pitch: 1, terms: ['natural', 'neural', 'online', 'google'] }
+];
+const VISUAL_STAGE_CLARIFICATION_V1 = 'Não consegui encaixar esta descrição com segurança em uma etapa. Qual etapa ou atividade deve receber este item?';
+const VISUAL_ACTION_CLARIFICATION_V1 = 'Não consegui identificar a ação de serviço com segurança apenas pela imagem. Qual atividade representa esta evidência? Não criei solicitação nem registro.';
+const WORKER_OPERATIONAL_EXECUTION_INSTRUCTION_V2 = `Trate pedidos operacionais como intenção de execução, não apenas como perguntas. Leia cada imagem junto com o texto disponível e primeiro distinga nota/recibo de compra, foto de evidência de serviço e outro documento. Em nota, extraia todos os itens físicos como materiais e linhas de mão de obra faturada como serviço. Em foto de campo, quando a pessoa informar somente a etapa, use essa informação apenas como destino e identifique a ação pela imagem; separe observação visual e não invente data/hora, equipe, quantidade ou conclusão. Se a ação não estiver visualmente identificável com segurança, pergunte qual atividade representa a evidência, sem criar registro. Compare a ação visual com a descrição típica, pistas e atividades de todas as etapas candidatas e associe a atividade quando houver suporte. A etapa aberta/selecionada é somente navegação, nunca destino automático. Só grave a sugestão sustentada por uma candidata canônica; se não houver um único encaixe seguro, não chame ferramenta nem crie solicitação/registro órfão: pergunte qual etapa ou atividade deve receber a evidência. Mantenha toda leitura como Pendente para revisão humana. Quando compreender etapa ou atividade mas faltarem dados, prepare um apontamento Pendente e pergunte só o que falta. Não fabrique fatos ou execução; diferencie fato observado, relato da pessoa, inferência e dado a confirmar.`;
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -17,6 +29,7 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({
 const qs = (selector, scope = document) => scope.querySelector(selector);
 const now = () => new Date().toISOString();
 const serviceStatusLabel = status => ({triage:'Em triagem',planned:'Planejada',in_progress:'Em execução',waiting_files:'Aguardando arquivos',completed:'Concluída',cancelled:'Cancelada'}[status]||status);
+const activityTokenV1 = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
 const waitForUi = async (predicate, timeout = 1200) => {
   const until = performance.now() + timeout;
   while (performance.now() < until) {
@@ -42,6 +55,9 @@ function readJson(key, fallback) {
 
 function currentContext() {
   const text = selector => String(qs(selector)?.textContent || '').trim();
+  const stages = Array.isArray(globalThis.__BELAVISTA_RECORD_OCR_BRIDGE_V21?.stages)
+    ? globalThis.__BELAVISTA_RECORD_OCR_BRIDGE_V21.stages
+    : [];
   return {
     route: `${location.pathname}${location.search}`,
     surface: labelForPath(location.pathname),
@@ -54,7 +70,8 @@ function currentContext() {
     agenda: text('[data-agenda-count]'),
     records: text('[data-record-count]') || text('[data-input-count]'),
     stage: new URLSearchParams(location.search).get('stage') || '',
-    activity: new URLSearchParams(location.search).get('activity') || ''
+    activity: new URLSearchParams(location.search).get('activity') || '',
+    stages
   };
 }
 
@@ -70,12 +87,143 @@ function contextSummary(context) {
   ].filter(Boolean).join(' · ') || 'estado operacional ainda não informado';
 }
 
+function visualAllocationCallsFromReply(reply, message = '') {
+  const ocr = reply?.recordOcr;
+  if (ocr?.error) return [];
+  const items = Array.isArray(ocr?.items) ? ocr.items : [];
+  const describedServiceAction = String(message.match(/\bAção de serviço\s*:\s*([^\n.!?]+)/i)?.[1] || '').trim();
+  const provided = (Array.isArray(reply?.toolCalls) ? reply.toolCalls : [])
+    .filter(call => call?.name === 'stage.allocate_visual_record');
+  const context = currentContext();
+  const explicit = resolveStageMentionV1(message, context.stages);
+  const serviceEvidence = ocr?.serviceEvidence || {};
+  const isStageOnlyName = value => explicit.status === 'matched' && activityTokenV1(value) === activityTokenV1(explicit.stage.name);
+  const usableItems = items.filter((item, index) => {
+    const description = String(item?.description || item?.name || item?.materialName || item?.materialId || '').trim();
+    const confidence = Number(item?.confidence ?? ocr?.confidence);
+    const proposedArgs = provided[index]?.arguments || provided[index]?.args || provided[0]?.arguments || provided[0]?.args || {};
+    const documentKind = ['purchase_invoice', 'purchase_receipt'].includes(String(ocr?.documentType || '')) ? 'material' : '';
+    const kind = String(item?.itemKind || item?.type || proposedArgs.target || documentKind).toLocaleLowerCase('pt-BR');
+    const service = /servi[cç]|atividade|labor|m[aã]o de obra/.test(kind);
+    return description.length >= 3 && !/^item\s+ocr\s+\d+$/i.test(description) &&
+      Number.isFinite(confidence) && confidence >= 0 &&
+      /^(material|materiais|servico|serviço|serviços|servicos|service|labor|m[aã]o de obra)$/.test(kind) &&
+      !(service && isStageOnlyName(description));
+  });
+  const ocrVisualActionCandidate = String(serviceEvidence.actionDescription || '').trim();
+  const ocrVisualAction = isStageOnlyName(ocrVisualActionCandidate) ? '' : ocrVisualActionCandidate;
+  const modelServiceCall = String(ocr?.documentType || '') === 'service_evidence' && explicit.status === 'matched'
+    ? provided.map(call => call.arguments || call.args || {}).find(args => {
+      const target = String(args.target || '').toLocaleLowerCase('pt-BR');
+      const modelStage = resolveStageMentionV1(`${args.stageName || ''} ${args.stageKey || ''}`, context.stages);
+      return target === 'service' && String(args.activityName || '').trim().length >= 3 && !isStageOnlyName(args.activityName) &&
+        modelStage.status === 'matched' && modelStage.stage.key === explicit.stage.key;
+    }) || null
+    : null;
+  const allocationItems = usableItems.length
+    ? usableItems
+    : String(ocr?.documentType || '') === 'service_evidence' && ocrVisualAction
+      ? [{ itemKind: 'servico', description: ocrVisualAction, activityName: String(serviceEvidence.activityName || ocrVisualAction), details: ocrVisualAction, confidence: serviceEvidence.confidence ?? ocr?.confidence }]
+      : String(ocr?.documentType || '') === 'service_evidence' && modelServiceCall
+        ? [{ itemKind: 'servico', description: modelServiceCall.activityName, activityName: modelServiceCall.activityName, details: modelServiceCall.details || '', pointer: modelServiceCall.pointer || '', confidence: modelServiceCall.confidence }]
+        : String(ocr?.documentType || '') === 'service_evidence' && describedServiceAction
+          ? [{ itemKind: 'servico', description: describedServiceAction, confidence: 0 }]
+      : [];
+  if (!allocationItems.length) return [];
+  const appState = globalThis.__BELAVISTA_RECORD_OCR_BRIDGE_V21?.appStore?.get?.() || globalThis.__belavistaAppStore?.get?.() || {};
+  if (explicit.status === 'ambiguous') return [];
+  const includesPhrase = (text, phrase) => {
+    const normalizedText = ` ${activityTokenV1(text)} `;
+    const normalizedPhrase = activityTokenV1(phrase);
+    return Boolean(normalizedPhrase && normalizedText.includes(` ${normalizedPhrase} `));
+  };
+  const existingMaterials = [
+    ...(context.stages || []).flatMap(stage => Array.isArray(stage?.materials) ? stage.materials : []),
+    ...(Array.isArray(appState.materialCatalogAdditions) ? appState.materialCatalogAdditions.map(item => item?.name || item?.materialName || '') : []),
+    ...(Array.isArray(appState.records) ? appState.records.flatMap(record =>
+      (Array.isArray(record?.properties) ? record.properties : [])
+        .filter(property => ['allocation_material', 'material_name'].includes(String(property?.id || property?.key || '')))
+        .map(property => property?.value || '')
+    ) : [])
+  ].map(value => String(value || '').trim()).filter(Boolean);
+  const explicitlyRequestedMaterial = [...new Set(existingMaterials)]
+    .find(name => includesPhrase(message, name));
+  return allocationItems.map((item, index) => {
+    const args = provided[index]?.arguments || provided[index]?.args || provided[0]?.arguments || provided[0]?.args || {};
+    const documentKind = ['purchase_invoice', 'purchase_receipt'].includes(String(ocr?.documentType || '')) ? 'material' : '';
+    const kind = String(item?.itemKind || item?.type || args.target || documentKind).toLocaleLowerCase('pt-BR');
+    const target = /servi[cç]|atividade|m[aã]o de obra/.test(kind) ? 'service' : 'material';
+    const description = String(item?.description || item?.name || item?.materialName || item?.materialId || `Item OCR ${index + 1}`).trim();
+    const ocrResolution = resolveVisualStageV1({ message, item, stages: context.stages });
+    const modelStage = resolveStageMentionV1(`${args.stageName || ''} ${args.stageKey || ''}`, context.stages);
+    const stage = explicit.status === 'matched'
+      ? explicit.stage
+      : ocrResolution.stage
+        ? ocrResolution.stage
+        : modelStage.status === 'matched'
+          ? modelStage.stage
+          : null;
+    if (!stage) return null;
+    const stageRow = context.stages.find(candidate => candidate.key === stage.key) || stage;
+    const activities = Array.isArray(stageRow.activities) ? stageRow.activities : [];
+    const requestedActivityId = String(item?.activityId || args.activityId || '').trim();
+    const activityMention = String(message.match(/\batividade\s+([^.;,]+)/i)?.[1] || '').trim();
+    const requestedActivityCandidate = String(activityMention || (target === 'service' ? args.activityName : '') || item?.activityName || serviceEvidence.activityName || args.activityName || '').trim();
+    const requestedActivityName = isStageOnlyName(requestedActivityCandidate) ? '' : requestedActivityCandidate;
+    const explicitActivity = activities.find(activity => includesPhrase(message, activity?.name || activity?.title));
+    const canonicalActivity = explicitActivity || activities.find(activity => requestedActivityId && String(activity?.id || activity?.key || '') === requestedActivityId) ||
+      activities.find(activity => requestedActivityName && activityTokenV1(activity?.name || activity?.title) === activityTokenV1(requestedActivityName)) || null;
+    const serviceWhen = [serviceEvidence.observedDate && `Data informada/visível: ${serviceEvidence.observedDate}`, serviceEvidence.observedTime && `Hora informada/visível: ${serviceEvidence.observedTime}`].filter(Boolean).join(' · ');
+    const personDescription = target === 'service' && message && !/^\s*(?:etapa|stage)\s*:/i.test(message)
+      ? `Descrição enviada pela pessoa: ${message}`
+      : '';
+    const stageHint = target === 'service' && explicit.status === 'matched'
+      ? `Etapa indicada pela pessoa: ${stage.name}`
+      : '';
+    const details = [item?.details, personDescription, stageHint, target === 'service' && serviceWhen, ocr?.text || ocr?.rawText].filter(Boolean).join('\n');
+    const confidence = [item?.confidence, ocr?.confidence, args.confidence]
+      .map(Number).find(value => Number.isFinite(value) && value > 0);
+    return {
+      name: 'stage.allocate_visual_record',
+      arguments: {
+        target,
+        stageKey: stage.key,
+        stageName: stage.name,
+        activityId: String(canonicalActivity?.id || canonicalActivity?.key || ''),
+        activityName: String(canonicalActivity?.name || canonicalActivity?.title || requestedActivityName || (target === 'service' ? serviceEvidence.actionDescription : '') || (target === 'service' ? description : 'Leitura de material')),
+        materialName: target === 'material' ? String(explicitlyRequestedMaterial || item?.materialName || description || args.materialName || '') : '',
+        ...(item?.quantity == null && args.quantity == null ? {} : { quantity: item?.quantity ?? args.quantity }),
+        unit: String(args.unit || (target === 'material' ? item?.unit || stage.unit || 'un.' : 'registro')),
+        details: String(details || args.details || 'Item identificado no anexo pelo OCR.'),
+        pointer: String(target === 'material' ? description : item?.pointer || item?.description || description),
+        ...(confidence == null ? {} : { confidence })
+      }
+    };
+  }).filter(Boolean);
+}
+
+function visualClarificationForV1(ocr) {
+  const hasAction = String(ocr?.serviceEvidence?.actionDescription || '').trim() ||
+    (Array.isArray(ocr?.items) ? ocr.items : []).some(item =>
+      /servi[cç]|service|labor/.test(String(item?.itemKind || item?.type || '').toLocaleLowerCase('pt-BR')) &&
+      String(item?.activityName || item?.description || '').trim()
+    );
+  return String(ocr?.documentType || '') === 'service_evidence' && !hasAction
+    ? VISUAL_ACTION_CLARIFICATION_V1
+    : VISUAL_STAGE_CLARIFICATION_V1;
+}
+
 class WorkerContextChat {
   constructor() {
-    const saved = readJson(THREAD_KEY, []);
-    this.messages = Array.isArray(saved) ? saved.filter(item => item.kind === 'assistant').slice(-1) : [];
+    // A conversa é uma área de trabalho da página, não um histórico de auditoria.
+    // Os retornos continuam persistidos por `save()` para os fluxos que consultam
+    // o estado local, mas nenhuma mensagem antiga deve reaparecer ao iniciar a tela.
+    this.messages = [];
     this.editingId = null;
     this.voiceEnabled = readJson(VOICE_KEY, false) === true;
+    this.speakerProfile = SPEAKER_PROFILES.some(item => item.id === readJson(SPEAKER_PROFILE_KEY, 'operacional'))
+      ? readJson(SPEAKER_PROFILE_KEY, 'operacional')
+      : 'operacional';
     this.lastSnapshot = null;
     this.route = `${location.pathname}${location.search}`;
     this.observer = null;
@@ -93,14 +241,22 @@ class WorkerContextChat {
 
   mount() {
     if (document.querySelector('[data-worker-context-assistant]')) return;
+    const mobileDefaultCollapsed = globalThis.matchMedia?.('(max-width: 760px)').matches === true ||
+      new URLSearchParams(location.search).get('view') === 'lot-development';
+    // Não recuperar pedidos antigos no assistente ao abrir a aplicação.
+    try { localStorage.removeItem(SERVICE_KEY); } catch {}
     document.body.insertAdjacentHTML('beforeend', `
-      <aside class="worker-context-assistant" data-worker-context-assistant aria-label="Assistente operacional dos workers">
+      <aside class="worker-context-assistant${mobileDefaultCollapsed ? ' is-collapsed' : ''}" data-worker-context-assistant data-collapsed="${String(mobileDefaultCollapsed)}" aria-label="Assistente operacional dos workers">
         <header class="worker-context-chat-head">
           <div><span class="worker-context-mark">✦</span><div><strong>IA · worker operacional</strong><small data-worker-chat-monitor>Observando ${esc(labelForPath(location.pathname))}</small></div></div>
-          <div class="worker-context-chat-head-actions"><button type="button" data-worker-chat-voice aria-pressed="${String(this.voiceEnabled)}" title="Ativar avisos falados">◖</button><button type="button" data-worker-chat-minimize aria-label="Minimizar assistente">−</button></div>
+          <div class="worker-context-chat-head-actions"><button type="button" data-worker-chat-voice aria-pressed="${String(this.voiceEnabled)}" title="Ativar avisos falados">◖</button><button type="button" data-worker-chat-minimize aria-label="${mobileDefaultCollapsed ? 'Restaurar assistente' : 'Minimizar assistente'}">${mobileDefaultCollapsed ? '+' : '−'}</button></div>
         </header>
         <div class="worker-context-chat-body">
           <div class="worker-context-chat-intro"><strong>Resposta atual</strong><span>Peça um serviço de qualquer área; solicitações e arquivos ficam acompanháveis pelo número gerado.</span></div>
+          <div class="worker-chat-speaker-panel" data-worker-chat-speaker-panel>
+            <label><span>Modelo de speaker</span><select data-worker-chat-speaker aria-label="Modelo de voz do assistente">${SPEAKER_PROFILES.map(item => `<option value="${item.id}" ${item.id === this.speakerProfile ? 'selected' : ''}>${item.label}</option>`).join('')}</select></label>
+            <button type="button" data-worker-chat-speaker-preview>Testar voz</button>
+          </div>
           <div class="worker-context-fade" data-worker-context-fade aria-live="polite" aria-atomic="true" hidden></div>
           <div class="worker-context-chat-log" data-worker-chat-log aria-live="polite" aria-busy="false"></div>
           <div class="worker-context-chat-quick" aria-label="Ações rápidas">
@@ -113,10 +269,12 @@ class WorkerContextChat {
             <div class="worker-context-chat-attachment" data-worker-chat-attachment aria-live="polite" hidden></div>
             <div class="worker-context-chat-input-shell">
               <textarea name="message" rows="2" maxlength="2000" placeholder="Descreva um fato, peça uma ação ou revise uma diretriz…" aria-label="Mensagem para o assistente dos workers"></textarea>
-              <div class="worker-chat-attachment-rail" role="group" aria-label="Anexos da mensagem">
-                <button type="button" data-worker-chat-file aria-label="Anexar arquivo" title="Anexar um arquivo"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 3.5h7l4 4V20H7a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M14 3.5V8h4M9 12h6M9 15h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>Anexo</span></button>
+              <div class="worker-chat-attachment-rail" role="group" aria-label="Ações da mensagem">
+                <button type="button" data-worker-chat-file aria-label="Anexar arquivo" title="Anexar arquivo"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 3.5h7l4 4V20H7a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M14 3.5V8h4M9 12h6M9 15h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span class="sr-only">Anexar arquivo</span></button>
+                <button type="button" data-worker-chat-camera aria-label="Tirar foto" title="Tirar foto"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h3l1.5-2h7L17 7h3v12H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="1.7"/></svg><span class="sr-only">Tirar foto</span></button>
               </div>
               <input type="file" class="worker-context-chat-image-input" data-worker-chat-file-input accept="image/png,image/jpeg,image/webp,application/pdf,.pdf,.dwg,.dxf" aria-label="Selecionar anexo">
+              <input type="file" class="worker-context-chat-image-input" data-worker-chat-camera-input accept="image/*" capture="environment" aria-label="Capturar foto">
             </div>
             <span class="worker-chat-key-hint">Enter envia · Shift+Enter quebra linha</span>
             <div><small data-worker-chat-status role="status" aria-live="polite">Pronto para observar e organizar.</small><button type="submit" data-worker-chat-submit>Enviar</button></div>
@@ -150,7 +308,8 @@ class WorkerContextChat {
     });
     this.observe();
     this.announceRouteChange();
-    this.refreshServiceRequests();
+    // Não reabrir solicitações antigas no chat ao iniciar a aplicação.
+    // Novas solicitações continuam sendo acompanhadas após o envio.
   }
 
   bind() {
@@ -164,19 +323,47 @@ class WorkerContextChat {
       if (!event.target.closest('[data-chat-apply="record"]') || !this.recordDraft) return;
       const store = globalThis.__BELAVISTA_RECORD_OCR_BRIDGE_V21?.appStore || globalThis.__belavistaAppStore;
       if (!store) return;
-      const { ocr, attachmentRef, requestId } = this.recordDraft;
-      store.set({ view: 'control', controlEventDraft: { title: this.currentRequest?.title || 'Nota / comprovante',
-        details: 'Registro preparado a partir do anexo do chat.', category: 'ocorrencia' }, recordContext: {
-        ocr, attachmentRef, requestId, attachmentDataUrl: this.recordDraft.dataUrl, label: `Solicitação ${requestId || 'do chat'}`
-      }, lastAction: 'Preparou OCR do chat para revisão do registro' });
-      document.querySelector('view-layer')?.render();
-      this.openRecordDrawer();
+      const state = store.get?.() || {};
+      // Há mais de uma leitura na sessão. A revisão deve abrir o registro que
+      // acabou de ser criado para este anexo, e não a primeira leitura visual
+      // que o estado tiver preservado.
+      const attachmentName = String(this.recordDraft?.attachmentRef?.name || '').trim();
+      const record = [...(state.records || [])].reverse().find(item => {
+        if (item?.source !== 'chat-visual') return false;
+        if (!attachmentName) return true;
+        return (item.attachments || []).some(attachment =>
+          String(attachment?.name || attachment?.fileName || attachment?.label || '').trim() === attachmentName,
+        );
+      }) || [...(state.records || [])].reverse().find(item => item?.source === 'chat-visual');
+      if (!record) {
+        this.status.textContent = 'A leitura foi preservada, mas ainda falta a etapa para alocar o item.';
+        return;
+      }
+      const target = record.allocationTarget === 'material' ? 'material' : 'service';
+      const itemKey = target === 'material' ? `material:AI-MATERIAL-${record.id}` : `service:${record.id}`;
+      store.set({
+        view: 'stages',
+        selectedStageV9: record.stageKey || state.selectedStageV9 || state.selectedStage || '',
+        selectedStage: record.stageKey || state.selectedStage || state.selectedStageV9 || '',
+        stageSelected: true,
+        activityDedicated: false,
+        stageActivityDedicatedV9: false,
+        controlStageCenterTab: target === 'material' ? 'materials' : 'services',
+        controlStageCenterItemModalKey: itemKey,
+        lastAction: 'Abriu a alocação OCR do chat para revisão humana'
+      });
+      // A página de Etapas pode preservar a linha do tempo durante a troca de
+      // contexto. Abre a linha recém-criada depois do redraw para expor suas
+      // propriedades e o comprovante imediatamente.
+      setTimeout(() => {
+        const row = document.querySelector(`[data-stage-center-item-open="${CSS.escape(itemKey)}"]`);
+        row?.click();
+      }, 0);
+      this.recordDraft = null;
+      this.render();
     });
     qs('[data-worker-chat-minimize]', this.root)?.addEventListener('click', () => {
-      const collapsed = this.root.classList.toggle('is-collapsed');
-      this.root.dataset.collapsed = String(collapsed);
-      qs('[data-worker-chat-minimize]', this.root).textContent = collapsed ? '+' : '−';
-      qs('[data-worker-chat-minimize]', this.root).setAttribute('aria-label', collapsed ? 'Restaurar assistente' : 'Minimizar assistente');
+      this.setCollapsed(!this.root.classList.contains('is-collapsed'));
     });
     qs('[data-worker-chat-voice]', this.root)?.addEventListener('click', event => {
       this.voiceEnabled = !this.voiceEnabled;
@@ -186,12 +373,22 @@ class WorkerContextChat {
       this.status.textContent = this.voiceEnabled ? 'Avisos falados ativados neste dispositivo.' : 'Avisos falados desativados.';
       if (!this.voiceEnabled) globalThis.speechSynthesis?.cancel();
     });
+    qs('[data-worker-chat-speaker]', this.root)?.addEventListener('change', event => {
+      const next = String(event.currentTarget.value || 'operacional');
+      this.speakerProfile = SPEAKER_PROFILES.some(item => item.id === next) ? next : 'operacional';
+      localStorage.setItem(SPEAKER_PROFILE_KEY, JSON.stringify(this.speakerProfile));
+      const label = SPEAKER_PROFILES.find(item => item.id === this.speakerProfile)?.label || 'Operacional';
+      this.status.textContent = `Speaker selecionado: ${label}.`;
+    });
+    qs('[data-worker-chat-speaker-preview]', this.root)?.addEventListener('click', () => {
+      this.speak('Olá. Sou o assistente operacional do Aliança Park. Esta é uma prévia da voz selecionada.');
+    });
     const cameraInput = qs('[data-worker-chat-camera-input]', this.root);
     const fileInput = qs('[data-worker-chat-file-input]', this.root);
     qs('[data-worker-chat-camera]', this.root)?.addEventListener('click', () => cameraInput?.click());
     qs('[data-worker-chat-file]', this.root)?.addEventListener('click', () => fileInput?.click());
-    for(const input of [cameraInput,fileInput]) input?.addEventListener('change', event => {
-      for (const file of [...(event.currentTarget.files || [])]) this.readImage(file, 'file');
+    for(const [input,source] of [[cameraInput,'camera'],[fileInput,'file']]) input?.addEventListener('change', event => {
+      for (const file of [...(event.currentTarget.files || [])]) this.readImage(file, source);
       event.currentTarget.value = '';
     });
     this.pasteHandler = event => {
@@ -247,6 +444,70 @@ class WorkerContextChat {
     });
   }
 
+  setCollapsed(collapsed) {
+    if (!this.root) return;
+    this.root.classList.toggle('is-collapsed', collapsed);
+    this.root.dataset.collapsed = String(collapsed);
+    const minimize = qs('[data-worker-chat-minimize]', this.root);
+    if (minimize) {
+      minimize.textContent = collapsed ? '+' : '−';
+      minimize.setAttribute('aria-label', collapsed ? 'Restaurar assistente' : 'Minimizar assistente');
+    }
+  }
+
+  openLotStatusContext(lotLabel) {
+    if (!this.root) this.mount();
+    const label = String(lotLabel || 'lote selecionado').trim();
+    const root = this.root || qs('[data-worker-context-assistant]');
+    const input = this.input || qs('textarea[name="message"]', root);
+    if (!root || !input) return false;
+
+    // O mapa só prepara o contexto visual. A pergunta é sempre escrita e
+    // enviada manualmente pela pessoa — nenhum valor é colocado no textarea.
+    root.classList.remove('is-collapsed');
+    root.dataset.collapsed = 'false';
+    const minimize = qs('[data-worker-chat-minimize]', root);
+    if (minimize) {
+      minimize.textContent = '−';
+      minimize.setAttribute('aria-label', 'Minimizar assistente');
+    }
+    root.dataset.lotStatusContext = label;
+    input.dataset.lotStatusContext = label;
+    root.dataset.mapContextKind = 'lot';
+    root.dataset.mapContextLabel = label;
+    input.dataset.mapContextKind = 'lot';
+    input.dataset.mapContextLabel = label;
+    input.placeholder = `Pergunte sobre o status do ${label}…`;
+    input.setAttribute('aria-description', `Contexto selecionado: ${label}. Escreva e envie manualmente sua pergunta.`);
+    requestAnimationFrame(() => input.focus({ preventScroll: true }));
+    return true;
+  }
+
+  openMapAreaContext(areaLabel) {
+    if (!this.root) this.mount();
+    const label = String(areaLabel || 'área comum do loteamento').trim();
+    const root = this.root || qs('[data-worker-context-assistant]');
+    const input = this.input || qs('textarea[name="message"]', root);
+    if (!root || !input) return false;
+
+    root.classList.remove('is-collapsed');
+    root.dataset.collapsed = 'false';
+    const minimize = qs('[data-worker-chat-minimize]', root);
+    if (minimize) {
+      minimize.textContent = '−';
+      minimize.setAttribute('aria-label', 'Minimizar assistente');
+    }
+    root.dataset.mapContextKind = 'common-area';
+    root.dataset.mapContextLabel = label;
+    input.dataset.mapContextKind = 'common-area';
+    input.dataset.mapContextLabel = label;
+    input.placeholder = `Pergunte sobre ${label}…`;
+    input.setAttribute('aria-description', `Contexto selecionado: ${label}. Escreva e envie manualmente sua pergunta.`);
+    this.status.textContent = `${label} selecionada. Escreva sua pergunta para o assistente.`;
+    requestAnimationFrame(() => input.focus({ preventScroll: true }));
+    return true;
+  }
+
   render() {
     if (!this.log) return;
     const item = this.messages.at(-1);
@@ -260,21 +521,31 @@ class WorkerContextChat {
   recordVerificationMarkup() {
     const ocr = this.recordDraft?.ocr || {};
     const properties = Array.isArray(ocr.properties) ? ocr.properties : [];
-    const items = Array.isArray(ocr.items) ? ocr.items : [];
+    const items = Array.isArray(this.recordDraft?.allocations) && this.recordDraft.allocations.length
+      ? this.recordDraft.allocations
+      : Array.isArray(ocr.items) ? ocr.items : [];
     const extractedText = ocr.text || ocr.rawText || ocr.extractedText || '';
+    const attachmentName = String(this.recordDraft?.attachmentRef?.name || this.recordDraft?.attachmentRef?.fileName || '').trim();
     const rows = properties.slice(0, 8).map(property => {
       const value = Array.isArray(property.value)
         ? property.value.map(item => item.description || item.name || JSON.stringify(item)).join(', ')
         : property.value;
       return `<div class="worker-chat-record-check-row"><dt>${esc(property.label || property.key || 'Campo')}</dt><dd>${esc(value == null || value === '' ? '—' : String(value))}</dd></div>`;
     }).join('');
-    const allocations = items.map((item, index) => `<article class="worker-chat-allocation" data-record-allocation-index="${index}"><div><b>${esc(item.description || item.materialName || 'Item sem descrição')}</b><span>${esc(item.itemKind || 'outro')} · ${esc(item.quantity || 0)} ${esc(item.unit || '')}</span></div><dl><dt>Etapa</dt><dd>${esc(item.stageName || item.stageKey || 'A confirmar')}</dd><dt>Serviço / atividade</dt><dd>${esc(item.activityName || item.activityId || 'A confirmar')}</dd><dt>Material</dt><dd>${esc(item.materialName || item.materialId || (item.itemKind === 'servico' ? 'Não aplicável' : 'A confirmar'))}</dd></dl></article>`).join('');
-    return `<section class="worker-chat-record-verification" data-record-verification aria-label="Verificação da nota extraída"><header><div><span>ETAPA 1 · VERIFICAÇÃO</span><h3>Confira a nota antes do registro</h3></div><strong>${esc(ocr.reviewRequired === false ? 'Leitura consistente' : 'Revisão humana')}</strong></header>${extractedText ? `<p class="worker-chat-record-extracted"><b>Texto identificado</b><span>${esc(extractedText)}</span></p>` : ''}${rows ? `<dl>${rows}</dl>` : '<p class="worker-chat-record-empty">O worker não retornou campos estruturados. Revise o anexo na etapa seguinte.</p>'}${allocations ? `<section class="worker-chat-allocation-section"><header><b>Alocação sugerida</b><span>Etapa · serviço · material</span></header>${allocations}<small>As alocações são sugestões da leitura e precisam ser confirmadas no registro.</small></section>` : ''}<footer><button type="button" data-chat-discard="record">Descartar leitura</button><button type="button" data-chat-apply="record" data-request-id="${esc(this.recordDraft.requestId || '')}">Confirmar leitura e abrir registro</button></footer></section>`;
+    const allocations = items.map((item, index) => {
+      const kind = item.target || item.itemKind || 'outro';
+      const title = item.description || item.materialName || item.activityName || item.name || 'Item sem descrição';
+      const quantity = item.quantity == null || item.quantity === '' ? 'Quantidade não informada' : `${item.quantity} ${item.unit || ''}`.trim();
+      const material = item.materialName || item.materialId || (/servi[cç]/i.test(kind) ? 'Não aplicável' : 'A confirmar');
+      const details = String(item.details || '').trim();
+      return `<article class="worker-chat-allocation" data-record-allocation-index="${index}"><div><b>${esc(title)}</b><span>${esc(kind)} · ${esc(quantity)}</span></div><dl><dt>Etapa</dt><dd>${esc(item.stageName || item.stageKey || 'A confirmar')}</dd><dt>Serviço / atividade</dt><dd>${esc(item.activityName || item.activityId || 'A confirmar')}</dd><dt>Material</dt><dd>${esc(material)}</dd></dl>${details ? `<p>${esc(details)}</p>` : ''}</article>`;
+    }).join('');
+    return `<section class="worker-chat-record-verification" data-record-verification aria-label="Verificação do anexo"><header><div><span>ETAPA 1 · VERIFICAÇÃO</span><h3>Confira os dados antes da alocação</h3></div><strong>${esc(ocr.reviewRequired === false ? 'Leitura consistente' : 'Revisão humana')}</strong></header>${attachmentName ? `<p class="worker-chat-record-extracted"><b>Anexo analisado</b><span>${esc(attachmentName)}</span></p>` : ''}${extractedText ? `<p class="worker-chat-record-extracted"><b>Texto identificado</b><span>${esc(extractedText)}</span></p>` : ''}${rows ? `<dl>${rows}</dl>` : `<p class="worker-chat-record-empty">${allocations ? 'OCR sem campos estruturados; a proposta abaixo usa a descrição enviada e permanece pendente de revisão.' : 'O worker não retornou campos estruturados. Revise o anexo antes de alocar.'}</p>`}${allocations ? `<section class="worker-chat-allocation-section"><header><b>Proposta de alocação do assistente</b><span>Etapa · serviço · material</span></header>${allocations}<small>Confira a etapa e as propriedades no Dashboard.</small></section>` : ''}<footer><button type="button" data-chat-discard="record">Descartar leitura</button><button type="button" data-chat-apply="record" data-request-id="${esc(this.recordDraft.requestId || '')}">Abrir alocação no Dashboard</button></footer></section>`;
   }
 
   openRecordDrawer() {
     const drawer = document.querySelector('.control-record-drawer-v2');
-    if (!drawer) { this.status.textContent = 'Abra a Central operacional para revisar o registro.'; return; }
+    if (!drawer) { this.status.textContent = 'Abra o Dashboard para revisar o registro.'; return; }
     this.recordDialog?.remove();
     const dialog = document.createElement('dialog');
     dialog.className = 'worker-chat-record-dialog';
@@ -377,18 +648,49 @@ class WorkerContextChat {
       this.status.textContent='Acompanhamento consultado.';
       return;
     }
-    if(!directOperational&&this.isServiceRequest(text)){
+    const stageOnlyVisualSubmission=Boolean(
+      attachment &&
+      !/^(qual|quais|como|quando|onde|por que|o que|me explique|explique)\b/i.test(String(text||'').trim()) &&
+      resolveStageMentionV1(text,currentContext().stages).status==='matched'
+    );
+    if(!directOperational&&(this.isServiceRequest(text)||stageOnlyVisualSubmission)){
       try{
-        const request=await this.createServiceRequest(text,files);
+        const shouldReadAttachment = Boolean(attachment && (stageOnlyVisualSubmission || /\b(nota|comprovante|registro|ocr|foto|imagem|anexo)\b/i.test(text)));
+        const reply = shouldReadAttachment ? await this.ask(text, attachment, options) : null;
+        const attachmentOcr = reply?.recordOcr;
+        const expectsAllocation = Boolean(attachmentOcr && !attachmentOcr.error && (
+          (Array.isArray(attachmentOcr.items) && attachmentOcr.items.length) ||
+          ['service_evidence', 'purchase_invoice', 'purchase_receipt'].includes(String(attachmentOcr.documentType || ''))
+        ));
+        if (shouldReadAttachment && expectsAllocation && !visualAllocationCallsFromReply(reply, text).length) {
+          this.recordDraft = { ocr: attachmentOcr, attachmentRef: reply.attachment, requestId: null, dataUrl: attachment?.dataUrl };
+          this.add('assistant', visualClarificationForV1(attachmentOcr));
+          this.status.textContent = 'Nenhuma solicitação ou alocação foi criada; falta confirmar a etapa/atividade.';
+          return;
+        }
+        const request=await this.createServiceRequest(text,files,{recordOcr:reply?.recordOcr});
         const answer=`Solicitação ${request.id} recebida em triagem para ${request.domain}. ${request.files.length} arquivo(s) vinculado(s). Acompanhe o estado abaixo; nenhuma alteração operacional foi executada automaticamente.`;
         this.add('assistant',answer);
         this.status.textContent='Solicitação registrada e aguardando triagem.';
-        if (attachment && /\b(nota|comprovante|registro|ocr)\b/i.test(text)) {
-          const reply = await this.ask(text, attachment, { ...options, requestContext: { requestId: request.id } });
+        if (shouldReadAttachment && reply) {
           if (reply.recordOcr && !reply.recordOcr.error) {
             this.recordDraft = { ocr: reply.recordOcr, attachmentRef: reply.attachment, requestId: request.id, dataUrl: attachment.dataUrl };
             this.add('assistant', `Solicitação ${request.id} · ${reply.text}`);
             this.status.textContent = 'Leitura concluída. Revise os campos antes de confirmar o registro.';
+            const visualCalls = visualAllocationCallsFromReply(reply, text);
+            this.recordDraft = { ...this.recordDraft, allocations: visualCalls.map(call => call.arguments || call.args || {}) };
+            const allocationResults = await this.executeToolCalls(visualCalls, {
+              sourceAttachment: attachment,
+              payload: reply,
+              serviceRequest: request
+            });
+            if (allocationResults.length) {
+              this.add('assistant', allocationResults.join('\n'));
+              this.status.textContent = 'Leitura concluída e alocada no Dashboard para revisão humana.';
+            } else if (attachment && reply.recordOcr?.items?.length) {
+               this.add('assistant', visualClarificationForV1(reply.recordOcr));
+              this.status.textContent = 'Leitura preservada; falta confirmar a etapa ou atividade.';
+            }
           } else {
             this.add('assistant', `Solicitação ${request.id} registrada. ${reply.text}`);
             this.status.textContent = 'Solicitação preservada; leitura OCR indisponível.';
@@ -405,12 +707,27 @@ class WorkerContextChat {
     if(reply.source==='error'){this.input.value=text;this.files=files;this.attachment=attachment;this.renderAttachment();}
     const localCalls = this.localUiIntent(text);
     const actionRequested = directOperational || /(abra|abrir|mostre|mostrar|acesse|acessar|ir para|navegue|navegar|novo|nova|criar|adicionar|registre|registrar|filtre|filtrar|destaque|destacar|aproxime|aproximar|afaste|afastar|gire|girar|imprima|imprimir|execute|executar|fa[cç]a|fazer)/i.test(text);
-    const calls = !actionRequested ? [] : (directOperational && reply.toolCalls?.length ? reply.toolCalls : localCalls.length ? localCalls.map(call => {
+    const proposedCalls = !actionRequested ? [] : (directOperational && reply.toolCalls?.length ? reply.toolCalls : localCalls.length ? localCalls.map(call => {
       const proposed = reply.toolCalls?.find(item => item?.name === call.name);
       return call.name === 'records.open_form' && proposed ? { ...call, arguments: { ...call.arguments, ...(proposed.arguments || {}) } } : call;
     }) : (Array.isArray(reply.toolCalls) ? reply.toolCalls : []));
-    const results = await this.executeToolCalls(calls);
-    const actionText = results.length ? results.join(' ') : '';
+    const visualCalls = attachment ? visualAllocationCallsFromReply(reply, text) : [];
+    if (visualCalls.length && this.recordDraft) {
+      this.recordDraft = { ...this.recordDraft, allocations: visualCalls.map(call => call.arguments || call.args || {}) };
+    }
+    const calls = [
+      ...visualCalls,
+      ...proposedCalls.filter(call => call?.name !== 'stage.allocate_visual_record')
+    ];
+    const needsStageClarification = Boolean(
+      attachment &&
+      Array.isArray(reply.recordOcr?.items) &&
+      reply.recordOcr.items.length &&
+      !visualCalls.length,
+    );
+    const needsActionClarification = Boolean(attachment && visualClarificationForV1(reply.recordOcr) === VISUAL_ACTION_CLARIFICATION_V1);
+    const results = await this.executeToolCalls(calls, { sourceAttachment: attachment, payload: reply });
+    const actionText = results.length ? results.join(' ') : needsActionClarification ? VISUAL_ACTION_CLARIFICATION_V1 : needsStageClarification ? visualClarificationForV1(reply.recordOcr) : '';
     const answer = [reply.text, actionText].filter(Boolean).join('\n\n');
     this.add('assistant', answer, { audit: `${reply.audit}${actionText ? ` · ${actionText}` : ''}` });
     this.status.textContent = actionText || (reply.source === 'endpoint' ? 'Resposta recebida; nenhuma ação na interface.' : 'Endpoint indisponível; nenhuma ação executada.');
@@ -423,11 +740,19 @@ class WorkerContextChat {
     return /\b(solicito|solicitar|preciso que|fa[cç]a|fazer|crie|criar|prepare|preparar|atualize|atualizar|alterar|corrija|corrigir|revisar|agendar|comprar|registrar|gerar|elabore|executar)\b/i.test(value);
   }
 
-  async createServiceRequest(text,files=[]) {
+  async createServiceRequest(text,files=[],{recordOcr=null}={}) {
     const state=globalThis.__belavistaAppStore?.get?.()||{};
+    const context=currentContext();
+    const selectedStageKey=String(state.selectedStageV9||state.selectedStage?.key||state.selectedStage||context.stage||'').trim();
+    const stageResolution=resolveRequestStageV1({message:text,recordOcr,stages:context.stages,selectedStageKey});
+    const resolvedStage=stageResolution.stage;
+    const stageKey=resolvedStage?.key||'';
+    const stageIsUnresolved=['ambiguous-user-description','conflicting-ocr-suggestions','unresolved-attachment-stage'].includes(stageResolution.source);
+    const selectedActivityId=String(state.selectedActivity?.id||new URLSearchParams(location.search).get('activity')||'');
+    const activityId=stageKey&&stageKey!==selectedStageKey?'':selectedActivityId;
     const lower=String(text).toLocaleLowerCase('pt-BR');
     const domain=[['obra',/obra|etapa|atividade|cronograma|drenagem|pavimenta/],['suprimentos',/material|compra|fornecedor|estoque/],['documentos',/documento|pdf|dwg|licen[cç]a|projeto/],['comercial',/lead|cliente|reserva|contrato|comiss[aã]o|corretor/],['financeiro',/caixa|pagamento|lan[cç]amento|despesa|financeir/],['relatorios',/relat[oó]rio|indicador|balan[cç]o/]].find(([,pattern])=>pattern.test(lower))?.[0]||String(state.view||'geral');
-    const response=await fetch('/api/service-requests',{method:'POST',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({title:String(text).trim().slice(0,140),description:String(text).trim(),domain,stageKey:String(state.selectedStage?.key||state.selectedStage||new URLSearchParams(location.search).get('stage')||''),activityId:String(state.selectedActivity?.id||new URLSearchParams(location.search).get('activity')||''),files:files.map(file=>({fileName:file.name,dataUrl:file.dataUrl}))})});
+    const response=await fetch('/api/service-requests',{method:'POST',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({title:String(text).trim().slice(0,140),description:String(text).trim(),domain,stageKey:stageIsUnresolved?'':stageKey||selectedStageKey,activityId:stageIsUnresolved?'':activityId,files:files.map(file=>({fileName:file.name,dataUrl:file.dataUrl}))})});
     const payload=await response.json().catch(()=>({}));
     if(!response.ok||!payload.request)throw new Error(payload.error||`HTTP ${response.status}`);
     this.currentRequest=payload.request;
@@ -476,7 +801,7 @@ class WorkerContextChat {
       ['brokers-board', /corretor/], ['brokers', /comiss[aã]o|negocia[cç][aã]o/],
       ['reports', /relat[oó]rio/], ['finance', /finan[cç]|caixa|dre/],
       ['personnel', /encarregado|pessoal|equipe/], ['leads', /lead|cliente/],
-      ['map', /mapa/], ['settings', /configura[cç]/], ['control', /central operacional/],
+      ['map', /mapa/], ['settings', /configura[cç]/], ['control', /central operacional|dashboard/],
       ['agenda', /agenda|compromisso/], ['actions', /a[cç][oõ]es ia|a[cç][aã]o ia/],
       ['activities', /atividade/], ['progress', /andamento|apontamento/],
       ['records', /registro/], ['stages', /etapa|cronograma/]
@@ -491,15 +816,36 @@ class WorkerContextChat {
     return [{ name: create ? 'ui.open_form' : 'ui.navigate', arguments: { view: target } }];
   }
 
-  async executeToolCalls(calls) {
-    if (!location.pathname.startsWith('/admin')) return calls.length ? ['Ação disponível apenas no painel administrativo.'] : [];
+  async executeToolCalls(calls, context = {}) {
+    const isAdminSurface = location.pathname.startsWith('/admin') || location.pathname === '/';
+    if (!isAdminSurface) return calls.length ? ['Ação disponível apenas no painel administrativo.'] : [];
     const store = globalThis.__belavistaAppStore;
-    const allowed = new Set(['map','control','materials','documents','stages','agenda','actions','activities','records','progress','personnel','leads','contracts','brokers','brokers-board','finance','reports','settings']);
+    const allowed = new Set(['map','control','lot-development','materials','documents','stages','agenda','actions','activities','records','progress','personnel','leads','contracts','brokers','brokers-board','finance','reports','settings']);
     const forms = { materials: '[data-material-new]', documents: '[data-document-new]', agenda: '[data-agenda-new-v3]', activities: '[data-activity-new]', progress: '[data-progress-new]', contracts: '[data-contract-new]', brokers: '[data-commission-new]', reports: '[data-report-builder-open]' };
     const results = [];
     for (const call of calls.slice(0, 4)) {
       const args = call?.arguments || call?.args || {};
       const view = String(args.view || '');
+      if (call?.name === 'lot-development.upsert_profile') {
+        const upsert = globalThis.__BELAVISTA_UPSERT_LOT_DEVELOPMENT_PROFILE_V1;
+        if (typeof upsert !== 'function') {
+          results.push('Perfil do loteamento recebido, mas o cadastro ainda não terminou de carregar.');
+          continue;
+        }
+        const profile = upsert(args);
+        results.push(`Perfil ${profile.title} preparado no Loteamento para revisão humana.`);
+        continue;
+      }
+      if (call?.name === 'stage.allocate_visual_record') {
+        const allocator = globalThis.__BELAVISTA_ALLOCATE_VISUAL_RECORD_V1;
+        if (typeof allocator !== 'function') {
+          results.push('Leitura visual recebida, mas o alocador do Dashboard ainda não terminou de carregar.');
+          continue;
+        }
+        const message = await allocator(args, context);
+        if (message) results.push(message);
+        continue;
+      }
       if (call?.name === 'records.open_form') {
         if (!store) { results.push('Ficha não abriu: estado da aplicação indisponível.'); continue; }
         document.querySelector('.sidebar [data-view="control"]')?.click();
@@ -660,6 +1006,13 @@ class WorkerContextChat {
 
   async ask(message, attachment = null, options = {}) {
     const context = currentContext();
+    const appState=globalThis.__belavistaAppStore?.get?.()||{};
+    const selectedStageKey=String(appState.selectedStageV9||appState.selectedStage?.key||appState.selectedStage||context.stage||'').trim();
+    const selectedStage=(context.stages||[]).find(stage=>String(stage.key)===selectedStageKey)||null;
+    const recordInterpretation=attachment?buildRecordInterpretationV1({message,stages:context.stages,selectedStageKey}):null;
+    const mapContextLabel=String(this.root?.dataset.mapContextLabel||this.input?.dataset.mapContextLabel||'').trim();
+    const mapContextKind=String(this.root?.dataset.mapContextKind||this.input?.dataset.mapContextKind||'').trim();
+    const mapContext=mapContextLabel?{kind:mapContextKind||'map',label:mapContextLabel}:null;
     try {
       const endpoint = attachment ? '/api/ai/vision-reasoning' : '/api/ai';
       const response = await fetch(endpoint, {
@@ -670,6 +1023,10 @@ class WorkerContextChat {
           requestContext: options?.requestContext && typeof options.requestContext === 'object' ? options.requestContext : null,
           context: {
             ...context,
+            selectedStageKey,
+            selectedStageName:selectedStage?.name||'',
+            mapContext,
+            recordInterpretation,
             summary: contextSummary(context),
             capabilities: ['observar eventos', 'editar entradas', 'organizar agenda', 'programar cronograma', 'recalcular materiais e equipe', 'preparar notificações locais', 'criar apontamento pendente', 'solicitar documento operacional']
           },
@@ -730,7 +1087,15 @@ class WorkerContextChat {
     synth.cancel();
     const utterance = new SpeechSynthesisUtterance(String(text));
     utterance.lang = 'pt-BR';
-    utterance.rate = 1;
+    const profile = SPEAKER_PROFILES.find(item => item.id === this.speakerProfile) || SPEAKER_PROFILES[0];
+    const voices = synth.getVoices?.() || [];
+    const portuguese = voices.filter(voice => /^pt(?:-|_)/i.test(String(voice.lang || '')));
+    const preferred = profile.terms.length
+      ? portuguese.find(voice => profile.terms.some(term => String(voice.name || '').toLocaleLowerCase('pt-BR').includes(term)))
+      : null;
+    utterance.voice = preferred || portuguese.find(voice => /natural|neural|online/i.test(String(voice.name || ''))) || portuguese[0] || null;
+    utterance.rate = profile.rate;
+    utterance.pitch = profile.pitch;
     synth.speak(utterance);
   }
 

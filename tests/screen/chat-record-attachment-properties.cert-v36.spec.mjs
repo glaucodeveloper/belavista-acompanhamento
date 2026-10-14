@@ -84,8 +84,13 @@ async function certifyForm(page, testInfo, requestId) {
   if(requestId)expect(saved.requestId).toBe(requestId);
   expect(saved.evidenceUri).toMatch(/^data:image\/png;base64,/);
 }
-test('CERT — um anexo no chat abre drawer completo e confirma propriedades',async({page},testInfo)=>{
-  await page.route('**/api/ai/vision-reasoning',route=>route.fulfill({json:{text:'Nota fiscal lida e pronta para revisão.',recordOcr:ocr,attachment:{id:'IMG-CERT',name:'nf-diesel-18452.png',stored:false},toolCalls:[]}}));
+test('CERT — um anexo no chat abre a alocação OCR na Central',async({page},testInfo)=>{
+  await page.route('**/api/ai/vision-reasoning',route=>route.fulfill({json:{text:'Nota fiscal lida e alocada na etapa indicada.',recordOcr:ocr,attachment:{id:'IMG-CERT',name:'nf-diesel-18452.png',stored:false},toolCalls:[{name:'stage.allocate_visual_record',arguments:{target:'material',stageKey:'water',stageName:'Rede de Água',materialName:'Diesel S10',activityName:'Abastecimento da frente',quantity:1200,unit:'L',details:'Item identificado na nota fiscal.',pointer:'linha de item Diesel S10',confidence:.99}}]}}));
+  await page.route('**/api/records',route=>{
+    if(route.request().method()!=='POST')return route.continue();
+    const payload=route.request().postDataJSON();
+    return route.fulfill({json:{...payload,id:'REG-CERT-OCR'}});
+  });
   await boot(page);
   await page.locator('[data-worker-chat-file-input]').setInputFiles(image);
   await expect(page.locator('[data-worker-chat-attachment]')).toContainText('nf-diesel-18452.png');
@@ -95,19 +100,73 @@ test('CERT — um anexo no chat abre drawer completo e confirma propriedades',as
   await expect(page.locator('[data-chat-apply="record"]')).toBeVisible();
   await expect(page.locator('.worker-chat-service')).toContainText('SR-CERT-OCR');
   await page.locator('[data-chat-apply="record"]').click();
-  await expect(page.getByRole('dialog',{name:'Finalizar registro do anexo'})).toBeVisible();
-  await expect(page.locator('.worker-chat-record-dialog .control-record-drawer-v2')).toBeVisible();
-  await expect(page.locator('.worker-chat-record-dialog .record-dropin-preview-v1')).toContainText('nf-diesel-18452.png');
-  await page.screenshot({path:testInfo.outputPath('drawer-completo.png')});
-  await certifyForm(page,testInfo,'SR-CERT-OCR');
-  await expect(page.locator('[data-worker-chat-status]')).toContainText('REG-CERT-OCR');
+  const dialog=page.locator('dialog[data-stage-center-item-dialog]');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('Rede de Água');
+  await expect(dialog).toContainText('Diesel S10');
+  await expect(dialog).toContainText('nf-diesel-18452.png');
+  await page.screenshot({path:testInfo.outputPath('central-alocacao-ocr.png')});
 });
-test('CERT — anexo único da Central gera propriedades confirmáveis',async({page},testInfo)=>{
-  await page.route('**/api/records/ocr',route=>route.fulfill({json:ocr}));
+test('CERT — leitura do chat cria adição de material na Central e abre suas propriedades',async({page})=>{
+  const saved=[];
+  await page.route('**/api/ai/vision-reasoning',route=>route.fulfill({json:{
+    text:'Nota fiscal lida e alocada na etapa indicada.',
+    recordOcr:ocr,
+    attachment:{id:'IMG-CERT-CENTER',name:'nf-diesel-18452.png',stored:false},
+    toolCalls:[{name:'stage.allocate_visual_record',arguments:{
+      target:'material',stageKey:'water',stageName:'Rede de Água',materialName:'Diesel S10',
+      activityName:'Abastecimento da frente',quantity:1200,unit:'L',
+      details:'Item identificado na nota fiscal.',pointer:'linha de item Diesel S10',confidence:.99
+    }}]
+  }}));
+  await page.route('**/api/records',route=>{
+    if(route.request().method()!=='POST')return route.continue();
+    const payload=route.request().postDataJSON();
+    saved.push(payload);
+    return route.fulfill({json:{...payload,id:'REG-CERT-CENTER'}});
+  });
   await boot(page);
-  await page.getByRole('button',{name:'Central operacional',exact:true}).click();
-  const form=page.locator('[data-control-general-event]');
-  await expect(form).toBeVisible();
-  await form.locator('[data-record-ocr-file]').setInputFiles(image);
-  await certifyForm(page,testInfo);
+  await page.locator('[data-worker-chat-file-input]').setInputFiles(image);
+  await page.locator('[data-worker-chat-form] textarea').fill('Leia esta nota fiscal.');
+  await page.locator('[data-worker-chat-submit]').click();
+  await expect.poll(()=>saved.length).toBe(1);
+  expect(saved[0].stageKey).toBe('water');
+  expect(saved[0].allocationTarget).toBe('material');
+  expect(saved[0].properties.find(property=>property.id==='allocation_stage').value).toBe('Rede de Água');
+  expect(saved[0].properties.find(property=>property.id==='allocation_material').value).toBe('Diesel S10');
+  await page.getByRole('button',{name:'Etapas',exact:true}).click();
+  const center=page.locator('[data-stage-home-record-resources]');
+  await expect(center).toBeVisible();
+  await center.locator('[data-stage-home-resource-stage]').selectOption('water');
+  const row=center.locator('[data-stage-center-material-row]');
+  await expect(row).toHaveCount(1);
+  await expect(row).toContainText('Diesel S10');
+  await row.evaluate(element => element.click());
+  const dialog=page.locator('dialog[data-stage-center-item-dialog]');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('Rede de Água');
+  await expect(dialog).toContainText('Assistente operacional');
+  await expect(dialog).toContainText('Etapa associada');
+  await expect(dialog).toContainText('nf-diesel-18452.png');
+});
+test('CERT — OCR sem encaixe seguro pergunta a etapa e não grava adição órfã',async({page})=>{
+  const saved=[];
+  await page.route('**/api/ai/vision-reasoning',route=>route.fulfill({json:{
+    text:'Li o anexo, mas preciso confirmar a etapa.',
+    recordOcr:ocr,
+    attachment:{id:'IMG-CERT-QUESTION',name:'nf-diesel-18452.png',stored:false},
+    toolCalls:[]
+  }}));
+  await page.route('**/api/records',route=>{
+    if(route.request().method()!=='POST')return route.continue();
+    saved.push(route.request().postDataJSON());
+    return route.fulfill({json:{id:'REG-SHOULD-NOT-EXIST'}});
+  });
+  await boot(page);
+  await page.locator('[data-worker-chat-file-input]').setInputFiles(image);
+  await page.locator('[data-worker-chat-form] textarea').fill('Leia esta nota fiscal.');
+  await page.locator('[data-worker-chat-submit]').click();
+  await expect(page.locator('[data-worker-chat-log]')).toContainText('Qual etapa ou atividade deve receber este item?');
+  expect(saved).toHaveLength(0);
+  await expect(page.locator('[data-stage-record-center] [data-stage-center-material-row]')).toHaveCount(0);
 });

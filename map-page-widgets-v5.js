@@ -2,6 +2,11 @@
 // BELAVISTA_ORIGINAL_ADMIN_MAP_TOOLBAR_TRIM_V5350
 (()=>{
   'use strict';
+  // A barra flutuante foi aposentada: o mapa agora permanece somente como
+  // superfície de acompanhamento, sem lançador de módulos sobre a cena.
+  document.getElementById('belavista-map-widgets-v5')?.remove();
+  return;
+
   const MARK='BELAVISTA_MAP_WIDGETS_V7_MOBILE_COMMERCIAL';
   if(window.__belavistaMapWidgetsV7MobileCommercial)return;
   window.__belavistaMapWidgetsV7MobileCommercial=true;

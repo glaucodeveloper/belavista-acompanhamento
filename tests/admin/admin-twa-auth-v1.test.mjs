@@ -38,8 +38,8 @@ test('login operacional valida Firebase Auth e claims de função',()=>{
   assert.match(read('api-client.mjs'),/BELAVISTA_GET_ID_TOKEN/);
 });
 
-test('portal de campo carrega o mesmo gate de autenticação',()=>{
-  assert.match(read('encarregados.html'),/admin-auth\.mjs\?v=admin-auth-v3/);
+test('autenticação administrativa não expõe portal próprio de encarregado',()=>{
+  assert.doesNotMatch(read('admin-auth.mjs'),/encarregados\.html|isFieldPortal|FIELD_PORTAL_ROLES/);
   assert.match(read('mobile/twa/admin-assetlinks.json.template'),/com\.belavista\.aliancapark\.admin/);
 });
 

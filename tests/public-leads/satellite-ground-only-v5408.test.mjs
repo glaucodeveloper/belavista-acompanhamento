@@ -6,24 +6,30 @@ import {fileURLToPath} from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
+const readMapScene=()=>[
+  read('components.js'),
+  read('components/map/admin-road-geometry-v1.mjs'),
+  read('components/map/public-road-surface-policy-v1.mjs'),
+  read('components/map/public-terrain-environment-v1.mjs'),
+].join('\n');
 
 test('mapa público usa a fotografia aérea como superfície canônica das ruas',()=>{
-  const source=read('components.js');
+  const source=readMapScene();
   assert.match(source,/disablePublicSyntheticRoads\(\)/);
-  assert.match(source,/publicRoadPolicy='satellite-only'/);
-  assert.match(source,/publicRoadOcclusionPolicy='satellite-road-base-only'/);
-  assert.match(source,/data\.streetPaver\|\|data\.publicRoadOverlay\|\|data\.publicCurb/);
-  assert.match(source,/this\._streetPaverMeshes=\[\]/);
+  assert.match(source,/publicRoadPolicy\s*=\s*["']satellite-only["']/);
+  assert.match(source,/publicRoadOcclusionPolicy\s*=\s*["']satellite-road-base-only["']/);
+  assert.match(source,/data\.streetPaver\s*\|\|\s*data\.publicRoadOverlay\s*\|\|\s*data\.publicCurb/);
+  assert.match(source,/this\._streetPaverMeshes\s*=\s*\[\]/);
   assert.match(source,/satellite image is the road surface/);
-  assert.match(source,/publicRoadTextureRequired='false'/);
+  assert.match(source,/publicRoadTextureRequired\s*=\s*["']false["']/);
 });
 
 test('o modo público não constrói fatias, pavers ou meios-fios sobre o satélite',()=>{
-  const source=read('components.js');
-  assert.match(source,/if\(this\.isPublicMapVisual\(\)\)\{[\s\S]*?generated street geometry disabled/);
-  assert.match(source,/if\(this\.dataset\.publicRoadPolicy==='satellite-only'\|\|this\.isPublicCustomerExperience\(\)\)\{/);
-  assert.match(source,/this\.dataset\.publicPaverDiagnostic='disabled · no generated roads'/);
-  assert.match(source,/this\.dataset\.publicRoadTextureRotation='not-applicable'/);
+  const source=readMapScene();
+  assert.match(source,/if\s*\(\s*this\.isPublicMapVisual\(\)\s*\)\s*\{[\s\S]*?generated street geometry disabled/);
+  assert.match(source,/this\.dataset\.publicRoadPolicy\s*===\s*["']satellite-only["']\s*\|\|\s*this\.isPublicCustomerExperience\(\)/);
+  assert.match(source,/this\.dataset\.publicPaverDiagnostic\s*=\s*["']disabled · no generated roads["']/);
+  assert.match(source,/this\.dataset\.publicRoadTextureRotation\s*=\s*["']not-applicable["']/);
 });
 
 test('o carregamento público conclui quando a rua é coberta pelo mosaico satélite',()=>{
@@ -62,7 +68,7 @@ test('o contexto público marca o chão georreferenciado sem criar controle de a
 });
 
 test('o satélite público preserva o centro do DWG com o nível de detalhe do enquadramento físico',()=>{
-  const components=read('components.js');
+  const components=readMapScene();
   const context=read('public-leads-context-v521.mjs');
   assert.match(context,/const PUBLIC_SATELLITE_DWG_ZOOM=18/);
   assert.match(context,/zoom:PUBLIC_SATELLITE_DWG_ZOOM/);
@@ -74,13 +80,13 @@ test('o satélite público preserva o centro do DWG com o nível de detalhe do e
 });
 
 test('o modo público remove a textura de paralelepípedo em vez de apenas ocultar a rua',()=>{
-  const components=read('components.js');
+  const components=readMapScene();
   const mapModule=read('public-leads-map-v50.mjs');
   const polish=read('public-leads-polish-v49.mjs');
   const html=read('public-leads.html');
-  assert.match(components,/disablePublicCobbleTexture\(\)\{/);
-  assert.match(components,/this\.publicCobbleTexture=null/);
-  assert.match(components,/if\(this\.isPublicMapVisual\(\)\|\|this\.isPublicCustomerExperience\(\)\)return null/);
+  assert.match(components,/disablePublicCobbleTexture\(\)\s*\{/);
+  assert.match(components,/this\.publicCobbleTexture\s*=\s*null/);
+  assert.match(components,/if\s*\(\s*this\.isPublicMapVisual\(\)\s*\|\|\s*this\.isPublicCustomerExperience\(\)\s*\)\s*return null/);
   assert.match(mapModule,/const publicSatellite=map\.dataset\.publicRoadPolicy==='satellite-only'/);
   assert.match(polish,/map\.disablePublicCobbleTexture\?\.\(\)/);
   assert.match(html,/public-satellite-only-v5409/);
@@ -88,10 +94,10 @@ test('o modo público remove a textura de paralelepípedo em vez de apenas ocult
 
 test('markers comerciais são remontados após reset da cena e mantêm os status resolvidos',()=>{
   const source=read('public-leads-context-v521.mjs');
-  assert.match(source,/__publicCommercialMarkerStatusMapV5330=new Map\(statuses\)/);
+  assert.match(source,/__publicCommercialMarkerStatusMapV5330\s*=\s*new Map\(statuses\)/);
   assert.match(source,/function ensurePublicCommercialMarkers\(map\)/);
-  assert.match(source,/group\.parent===map\.sceneStage/);
+  assert.match(source,/group\.parent\s*===\s*map\.sceneStage/);
   assert.match(source,/recovered-after-scene-reset/);
-  assert.match(source,/if\(group\.parent!==map\.sceneStage\)\{[\s\S]*?ensurePublicCommercialMarkers\(map\)/);
-  assert.match(source,/if\(!ensurePublicCommercialMarkers\(map\)\)scheduleCommercialMapState\(map\)/);
+  assert.match(source,/if\s*\(\s*group\.parent\s*!==\s*map\.sceneStage\s*\)\s*\{[\s\S]*?ensurePublicCommercialMarkers\(map\)/);
+  assert.match(source,/if\s*\(\s*map\.dataset\.publicSatelliteImageOnly\s*!==\s*["']true["']\s*&&\s*!ensurePublicCommercialMarkers\(map\)\s*\)\s*scheduleCommercialMapState\(map\)/);
 });

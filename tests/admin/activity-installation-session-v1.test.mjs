@@ -8,24 +8,26 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 const state=read('state.js');
 const components=read('components.js');
+const agenda=read('components/planning/agenda-calendar-v8.mjs');
+const installation=read('components/planning/activity-installation-session-v1.mjs');
 const styles=read('styles.css');
 
 test('a sessão de instalação mantém um rascunho limpo e persistido',()=>{
   assert.match(state,/export const activityInstallationDefaults = \{/);
   assert.match(state,/activityInstallation:structuredClone\(activityInstallationDefaults\)/);
   assert.match(state,/['"]activityInstallation['"]/);
-  for(const key of ['entry','materials','edit','rationalize','cards'])assert.match(components,new RegExp(`['"]${key}['"]`));
+  for(const key of ['entry','materials','edit','rationalize','cards'])assert.match(installation,new RegExp(`['"]${key}['"]`));
 });
 
 test('a instalação cobre entrada, materiais, edição, racionalização e cards',()=>{
-  for(const marker of ['data-installation-entry-form','data-installation-material','data-installation-edit-form','data-installation-rationalize','data-installation-finalize','data-installation-card-board'])assert.match(components,new RegExp(marker));
-  assert.match(components,/Sem conflito/);
-  assert.match(components,/PERT · papéis · prioridade · agenda/);
-  assert.match(components,/Criar dependências no PERT/);
-  assert.match(components,/Cadastrar papéis/);
-  assert.match(components,/Determinar prioridades com IA/);
-  assert.match(components,/renderActivityFormGroupsV1/);
-  assert.match(components,/activity-install-worker-preview/);
+  for(const marker of ['data-installation-entry-form','data-installation-material','data-installation-edit-form','data-installation-rationalize','data-installation-finalize','data-installation-card-board'])assert.match(installation,new RegExp(marker));
+  assert.match(installation,/Sem conflito/);
+  assert.match(installation,/PERT · papéis · prioridade · agenda/);
+  assert.match(installation,/Criar dependências no PERT/);
+  assert.match(installation,/Cadastrar papéis/);
+  assert.match(installation,/Determinar prioridades com IA/);
+  assert.match(installation,/renderActivityFormGroupsV1/);
+  assert.match(installation,/activity-install-worker-preview/);
 });
 
 test('a ficha do worker compartilha os grupos da instalação e preserva a edição',()=>{
@@ -53,25 +55,28 @@ test('novo registro abre uma página dedicada no contexto da atividade',()=>{
 });
 
 test('Etapas apresenta a saída RAID e a instalação entra na navegação contextual',()=>{
-  assert.match(components,/stages-organizer-raid/);
-  assert.match(components,/RAID para decisão do administrador/);
-  assert.match(components,/Instalar atividades/);
-  assert.match(components,/activity-installation.*wand-sparkles.*Instalação/);
-  assert.match(components,/localSqlState\?\.clean===true/);
-  assert.match(components,/Sessão de instalação indisponível/);
-  assert.match(read('app.js'),/directViewsV1/);
-  assert.match(read('app.js'),/requestedView==='activity-installation'\?\'stages\':requestedView/);
+  assert.match(installation,/stages-organizer-raid/);
+  assert.match(installation,/RAID para decisão do administrador/);
+  assert.match(installation,/Instalar atividades/);
+  assert.match(installation,/data-installation-open.*data-cmd="activity-installation".*wand-sparkles.*Instalar atividades/);
+  assert.match(installation,/localSqlState\?\.clean\s*!==\s*true/);
+  assert.match(installation,/Sessão de instalação indisponível/);
+  assert.match(components,/installStageAgendaApplicationCompositionV1\(\{/);
+  assert.match(read('components/planning/stage-agenda-application-composition-v1.mjs'),/installActivityInstallationSessionV1\(ViewLayer/);
+  assert.match(read('components/shared/application-navigation-routes-v1.mjs'),/"activity-installation"/);
+  assert.match(read('app.js'),/requestedView==='activity-installation'&&clean/);
 });
 
 test('Agenda fornece uma grade semanal de calendário',()=>{
-  assert.match(components,/stage-agenda-calendar-v1/);
-  assert.match(components,/stage-agenda-week-grid/);
-  assert.match(components,/03 — 09 de junho de 2024/);
+  assert.match(agenda,/agenda-week-page-v8/);
+  assert.match(agenda,/agenda-week-days-v8/);
+  assert.match(agenda,/agenda-mobile-day-v8/);
+  assert.equal((agenda.match(/ViewLayer\.prototype\.agenda = function/g)||[]).length,1);
   assert.match(styles,/\.stage-agenda-week-grid/);
 });
 
 test('a nova superfície atualiza o cache busting do shell administrativo',()=>{
-  assert.match(read('app.js'),/components\.js\?v=map-pdf-texture-bright-aligned-v26-20260915/);
-  assert.match(read('index.html'),/styles\.css\?v=stage-home-raid-ai-records-calendar-v8-20260915/);
-  assert.match(read('components.js'),/state\.js\?v=map-dashboard-modes-v8-20260914/);
+  assert.match(read('app.js'),/components\.js\?v=components-primitive-elements-registration-v1/);
+  assert.match(read('index.html'),/styles\.css\?v=limited-role-surface-v1/);
+  assert.match(read('components.js'),/state\.js\?v=system-metrics-v1-20260919/);
 });

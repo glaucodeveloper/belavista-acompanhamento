@@ -1,85 +1,6 @@
-export const demoData = {
-  project: { name: 'Empreendimento Aliança Park', phase: 'Fase 01', city: 'Senador Canedo, GO', completeness: 63, weather: '26°C', condition: 'Ensolarado' },
-  metrics: {
-    delayed: 2, criticalPurchases: 3, review: 3, collaborators: 28,
-    inventoryValue: 'R$ 1.842.560,45', leads: 238, lotsWithInterest: 96,
-    openPurchases: 12, openValue: 'R$ 485.230', receivedMonth: 'R$ 612.450'
-  },
-  activities: [
-    {id:7, name:'Projeto executivo', status:'andamento', progress:72, week:'Prioridade', owner:'Engenharia / Projetos'},
-    {id:1, name:'Terraplanagem', status:'andamento', progress:68, week:'Frente 01', owner:'Equipe Terraplanagem'},
-    {id:2, name:'Drenagem Pluvial', status:'andamento', progress:42, week:'Frente 02', owner:'Carlos Mendes'},
-    {id:4, name:'Rede de Água', status:'planejado', progress:12, week:'Antes da pavimentação', owner:'João Pereira'},
-    {id:8, name:'Meio-fio', status:'planejado', progress:0, week:'Infraestrutura final', owner:'Equipe Infra'},
-    {id:5, name:'Rede Elétrica', status:'planejado', progress:8, week:'Última frente · ligação e vistoria da Coelba', owner:'Mariana Silva'},
-    {id:3, name:'Pavimentação', status:'planejado', progress:0, week:'Última etapa após redes', owner:'Mariana Lopes'},
-    {id:6, name:'Sinalização', status:'planejado', progress:0, week:'Pós-pavimentação', owner:'Equipe Infra'}
-  ],
-  materials: [
-    ['Tubos PVC','2.450','950','780','m','bom'],['Poste de concreto','128','32','48','un','atencao'],['Cimento','320','80','150','sc','critico'],
-    ['Brita','1.150','250','300','m³','bom'],['Areia','980','200','120','m³','atencao'],['Blocos','5.200','1.200','850','un','bom'],
-    ['Cabos elétricos','3.600','1.100','1.250','m','atencao'],['Meio-fio pré-moldado','1.780','420','310','un','bom'],
-    ['Tubos PEAD · Rede de Água','rede 298 lotes','—','—','m','atencao'],['Cavaletes · Rede de Água','298','0','0','un','atencao'],['Ramais · Rede de Água','298','0','0','un','atencao']
-  ],
-  stageMaterials: {
-    'Projeto executivo': [
-      {id:'proj-exec',name:'Projeto executivo',scope:'Compatibilização geométrica e executiva das redes e vias',quantity:1,unit:'conjunto',status:'Em elaboração'},
-      {id:'proj-licenses',name:'Liberações / licenças',scope:'Documentação anterior à abertura das frentes',quantity:1,unit:'conjunto',status:'Acompanhar'}
-    ],
-    'Terraplanagem': [
-      {id:'earth-loader',name:'Pá carregadeira',scope:'Carga e movimentação interna',quantity:1,unit:'equip.',status:'Planejado'},
-      {id:'earth-excavator',name:'Escavadeira',scope:'Corte e conformação',quantity:1,unit:'equip.',status:'Planejado'},
-      {id:'earth-patrol',name:'Patrol',scope:'Regularização das vias',quantity:1,unit:'equip.',status:'Planejado'},
-      {id:'earth-water',name:'Pipa',scope:'Umidificação para compactação',quantity:1,unit:'equip.',status:'Planejado'},
-      {id:'earth-roller',name:'Rolo compactador',scope:'Compactação',quantity:1,unit:'equip.',status:'Planejado'},
-      {id:'earth-dump',name:'Caçambas',scope:'Produção medida em viagens internas',quantity:null,unit:'viagem',status:'Medir em campo'}
-    ],
-    'Drenagem Pluvial': [
-      {id:'drain-pipes',name:'Manilhas',scope:'Rede estimada em 800 m lineares; diâmetros 600/800/1000 mm',quantity:800,unit:'m',status:'Premissa de campo'},
-      {id:'drain-inlets',name:'Bocas de lobo',scope:'Simples/duplas conforme projeto',quantity:49,unit:'un',status:'Premissa de campo'},
-      {id:'drain-block',name:'Blocos / cimento / brita',scope:'Composição das caixas e assentamento',quantity:null,unit:'lote',status:'Dimensionar'},
-      {id:'drain-compactor',name:'Compactador sapinho',scope:'Reaterro e compactação localizada',quantity:1,unit:'equip.',status:'Locação'}
-    ],
-    'Rede de Água': [
-      {id:'water-pead',name:'Tubos PEAD',scope:'Rede principal e distribuição para 298 lotes',quantity:null,unit:'m',targetLots:298,status:'A dimensionar pelo projeto'},
-      {id:'water-cavaletes',name:'Cavaletes',scope:'Um conjunto por lote',quantity:298,unit:'un',targetLots:298,status:'Planejado'},
-      {id:'water-ramais',name:'Ramais',scope:'Ligação individual dos lotes à rede',quantity:298,unit:'un',targetLots:298,status:'Planejado'},
-      {id:'water-fittings',name:'Conexões / areia',scope:'Assentamento e conexões de rede',quantity:null,unit:'lote',targetLots:298,status:'Dimensionar'}
-    ],
-    'Rede Elétrica': [
-      {id:'elec-poles',name:'Postes',scope:'Rede elétrica do loteamento',quantity:120,unit:'un',status:'Prioridade'},
-      {id:'elec-transformers',name:'Transformadores',scope:'Conforme projeto elétrico',quantity:null,unit:'un',status:'Dimensionar'},
-      {id:'elec-cables',name:'Cabos',scope:'Alimentadores e distribuição',quantity:null,unit:'m',status:'Dimensionar'},
-      {id:'elec-connectors',name:'Conectores',scope:'Conforme circuitos',quantity:null,unit:'un',status:'Dimensionar'},
-      {id:'elec-led',name:'Luminárias LED',scope:'Iluminação pública',quantity:null,unit:'un',status:'Dimensionar'}
-    ],
-    'Meio-fio': [
-      {id:'curb-precast',name:'Meio-fio pré-moldado',scope:'Ao redor das quadras e limites de vias',quantity:8000,unit:'m',status:'Premissa de campo'},
-      {id:'curb-mortar',name:'Concreto / argamassa',scope:'Assentamento',quantity:null,unit:'m³',status:'Dimensionar'}
-    ],
-    'Pavimentação': [
-      {id:'pave-stones',name:'Paralelepípedo',scope:'Pavimentação final das vias',quantity:32000,unit:'m²',status:'Base de orçamento'},
-      {id:'pave-sand',name:'Areia',scope:'Colchão de assentamento',quantity:null,unit:'m³',status:'Dimensionar'},
-      {id:'pave-gravel',name:'Brita',scope:'Base/sub-base quando prevista',quantity:null,unit:'m³',status:'Dimensionar'},
-      {id:'pave-cement',name:'Cimento',scope:'Arremates e contenções',quantity:null,unit:'sc',status:'Dimensionar'}
-    ]
-  },
-  leads: [
-    {name:'Juliana Pereira', lot:'Lote 54 · Q-12', objective:'Moradia + Investimento', budget:'R$ 420k – 520k', status:'Qualificado', sun:'Leste', altitude:'865 m', terrain:'Plano'},
-    {name:'Rafael Martins', lot:'Lote 54 · Q-12', objective:'Moradia', budget:'R$ 400k – 500k', status:'Em contato', sun:'Leste', altitude:'Alta', terrain:'Plano'},
-    {name:'Camila Andrade', lot:'Lote 12 · Q-03', objective:'Investimento', budget:'R$ 450k – 550k', status:'Novo', sun:'Norte', altitude:'Média', terrain:'Plano'},
-    {name:'Diego Souza', lot:'Lote 93 · Q-18', objective:'Veraneio', budget:'R$ 500k – 600k', status:'Negociação', sun:'Oeste', altitude:'Alta', terrain:'Inclinado'}
-  ],
-  purchases: [
-    {id:'PE-2025-041', supplier:'EletricSul Materiais', desc:'Poste de concreto 11m', stage:'Rede Elétrica', value:'R$ 48.750,00', status:'Atrasado', delay:'8 dias'},
-    {id:'PE-2025-040', supplier:'HidroTubos Ltda', desc:'Tubo PEAD Ø600mm', stage:'Drenagem', value:'R$ 32.860,00', status:'Atrasado', delay:'5 dias'},
-    {id:'PE-2025-039', supplier:'ConcretaMix', desc:'Concreto FCK 25MPa (30m³)', stage:'Pavimentação', value:'R$ 28.650,00', status:'Em andamento', delay:'—'},
-    {id:'PE-2025-038', supplier:'Luz & Cia', desc:'Cabo de alumínio 16mm', stage:'Rede Elétrica', value:'R$ 15.420,00', status:'Em andamento', delay:'—'}
-  ],
-  collaborators: [
-    ['Mariana Silva','Engenharia Civil','Rede Elétrica'],['João Pereira','Encarregado','Terraplanagem'],['Carlos Mendes','Engenharia','Drenagem'],['Paula Nascimento','Planejamento','Pavimentação']
-  ]
-};
+import demoDataJson from './data/demo-data.json' with {type:'json'};
+import stageDescriptions from './data/stage-descriptions.json' with {type:'json'};
+export const demoData = demoDataJson;
 
 
 export const executionModel = {
@@ -110,6 +31,10 @@ export const executionModel = {
     {key:'paving',name:'Pavimentação',priority:70,dependsOn:['curbs','water'],production:{quantity:32000,unit:'m²',rate:600,rateUnit:'m²/dia',truckCapacityStones:5000,stonesPerM2:45,lossPercent:5},materials:['Paralelepípedo','Areia','Brita','Cimento','Mão de obra'],cashWeight:.20,executionProfile:{typicalDescription:'Consolida base, drenagem e redes já liberadas. O planejamento deve considerar perdas, caminhões recebidos, trecho contínuo executável e impacto direto no caixa por ser etapa de alto consumo e grande visibilidade.',requestHints:['Planejar compra e entrega por trecho contínuo para reduzir perda e retrabalho.','Cruzar estoque de pedra, areia e brita com produtividade real e liberação das frentes anteriores.'],evidenceFocus:['área executada por trecho','caminhões recebidos','espessura e acabamento','fotos comparativas'],procurementFocus:['paralelepípedo por m²','areia e brita por trecho','cimento e arremates','frentes de mão de obra'],notificationTargets:{owner:['desktop-owner','rtdb/owner'],admin:['desktop-admin','rtdb/admin'],foreman:['mobile-foreman','rtdb/foreman'],supplies:['desktop-supplies','rtdb/supplies']}}}
   ]
 };
+for(const stage of executionModel.stages){
+  const description=stageDescriptions[stage.key];
+  if(description)stage.executionProfile.typicalDescription=description;
+}
 
 // Formação inicial de pessoal para a inferência de unidades de produção.
 // A quantidade de pessoas de cada frente é uma capacidade de planejamento,
@@ -261,7 +186,7 @@ export function* stateTransitions(sequence) {
 }
 
 export const UI_MEMORY_KEY = 'belavista.ui-memory.v1';
-const uiMemoryFields = ['view','selectedLead','selectedMaterial','chatOpen','chatManual','dashboardMode','mapFilter','mapFilters','mapFilterWidget','mapProgressSelection','mapTileMode','theme','reportFamily','reportType','reportPeriod','customReports','reportDocumentLinks','sidebarCollapsed','mapMode','selectedStage','stageSelected','activityDedicated','actionAudit','widgetLayouts','mapView','solarHour','solarHourMode','aiActions','selectedAiAction','raidItems','raciAssignments','selectedRaciCell','selectedPertNode','pertOverrides','stageOverrides','stagePropertyWorkItems','stageAgendaItems','stageTodoItems','selectedLotWidget','productionOverrides','stageMaterialOverrides','cashFlowLocal','commissionReasons','selectedPlanningStage','dashboardStagePage','controlMaterialOverrides','controlChangeLog','personnelTeams','personnelAssignments','personnelDocumentName','personnelInferenceOverrides','selectedPersonnelStage','selectedPersonnelTeam','personnelInferenceStatus','activityInstallation','documentCatalog','documentsCustomColumns','documentsHiddenColumns','documentsFileFilter','materialSheetCustomColumns','materialSheetHiddenColumns','lotStatuses','repasseEntries','repassePartners','repasseConfig'];
+const uiMemoryFields = ['view','selectedLead','selectedMaterial','chatOpen','chatManual','dashboardMode','mapFilter','mapFilters','mapFilterWidget','mapProgressSelection','mapTileMode','theme','reportFamily','reportType','reportPeriod','customReports','reportDocumentLinks','sidebarCollapsed','mapMode','selectedStage','stageSelected','activityDedicated','actionAudit','widgetLayouts','mapView','solarHour','solarHourMode','aiActions','selectedAiAction','raidItems','raciAssignments','selectedRaciCell','selectedPertNode','pertOverrides','stageOverrides','stagePropertyWorkItems','stageAgendaItems','stageTodoItems','selectedLotWidget','productionOverrides','stageMaterialOverrides','cashFlowLocal','commissionReasons','selectedPlanningStage','dashboardStagePage','controlMaterialOverrides','materialCatalogAdditions','controlChangeLog','personnelTeams','personnelAssignments','personnelDocumentName','personnelInferenceOverrides','selectedPersonnelStage','selectedPersonnelTeam','personnelInferenceStatus','activityInstallation','documentCatalog','documentsCustomColumns','documentsHiddenColumns','documentsFileFilter','materialSheetCustomColumns','materialSheetHiddenColumns','lotStatuses','repasseEntries','repassePartners','repasseConfig','developmentProfiles','selectedDevelopmentProfileId','developmentProfileQuery'];
 export function restoreUiState(){
   try {
     if(typeof localStorage==='undefined')return {};
@@ -347,11 +272,13 @@ export const appStore = globalThis.__belavistaAppStore || createStore({
   widgetLayouts:{chat:{},floating:{}}, mapView:{rotation:0,zoom:1.68,pan:{x:0,y:0},tiltAdjust:0}, solarHour:9, solarHourMode:'clock',
   productionOverrides:{}, stageMaterialOverrides:{}, controlMaterialOverrides:{}, controlChangeLog:[], controlRealtime:null, cashFlowLocal:[], cashSummary:{entriesCents:0,exitsCents:0,balanceCents:0}, operationalState:null, operationalNotifications:[], operationalAgenda:[], operationalGuidance:null, systemCalibration:null, publicReservations:[], dashboardStagePage:0, integrationSettings:{}, commissionReasons:structuredClone(commissionReasonDefaults), selectedPlanningStage:'earthwork',
   personnelTeams:structuredClone(personnelModel.teams), personnelAssignments:structuredClone(personnelModel.assignments), personnelDocumentName:'Nenhum documento de estimativas carregado', personnelInferenceOverrides:{}, selectedPersonnelStage:'earthwork', selectedPersonnelTeam:'earthwork', personnelInferenceStatus:'Prévia assistida pelas regras atuais do catálogo',
-  activityInstallation:structuredClone(activityInstallationDefaults), documentCatalog:[], reportDocumentLinks:{},
+  activityInstallation:structuredClone(activityInstallationDefaults), documentCatalog:[], reportDocumentLinks:{}, developmentProfiles:[], selectedDevelopmentProfileId:null, developmentProfileQuery:'',
   records:[{id:'REG-001',obra:'Aliança Park',atividade:'Drenagem Pluvial',data:'2024-06-06',hora:'08:30',responsavel:'Carlos Mendes',detalhes:'Medição da rede principal',status:'Pendente'}],
   ...restoredUiState,
+  dashboardMode:'tracking',
   documentCatalog:[...projectDocumentSeeds.filter(seed=>!(restoredUiState.documentCatalog||[]).some(item=>item.id===seed.id)),...(restoredUiState.documentCatalog||[])],
 });
+if (appStore.get().dashboardMode !== 'tracking') appStore.set({dashboardMode:'tracking'});
 sessionStorageApi.setItem('belavista.session',appStore.get().sessionId);
 
 

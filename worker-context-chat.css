@@ -102,3 +102,86 @@ body.admin-shell-page .worker-context-chat-form>div:last-child{margin-top:10px}
 .worker-chat-allocation{display:grid;gap:7px;padding:8px;border:1px solid rgba(255,255,255,.1);border-radius:8px;background:rgba(0,0,0,.14)}
 .worker-chat-allocation>div{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}.worker-chat-allocation>div b{font-size:10px}.worker-chat-allocation>div span{color:#f6d98b;font-size:9px;text-transform:capitalize}
 .worker-chat-allocation dl{display:grid;grid-template-columns:105px minmax(0,1fr);gap:3px 8px;margin:0}.worker-chat-allocation dt{color:#a8b3c2;font-size:9px}.worker-chat-allocation dd{margin:0;color:#e2e8f0;font-size:9px;overflow-wrap:anywhere}.worker-chat-allocation-section>small{color:#a8b3c2;font-size:9px;line-height:1.35}
+
+.worker-chat-speaker-panel{display:flex;align-items:end;gap:8px;padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(18,22,29,.78)}
+.worker-chat-speaker-panel label{display:grid;flex:1;min-width:0;gap:4px}
+.worker-chat-speaker-panel label>span{color:#a6c8ff;font:8px "IBM Plex Mono",monospace;letter-spacing:.06em;text-transform:uppercase}
+.worker-chat-speaker-panel select{width:100%;min-height:29px;border:1px solid #525252;border-radius:6px;background:#202226;color:#f4f4f4;padding:0 7px;font:10px "IBM Plex Sans",Arial,sans-serif}
+.worker-chat-speaker-panel button{flex:none;min-height:29px;border:1px solid #78a9ff;border-radius:6px;background:transparent;color:#a6c8ff;padding:0 8px;font:9px "IBM Plex Sans",Arial,sans-serif;cursor:pointer}
+.worker-chat-speaker-panel button:hover{background:rgba(120,169,255,.14);color:#fff}
+
+/* WORKER_CHAT_CODEX_FLOATING_V2 */
+/* Chat is a centered floating conversation; it never resizes the page beneath it. */
+@media (min-width:761px){
+  body.admin-shell-page .worker-context-assistant:not(.is-collapsed){
+    position:fixed!important;top:50%!important;left:50%!important;right:auto!important;bottom:auto!important;
+    width:min(820px,calc(100vw - 48px))!important;max-width:calc(100vw - 48px)!important;
+    height:min(590px,84dvh)!important;max-height:84dvh!important;transform:translate(-50%,-50%)!important;
+    flex:none!important;flex-shrink:0!important;border:1px solid rgba(255,255,255,.14)!important;
+    border-radius:24px!important;z-index:500!important;overflow:hidden!important;
+    background:rgba(37,37,37,.98)!important;box-shadow:0 24px 80px rgba(0,0,0,.58)!important;
+    backdrop-filter:blur(20px);
+  }
+  body.admin-shell-page .worker-context-assistant.is-collapsed{
+    top:auto!important;left:50%!important;right:auto!important;bottom:18px!important;
+    width:220px!important;height:52px!important;max-height:52px!important;transform:translateX(-50%)!important;
+  }
+  body.admin-shell-page .worker-context-assistant:not(.is-collapsed) .worker-context-chat-body{
+    flex:1 1 auto;min-height:0;overflow:hidden;
+  }
+  body.admin-shell-page .worker-context-assistant:not(.is-collapsed) .worker-context-chat-log{
+    flex:1 1 auto;min-height:0;max-height:none!important;overflow:auto;padding:20px 28px!important;background:transparent!important;
+  }
+  body.admin-shell-page .worker-context-assistant:not(.is-collapsed) .worker-context-chat-form{flex:0 0 auto}
+}
+
+/* On narrow screens keep the same floating conversation, with safe margins. */
+@media (max-width:760px){
+  body.admin-shell-page .worker-context-assistant:not(.is-collapsed){
+    position:fixed!important;top:50%!important;left:50%!important;right:auto!important;bottom:auto!important;
+    width:calc(100vw - 20px)!important;max-width:560px!important;height:min(78dvh,680px)!important;
+    max-height:calc(100dvh - 24px)!important;transform:translate(-50%,-50%)!important;flex:none!important;flex-shrink:0!important;
+    border:1px solid rgba(255,255,255,.16)!important;border-radius:22px!important;z-index:500!important;
+    overflow:hidden!important;box-shadow:0 20px 65px rgba(0,0,0,.62)!important;
+  }
+  body.admin-shell-page .worker-context-assistant:not(.is-collapsed) .worker-context-chat-head{
+    min-height:52px!important;padding:10px 14px!important;
+  }
+  body.admin-shell-page .worker-context-assistant:not(.is-collapsed) .worker-context-chat-body{flex:1 1 auto;min-height:0;overflow:hidden}
+  body.admin-shell-page .worker-context-assistant:not(.is-collapsed) .worker-context-chat-log{flex:1 1 auto;min-height:0;max-height:none!important;overflow:auto;padding:16px!important}
+  body.admin-shell-page .worker-context-assistant:not(.is-collapsed) .worker-context-chat-form{flex:0 0 auto;padding-bottom:calc(12px + env(safe-area-inset-bottom))!important}
+  body.admin-shell-page .worker-context-assistant.is-collapsed{
+    position:fixed!important;top:auto!important;left:50%!important;right:auto!important;bottom:calc(10px + env(safe-area-inset-bottom))!important;
+    width:190px!important;height:52px!important;max-height:52px!important;transform:translateX(-50%)!important;z-index:500!important;
+  }
+  body.admin-shell-page .app-main{padding-right:0!important}
+}
+
+/* Codex-like response area and compact, real attachment/camera actions. */
+body.admin-shell-page .worker-context-chat-intro{display:none!important}
+body.admin-shell-page .worker-chat-speaker-panel{display:none!important}
+body.admin-shell-page .worker-context-chat-head{background:#2b2b2b!important;color:#f4f4f4!important;border-color:rgba(255,255,255,.12)!important}
+body.admin-shell-page .worker-context-chat-head strong{color:#f4f4f4!important}
+body.admin-shell-page .worker-context-chat-head small{color:#aaa!important}
+body.admin-shell-page .worker-context-mark{border-color:#3e76cf!important;border-radius:7px!important;background:#183a6b!important;color:#e6f0ff!important}
+body.admin-shell-page .worker-context-fade{display:none!important}
+body.admin-shell-page .worker-chat-empty{color:#a5a5a5!important;font-size:14px!important}
+body.admin-shell-page .worker-context-chat-message.is-assistant{max-width:100%;padding:0;border:0!important;background:transparent!important}
+body.admin-shell-page .worker-context-chat-message.is-assistant p{margin-top:12px;font-size:14px;line-height:1.65;color:#f2f2f2}
+body.admin-shell-page .worker-chat-message-meta{font-size:11px}
+body.admin-shell-page .worker-chat-message-meta button{border:0;background:transparent;font:inherit}
+body.admin-shell-page .worker-context-chat-form{padding:12px 24px 18px!important;border-top:1px solid rgba(255,255,255,.08)!important;background:rgba(37,37,37,.98)!important}
+body.admin-shell-page .worker-context-chat-form .worker-context-chat-input-shell{display:flex!important;flex-direction:column!important;min-height:112px!important;padding:12px 14px 9px!important;border:1px solid #505050!important;border-radius:18px!important;background:#303030!important;overflow:hidden}
+body.admin-shell-page .worker-context-chat-form .worker-context-chat-input-shell:focus-within{border-color:#6d8fca!important;box-shadow:0 0 0 1px rgba(109,143,202,.2)!important}
+body.admin-shell-page .worker-context-chat-form .worker-context-chat-input-shell textarea{width:100%!important;flex:1 1 auto!important;min-height:48px!important;max-height:120px!important;padding:0!important;color:#f5f5f5!important;font:14px/1.5 "IBM Plex Sans",Arial,sans-serif!important;resize:none!important}
+body.admin-shell-page .worker-context-chat-form .worker-chat-attachment-rail{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;width:auto!important;margin:8px 0 0!important;padding:0!important;border:0!important;gap:8px!important}
+body.admin-shell-page .worker-context-chat-form .worker-chat-attachment-rail button{display:grid!important;place-items:center!important;width:32px!important;height:32px!important;min-height:32px!important;padding:0!important;border:0!important;border-radius:50%!important;background:transparent!important;color:#d0d0d0!important}
+body.admin-shell-page .worker-context-chat-form .worker-chat-attachment-rail button:hover{background:rgba(255,255,255,.1)!important;color:#fff!important}
+body.admin-shell-page .worker-chat-attachment-rail svg{width:19px!important;height:19px!important}
+body.admin-shell-page .worker-chat-attachment-rail .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+body.admin-shell-page .worker-context-chat-form>div:last-child{margin-top:8px!important}
+body.admin-shell-page .worker-context-chat-form [data-worker-chat-status],body.admin-shell-page .worker-chat-key-hint{color:#999!important;font:10px/1.35 "IBM Plex Sans",Arial,sans-serif!important}
+body.admin-shell-page .worker-context-chat-form [data-worker-chat-submit]{width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;padding:0!important;border:0!important;border-radius:50%!important;background:#2868c7!important;color:#fff!important;font-size:0!important}
+body.admin-shell-page .worker-context-chat-form [data-worker-chat-submit]::before{content:"↑";font-size:22px;line-height:1}
+body.admin-shell-page .worker-context-chat-form [data-worker-chat-submit]:hover{background:#347bdc!important}
+body.admin-shell-page .worker-context-chat-image-input{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip-path:inset(50%)!important}

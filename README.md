@@ -119,6 +119,18 @@ belavista-ai-monitor/
 ├── styles.css
 ├── app.js
 ├── components.js
+├── components/
+│   ├── index.mjs
+│   ├── application-program-v1.mjs
+│   ├── chat/
+│   ├── commercial/
+│   ├── finance/
+│   ├── lots/
+│   ├── map/
+│   ├── planning/
+│   ├── records/
+│   ├── shared/
+│   └── README.md
 ├── state.js
 ├── manifest.webmanifest
 ├── sw.js

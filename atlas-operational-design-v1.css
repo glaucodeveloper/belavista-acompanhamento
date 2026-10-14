@@ -1,0 +1,2285 @@
+/* Atlas visual system: pages, timelines, catalogues, forms and assistant surface. */
+body.admin-shell-page {
+  --atlas-ink: #292b3b;
+  --atlas-muted: #858995;
+  --atlas-line: #e7e8ed;
+  --atlas-soft: #f7f8fa;
+  --atlas-accent: #2878ff;
+  color: var(--atlas-ink);
+}
+
+body.admin-shell-page .atlas-workspace,
+body.admin-shell-page .atlas-workspace > .scene,
+body.admin-shell-page .atlas-workspace > .scene > view-layer[data-view]:not([data-view="map"]) {
+  color: var(--atlas-ink) !important;
+  background: #fff !important;
+}
+
+body.admin-shell-page .atlas-workspace > .scene > view-layer[data-view="stages"] {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: clip !important;
+}
+
+/* Timeline canvas keeps its own horizontal scrolling; the page itself does not. */
+body.admin-shell-page view-layer[data-view="stages"] .stage-context-chrome-v1,
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1,
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-calendar-canvas,
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-canvas-scroll {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  color: var(--atlas-ink) !important;
+  background: #fff !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-context-chrome-v1,
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1 {
+  grid-template-columns: minmax(0, 1fr) !important;
+  overflow-x: clip !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-persistent-timeline,
+body.admin-shell-page view-layer[data-view="stages"] .stage-view-tabs.stage-context-home-tabs-v1,
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-calendar-canvas {
+  border: 1px solid var(--atlas-line) !important;
+  border-radius: 18px !important;
+  background: #fff !important;
+  box-shadow: 0 2px 8px rgba(28, 34, 48, .045) !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-canvas-scroll {
+  border: 1px solid var(--atlas-line) !important;
+  border-radius: 12px !important;
+  background: var(--atlas-soft) !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-persistent-timeline {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-persistent-timeline-track,
+body.admin-shell-page view-layer[data-view="stages"] .stage-persistent-mobile-picker {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-persistent-timeline-card {
+  border: 1px solid #e3e5ea !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  color: var(--atlas-ink) !important;
+  box-shadow: none !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-persistent-timeline-card.active {
+  border-color: #8eb6ff !important;
+  background: #f0f5ff !important;
+  box-shadow: inset 0 0 0 1px #8eb6ff !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-persistent-timeline-card :is(strong, span, small, p, b) {
+  color: #414450 !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-persistent-timeline-card.active :is(strong, span, small, p, b) {
+  color: #29314c !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-persistent-timeline-add-stage {
+  border: 1px dashed #b9c2d1 !important;
+  border-radius: 10px !important;
+  background: #f8fafc !important;
+  color: #40577b !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-canvas-axis {
+  background: #f3f5f8 !important;
+  color: #555b69 !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-canvas-day { color: #626978 !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-canvas-grid { background: #fff !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-canvas-stage {
+  border-color: #e6e8ed !important;
+  background: #fff !important;
+  color: #353846 !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-canvas-stage :is(span, strong, b, small, p) {
+  color: #414450 !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .activity-header :is(span, small, p) {
+  color: #707583 !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .activity-header :is(h1, h2, h3, strong) {
+  color: #292b3b !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-canvas-grid :is([class*="cell"], [class*="row"]) {
+  border-color: #e7e9ee !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1 :is(h1, h2, h3, h4) {
+  color: #292b3b !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1 :is(p, label, small, .stage-home-canvas-day) {
+  color: #737987 !important;
+}
+
+/* Normalize every stages section and its timeline controls to Atlas cards. */
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1 {
+  display: grid !important;
+  gap: 16px !important;
+  padding: 14px 0 42px !important;
+  background: #fff !important;
+  color: var(--atlas-ink) !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1 :is(.stage-home-head, .stage-home-section) {
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  border: 1px solid var(--atlas-line) !important;
+  border-radius: 18px !important;
+  background: #fff !important;
+  color: var(--atlas-ink) !important;
+  box-shadow: 0 2px 8px rgba(28, 34, 48, .045) !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1 :is(.stage-home-head, .stage-home-section) { padding: 18px 20px !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1 .stage-home-section > header { border-color: #eff0f2 !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1 :is(.stage-home-kpis, .stage-home-raid-grid, .stage-home-ai-grid, .stage-home-record-grid) {
+  gap: 10px !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1 :is(.stage-home-kpi, .stage-home-raid-card, .stage-home-ai-card, .stage-home-record-card, .stage-home-calendar-card) {
+  border: 1px solid var(--atlas-line) !important;
+  border-top: 1px solid var(--atlas-line) !important;
+  border-left: 1px solid var(--atlas-line) !important;
+  border-radius: 13px !important;
+  background: #fff !important;
+  color: #343746 !important;
+  box-shadow: 0 2px 7px rgba(24, 30, 44, .045) !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1 :is(.stage-home-kpi, .stage-home-raid-card, .stage-home-ai-card, .stage-home-record-card, .stage-home-calendar-card) :is(h3, b, strong, span, p, small, footer) { color: #515562 !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1 :is(.stage-home-calendar, .stage-home-records, .stage-home-ai, .stage-home-raid) { background: #fff !important; color: var(--atlas-ink) !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1 .stage-home-calendar-controls :is(button, b) {
+  min-height: 34px !important;
+  padding: 0 11px !important;
+  border: 1px solid #e0e1e6 !important;
+  border-radius: 9px !important;
+  background: #fff !important;
+  color: #414450 !important;
+  font: inherit !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1 .stage-home-calendar-grid { gap: 8px !important; border: 0 !important; background: transparent !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1 .stage-home-calendar-day {
+  overflow: hidden !important;
+  border: 1px solid var(--atlas-line) !important;
+  border-radius: 12px !important;
+  background: #fff !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1 .stage-home-calendar-day.today { background: #f4f7ff !important; box-shadow: inset 0 3px #2878ff !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1 .stage-home-calendar-day > header { border-color: #eff0f2 !important; background: #fafbfc !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1 .stage-home-calendar-day > header :is(span, b, small) { color: #626978 !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1 .stage-home-calendar-canvas { padding: 18px !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-canvas-scroll { border: 1px solid #e5e7ec !important; border-radius: 12px !important; background: #fff !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-canvas-axis { border-color: #e5e7ec !important; background: #f7f8fa !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-canvas-axis :is(span, b, strong, small) { color: #626978 !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-canvas-row { border-color: #e7e9ee !important; background: #fff !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-canvas-row > .stage-home-canvas-stage {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 2 !important;
+  border-right: 1px solid #e5e7ec !important;
+  background: #fff !important;
+  color: #343746 !important;
+  box-shadow: 4px 0 8px rgba(25, 32, 46, .035) !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-canvas-row > .stage-home-canvas-stage :is(b, span, small, strong) { color: #414450 !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-calendar-cell-page-v3,
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-calendar-cell-page-v3 > .stage-home-canvas-track { background: #fff !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-calendar-cell-page-v3 > .stage-home-canvas-track > * { border-color: #eceef2 !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1 .stage-home-calendar-card {
+  border: 1px solid #dbe5f6 !important;
+  border-left: 3px solid #2878ff !important;
+  border-radius: 10px !important;
+  background: #f5f8ff !important;
+  color: #343746 !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-home-page-v1 .stage-home-calendar-card :is(h3, p, span, small, b) { color: #515562 !important; }
+body.admin-shell-page view-layer[data-view="stages"] :is(.stage-view-tabs.stage-context-home-tabs-v1, .stage-view-tabs) {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  padding: 10px 12px !important;
+  border: 1px solid var(--atlas-line) !important;
+  border-radius: 14px !important;
+  background: #fafbfc !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] :is(.stage-view-tabs, .stage-view-links) button {
+  min-height: 34px !important;
+  padding: 0 12px !important;
+  border: 1px solid #e0e1e6 !important;
+  border-radius: 9px !important;
+  background: #fff !important;
+  color: #515562 !important;
+  box-shadow: none !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] :is(.stage-view-tabs, .stage-view-links) button[aria-current="page"],
+body.admin-shell-page view-layer[data-view="stages"] :is(.stage-view-tabs, .stage-view-links) button.active { border-color: #292b3b !important; background: #292b3b !important; color: #fff !important; }
+body.admin-shell-page view-layer[data-view="stages"] :is(.stage-editor-page, .stage-editor-activity, .stage-editor-footer) { border-color: var(--atlas-line) !important; border-radius: 14px !important; background: #fff !important; color: var(--atlas-ink) !important; }
+body.admin-shell-page view-layer[data-view="stages"] :is(.stage-editor-grid label, .stage-editor-activity label, .stage-editor-section-head p, .stage-editor-footer p) { color: #626978 !important; }
+body.admin-shell-page view-layer[data-view="stages"] :is(.stage-editor-grid input, .stage-editor-grid select, .stage-editor-grid textarea, .stage-editor-activity input, .stage-editor-activity select) { border-color: #dedfe5 !important; border-radius: 9px !important; background: #fff !important; color: #292b3b !important; }
+
+/* Shared Atlas treatment for operational forms, filters and item catalogues. */
+body.admin-shell-page .atlas-workspace view-layer[data-view]:not([data-view="map"]) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea) {
+  box-sizing: border-box;
+  border: 1px solid #dedfe5;
+  border-radius: 9px;
+  background: #fff;
+  color: var(--atlas-ink);
+  font: inherit;
+}
+body.admin-shell-page .atlas-workspace view-layer[data-view]:not([data-view="map"]) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--atlas-accent) 30%, transparent);
+  outline-offset: 1px;
+  border-color: var(--atlas-accent);
+}
+body.admin-shell-page .atlas-workspace view-layer[data-view]:not([data-view="map"]) table {
+  border-color: var(--atlas-line);
+  color: #424550;
+}
+body.admin-shell-page .atlas-workspace view-layer[data-view]:not([data-view="map"]) :is(th, thead td) {
+  background: #f7f7f9;
+  color: #838691;
+}
+body.admin-shell-page .atlas-workspace view-layer[data-view]:not([data-view="map"]) :is(td, th) {
+  border-color: #eff0f2;
+}
+body.admin-shell-page .atlas-workspace view-layer[data-view]:not([data-view="map"]) :is(.atlas-data-card, .atlas-material-table-card, .atlas-material-editor, [class*="catalog-card"], [class*="catalogue-card"], [class*="form-card"]) {
+  border-color: var(--atlas-line);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--atlas-ink);
+  box-shadow: 0 2px 8px rgba(28, 34, 48, .045);
+}
+
+/* Codex-like assistant: a bounded conversation, padded answer and outlined composer. */
+body.admin-shell-page .worker-context-assistant:not(.is-collapsed) {
+  border: 1px solid #dfe1e7 !important;
+  border-radius: 20px !important;
+  background: #fff !important;
+  color: var(--atlas-ink) !important;
+  box-shadow: 0 18px 55px rgba(24, 30, 44, .18) !important;
+  overflow: hidden !important;
+}
+body.admin-shell-page .worker-context-chat-head {
+  min-height: 56px !important;
+  padding: 9px 14px !important;
+  border-bottom: 1px solid var(--atlas-line) !important;
+  background: #fff !important;
+  color: var(--atlas-ink) !important;
+}
+body.admin-shell-page .worker-context-chat-head strong { color: var(--atlas-ink) !important; }
+body.admin-shell-page .worker-context-chat-head small { color: var(--atlas-muted) !important; }
+body.admin-shell-page .worker-context-mark {
+  border: 0 !important;
+  border-radius: 9px !important;
+  background: #edf3ff !important;
+  color: var(--atlas-accent) !important;
+}
+body.admin-shell-page .worker-context-chat-head-actions button {
+  border-color: var(--atlas-line) !important;
+  border-radius: 9px !important;
+  color: #555966 !important;
+}
+body.admin-shell-page .worker-context-chat-intro {
+  padding: 14px 18px 6px !important;
+  background: #fff !important;
+}
+body.admin-shell-page .worker-context-chat-intro strong { color: var(--atlas-ink) !important; font-size: 12px !important; }
+body.admin-shell-page .worker-context-chat-intro span { color: var(--atlas-muted) !important; font-size: 11px !important; line-height: 1.55 !important; }
+body.admin-shell-page .worker-chat-speaker-panel {
+  padding: 8px 18px !important;
+  border-color: var(--atlas-line) !important;
+  background: #fafbfc !important;
+}
+body.admin-shell-page .worker-chat-speaker-panel label > span { color: #7c8290 !important; }
+body.admin-shell-page .worker-chat-speaker-panel select {
+  border-color: #dedfe5 !important;
+  border-radius: 8px !important;
+  background: #fff !important;
+  color: var(--atlas-ink) !important;
+}
+body.admin-shell-page .worker-chat-speaker-panel button {
+  border-color: #d8dce5 !important;
+  border-radius: 8px !important;
+  color: #3d5f9c !important;
+}
+body.admin-shell-page .worker-context-chat-log {
+  gap: 12px !important;
+  padding: 16px 18px !important;
+  background: #fff !important;
+}
+body.admin-shell-page .worker-context-fade:not([hidden]) {
+  gap: 7px !important;
+  margin: 4px 18px 8px !important;
+  padding: 14px 16px !important;
+  border: 1px solid #e3e7ef !important;
+  border-left: 3px solid var(--atlas-accent) !important;
+  border-radius: 14px !important;
+  background: #f8faff !important;
+  color: #343746 !important;
+}
+body.admin-shell-page .worker-context-fade span {
+  color: #64728a !important;
+  font: 10px "IBM Plex Sans", Arial, sans-serif !important;
+}
+body.admin-shell-page .worker-context-fade p {
+  color: #343746 !important;
+  font-size: 12px !important;
+  line-height: 1.6 !important;
+}
+body.admin-shell-page .worker-context-chat-message {
+  max-width: 100% !important;
+  padding: 14px 16px !important;
+  border: 1px solid var(--atlas-line) !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  color: var(--atlas-ink) !important;
+  box-shadow: 0 2px 7px rgba(24, 30, 44, .045) !important;
+}
+body.admin-shell-page .worker-context-chat-message.is-user {
+  align-self: flex-end;
+  max-width: 88% !important;
+  border-color: #e4e9f4 !important;
+  background: #f5f7fb !important;
+}
+body.admin-shell-page .worker-context-chat-message.is-assistant {
+  align-self: stretch;
+  border-left: 1px solid var(--atlas-line) !important;
+  background: #fff !important;
+}
+body.admin-shell-page .worker-context-chat-message p {
+  margin: 9px 0 0 !important;
+  color: #303344 !important;
+  font-size: 13px !important;
+  line-height: 1.65 !important;
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere !important;
+}
+body.admin-shell-page .worker-chat-message-meta,
+body.admin-shell-page .worker-chat-audit { color: #858995 !important; }
+body.admin-shell-page .worker-context-chat-form {
+  padding: 8px 16px 16px !important;
+  border-top: 1px solid var(--atlas-line) !important;
+  background: #fff !important;
+}
+body.admin-shell-page .worker-context-chat-form .worker-context-chat-input-shell {
+  min-height: 92px !important;
+  padding: 3px !important;
+  border: 1px solid #d7d9df !important;
+  border-radius: 18px !important;
+  background: #fff !important;
+  box-shadow: 0 2px 7px rgba(24, 30, 44, .055) !important;
+}
+body.admin-shell-page .worker-context-chat-form .worker-context-chat-input-shell:focus-within {
+  border-color: #a8bfe9 !important;
+  box-shadow: 0 0 0 3px rgba(40, 120, 255, .10) !important;
+}
+body.admin-shell-page .worker-context-chat-form .worker-context-chat-input-shell textarea {
+  min-height: 84px !important;
+  padding: 13px 14px 13px 48px !important;
+  border: 0 !important;
+  border-radius: 15px !important;
+  background: transparent !important;
+  color: #292b3b !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+body.admin-shell-page .worker-context-chat-form textarea::placeholder { color: #9296a0 !important; }
+body.admin-shell-page .worker-context-chat-form .worker-chat-attachment-rail {
+  border-color: #e6e7eb !important;
+}
+body.admin-shell-page .worker-context-chat-form .worker-chat-attachment-rail button {
+  border-radius: 8px !important;
+  color: #586b8f !important;
+}
+body.admin-shell-page .worker-context-chat-form .worker-context-chat-image-button {
+  border-color: #e0e2e8 !important;
+  border-radius: 10px !important;
+  background: #f7f8fa !important;
+  color: #626875 !important;
+}
+body.admin-shell-page .worker-chat-key-hint,
+body.admin-shell-page .worker-context-chat-form [data-worker-chat-status] {
+  color: #8a8e99 !important;
+}
+body.admin-shell-page .worker-context-chat-form [data-worker-chat-submit] {
+  min-height: 36px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: var(--atlas-accent) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+body.admin-shell-page .worker-context-chat-form [data-worker-chat-submit]:hover { background: #1265e8 !important; }
+
+@media (max-width: 760px) {
+  body.admin-shell-page .worker-context-assistant:not(.is-collapsed) {
+    border-radius: 0 !important;
+  }
+  body.admin-shell-page .worker-context-chat-message { padding: 13px !important; }
+  body.admin-shell-page .worker-context-chat-form { padding: 8px 12px calc(14px + env(safe-area-inset-bottom)) !important; }
+}
+
+/* Atlas visual language for shared stage chrome, AI actions and lot catalogues.
+   Keep the existing application markup and controls; replace only the legacy
+   Carbon-like dark surfaces that conflict with the Atlas workspace. */
+body.admin-shell-page .atlas-workspace .stage-context-chrome-v1,
+body.admin-shell-page .atlas-workspace .stage-persistent-timeline,
+body.admin-shell-page .atlas-workspace .stage-view-tabs.stage-context-home-tabs-v1 {
+  color: #292b3b !important;
+  background: #fff !important;
+  border-color: #e7e8ed !important;
+  border-radius: 16px !important;
+  box-shadow: 0 2px 8px rgba(28, 34, 48, .045) !important;
+}
+body.admin-shell-page .atlas-workspace .stage-context-chrome-v1 {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: clip !important;
+}
+body.admin-shell-page .atlas-workspace .stage-context-chrome-v1 :is(h1, h2, h3, strong, b) {
+  color: #292b3b !important;
+}
+body.admin-shell-page .atlas-workspace .stage-context-chrome-v1 :is(p, small, span) {
+  color: #737987 !important;
+}
+body.admin-shell-page .atlas-workspace .stage-view-tabs {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 10px 0 16px !important;
+  padding: 12px 16px !important;
+  border: 1px solid #e7e8ed !important;
+  border-radius: 14px !important;
+  background: #fff !important;
+  color: #292b3b !important;
+  box-shadow: 0 2px 8px rgba(28, 34, 48, .045) !important;
+}
+body.admin-shell-page .atlas-workspace .stage-view-context { display: grid !important; gap: 3px !important; }
+body.admin-shell-page .atlas-workspace .stage-view-context :is(strong, b) { color: #292b3b !important; }
+body.admin-shell-page .atlas-workspace .stage-view-context :is(span, small) { color: #737987 !important; }
+body.admin-shell-page .atlas-workspace .stage-view-links button {
+  min-height: 36px !important;
+  padding: 0 13px !important;
+  border: 1px solid #e0e1e6 !important;
+  border-radius: 9px !important;
+  background: #fff !important;
+  color: #555b69 !important;
+}
+body.admin-shell-page .atlas-workspace .stage-view-links button.active,
+body.admin-shell-page .atlas-workspace .stage-view-links button[aria-current="page"] {
+  border-color: #292b3b !important;
+  background: #292b3b !important;
+  color: #fff !important;
+}
+body.admin-shell-page .atlas-workspace .stage-context-chrome-v1 .stage-persistent-timeline-track {
+  gap: 10px !important;
+  padding: 12px !important;
+  overflow-x: auto !important;
+}
+body.admin-shell-page .atlas-workspace .stage-context-chrome-v1 .stage-persistent-timeline-card {
+  border: 1px solid #e3e5ea !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  color: #414450 !important;
+  box-shadow: none !important;
+}
+body.admin-shell-page .atlas-workspace .stage-context-chrome-v1 .stage-persistent-timeline-card.active {
+  border-color: #8eb6ff !important;
+  background: #f0f5ff !important;
+  box-shadow: inset 0 0 0 1px #8eb6ff !important;
+}
+body.admin-shell-page .atlas-workspace .stage-context-chrome-v1 .stage-persistent-timeline-card :is(strong, span, small, p, b) {
+  color: #414450 !important;
+}
+body.admin-shell-page .atlas-workspace .stage-context-chrome-v1 .stage-persistent-timeline-card.active :is(strong, span, small, p, b) {
+  color: #29314c !important;
+}
+body.admin-shell-page .atlas-workspace .stage-context-chrome-v1 .stage-persistent-timeline-add {
+  border: 1px dashed #b9c2d1 !important;
+  border-radius: 10px !important;
+  background: #f8fafc !important;
+  color: #40577b !important;
+}
+
+/* AI actions: preserve the live priority matrix and inspection flow. */
+body.admin-shell-page view-layer[data-view="actions"] .stage-header-3d,
+body.admin-shell-page view-layer[data-view="activities"] .stage-header-3d {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  margin: 0 0 16px !important;
+  padding: 18px !important;
+  border: 1px solid #e7e8ed !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  color: #292b3b !important;
+  box-shadow: 0 2px 8px rgba(28, 34, 48, .045) !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .stage-header-3d > header,
+body.admin-shell-page view-layer[data-view="activities"] .stage-header-3d > header {
+  margin: 0 0 12px !important;
+  color: #292b3b !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .stage-header-3d :is(h2, strong),
+body.admin-shell-page view-layer[data-view="activities"] .stage-header-3d :is(h2, strong) { color: #292b3b !important; }
+body.admin-shell-page view-layer[data-view="actions"] .stage-header-3d p,
+body.admin-shell-page view-layer[data-view="activities"] .stage-header-3d p { color: #737987 !important; }
+body.admin-shell-page view-layer[data-view="actions"] .stage-header-3d .stage-header-3d-frame,
+body.admin-shell-page view-layer[data-view="activities"] .stage-header-3d .stage-header-3d-frame {
+  overflow: hidden !important;
+  border: 1px solid #e7e8ed !important;
+  border-radius: 12px !important;
+  background: #111820 !important;
+}
+body.admin-shell-page view-layer[data-view="activities"] .activities-page {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: none !important;
+  padding: 16px 0 38px !important;
+  color: #292b3b !important;
+  background: #fff !important;
+}
+body.admin-shell-page view-layer[data-view="activities"] .activities-page .extension-head h1 { color: #292b3b !important; }
+body.admin-shell-page view-layer[data-view="activities"] .activities-page .extension-head p { color: #737987 !important; }
+body.admin-shell-page view-layer[data-view="activities"] .activities-dynamic-summary {
+  grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(120px, 150px)) !important;
+  gap: 10px !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+body.admin-shell-page view-layer[data-view="activities"] .activities-dynamic-summary > div {
+  border: 1px solid #e7e8ed !important;
+  border-radius: 13px !important;
+  background: #fff !important;
+  color: #292b3b !important;
+  box-shadow: 0 2px 8px rgba(28, 34, 48, .045) !important;
+}
+body.admin-shell-page view-layer[data-view="activities"] .activities-dynamic-summary :is(b, strong) { color: #2878ff !important; }
+body.admin-shell-page view-layer[data-view="activities"] .activities-dynamic-summary small { color: #737987 !important; }
+body.admin-shell-page view-layer[data-view="activities"] .activity-toolbar {
+  border-bottom-color: #e7e8ed !important;
+}
+body.admin-shell-page view-layer[data-view="activities"] .activity-filter-label { color: #737987 !important; }
+body.admin-shell-page view-layer[data-view="activities"] .activity-toolbar button {
+  border: 1px solid #e0e1e6 !important;
+  border-radius: 9px !important;
+  background: #fff !important;
+  color: #555b69 !important;
+}
+body.admin-shell-page view-layer[data-view="activities"] .activity-toolbar button.active {
+  border-color: #292b3b !important;
+  background: #292b3b !important;
+  color: #fff !important;
+}
+body.admin-shell-page view-layer[data-view="activities"] .activity-list-layout {
+  gap: 8px !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+body.admin-shell-page view-layer[data-view="activities"] .activity-list-row {
+  border: 1px solid #e7e8ed !important;
+  border-radius: 13px !important;
+  background: #fff !important;
+  color: #292b3b !important;
+  box-shadow: 0 2px 8px rgba(28, 34, 48, .045) !important;
+}
+body.admin-shell-page view-layer[data-view="activities"] .activity-list-row:hover { background: #fafbfc !important; }
+body.admin-shell-page view-layer[data-view="activities"] .activity-list-row :is(h3, b, strong) { color: #292b3b !important; }
+body.admin-shell-page view-layer[data-view="activities"] .activity-list-row :is(p, small) { color: #737987 !important; }
+body.admin-shell-page view-layer[data-view="activities"] .activity-row-index { color: #2878ff !important; }
+body.admin-shell-page view-layer[data-view="activities"] .activity-row-actions button {
+  border: 1px solid #e0e1e6 !important;
+  border-radius: 9px !important;
+  background: #fff !important;
+  color: #555b69 !important;
+}
+body.admin-shell-page view-layer[data-view="activities"] .activity-row-actions button:hover { color: #2878ff !important; }
+
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page {
+  box-sizing: border-box !important;
+  max-width: none !important;
+  padding: 16px 0 38px !important;
+  color: #292b3b !important;
+  background: #fff !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .extension-head h1 {
+  color: #292b3b !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .extension-head p {
+  color: #737987 !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .ai-ready-count {
+  border: 1px solid #d7eadc !important;
+  border-radius: 999px !important;
+  background: #f2faf4 !important;
+  color: #247443 !important;
+  font: 600 11px Inter, sans-serif !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .action-workspace {
+  grid-template-columns: minmax(0, 1.65fr) minmax(300px, .75fr) !important;
+  align-items: stretch !important;
+  gap: 16px !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .action-matrix {
+  border: 1px solid #e7e8ed !important;
+  border-radius: 16px !important;
+  background-color: #fff !important;
+  box-shadow: 0 2px 8px rgba(28, 34, 48, .045) !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .matrix-quadrant {
+  color: #687080 !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .q-now {
+  border-color: #e5eee8 !important;
+  background: #f5faf6 !important;
+  color: #247443 !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .q-prepare {
+  border-color: #f0eadb !important;
+  background: #fffaf0 !important;
+  color: #946a00 !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .action-point { color: #292b3b !important; }
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .action-point > span {
+  border-color: #fff !important;
+  background: #2878ff !important;
+  box-shadow: 0 0 0 1px #8eb6ff, 0 2px 8px rgba(40, 120, 255, .20) !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .action-point.selected > span {
+  background: #20a87a !important;
+  box-shadow: 0 0 0 2px #d7f1e8 !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .action-point small,
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .matrix-axis {
+  color: #858995 !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .action-inspector,
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .attitude-walk {
+  border: 1px solid #e7e8ed !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  color: #292b3b !important;
+  box-shadow: 0 2px 8px rgba(28, 34, 48, .045) !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .action-inspector :is(h2, b, strong),
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .attitude-walk :is(h2, b, strong) {
+  color: #292b3b !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .action-inspector dl,
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .action-score {
+  gap: 0 !important;
+  border: 1px solid #eff0f2 !important;
+  border-radius: 10px !important;
+  background: #eff0f2 !important;
+  overflow: hidden !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .action-inspector :is(dt, dd),
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .action-score > div {
+  background: #fafbfc !important;
+  color: #555b69 !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .action-score b { color: #2878ff !important; }
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .attitude-walk > header,
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .attitude-walk > footer {
+  border-color: #eff0f2 !important;
+  color: #626978 !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .attitude-walk p,
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .attitude-step small {
+  color: #737987 !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .attitude-step.current,
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .parallel-walk .current {
+  border-radius: 10px !important;
+  background: #f3f7ff !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .attitude-step.current i {
+  border-color: #8eb6ff !important;
+  color: #2878ff !important;
+  box-shadow: none !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-action-reflection-panel {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 16px 0 !important;
+  padding: 20px !important;
+  border: 1px solid #e7e8ed !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  color: #292b3b !important;
+  box-shadow: 0 2px 8px rgba(28, 34, 48, .045) !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-action-reflection-panel :is(header, p, strong, b) { color: #292b3b !important; }
+body.admin-shell-page view-layer[data-view="actions"] .ai-action-reflection-panel header small,
+body.admin-shell-page view-layer[data-view="actions"] .ai-action-reflection-panel .ai-reflection-step > small { color: #2878ff !important; }
+body.admin-shell-page view-layer[data-view="actions"] .ai-action-reflection-panel .ai-reflection-step {
+  border-color: #e7e8ed !important;
+  border-radius: 12px !important;
+  background: #fafbfc !important;
+  color: #414450 !important;
+}
+body.admin-shell-page view-layer[data-view="actions"] .ai-action-reflection-panel .ai-reflection-step :is(p, span) { color: #555b69 !important; }
+body.admin-shell-page view-layer[data-view="actions"] .ai-action-reflection-panel .ai-reflection-apply {
+  min-height: 40px !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: #2878ff !important;
+  color: #fff !important;
+}
+
+/* Lot catalogue: Atlas cards and readable controls, without changing finance data. */
+body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-config,
+body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-kpis article,
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-price-catalog-card,
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-toolbar {
+  border: 1px solid #e7e8ed !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  color: #292b3b !important;
+  box-shadow: 0 2px 8px rgba(28, 34, 48, .045) !important;
+}
+body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-config {
+  grid-template-columns: repeat(5, minmax(120px, 1fr)) !important;
+  gap: 12px !important;
+  padding: 18px !important;
+}
+body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-config :is(h2, b, strong),
+body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-kpis b,
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-price-catalog-card h2 {
+  color: #292b3b !important;
+}
+body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-config :is(small, label, [data-repasse-config-status]),
+body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-kpis :is(small, span),
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-price-catalog-card header p,
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-price-catalog-card header small {
+  color: #737987 !important;
+}
+body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-config input,
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-toolbar :is(input, select) {
+  min-height: 40px !important;
+  padding: 8px 11px !important;
+  border: 1px solid #dedfe5 !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  color: #292b3b !important;
+  font: inherit !important;
+}
+body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-kpis {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-kpis article { padding: 16px !important; }
+body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-kpis b,
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-price-catalog-card td:last-child b { color: #2878ff !important; }
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-price-catalog-card { padding: 20px !important; }
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-toolbar {
+  grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(140px, .8fr)) auto !important;
+  align-items: end !important;
+  gap: 12px !important;
+  padding: 16px !important;
+}
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-toolbar label {
+  display: grid !important;
+  gap: 6px !important;
+  margin: 0 !important;
+  color: #737987 !important;
+  font-size: 11px !important;
+}
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-price-catalog-card .repasse-table-wrap {
+  max-height: 56vh !important;
+  border: 1px solid #eff0f2 !important;
+  border-radius: 12px !important;
+}
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-price-catalog-card th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1 !important;
+  background: #f7f7f9 !important;
+  color: #737987 !important;
+}
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-price-catalog-card :is(td, th) {
+  border-color: #eff0f2 !important;
+  color: #424550 !important;
+}
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-price-catalog-card tr[data-lot-catalog-row]:hover { background: #f7f9fc !important; }
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-price-catalog-card :is(.lot-status-pill, .lot-payment-pill) {
+  border-color: #e7e8ed !important;
+  border-radius: 999px !important;
+  background: #fafbfc !important;
+  color: #555b69 !important;
+}
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-action {
+  border: 1px solid #e0e1e6 !important;
+  border-radius: 9px !important;
+  background: #fff !important;
+  color: #2878ff !important;
+}
+@media (max-width: 900px) {
+  body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .action-workspace { grid-template-columns: minmax(0, 1fr) !important; }
+  body.admin-shell-page view-layer[data-view="activities"] .activities-dynamic-summary { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-config { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 560px) {
+  body.admin-shell-page view-layer[data-view="activities"] .activities-dynamic-summary { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-config { grid-template-columns: 1fr 1fr !important; padding: 14px !important; }
+  body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-config header,
+  body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-config-status { grid-column: 1 / -1 !important; }
+  body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-toolbar { grid-template-columns: 1fr !important; }
+  body.admin-shell-page view-layer[data-view="brokers-board"] .lot-price-catalog-card { padding: 14px !important; }
+}
+
+/* Atlas timeline: the stage route keeps its real activity cards and navigation,
+   while removing the legacy dark calendar-shell treatment. */
+body.admin-shell-page view-layer[data-view="stages"] .stage-calendar-only-v5360 {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 0 24px !important;
+  padding: 20px !important;
+  overflow: visible !important;
+  border: 1px solid var(--atlas-line) !important;
+  border-radius: 18px !important;
+  background: #fff !important;
+  color: var(--atlas-ink) !important;
+  box-shadow: 0 2px 8px rgba(28, 34, 48, .045) !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-calendar-only-v5360 > .workspace-head-v5360 {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 18px !important;
+  margin: 0 !important;
+  padding: 0 0 16px !important;
+  border: 0 !important;
+  border-bottom: 1px solid #eff0f2 !important;
+  background: #fff !important;
+  color: var(--atlas-ink) !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-calendar-only-v5360 > .workspace-head-v5360 > div:first-child {
+  display: grid !important;
+  gap: 5px !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-calendar-only-v5360 .workspace-head-v5360 > div > span {
+  color: var(--atlas-accent) !important;
+  font: 600 10px "IBM Plex Mono", monospace !important;
+  letter-spacing: .06em !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-calendar-only-v5360 .workspace-head-v5360 h1 {
+  margin: 0 !important;
+  color: var(--atlas-ink) !important;
+  font-size: clamp(20px, 2vw, 26px) !important;
+  line-height: 1.2 !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-calendar-only-v5360 .workspace-head-v5360 p {
+  margin: 0 !important;
+  color: #737987 !important;
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-calendar-legend-v5360 {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-end !important;
+  gap: 7px !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-calendar-legend-v5360 > span {
+  padding: 6px 9px !important;
+  border: 1px solid #e7e8ed !important;
+  border-radius: 999px !important;
+  background: #fafbfc !important;
+  color: #616675 !important;
+  font-size: 10px !important;
+  white-space: nowrap !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-calendar-legend-v5360 > .active { border-color: #d7e5ff !important; background: #f1f6ff !important; color: #2865bd !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-calendar-legend-v5360 > .warn { border-color: #f2e5bd !important; background: #fffaf0 !important; color: #946a00 !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-calendar-legend-v5360 > .done { border-color: #d5eadb !important; background: #f2faf4 !important; color: #247443 !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-calendar-v5360 {
+  display: flex !important;
+  align-items: stretch !important;
+  gap: 12px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 16px 1px 4px !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  background: #fff !important;
+  scrollbar-color: #aeb8c9 #f1f2f5 !important;
+  scrollbar-width: thin !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-period-v5360 {
+  box-sizing: border-box !important;
+  flex: 0 0 248px !important;
+  min-width: 0 !important;
+  padding: 12px !important;
+  border: 1px solid #e7e8ed !important;
+  border-radius: 14px !important;
+  background: #fafbfc !important;
+  color: var(--atlas-ink) !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-period-v5360 > header {
+  display: grid !important;
+  gap: 3px !important;
+  margin: 0 0 9px !important;
+  padding: 0 0 9px !important;
+  border: 0 !important;
+  border-bottom: 1px solid #e9eaee !important;
+  background: transparent !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-period-v5360 > header span {
+  color: #8a8e99 !important;
+  font: 9px "IBM Plex Mono", monospace !important;
+  letter-spacing: .06em !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-period-v5360 > header b {
+  overflow: hidden !important;
+  color: #393c4b !important;
+  font-size: 12px !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-period-v5360 > div {
+  display: grid !important;
+  gap: 8px !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-card-v5360 {
+  box-sizing: border-box !important;
+  display: grid !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  gap: 7px !important;
+  padding: 12px !important;
+  border: 1px solid #e3e5ea !important;
+  border-left: 3px solid #aeb8c9 !important;
+  border-radius: 11px !important;
+  background: #fff !important;
+  color: #353846 !important;
+  text-align: left !important;
+  box-shadow: 0 1px 3px rgba(24, 30, 44, .035) !important;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-card-v5360:hover {
+  border-color: #b8c8e2 !important;
+  box-shadow: 0 5px 14px rgba(24, 30, 44, .08) !important;
+  transform: translateY(-1px) !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-card-v5360.active { border-left-color: #2878ff !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-card-v5360.warn { border-left-color: #d69b00 !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-card-v5360.done { border-left-color: #2f8c55 !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-card-v5360 > span {
+  color: #828794 !important;
+  font-size: 10px !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-card-v5360 > h2 {
+  margin: 0 !important;
+  color: #303344 !important;
+  font-size: 13px !important;
+  line-height: 1.35 !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-card-v5360 > p {
+  margin: 0 !important;
+  color: #737987 !important;
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-card-v5360 > i {
+  display: block !important;
+  height: 5px !important;
+  overflow: hidden !important;
+  border-radius: 999px !important;
+  background: #eceef2 !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-card-v5360 > i > em {
+  display: block !important;
+  height: 100% !important;
+  border-radius: inherit !important;
+  background: #2878ff !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-card-v5360.warn > i > em { background: #e3ae26 !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-card-v5360.done > i > em { background: #39a363 !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-card-v5360 > footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  color: #555b69 !important;
+}
+body.admin-shell-page view-layer[data-view="stages"] .stage-card-v5360 > footer b { color: #414450 !important; font-size: 11px !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-card-v5360 > footer small { color: #858995 !important; font-size: 9px !important; }
+body.admin-shell-page view-layer[data-view="stages"] .stage-calendar-only-v5360 .dashboard-empty-v5360 {
+  padding: 22px !important;
+  border: 1px dashed #d9dce3 !important;
+  border-radius: 12px !important;
+  background: #fafbfc !important;
+  color: #737987 !important;
+}
+@media (max-width: 760px) {
+  body.admin-shell-page .atlas-workspace .stage-view-tabs { align-items: stretch !important; flex-direction: column !important; }
+  body.admin-shell-page view-layer[data-view="stages"] .stage-calendar-only-v5360 { padding: 14px !important; }
+  body.admin-shell-page view-layer[data-view="stages"] .stage-calendar-only-v5360 > .workspace-head-v5360 { flex-direction: column !important; }
+  body.admin-shell-page view-layer[data-view="stages"] .stage-calendar-legend-v5360 { justify-content: flex-start !important; }
+  body.admin-shell-page view-layer[data-view="stages"] .stage-calendar-v5360 { gap: 9px !important; }
+  body.admin-shell-page view-layer[data-view="stages"] .stage-period-v5360 { flex-basis: min(248px, 82vw) !important; }
+}
+
+/* Sales history: keep the same light Atlas catalogue treatment and prevent the
+   legacy multi-column card grid from forcing its children outside each card. */
+body.admin-shell-page .atlas-workspace > .scene > view-layer[data-view="sales-history"] {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: clip !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-page {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  gap: 16px !important;
+  padding: 24px clamp(16px, 2.4vw, 34px) 40px !important;
+  color: var(--atlas-ink) !important;
+  background: #fff !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] > .activity-header {
+  box-sizing: border-box !important;
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 0 14px !important;
+  border: 0 !important;
+  border-bottom: 1px solid #eff0f2 !important;
+  border-radius: 0 !important;
+  background: #fff !important;
+  color: #292b3b !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] > .activity-header :is(h1, h2, strong) {
+  color: #292b3b !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] > .activity-header :is(p, small, span) {
+  color: #858995 !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] :is(.sales-history-head, .sales-history-detail-head) {
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  padding: 0 0 16px !important;
+  border: 0 !important;
+  border-bottom: 1px solid #eff0f2 !important;
+  border-radius: 0 !important;
+  background: #fff !important;
+  color: var(--atlas-ink) !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] :is(.sales-history-head, .sales-history-detail-head) h1 {
+  margin: 5px 0 6px !important;
+  color: #292b3b !important;
+  font-size: clamp(23px, 2.4vw, 32px) !important;
+  line-height: 1.15 !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] :is(.sales-history-head, .sales-history-detail-head) p {
+  margin: 0 !important;
+  color: #858995 !important;
+  font-size: 12px !important;
+  line-height: 1.55 !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  min-width: 0 !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-summary > article,
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-facts > article {
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  padding: 17px !important;
+  border: 1px solid #e8e9ed !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  color: #292b3b !important;
+  box-shadow: 0 2px 8px rgba(28, 34, 48, .04) !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-summary small,
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-facts small {
+  color: #858995 !important;
+  font-size: 9px !important;
+  font-weight: 750 !important;
+  letter-spacing: .08em !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-summary b,
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-facts b {
+  color: #292b3b !important;
+  font-size: 21px !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-summary span,
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-facts span {
+  color: #858995 !important;
+  font-size: 10px !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-search-toolbar > label {
+  width: min(500px, 100%) !important;
+  color: #777b86 !important;
+  font-size: 10px !important;
+  font-weight: 650 !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-search-toolbar input {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-height: 40px !important;
+  padding: 0 12px !important;
+  border: 1px solid #dedfe5 !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  color: #292b3b !important;
+  font: 12px "IBM Plex Sans", Arial, sans-serif !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-list > .sales-history-card {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-toolbar {
+  justify-content: flex-start !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-toolbar .toolbar-action,
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-attachments > .toolbar-action {
+  min-height: 38px !important;
+  padding: 0 13px !important;
+  border: 1px solid #e0e1e6 !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  color: #343643 !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-report-grid > article {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid #e8e9ed !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  color: #414450 !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-report-grid > article > header {
+  border-color: #eff0f2 !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-report-grid li,
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-attachments li {
+  min-width: 0 !important;
+  border-color: #eff0f2 !important;
+  color: #414450 !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] :is(.sales-history-notes, .sales-history-attachments) {
+  border-color: #eff0f2 !important;
+  color: #414450 !important;
+}
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-notes :is(h3, p),
+body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-report-grid li small {
+  color: #737987 !important;
+}
+@media (max-width: 760px) {
+  body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-page { padding: 18px 14px 30px !important; }
+  body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-head { align-items: stretch !important; }
+  body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-summary { grid-template-columns: 1fr !important; }
+  body.admin-shell-page view-layer[data-view="sales-history"] .sales-history-report-grid { grid-template-columns: minmax(0, 1fr) !important; }
+}
+
+/* Loteamento: Atlas catalogue and form surfaces, replacing the retired Carbon treatment. */
+body.admin-shell-page .atlas-workspace > .scene:has(> view-layer[data-view="lot-development"]),
+body.admin-shell-page .atlas-workspace > .scene:has(> view-layer[data-view="lot-profile"]) {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: auto !important;
+  background: #fff !important;
+}
+body.admin-shell-page .atlas-workspace > .scene > view-layer[data-view="lot-development"],
+body.admin-shell-page .atlas-workspace > .scene > view-layer[data-view="lot-profile"] {
+  position: relative !important;
+  inset: auto !important;
+  display: block !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: calc(100dvh - 82px) !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+  color: var(--atlas-ink) !important;
+  background: #fff !important;
+}
+body.admin-shell-page :is(view-layer[data-view="lot-development"], view-layer[data-view="lot-profile"]) > .activity-header {
+  position: relative !important;
+  inset: auto !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  box-sizing: border-box !important;
+  min-height: 30px !important;
+  margin: 0 clamp(18px, 3vw, 48px) !important;
+  padding: 4px 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid #eff0f2 !important;
+  background: #fff !important;
+  color: #777b86 !important;
+}
+body.admin-shell-page :is(view-layer[data-view="lot-development"], view-layer[data-view="lot-profile"]) > .activity-header > div:first-child { display: none !important; }
+body.admin-shell-page :is(view-layer[data-view="lot-development"], view-layer[data-view="lot-profile"]) > .activity-header .activity-state { color: #777b86 !important; }
+body.admin-shell-page :is(view-layer[data-view="lot-development"], view-layer[data-view="lot-profile"]) .lot-development-page,
+body.admin-shell-page :is(view-layer[data-view="lot-development"], view-layer[data-view="lot-profile"]) .lot-profile-page {
+  display: grid !important;
+  gap: 18px !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 24px clamp(18px, 3vw, 48px) 48px !important;
+  color: var(--atlas-ink) !important;
+  background: #fff !important;
+}
+body.admin-shell-page :is(view-layer[data-view="lot-development"], view-layer[data-view="lot-profile"]) .atlas-page-heading {
+  align-items: flex-end !important;
+  margin: 0 0 2px !important;
+  padding: 0 0 18px !important;
+  border-bottom: 1px solid #eff0f2 !important;
+}
+body.admin-shell-page :is(view-layer[data-view="lot-development"], view-layer[data-view="lot-profile"]) .atlas-page-heading h1 {
+  margin: 8px 0 6px !important;
+  color: #282a3b !important;
+  font-size: clamp(27px, 2.5vw, 36px) !important;
+  font-weight: 740 !important;
+  letter-spacing: -1.2px !important;
+}
+body.admin-shell-page :is(view-layer[data-view="lot-development"], view-layer[data-view="lot-profile"]) .atlas-page-heading p {
+  max-width: 760px !important;
+  color: #777b86 !important;
+  font-size: 12px !important;
+  line-height: 1.6 !important;
+}
+body.admin-shell-page .lot-development-page .lot-development-kpis { margin: 0 !important; }
+body.admin-shell-page .lot-development-page .lot-development-kpis article {
+  box-sizing: border-box !important;
+  border: 1px solid #e8e9ed !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  box-shadow: 0 2px 8px rgba(28, 34, 48, .035) !important;
+}
+body.admin-shell-page .lot-development-page .lot-development-kpis small { color: #9295a0 !important; font-family: inherit !important; font-size: 9px !important; font-weight: 750 !important; line-height: 1.4 !important; letter-spacing: .8px !important; }
+body.admin-shell-page .lot-development-page .lot-development-kpis b { color: #282a3b !important; font-size: 24px !important; font-weight: 740 !important; letter-spacing: -.5px !important; }
+body.admin-shell-page .lot-development-page .lot-development-kpis span { color: #858995 !important; font-size: 10px !important; }
+body.admin-shell-page .lot-development-toolbar {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  margin: 0 !important;
+  padding: 14px !important;
+  border: 1px solid #e8e9ed !important;
+  border-radius: 15px !important;
+  background: #fff !important;
+}
+body.admin-shell-page .lot-development-search {
+  display: grid !important;
+  grid-template-columns: 18px auto minmax(120px, 1fr) !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex: 1 1 360px !important;
+  min-width: 0 !important;
+  color: #858995 !important;
+  font-size: 10px !important;
+  font-weight: 650 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+body.admin-shell-page .lot-development-search svg { width: 16px !important; color: #858995 !important; }
+body.admin-shell-page .lot-development-search input {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 38px !important;
+  padding: 0 11px !important;
+  border: 1px solid #dedfe5 !important;
+  border-radius: 9px !important;
+  background: #fff !important;
+  color: #30323d !important;
+  font: inherit !important;
+  font-size: 11px !important;
+}
+body.admin-shell-page .lot-development-filters { display: flex !important; flex: 0 0 auto !important; gap: 6px !important; }
+body.admin-shell-page .lot-development-filters button,
+body.admin-shell-page .lot-development-head > div + button,
+body.admin-shell-page .lot-profile-head > div + button,
+body.admin-shell-page .lot-profile-form-actions button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  min-height: 37px !important;
+  padding: 0 12px !important;
+  border: 1px solid #e0e1e6 !important;
+  border-radius: 9px !important;
+  background: #fff !important;
+  color: #343643 !important;
+  font: inherit !important;
+  font-size: 10px !important;
+  font-weight: 680 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+}
+body.admin-shell-page .lot-development-head > div + button,
+body.admin-shell-page .lot-profile-form-actions button[type="submit"] {
+  border-color: #252633 !important;
+  background: #252633 !important;
+  color: #fff !important;
+}
+body.admin-shell-page .lot-development-filters button:hover,
+body.admin-shell-page .lot-profile-form-actions button:hover,
+body.admin-shell-page .lot-development-head > div + button:hover,
+body.admin-shell-page .lot-profile-head > div + button:hover { border-color: #aebbd1 !important; background: #f7f8fa !important; }
+body.admin-shell-page .lot-development-head > div + button:hover,
+body.admin-shell-page .lot-profile-form-actions button[type="submit"]:hover { background: #393b4b !important; color: #fff !important; }
+body.admin-shell-page .lot-development-grid { grid-template-columns: repeat(auto-fill, minmax(min(270px, 100%), 1fr)) !important; gap: 12px !important; }
+body.admin-shell-page .lot-development-card {
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  min-height: 218px !important;
+  padding: 16px !important;
+  border: 1px solid #e8e9ed !important;
+  border-radius: 15px !important;
+  background: #fff !important;
+  color: #343643 !important;
+  text-align: left !important;
+  box-shadow: 0 2px 8px rgba(28, 34, 48, .035) !important;
+  transition: border-color .16s ease, box-shadow .16s ease !important;
+}
+body.admin-shell-page .lot-development-card:hover,
+body.admin-shell-page .lot-development-card:focus-visible {
+  transform: none !important;
+  border-color: #b7cafa !important;
+  background: #fff !important;
+  box-shadow: 0 5px 16px rgba(35, 54, 96, .08) !important;
+}
+body.admin-shell-page .lot-development-card header { display: grid !important; grid-template-columns: 34px minmax(0, 1fr) 18px !important; align-items: center !important; gap: 10px !important; color: #737987 !important; }
+body.admin-shell-page .lot-development-card header > span:nth-child(2) { display: grid !important; place-items: initial !important; gap: 4px !important; width: auto !important; height: auto !important; min-width: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; }
+body.admin-shell-page .lot-development-icon { display: grid !important; place-items: center !important; width: 34px !important; height: 34px !important; border: 1px solid #e2e7f0 !important; border-radius: 9px !important; background: #f7f8fa !important; color: #566078 !important; }
+body.admin-shell-page .lot-development-icon svg { width: 17px !important; height: 17px !important; }
+body.admin-shell-page .lot-development-card header small { color: #9295a0 !important; font-family: inherit !important; font-size: 9px !important; font-weight: 750 !important; line-height: 1.2 !important; letter-spacing: .8px !important; }
+body.admin-shell-page .lot-development-card header strong { overflow: hidden !important; color: #777b86 !important; font-size: 10px !important; font-weight: 550 !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+body.admin-shell-page .lot-development-card header > i { display: block !important; color: #8b8e99 !important; }
+body.admin-shell-page .lot-development-card h2 { margin: 3px 0 0 !important; color: #292b3b !important; font-size: 16px !important; font-weight: 730 !important; letter-spacing: -.25px !important; }
+body.admin-shell-page .lot-development-card p { min-height: 0 !important; margin: 0 !important; color: #777b86 !important; font-size: 11px !important; line-height: 1.5 !important; }
+body.admin-shell-page .lot-development-card dl { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 8px !important; margin: 0 !important; padding: 11px 0 !important; border-top: 1px solid #eff0f2 !important; }
+body.admin-shell-page .lot-development-card dl div { min-width: 0 !important; }
+body.admin-shell-page .lot-development-card dt { margin: 0 0 4px !important; color: #9295a0 !important; font-size: 9px !important; }
+body.admin-shell-page .lot-development-card dd { overflow: hidden !important; margin: 0 !important; color: #424550 !important; font-size: 10px !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+body.admin-shell-page .lot-development-card footer { display: flex !important; align-items: center !important; justify-content: space-between !important; margin-top: auto !important; color: #626978 !important; font-size: 10px !important; }
+body.admin-shell-page .lot-development-card footer svg { width: 15px !important; color: #858995 !important; }
+body.admin-shell-page .lot-development-hint { display: flex !important; align-items: flex-start !important; gap: 10px !important; margin: 0 !important; padding: 12px 14px !important; border: 1px solid #e8e9ed !important; border-radius: 12px !important; background: #f8f9fb !important; color: #737987 !important; }
+body.admin-shell-page .lot-development-hint > span { color: #687794 !important; }
+body.admin-shell-page .lot-development-hint p { margin: 0 !important; color: #737987 !important; font-size: 10px !important; line-height: 1.55 !important; }
+body.admin-shell-page .lot-profile-form { display: grid !important; gap: 0 !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; border: 1px solid #e8e9ed !important; border-radius: 16px !important; background: #fff !important; }
+body.admin-shell-page .lot-profile-section { display: grid !important; grid-template-columns: minmax(180px, .65fr) minmax(0, 1.35fr) !important; gap: 24px !important; padding: 20px !important; border-bottom: 1px solid #eff0f2 !important; }
+body.admin-shell-page .lot-profile-section > header { display: flex !important; align-items: flex-start !important; gap: 10px !important; }
+body.admin-shell-page .lot-profile-section > header > span { display: grid !important; place-items: center !important; flex: 0 0 28px !important; height: 28px !important; border: 1px solid #e5e7ec !important; border-radius: 8px !important; background: #f7f8fa !important; color: #687080 !important; font-size: 10px !important; }
+body.admin-shell-page .lot-profile-section h2 { margin: 1px 0 5px !important; color: #343643 !important; font-size: 13px !important; }
+body.admin-shell-page .lot-profile-section p { margin: 0 !important; color: #858995 !important; font-size: 10px !important; line-height: 1.5 !important; }
+body.admin-shell-page .lot-profile-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 14px !important; }
+body.admin-shell-page .lot-profile-grid label,
+body.admin-shell-page .lot-profile-field-wide { display: grid !important; gap: 6px !important; min-width: 0 !important; color: #777b86 !important; font-size: 10px !important; font-weight: 650 !important; }
+body.admin-shell-page .lot-profile-grid label.lot-profile-wide,
+body.admin-shell-page .lot-profile-field-wide { grid-column: 1 / -1 !important; }
+body.admin-shell-page .lot-profile-grid input,
+body.admin-shell-page .lot-profile-grid select,
+body.admin-shell-page .lot-profile-field-wide textarea { box-sizing: border-box !important; width: 100% !important; min-height: 38px !important; padding: 0 10px !important; border: 1px solid #dedfe5 !important; border-radius: 9px !important; background: #fff !important; color: #30323d !important; font: inherit !important; font-size: 11px !important; }
+body.admin-shell-page .lot-profile-grid input[readonly] { background: #f7f8fa !important; color: #777b86 !important; }
+body.admin-shell-page .lot-profile-field-wide textarea { min-height: 130px !important; padding: 10px !important; resize: vertical !important; }
+body.admin-shell-page .lot-profile-form-actions { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 16px !important; padding: 16px 20px !important; background: #fafbfc !important; }
+body.admin-shell-page .lot-profile-form-actions > div:first-child { display: grid !important; gap: 4px !important; min-width: 0 !important; }
+body.admin-shell-page .lot-profile-form-actions small { color: #858995 !important; font-size: 10px !important; }
+body.admin-shell-page .lot-profile-form-actions > div:last-child { display: flex !important; flex-wrap: wrap !important; gap: 8px !important; }
+body.admin-shell-page :is(view-layer[data-view="lot-development"], view-layer[data-view="lot-profile"]) :is(button, input, select, textarea):focus-visible { outline: 2px solid #8eb6ff !important; outline-offset: 2px !important; }
+@media (max-width: 760px) {
+  body.admin-shell-page :is(view-layer[data-view="lot-development"], view-layer[data-view="lot-profile"]) .lot-development-page,
+  body.admin-shell-page :is(view-layer[data-view="lot-development"], view-layer[data-view="lot-profile"]) .lot-profile-page { padding: 20px 14px 32px !important; }
+  body.admin-shell-page :is(view-layer[data-view="lot-development"], view-layer[data-view="lot-profile"]) .atlas-page-heading { align-items: stretch !important; flex-direction: column !important; }
+  body.admin-shell-page .lot-development-toolbar { align-items: stretch !important; flex-direction: column !important; }
+  body.admin-shell-page .lot-development-search { grid-template-columns: 18px minmax(0, 1fr) !important; }
+  body.admin-shell-page .lot-development-search > span { grid-column: 2 !important; }
+  body.admin-shell-page .lot-development-search input { grid-column: 1 / -1 !important; }
+  body.admin-shell-page .lot-development-filters { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  body.admin-shell-page .lot-development-filters button { min-width: 0 !important; padding: 0 7px !important; }
+  body.admin-shell-page .lot-profile-section { grid-template-columns: minmax(0, 1fr) !important; gap: 14px !important; padding: 16px !important; }
+  body.admin-shell-page .lot-profile-form-actions { align-items: stretch !important; flex-direction: column !important; padding: 15px 16px !important; }
+  body.admin-shell-page .lot-profile-form-actions > div:last-child { display: grid !important; grid-template-columns: 1fr !important; }
+}
+@media (max-width: 480px) {
+  body.admin-shell-page .lot-development-page .lot-development-kpis { grid-template-columns: 1fr !important; }
+  body.admin-shell-page .lot-development-card dl { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  body.admin-shell-page .lot-development-card dl div:last-child { grid-column: 1 / -1 !important; }
+  body.admin-shell-page .lot-profile-grid { grid-template-columns: minmax(0, 1fr) !important; }
+}
+/* Broker identity and lot-linked repasse surfaces use the Atlas catalog system. */
+body.admin-shell-page view-layer[data-view="brokers"] .broker-profile-directory {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)) !important;
+  gap: 14px !important;
+}
+body.admin-shell-page view-layer[data-view="brokers"] .broker-directory-head {
+  align-items: center !important;
+  padding: 18px 20px !important;
+  border: 1px solid #e8e9ed !important;
+  border-radius: 14px !important;
+  background: #fff !important;
+}
+body.admin-shell-page view-layer[data-view="brokers"] .broker-directory-head h1 {
+  color: #292b3b !important;
+  font-size: 24px !important;
+}
+body.admin-shell-page view-layer[data-view="brokers"] .broker-directory-head p {
+  color: #777b86 !important;
+  font-size: 12px !important;
+}
+body.admin-shell-page view-layer[data-view="brokers"] .broker-directory-head .activity-kind {
+  color: #2878ff !important;
+}
+body.admin-shell-page view-layer[data-view="brokers"] .broker-directory-search {
+  align-items: flex-end !important;
+  color: #777b86 !important;
+}
+body.admin-shell-page view-layer[data-view="brokers"] .broker-directory-search label {
+  color: #777b86 !important;
+}
+body.admin-shell-page view-layer[data-view="brokers"] .broker-directory-search input {
+  border-color: #dedfe5 !important;
+  border-radius: 9px !important;
+  background: #fff !important;
+  color: #343643 !important;
+}
+body.admin-shell-page view-layer[data-view="brokers"] .broker-profile-directory-card {
+  display: grid !important;
+  gap: 16px !important;
+  min-width: 0 !important;
+  padding: 18px !important;
+  border: 1px solid #e8e9ed !important;
+  border-radius: 14px !important;
+  background: #fff !important;
+  color: #343643 !important;
+}
+body.admin-shell-page view-layer[data-view="brokers"] .broker-profile-directory-card > header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+body.admin-shell-page view-layer[data-view="brokers"] .broker-profile-directory-card h2 {
+  margin: 0 0 4px !important;
+  color: #343643 !important;
+  font-size: 16px !important;
+}
+body.admin-shell-page view-layer[data-view="brokers"] .broker-profile-directory-card p {
+  margin: 0 !important;
+  color: #777b86 !important;
+  font-size: 12px !important;
+}
+body.admin-shell-page view-layer[data-view="brokers"] .broker-profile-directory-card dl {
+  display: grid !important;
+  gap: 10px !important;
+  margin: 0 !important;
+}
+body.admin-shell-page view-layer[data-view="brokers"] .broker-profile-directory-card dl > div {
+  display: grid !important;
+  grid-template-columns: 82px minmax(0, 1fr) !important;
+  gap: 8px !important;
+  padding-bottom: 9px !important;
+  border-bottom: 1px solid #eff0f2 !important;
+}
+body.admin-shell-page view-layer[data-view="brokers"] .broker-profile-directory-card dt {
+  color: #858995 !important;
+  font-size: 11px !important;
+}
+body.admin-shell-page view-layer[data-view="brokers"] .broker-profile-directory-card dd {
+  min-width: 0 !important;
+  margin: 0 !important;
+  color: #343643 !important;
+  font-size: 11px !important;
+  overflow-wrap: anywhere !important;
+}
+body.admin-shell-page view-layer[data-view="brokers"] .broker-profile-directory-card a {
+  color: #343643 !important;
+}
+body.admin-shell-page view-layer[data-view="brokers"] .broker-profile-directory-card > footer {
+  display: flex !important;
+  justify-content: flex-end !important;
+}
+body.admin-shell-page view-layer[data-view="repasses"] .atlas-repasse-lot-profiles {
+  grid-column: 1 / -1 !important;
+}
+body.admin-shell-page view-layer[data-view="repasses"] .atlas-repasse-lot-profiles td:last-child {
+  white-space: nowrap !important;
+}
+body.admin-shell-page view-layer[data-view="repasses"] .atlas-unmatched-lot {
+  color: #858995 !important;
+  font-size: 11px !important;
+}
+
+/* The Atlas shell is light even when the original application state uses its
+   dark theme. Keep shared navigation and stage controls on one visual scale. */
+body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar .logo {
+  display: flex !important;
+  align-items: center !important;
+  gap: 11px !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar .logo-mark {
+  display: grid !important;
+  place-items: center !important;
+  flex: 0 0 42px !important;
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 13px !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar .logo > div:last-child {
+  min-width: 0 !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar .nav-item.active {
+  box-shadow: none !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar .nav-subitem {
+  border: 1px solid transparent !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  color: #9da0a6 !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar .nav-subitem:hover,
+body.admin-shell-page .app[data-layout="atlas-zip"] .sidebar .nav-subitem.active {
+  border-color: #343434 !important;
+  background: #282828 !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] .atlas-breadcrumbs {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  color: #8a8e98 !important;
+  font-size: 12px !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] .atlas-breadcrumbs strong {
+  color: #303344 !important;
+  font-weight: 700 !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] .atlas-toolbar {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+  padding: 4px !important;
+  border: 1px solid #e8e9ed !important;
+  border-radius: 12px !important;
+  background: #f7f8fa !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] .atlas-toolbar button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  min-height: 34px !important;
+  padding: 0 10px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  color: #737987 !important;
+  font: 650 11px Inter, sans-serif !important;
+  cursor: pointer !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] .atlas-toolbar button:hover,
+body.admin-shell-page .app[data-layout="atlas-zip"] .atlas-toolbar button:focus-visible {
+  background: #fff !important;
+  color: #292b3b !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] .atlas-toolbar button[aria-current="page"],
+body.admin-shell-page .app[data-layout="atlas-zip"] .atlas-toolbar button.active,
+body.admin-shell-page .app[data-layout="atlas-zip"]:has(view-layer[data-view="actions"]) .atlas-toolbar button[data-atlas-view="stages"],
+body.admin-shell-page .app[data-layout="atlas-zip"]:has(view-layer[data-view="activities"]) .atlas-toolbar button[data-atlas-view="stages"] {
+  background: #292b3b !important;
+  color: #fff !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] .atlas-toolbar button svg,
+body.admin-shell-page .app[data-layout="atlas-zip"] .atlas-topbar .top-actions button svg {
+  width: 15px !important;
+  height: 15px !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] .atlas-topbar .top-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] .atlas-session {
+  color: #626978 !important;
+  font-size: 11px !important;
+  white-space: nowrap !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] .atlas-topbar .top-actions button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  min-height: 36px !important;
+  padding: 0 11px !important;
+  border: 1px solid #e4e6eb !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  color: #343746 !important;
+  font: 650 11px Inter, sans-serif !important;
+  box-shadow: none !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] .atlas-topbar #syncBtn {
+  border-color: #292b3b !important;
+  background: #292b3b !important;
+  color: #fff !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] .atlas-topbar .top-profile {
+  gap: 9px !important;
+  min-height: 38px !important;
+  padding: 4px 9px 4px 4px !important;
+  border: 1px solid #e4e6eb !important;
+  border-radius: 11px !important;
+  background: #f8f9fb !important;
+  color: #303344 !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] .atlas-topbar .top-profile :is(strong, small, svg) {
+  color: #303344 !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] .atlas-topbar .top-profile small {
+  color: #818692 !important;
+}
+
+body.admin-shell-page .atlas-workspace > .scene > view-layer[data-view]:not([data-view="map"]) > .activity-header {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 18px 0 16px !important;
+  color: #303344 !important;
+}
+body.admin-shell-page .atlas-workspace view-layer[data-view]:not([data-view="map"]) > .activity-header > div:first-child > span {
+  color: #292b3b !important;
+  font-size: clamp(20px, 2vw, 26px) !important;
+  font-weight: 750 !important;
+  letter-spacing: -.03em !important;
+  line-height: 1.15 !important;
+}
+body.admin-shell-page .atlas-workspace view-layer[data-view]:not([data-view="map"]) > .activity-header > div:first-child > small {
+  color: #777d89 !important;
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+}
+body.admin-shell-page .atlas-workspace view-layer[data-view]:not([data-view="map"]) > .activity-header .activity-state {
+  border: 1px solid #e5e8ec !important;
+  border-radius: 999px !important;
+  background: #f8fafb !important;
+  color: #58616e !important;
+  font-size: 10px !important;
+}
+body.admin-shell-page .atlas-workspace .stage-persistent-timeline > header b {
+  color: #292b3b !important;
+  font-size: 17px !important;
+  letter-spacing: -.02em !important;
+}
+body.admin-shell-page .atlas-workspace .stage-persistent-timeline > header small {
+  color: #767c88 !important;
+  font-size: 11px !important;
+  line-height: 1.45 !important;
+}
+body.admin-shell-page .atlas-workspace .stage-persistent-timeline-count {
+  color: #777d89 !important;
+  font: 650 11px Inter, sans-serif !important;
+}
+body.admin-shell-page .atlas-workspace .stage-persistent-timeline-track {
+  grid-template-columns: repeat(8, minmax(175px, 1fr)) !important;
+  scrollbar-color: #c4cbd5 #f2f4f7;
+  scrollbar-width: thin;
+}
+body.admin-shell-page .atlas-workspace .stage-persistent-timeline-card {
+  min-height: 82px !important;
+}
+body.admin-shell-page .atlas-workspace .stage-persistent-timeline-card b {
+  font-size: 11px !important;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  white-space: normal !important;
+  line-height: 1.25 !important;
+  overflow: hidden !important;
+}
+body.admin-shell-page .atlas-workspace .stage-persistent-timeline-card small {
+  font-size: 9px !important;
+}
+body.admin-shell-page .atlas-workspace .stage-persistent-timeline-card i {
+  border-radius: 4px !important;
+  background: #eceef2 !important;
+}
+body.admin-shell-page .atlas-workspace .stage-persistent-timeline-card i em {
+  border-radius: inherit !important;
+  background: #2878ff !important;
+}
+body.admin-shell-page .atlas-workspace .stage-persistent-timeline-card:focus-visible,
+body.admin-shell-page .atlas-workspace .atlas-toolbar button:focus-visible {
+  outline: 2px solid #2878ff !important;
+  outline-offset: 2px !important;
+}
+body.admin-shell-page .atlas-workspace .stage-header-3d > header > button.ghost {
+  min-height: 36px !important;
+  border: 1px solid #e0e2e7 !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  color: #3f4451 !important;
+  font-size: 11px !important;
+}
+body.admin-shell-page .atlas-workspace .stage-header-3d > header > button.ghost svg {
+  width: 15px !important;
+  height: 15px !important;
+}
+@media (min-width: 761px) {
+  body.admin-shell-page .atlas-workspace .stage-persistent-mobile-picker {
+    display: none !important;
+  }
+}
+@media (max-width: 760px) {
+  body.admin-shell-page .app[data-layout="atlas-zip"] .atlas-toolbar {
+    display: none !important;
+  }
+  body.admin-shell-page .atlas-workspace .stage-persistent-timeline-track {
+    grid-template-columns: repeat(8, 155px) !important;
+  }
+}
+
+body.admin-shell-page .lot-profile-cash {
+  margin-top: 18px;
+  padding: 20px;
+  border: 1px solid #e8e9ed;
+  border-radius: 16px;
+  background: #fff;
+}
+body.admin-shell-page .lot-profile-cash > header h2 {
+  margin: 5px 0 16px;
+  color: #232733;
+  font-size: 18px;
+}
+body.admin-shell-page .lot-cash-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 14px 0;
+}
+body.admin-shell-page .lot-cash-summary > div {
+  display: grid;
+  gap: 4px;
+}
+body.admin-shell-page .lot-cash-summary small {
+  color: #737b89;
+  font-size: 10px;
+  letter-spacing: .08em;
+}
+body.admin-shell-page .lot-cash-summary strong {
+  color: #202735;
+  font-size: 22px;
+}
+body.admin-shell-page .lot-cash-summary span,
+body.admin-shell-page .lot-cash-entry-list small {
+  color: #737b89;
+  font-size: 11px;
+}
+body.admin-shell-page .lot-cash-entry-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid #e8e9ed;
+}
+body.admin-shell-page .lot-cash-entry-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e8e9ed;
+  color: #2c3140;
+}
+body.admin-shell-page .lot-cash-entry-list li > div {
+  display: grid;
+  gap: 4px;
+}
+body.admin-shell-page .lot-cash-entry-list strong { white-space: nowrap; }
+body.admin-shell-page .lot-cash-entry-list .empty-data { background: transparent !important; }
+@media print {
+  [data-lot-cash-entry] { display: none !important; }
+}
+
+/* Agenda Atlas: date rail and horizontal commitments from the operational agenda. */
+body.admin-shell-page view-layer[data-view="agenda"] .stage-agenda-month-page-v3 {
+  height: auto !important;
+  max-height: none !important;
+  min-height: min(620px, 80dvh) !important;
+  padding: 28px clamp(16px, 3vw, 42px) 32px !important;
+  overflow: visible !important;
+  background: #fff !important;
+  color: #272a3b !important;
+  gap: 20px !important;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-week-fixed-v8 {
+  padding: 0 0 20px !important;
+  border-color: #ebecef !important;
+  background: #fff !important;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .stage-agenda-month-head-v3 {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .stage-agenda-month-head-v3 h1 {
+  margin: 4px 0 !important;
+  color: #262a3d !important;
+  font-size: clamp(25px, 3vw, 38px) !important;
+  font-weight: 700 !important;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .stage-agenda-month-head-v3 p {
+  color: #818594 !important;
+  font-size: 12px !important;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-month-pagination-v3 {
+  justify-self: auto !important;
+}
+body.admin-shell-page view-layer[data-view="agenda"] :is(.agenda-month-pagination-v3 button, .agenda-month-actions-v3 button, .agenda-week-picker-v8) {
+  height: 38px !important;
+  border: 1px solid #e0e2e9 !important;
+  border-radius: 9px !important;
+  background: #fff !important;
+  color: #282c3d !important;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-month-pagination-v3 b {
+  color: #4b5062 !important;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-month-actions-v3 .primary {
+  background: #292b3a !important;
+  color: #fff !important;
+  border-color: #292b3a !important;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-week-picker-v8 { color-scheme: light !important; }
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-month-pagination-v3 b { text-transform: none !important; }
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-timeline {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-error {
+  margin: 0 0 18px;
+  padding: 13px 16px;
+  border: 1px solid #ead4b1;
+  border-radius: 12px;
+  background: #fff8eb;
+  color: #654712;
+  font-size: 13px;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-month-actions-v3 button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-timeline > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-timeline h2 {
+  margin: 4px 0 6px;
+  color: #292b3d;
+  font-size: 19px;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-timeline p {
+  margin: 0;
+  color: #7b8190;
+  font-size: 12px;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-calendar-toggle {
+  padding: 9px 13px;
+  border: 1px solid #e1e3e9;
+  border-radius: 9px;
+  background: #fff;
+  color: #303449;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-rail {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(70px, 1fr));
+  gap: 8px;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 0 0 13px;
+  border-bottom: 1px solid #eaebf0;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-tick {
+  display: grid;
+  justify-items: center;
+  grid-template-rows: 86px auto auto auto;
+  gap: 5px;
+  min-width: 70px;
+  padding: 0 4px 9px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #727989;
+  cursor: pointer;
+  text-transform: capitalize;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-tick-bar {
+  align-self: start;
+  width: 100%;
+  max-height: 86px;
+  min-height: 8px;
+  background: #d7e6ff;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-tick.today .agenda-atlas-tick-bar,
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-tick.selected .agenda-atlas-tick-bar { background: #2878ff; }
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-tick strong { color: #292c3c; font-size: 14px; }
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-tick small { color: #9297a2; font-size: 10px; }
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-tick.today,
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-tick.selected { border-bottom-color: #2878ff; }
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-events {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(240px, 300px);
+  gap: 16px;
+  overflow-x: auto;
+  padding: 4px 2px 18px;
+  scroll-snap-type: x proximity;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-event {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 250px;
+  padding: 22px 20px;
+  border: 1px solid #ececf0;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 2px 4px #272b4010;
+  color: #292d3d;
+  text-align: left;
+  cursor: pointer;
+  scroll-snap-align: start;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-event:hover,
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-event:focus-visible {
+  border-color: #2878ff;
+  outline: none;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-event-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #66738d;
+  font-size: 10px;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-event-top em {
+  font-style: normal;
+  color: #2771dc;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-event strong {
+  color: #272a3b;
+  font-size: 17px;
+  line-height: 1.35;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-event p {
+  color: #5d6680;
+  font-size: 12px;
+  line-height: 1.6;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-event footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 9px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid #ecedf1;
+  color: #7e8390;
+  font-size: 10px;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-empty {
+  grid-column: 1 / -1;
+  padding: 40px 20px;
+  border: 1px dashed #dfe2e8;
+  border-radius: 16px;
+  text-align: center;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-week-viewport-v8[hidden],
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-week-mobile-list { display: none !important; }
+body.admin-shell-page view-layer[data-view="agenda"] .stage-agenda-month-foot-v3 {
+  color: #838b99 !important;
+  border-top: 1px solid #eceef1;
+  padding-top: 15px !important;
+  font-size: 10px !important;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-month-editor-v3 {
+  border: 1px solid #e2e5ec !important;
+  border-radius: 14px !important;
+  background: #f9fafc !important;
+  color: #292c3b !important;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-month-editor-v3 :is(h3, p, label) { color: #303449 !important; }
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-month-editor-v3 :is(input, select) {
+  border: 1px solid #dfe2e9 !important;
+  border-radius: 8px !important;
+  background: #fff !important;
+  color: #292c3b !important;
+}
+@media (max-width: 760px) {
+  body.admin-shell-page view-layer[data-view="agenda"] .stage-agenda-month-page-v3 { padding: 18px 14px 28px !important; }
+  body.admin-shell-page view-layer[data-view="agenda"] .stage-agenda-month-head-v3 { flex-direction: column !important; align-items: stretch !important; }
+  body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-rail { grid-template-columns: repeat(7, minmax(66px, 1fr)); }
+  body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-events { grid-auto-columns: minmax(230px, 82vw); }
+  body.admin-shell-page view-layer[data-view="agenda"] .agenda-week-viewport-v8:not([hidden]) { overflow: auto !important; }
+  body.admin-shell-page view-layer[data-view="agenda"] .agenda-week-viewport-v8:not([hidden]) .agenda-week-canvas-v8 { display: grid !important; }
+}
+
+/* Activities Atlas: one compact row per persisted stage activity. */
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activities-page {
+  min-height: 100%;
+  padding: 32px clamp(16px, 3vw, 44px) 42px;
+  background: #fff;
+  color: #292c3d;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activities-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding-bottom: 26px;
+  border-bottom: 1px solid #eceef1;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activities-head h1 {
+  margin: 6px 0;
+  color: #292b3d;
+  font-size: clamp(28px, 3vw, 40px);
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activities-head p {
+  margin: 0;
+  color: #7e8491;
+  font-size: 12px;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activities-head button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid #e1e3e9;
+  border-radius: 9px;
+  background: #fff;
+  color: #303449;
+  cursor: pointer;
+  font-size: 11px;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activities-head-actions,
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-row-actions,
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-error {
+  padding: 12px 14px;
+  border: 1px solid #e8c8c5;
+  border-radius: 10px;
+  background: #fff5f3;
+  color: #7e312c;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-editor {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(155px,1fr));
+  gap: 14px;
+  padding: 22px;
+  margin-top: 22px;
+  border: 1px solid #e0e3e9;
+  border-radius: 14px;
+  background: #fafbfc;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-editor h2,
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-editor-actions {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-editor label {
+  display: grid;
+  gap: 6px;
+  color: #697080;
+  font-size: 11px;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-editor :is(input,select) {
+  min-width: 0;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid #dfe2e9;
+  border-radius: 9px;
+  background: #fff;
+  color: #282c3d;
+}
+body.admin-shell-page view-layer[data-view="activities"] :is(.atlas-activity-row-actions,.atlas-activity-editor-actions) button {
+  padding: 9px 12px;
+  border: 1px solid #dfe2e9;
+  border-radius: 9px;
+  background: #fff;
+  color: #292c3d;
+  cursor: pointer;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-editor-actions button[type="submit"] {
+  background: #292b3a;
+  border-color: #292b3a;
+  color: #fff;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activities-tools {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 22px 0;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activities-tools label {
+  display: grid;
+  gap: 7px;
+  min-width: min(210px, 100%);
+  color: #7c8391;
+  font-size: 10px;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activities-tools :is(select, input) {
+  min-height: 39px;
+  padding: 0 11px;
+  border: 1px solid #e0e3e9;
+  border-radius: 9px;
+  background: #fff;
+  color: #303449;
+  font: inherit;
+  font-size: 12px;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activities-tools > span {
+  margin-left: auto;
+  color: #818794;
+  font-size: 11px;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #e8eaf0;
+  border-radius: 16px;
+  overflow: hidden;
+  list-style: none;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) minmax(130px, 185px) auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 90px;
+  padding: 18px 22px;
+  border-bottom: 1px solid #eceef2;
+  background: #fff;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-row:last-child { border-bottom: 0; }
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-row[hidden] { display: none !important; }
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-number {
+  color: #8d95a5;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-description {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-description span {
+  color: #2878ff;
+  font-size: 10px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-description strong {
+  overflow: hidden;
+  color: #2b2d3d;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-description small,
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-state small { color: #9297a3; font-size: 10px; }
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-state {
+  display: grid;
+  gap: 5px;
+  color: #4d566a;
+  font-size: 11px;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-state i {
+  display: block;
+  width: 100%;
+  height: 4px;
+  border-radius: 4px;
+  background: #e9edf4;
+  overflow: hidden;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-state i b {
+  display: block;
+  height: 100%;
+  background: #2878ff;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-row a {
+  padding: 9px 11px;
+  border: 1px solid #e2e4eb;
+  border-radius: 8px;
+  color: #34384d;
+  font-size: 11px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-row a:hover { border-color: #2878ff; color: #2878ff; }
+body.admin-shell-page view-layer[data-view="activities"] :is(.atlas-activities-empty, .atlas-activities-filter-empty) {
+  padding: 28px 18px;
+  color: #7c8290;
+  text-align: center;
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  body.admin-shell-page view-layer[data-view="activities"] .atlas-activities-page { padding: 18px 14px 28px; }
+  body.admin-shell-page view-layer[data-view="activities"] .atlas-activities-tools label { flex: 1 1 100%; }
+  body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-row {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 9px 12px;
+    padding: 16px;
+  }
+  body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-state,
+  body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-row a { grid-column: 2; }
+  body.admin-shell-page view-layer[data-view="activities"] .atlas-activity-row a { justify-self: start; }
+}

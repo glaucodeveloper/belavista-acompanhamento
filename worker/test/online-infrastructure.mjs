@@ -31,10 +31,11 @@ const firebase=path=>request(`${firebaseBase}/${path}.json`);
 async function main(){
   const startedAt=new Date().toISOString();
   const indexHtml=await request(`${hostingBase}/?online-test=${runToken}`);
-  const foremanHtml=await request(`${hostingBase}/encarregados.html?online-test=${runToken}`);
+  const foremanResponse=await fetch(`${hostingBase}/encarregados.html?online-test=${runToken}`);
+  const foremanHtml=await foremanResponse.text();
   assert.match(indexHtml,/belavista-ai-base/i,'O app publicado não declara a base de IA.');
   assert.match(indexHtml,new RegExp(workerBase.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')),'O app publicado não aponta para o Worker real.');
-  assert.match(foremanHtml,/Confirme o que foi executado/i,'O endpoint público do encarregado não carregou.');
+  assert.ok(!foremanResponse.ok||!(/Confirme o que foi executado|Portal do encarregado/i.test(foremanHtml)),'O portal legado de encarregado ainda está publicado.');
 
   const health=await api('/api/health');
   assert.equal(health.ok,true);

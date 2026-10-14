@@ -120,7 +120,6 @@ body.admin-shell-page .topbar{
   border-bottom:1px solid var(--admin-line)!important;
   box-shadow:0 1px rgba(255,255,255,.018)!important;
 }
-body.admin-shell-page .project-switch,
 body.admin-shell-page .ghost,
 body.admin-shell-page .icon-btn,
 body.admin-shell-page .top-profile{
@@ -129,7 +128,6 @@ body.admin-shell-page .top-profile{
   border-radius:4px!important;
   color:var(--admin-text)!important;
 }
-body.admin-shell-page .project-switch:hover,
 body.admin-shell-page .ghost:hover,
 body.admin-shell-page .icon-btn:hover,
 body.admin-shell-page .top-profile:hover{
@@ -293,8 +291,8 @@ body.admin-shell-page .map-selection-success>span{border-color:var(--admin-lime)
   body.admin-shell-page .topbar{background:#070b16!important;}
 }
 
-/* O mapa compartilhado continua montado para troca imediata de telas, mas nao
-   pode atravessar a camada das demais paginas nem interceptar sua scrollbar. */
+/* A cena compartilhada só é inserida nas rotas que a utilizam; nas demais,
+   não há canvas de fundo nem camada capaz de interceptar a rolagem. */
 body.admin-shell-page .scene{isolation:isolate;}
 body.admin-shell-page .scene:not(:has(>view-layer[data-view="map"])):not(:has(>view-layer[data-view="records"]))>map-scene[data-persistent-map="true"],
 body.admin-shell-page .scene:not(:has(>view-layer[data-view="map"])):not(:has(>view-layer[data-view="records"]))>map-scene[data-admin-shared-public-map]{
@@ -505,3 +503,55 @@ body.admin-shell-page main.scene:not(:has(>view-layer[data-view="map"]))>map-sce
 .foreman-registration-fields-v5424{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.foreman-registration-fields-v5424 label{display:grid;gap:6px;color:var(--soft);font-size:11px}.foreman-registration-fields-v5424 input{min-height:36px;padding:8px;border:1px solid var(--border);background:#161616;color:var(--text)}.foreman-photo-field-v5424{grid-column:1/-1}
 .foremen-layout-v5424{display:grid;grid-template-columns:minmax(280px,.8fr) minmax(0,1.2fr);gap:14px;margin-top:14px}.foreman-form-v5424{display:grid;gap:12px;padding:16px}.foreman-form-v5424 label{display:grid;gap:6px;color:var(--soft);font-size:11px}.foreman-form-v5424 input{min-height:36px;padding:8px;border:1px solid var(--border);background:#161616;color:var(--text)}.foreman-form-v5424 fieldset{display:grid;gap:8px;padding:12px;border:1px solid var(--border);color:var(--soft)}.foreman-form-v5424 fieldset label{display:block}.foreman-form-status-v5424{min-height:20px;color:var(--green);font-size:11px}.foreman-list-v5424{display:grid;gap:1px;background:var(--border)}.foreman-list-v5424 article{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:10px;align-items:center;padding:13px;background:#202020}.foreman-list-v5424 strong,.foreman-list-v5424 small,.foreman-list-v5424 p{display:block}.foreman-list-v5424 small,.foreman-list-v5424 p{margin-top:4px;color:var(--soft);font-size:10px}.foreman-activities-v5424{color:var(--blue);font:10px 'IBM Plex Mono',monospace}@media(max-width:760px){.foremen-layout-v5424{grid-template-columns:1fr}.foreman-list-v5424 article{grid-template-columns:32px minmax(0,1fr)}}
 @media(max-width:760px){.foreman-registration-fields-v5424{grid-template-columns:1fr}.foreman-photo-field-v5424{grid-column:auto}}
+
+/* VIEWPORT_CONTENT_SCROLL_V1: keep every page inside the available window and
+   let its content, rather than the application shell, own vertical scrolling. */
+html,
+body.admin-shell-page{
+  height:100%;
+  min-height:0;
+}
+body.admin-shell-page{
+  height:100vh;
+  overflow:hidden;
+}
+body.admin-shell-page .app-shell{
+  height:100vh!important;
+  min-height:0!important;
+  overflow:hidden!important;
+}
+body.admin-shell-page .app-main{
+  height:100vh!important;
+  min-height:0!important;
+  grid-template-rows:var(--topbar) minmax(0,1fr)!important;
+}
+body.admin-shell-page main.scene{
+  min-height:0!important;
+  min-width:0!important;
+}
+body.admin-shell-page main.scene>view-layer[data-view]:not([data-view="map"]){
+  height:100%!important;
+  max-height:100%!important;
+  min-height:0!important;
+  overscroll-behavior-y:contain;
+  scrollbar-gutter:stable;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(150,170,188,.72) rgba(255,255,255,.04);
+  overflow-y:auto!important;
+}
+body.admin-shell-page main.scene>view-layer[data-view]:not([data-view="map"])::-webkit-scrollbar{
+  width:10px;
+}
+body.admin-shell-page main.scene>view-layer[data-view]:not([data-view="map"])::-webkit-scrollbar-thumb{
+  border:2px solid transparent;
+  border-radius:8px;
+  background:#73869a;
+  background-clip:padding-box;
+}
+@supports (height:100dvh){
+  body.admin-shell-page,
+  body.admin-shell-page .app-shell,
+  body.admin-shell-page .app-main{
+    height:100dvh!important;
+  }
+}

@@ -8,7 +8,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 
 test('mapa aéreo usa uma única base e separa elementos 3D das áreas selecionáveis',()=>{
-  const components=read('components.js');
+  const components=(read('components/map/map-scene-composition-v1.mjs') + read('components.js'));
   const styles=read('styles.css');
   assert.equal(fs.existsSync(path.join(root,'assets/public/alianca-park-aerial-reference-v1.png')),true);
   assert.match(components,/semantic-elements-only-v1|semantic-elements-only-v2/);

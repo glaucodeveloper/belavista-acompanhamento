@@ -1,7 +1,7 @@
 // BELAVISTA_RECORDS_ACTIVITY_DRILL_IN_V5377
 // Registros: etapa -> atividade -> apontamento. Materiais permanecem na
 // central única de caixa, com o mesmo contexto de evidência financeira.
-import {ViewLayer as ImportedViewLayer, ico, esc} from './components.js?v=stage-shared-header-v55';
+import {ViewLayer as ImportedViewLayer, ico, esc} from './components.js?v=pdf-reviewed-lot-areas-v1';
 import {appStore, demoData} from './state.js?v=personnel-production-v5373';
 import {apiFetch} from './api-client.mjs';
 

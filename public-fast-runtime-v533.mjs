@@ -4,6 +4,7 @@ const FLAG=Symbol.for('belavista.public.fast.runtime.v533');
 const PERF=window.__BELAVISTA_PUBLIC_PERF__ ||= {version:VERSION,boot:Math.round(performance.now()),events:[]};
 const mark=(name,extra={})=>{PERF.events.push({name,at:Math.round(performance.now()),...extra});};
 const isPublic=el=>Boolean(el?.matches?.(SELECTOR));
+const isStaticOnly=el=>Boolean(el?.hasAttribute?.('data-public-static-only'));
 const idle=(fn)=>{const start=()=>{'requestIdleCallback' in window?window.requestIdleCallback(fn,{timeout:9000}):setTimeout(fn,1800)};if(document.readyState==='complete')setTimeout(start,650);else window.addEventListener('load',()=>setTimeout(start,650),{once:true});};
 
 function lightweightOverlayTargets(instance){
@@ -61,18 +62,28 @@ function patchCtor(Ctor){
   const originals={initWhenReady:proto.initWhenReady,scheduleThree:proto.scheduleThree,initThree:proto.initThree,refreshMapSurface:proto.refreshMapSurface,syncThree:proto.syncThree,loadMasterplan:proto.loadMasterplan,buildStageOverlayTargets:proto.buildStageOverlayTargets,startPublic3D:proto.startPublic3D};
   if(typeof originals.initWhenReady==='function')proto.initWhenReady=function(...args){
     if(!isPublic(this))return originals.initWhenReady.apply(this,args);
+    if(isStaticOnly(this)){
+      this.setAttribute('data-public-static-base','true');
+      this.dataset.renderMode='static-satellite-markers';
+      this.dataset.mapInit='static-only';
+      this.dataset.publicThree='disabled-static-only';
+      this._threeScheduled=false;
+      mark('map-init-static-only');
+      return;
+    }
     this.setAttribute('data-public-static-base','true');this.dataset.renderMode='static-first-progressive-3d';this.dataset.mapInit='nonblocking';
     // Leaflet passa a ser referência geográfica secundária: não bloqueia a primeira pintura.
     const tryLeaflet=(attempt=0)=>{if(this.map)return;if(window.L){try{this.initLeaflet?.();this.dataset.mapInit='leaflet-ready-late';this.syncThree?.();}catch(error){this.dataset.mapInit='leaflet-late-error';}}else if(attempt<80)setTimeout(()=>tryLeaflet(attempt+1),100);};
     setTimeout(()=>tryLeaflet(),0);this.scheduleThree?.();mark('map-init-nonblocking');
   };
-  if(typeof originals.initThree==='function')proto.initThree=function(...args){if(!isPublic(this)||this._belavistaPublic3DAllowed)return originals.initThree.apply(this,args);this.scheduleThree?.();return Promise.resolve();};
+  if(typeof originals.initThree==='function')proto.initThree=function(...args){if(!isPublic(this)||this._belavistaPublic3DAllowed)return originals.initThree.apply(this,args);if(isStaticOnly(this)){this.dataset.publicThree='disabled-static-only';return Promise.resolve();}this.scheduleThree?.();return Promise.resolve();};
   proto.scheduleThree=function(...args){
     if(!isPublic(this)){if(typeof originals.scheduleThree==='function')return originals.scheduleThree.apply(this,args);return;}
+    if(isStaticOnly(this)){this.setAttribute('data-public-static-base','true');this.dataset.renderMode='static-satellite-markers';this.dataset.publicThree='disabled-static-only';this._threeScheduled=false;return;}
     this.setAttribute('data-public-static-base','true');if(this._threeScheduled||this.renderer)return;this._threeScheduled=true;this.dataset.publicThree='idle-deferred';mark('3d-deferred');
     idle(()=>{if(this.renderer)return;this._belavistaPublic3DAllowed=true;this.dataset.publicThree='starting-idle';mark('3d-start');Promise.resolve(typeof originals.initThree==='function'?originals.initThree.apply(this,args):undefined).catch(error=>{this.dataset.modelError='three-init-failed';console.warn('[Belavista v5.3.3] initThree',error);});});
   };
-  if(typeof originals.startPublic3D==='function')proto.startPublic3D=function(...args){if(!isPublic(this))return originals.startPublic3D.apply(this,args);return this.scheduleThree?.(...args);};
+  if(typeof originals.startPublic3D==='function')proto.startPublic3D=function(...args){if(!isPublic(this))return originals.startPublic3D.apply(this,args);if(isStaticOnly(this)){this.dataset.publicThree='disabled-static-only';return false;}return this.scheduleThree?.(...args);};
   if(typeof originals.refreshMapSurface==='function')proto.refreshMapSurface=function(...args){if(!isPublic(this))return originals.refreshMapSurface.apply(this,args);this.dataset.mapRasterMode='static-css-background';this.dataset.mapTexture='static-css';this.dataset.mapTextureTiles='0/0';this.dataset.mapSurfaceVisible='false';if(this.mapSurface)this.mapSurface.visible=false;};
   if(typeof originals.syncThree==='function')proto.syncThree=function(...args){
     if(!isPublic(this)||this.map?._loaded)return originals.syncThree.apply(this,args);
@@ -90,6 +101,6 @@ if(existing)patchCtor(existing);else{
   customElements.define=function(name,Ctor,options){if(name==='map-scene')patchCtor(Ctor);const result=originalDefine.call(this,name,Ctor,options);if(name==='map-scene')customElements.define=originalDefine;return result;};
 }
 
-const prepare=map=>{if(!map)return;map.setAttribute('data-public-static-base','true');map.dataset.publicFastRuntime=VERSION;};
+const prepare=map=>{if(!map)return;map.setAttribute('data-public-static-base','true');map.dataset.publicFastRuntime=VERSION;if(isStaticOnly(map)){map.dataset.renderMode='static-satellite-markers';map.dataset.publicThree='disabled-static-only';}};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>document.querySelectorAll(SELECTOR).forEach(prepare),{once:true});else document.querySelectorAll(SELECTOR).forEach(prepare);
-window.__BELAVISTA_START_3D__=()=>{const map=document.querySelector(SELECTOR);if(!map)return false;map._threeScheduled=false;map._belavistaPublic3DAllowed=true;const Ctor=customElements.get('map-scene');const proto=Ctor?.prototype;if(typeof proto?.initThree==='function'){mark('3d-manual');proto.initThree.call(map);return true;}return false;};
+window.__BELAVISTA_START_3D__=()=>{const map=document.querySelector(SELECTOR);if(!map||isStaticOnly(map)){if(isStaticOnly(map))map.dataset.publicThree='disabled-static-only';return false;}map._threeScheduled=false;map._belavistaPublic3DAllowed=true;const Ctor=customElements.get('map-scene');const proto=Ctor?.prototype;if(typeof proto?.initThree==='function'){mark('3d-manual');proto.initThree.call(map);return true;}return false;};

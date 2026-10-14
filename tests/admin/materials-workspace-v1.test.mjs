@@ -2,10 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import fs from 'node:fs';
 
-const source = fs.readFileSync(new URL('../../components.js', import.meta.url), 'utf8');
+const source = fs.readFileSync(new URL('../../components.js', import.meta.url), 'utf8')
+  + fs.readFileSync(new URL('../../components/records/materials-workspace-v1.mjs', import.meta.url), 'utf8');
 
-test('Materiais fica abaixo da Central e usa a coleção compartilhada', () => {
-  assert.match(source, /\["control", "table-properties", "Central operacional"\],\s*\["materials", "package-check", "Materiais"\]/);
+test('Dashboard e Materiais usam a coleção compartilhada', () => {
+  const sidebarSource = fs.readFileSync(new URL('../../components/shared/app-sidebar.mjs', import.meta.url), 'utf8');
+  assert.match(sidebarSource, /\["control", "table-properties", "Dashboard"\]/);
+  assert.doesNotMatch(sidebarSource, /\["map",\s*"house",\s*"Dashboard inicial"\]|\["control",\s*"table-properties",\s*"Central operacional"\]/);
   assert.match(source, /ViewLayer\.prototype\.materials = function \(\)/);
   assert.match(source, /all = controlCenterMaterialRowsV1\(state\)/);
   assert.match(source, /materialCatalogAdditions/);

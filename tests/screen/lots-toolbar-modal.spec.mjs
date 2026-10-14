@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.use({ serviceWorkers: 'block' });
 
-test('controle de lote abre em modal e toolbar executa CRUD', async ({ page }) => {
+test('linha abre ficha do lote e botão de controle preserva o modal CRUD', async ({ page }) => {
   await page.addInitScript(() => {
     globalThis.BELAVISTA_DISABLE_SERVICE_WORKER = true;
     globalThis.BELAVISTA_ADMIN_ACTOR = { uid: 'e2e-owner', name: 'Teste', role: 'developer', label: 'Teste' };
@@ -12,17 +12,64 @@ test('controle de lote abre em modal e toolbar executa CRUD', async ({ page }) =
   await page.goto('/admin?demo=1&view=brokers-board', { waitUntil: 'domcontentloaded' });
   const catalog = page.locator('[data-lot-price-catalog]');
   await expect(catalog).toBeVisible({ timeout: 20000 });
+  await expect(page.locator('.brokers-board-page .repasse-card')).toHaveCount(0);
+  await expect(page.locator('.brokers-board-page .repasse-layout')).toHaveCount(0);
+  await expect(page.locator('.repasse-page-head [data-view="brokers"]')).toHaveCount(0);
+  await expect(catalog.locator('.lot-catalog-print-header img')).toHaveAttribute('src', './assets/public/alianca-park-logo-full-transparent-v553.png');
+  await expect(catalog.locator('.lot-catalog-print-heading h1')).toHaveText('Repasse e valores por lote');
+  await expect(catalog.locator('.lot-catalog-print-footer')).toContainText('Aliança Park');
+  await expect(catalog.locator('[data-lot-catalog-print]')).toBeVisible();
+  const chat = page.locator('[data-worker-context-assistant]');
+  if (!(await chat.getAttribute('class')).includes('is-collapsed')) await chat.locator('[data-worker-chat-minimize]').click();
+  await page.evaluate(() => {
+    globalThis.__lotCatalogPrintCalls = 0;
+    window.print = () => { globalThis.__lotCatalogPrintCalls += 1; };
+  });
+  await catalog.locator('[data-lot-catalog-print]').evaluate((button) => button.click());
+  await expect.poll(() => page.evaluate(() => globalThis.__lotCatalogPrintCalls)).toBe(1);
+  await expect.poll(() => page.evaluate(() => document.body.classList.contains('lot-catalog-print-mode'))).toBe(true);
+  await page.emulateMedia({ media: 'print' });
+  await expect(catalog.locator('.lot-catalog-print-header')).toBeVisible();
+  await expect(catalog.locator('.lot-catalog-print-footer')).toBeVisible();
+  await expect(catalog.locator('.lot-catalog-toolbar')).toBeHidden();
+  await page.emulateMedia({ media: 'screen' });
+  await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+  await expect.poll(() => page.evaluate(() => document.body.classList.contains('lot-catalog-print-mode'))).toBe(false);
+  const catalogExcel = page.waitForEvent('download');
+  await catalog.locator('[data-lot-catalog-excel]').click();
+  const catalogDownload = await catalogExcel;
+  await expect(catalogDownload.suggestedFilename()).toMatch(/^alianca-park-tabela-lotes-\d{4}-\d{2}-\d{2}\.xls$/);
+  const catalogStream = await catalogDownload.createReadStream();
+  let catalogExcelContent = '';
+  for await (const chunk of catalogStream) catalogExcelContent += chunk.toString('utf8');
+  expect(catalogExcelContent).toContain('ALIANÇA PARK · LOTEAMENTO');
+  expect(catalogExcelContent).toContain('RELATÓRIO COMERCIAL · EXPORTAÇÃO EXCEL');
   const firstRow = catalog.locator('[data-lot-catalog-row]').first();
   const lotKey = await firstRow.getAttribute('data-lot-key');
   await firstRow.click();
+  const lotDetail = page.locator('[data-lot-detail-page]');
+  await expect(lotDetail).toBeVisible();
+  await expect(lotDetail).toHaveAttribute('data-lot-key', lotKey);
+  await expect(lotDetail.locator('[data-lot-detail-form] [name="lotKey"]')).toHaveValue(lotKey);
+  // A seleção por marcador é coberta na suíte de mapa; aqui a ficha valida as
+  // ações comerciais mesmo enquanto a miniatura cartográfica termina de montar.
+  await page.getByRole('button', { name: 'Voltar à tabela' }).click();
+  await expect(catalog).toBeVisible();
   const modal = page.locator('body > .lot-status-modal[data-lot-floating-control]');
+  await firstRow.locator('[data-lot-select]').click();
   await expect(modal).toBeVisible();
   await expect(modal.locator('[name="lotKey"]')).toHaveValue(lotKey);
   await modal.locator('[name="status"]').selectOption('Reservado');
+  await modal.locator('[data-lot-flow-next]').click();
+  await expect(modal.locator('[data-lot-flow-panel="2"]')).toBeVisible();
+  await modal.locator('[name="paymentAmount"]').fill('12500');
+  await modal.locator('[name="paymentDate"]').fill('2026-10-03');
+  await modal.locator('[name="note"]').fill('Sinal de reserva registrado no teste visual');
   await modal.getByRole('button', { name: 'Salvar controle do lote' }).click();
   await expect(modal).toBeHidden();
   await expect(firstRow.locator('[data-lot-status-cell]')).toHaveText('Reservado');
   await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem('belavista.ui-memory.v1') || '{}').state?.lotStatuses?.[key]?.status, lotKey)).toBe('Reservado');
+  await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem('belavista.ui-memory.v1') || '{}').state?.lotStatuses?.[key]?.payment?.amount, lotKey)).toBe(12500);
   await expect(catalog.locator('[data-lot-control-edit]')).toBeEnabled();
   await expect(catalog.locator('[data-lot-control-delete]')).toBeEnabled();
   await catalog.locator('[data-lot-control-edit]').click();
@@ -38,14 +85,38 @@ test('controle de lote abre em modal e toolbar executa CRUD', async ({ page }) =
   await expect(catalog.locator('[data-lot-control-delete]')).toBeDisabled();
   await catalog.locator('[data-lot-control-new]').click();
   await expect(modal).toBeVisible();
-  await expect(modal.locator('[data-lot-status-picker]')).toHaveValue(lotKey);
+  await expect(modal.locator('[data-lot-picker-current]')).toHaveText(`Selecionado: ${lotKey}`);
+  await expect(modal.locator('[data-lot-picker-count]')).toContainText('página');
+  await expect(modal.locator('[data-lot-flow-step="0"]')).toHaveClass(/is-active/);
+  await modal.locator('[data-lot-picker-quadra]').selectOption('QA');
+  await expect(modal.locator('[data-lot-picker-option]').first()).toContainText('QA');
+  await modal.locator('[data-lot-picker-next]').click();
+  await expect(modal.locator('[data-lot-picker-count]')).toContainText('página 2');
+  await modal.locator('[data-lot-picker-clear]').click();
+  await expect(modal.locator('[data-lot-picker-option]').filter({ hasText: lotKey }).first()).toBeVisible();
   await modal.locator('[data-lot-status-close]').last().click();
-  await catalog.locator('[data-lot-control-repasse]').click();
-  await expect(page.locator('[data-repasse-entry-form] [name="lot"]')).toHaveValue(lotKey);
+
+  const markerMap = catalog.locator('[data-lot-catalog-map]');
+  const mapDrawer = catalog.locator('.lot-catalog-map-drawer');
+  await expect(mapDrawer).toBeVisible();
+  await mapDrawer.locator('summary').click();
+  await expect(markerMap).toBeVisible();
+  const firstMarker = markerMap.locator('.satellite-lot-plan-marker').first();
+  await expect(firstMarker).toBeVisible({ timeout: 20000 });
+  await firstMarker.evaluate((marker) => marker.click());
+  await expect(modal).toBeVisible();
+  await expect(modal.locator('[data-lot-flow-step="0"]')).toHaveClass(/is-active/);
+  await expect(modal.locator('[data-lot-picker-list]')).toContainText('QA-1');
+  await modal.locator('[data-lot-status-close]').last().click();
+
+  await firstRow.locator('[data-lot-select]').click();
+  await expect(modal).toBeVisible();
+  await expect(modal.locator('[data-repasse-entry-form]')).toHaveCount(0);
+  await modal.locator('[data-lot-status-close]').last().click();
 
   const servicePosts = [];
   page.on('request', (request) => { if (request.method() === 'POST' && request.url().includes('/api/service-requests')) servicePosts.push(request.url()); });
-  const chat = page.locator('[data-worker-context-assistant]');
+  if ((await chat.getAttribute('class')).includes('is-collapsed')) await chat.locator('[data-worker-chat-minimize]').click();
   await chat.locator('textarea[name="message"]').fill(`Altere o status do lote ${lotKey} para Vendido`);
   await chat.locator('[data-worker-chat-submit]').click();
   await expect(chat.locator('[data-worker-chat-log]')).toContainText(`${lotKey}: status alterado para Vendido.`);

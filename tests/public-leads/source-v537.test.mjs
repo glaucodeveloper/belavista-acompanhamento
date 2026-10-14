@@ -4,6 +4,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 const root=path.resolve(process.env.BELAVISTA_ROOT||process.cwd());
 const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
+const readMapScene=()=>[
+  read('components.js'),
+  read('components/map/admin-road-geometry-v1.mjs'),
+  read('components/map/public-road-surface-policy-v1.mjs'),
+].join('\n');
 
 test('HTML volta ao boot normal e não usa recovery v5.3.6',()=>{
   const s=read('public-leads.html');
@@ -33,7 +38,7 @@ test('public live-light mantém GLB e pula geometria pesada',()=>{
 });
 
 test('raster WebGL de tiles é desativado só no mapa público',()=>{
-  const s=read('components.js');
+  const s=readMapScene();
   assert.match(s,/map-scene\[data-public-map\],map-scene\[data-public-presentation\]/);
   assert.match(s,/mapTexture='public-static-base'/);
   assert.match(s,/mapSurface\.visible=false/);

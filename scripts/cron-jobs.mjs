@@ -7,7 +7,7 @@ import {dispatchNotificationOutbox} from '../notification-service.mjs';
 
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const runPython=(script,args=[])=>new Promise((resolve,reject)=>{
-  const child=spawn(process.env.PYTHON||'python3',[script,...args],{stdio:['ignore','pipe','pipe']});
+  const child=spawn(process.env.BELAVISTA_PYTHON_EXECUTABLE||process.env.PYTHON||'python3',[script,...args],{stdio:['ignore','pipe','pipe']});
   let out='',err='';child.stdout.on('data',d=>out+=d);child.stderr.on('data',d=>err+=d);
   child.on('close',code=>code===0?resolve(out.trim()):reject(new Error(err||`python exited ${code}`)));
 });
@@ -17,8 +17,9 @@ const safeJson=async path=>{try{return JSON.parse(await readFile(path,'utf8'));}
 export function startBelavistaCronJobs({root,dbPath}){
   if(globalThis.__belavistaCronJobsStarted)return;
   globalThis.__belavistaCronJobsStarted=true;
-  const automationRoot=join(root,'data','automation');
-  const reportRoot=join(root,'output','broker-reports');
+  const dataRoot=process.env.BELAVISTA_DATA_ROOT||join(root,'data');
+  const automationRoot=join(dataRoot,'automation');
+  const reportRoot=join(dataRoot,'output','broker-reports');
   const stampFile=join(automationRoot,'last-runs.json');
   const reportScript=join(root,'scripts','generate-broker-report.py');
   const db=new DatabaseSync(dbPath);

@@ -1,5 +1,5 @@
 const KEY = 'belavista.usage-preferences.v1';
-const pages = {map:'Dashboard inicial', control:'Central operacional', stages:'Etapas e Cronograma', materials:'Materiais', documents:'Documentos', leads:'Leads', reports:'Relatórios'};
+const pages = {map:'Mapa', control:'Dashboard', stages:'Etapas e Cronograma', materials:'Materiais', documents:'Documentos', leads:'Leads', reports:'Relatórios'};
 const defaults = {defaultPage:'map', density:'comfortable', reduceMotion:false, voiceEnabled:false};
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 

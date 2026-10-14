@@ -6,7 +6,17 @@ import {fileURLToPath} from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
-const components = read('components.js');
+const components = [
+  (read('components/map/map-scene-composition-v1.mjs') + read('components.js')),
+  read('components/map/admin-standalone-aerial-v5380.mjs'),
+  read('components/map/admin-reference-aerial-scene-v1.mjs'),
+  read('components/map/model-gpu-enrichment-v5367.mjs'),
+  read('components/map/admin-pdf-masterplan-pipeline-v1.mjs'),
+  read('components/map/admin-standalone-startup-v5370.mjs'),
+  read('components/map/satellite-lot-plan-overlay-v1.mjs'),
+  read('components/map/scene-presentation-config-v1.mjs'),
+  read('components/map/georeference.mjs'),
+].join('\n');
 const app = read('app.js');
 
 test('modelo de referência contém 298 lotes completos, não 596 círculos', () => {
@@ -16,6 +26,55 @@ test('modelo de referência contém 298 lotes completos, não 596 círculos', ()
   const lots = scene.nodes.filter((node) => /^Lote_\d+$/i.test(node.name || ''));
   assert.equal(lots.length, 298);
   assert.equal(new Set(lots.map((node) => node.name)).size, 298);
+});
+
+test('startup administrativo fica instalado no MapScene antes da definição do custom element', () => {
+  const composition = (read('components/map/map-scene-composition-v1.mjs') + read('components.js')),
+    startup = read('components/map/admin-standalone-startup-v5370.mjs'),
+    installAt = composition.indexOf('installAdminStandaloneStartupV5370(MapScene'),
+    defineAt = composition.indexOf('customElements.define("map-scene", MapScene)');
+
+  assert.match(composition, /import \{ installAdminStandaloneStartupV5370 \} from "\.\/admin-standalone-startup-v5370\.mjs\?/);
+  assert.ok(installAt >= 0 && defineAt > installAt);
+  assert.match(startup, /this\.startAdminStandalone3DV5370\(\)/);
+  assert.match(startup, /MapScene\.prototype\.startAdminStandalone3DV5370 = async function/);
+  assert.match(startup, /await import\("three"\)/);
+  assert.match(startup, /loadGlbWithClientCacheV14/);
+  assert.match(startup, /warpAdminGlbToFixedAerialV1/);
+});
+
+test('carregamento e textura da referência aérea são instalados antes do custom element', () => {
+  const composition = (read('components/map/map-scene-composition-v1.mjs') + read('components.js')),
+    aerial = read('components/map/admin-standalone-aerial-v5380.mjs'),
+    installAt = composition.indexOf('installAdminStandaloneAerialV5380(MapScene'),
+    defineAt = composition.indexOf('customElements.define("map-scene", MapScene)');
+
+  assert.match(composition, /import \{ installAdminStandaloneAerialV5380 \} from "\.\/admin-standalone-aerial-v5380\.mjs\?/);
+  assert.ok(installAt >= 0 && defineAt > installAt);
+  for (const method of [
+    'prepareAdminStandaloneAerialPreviewV5380',
+    'loadAdminStandaloneSatelliteBaseV5380',
+    'bindAdminStandaloneAerialTextureV5380',
+  ]) {
+    assert.match(aerial, new RegExp(`${method}\\(`));
+    assert.doesNotMatch(composition, new RegExp(`^\\s{2}(?:async )?${method}\\(`, 'm'));
+  }
+  assert.match(aerial, /Object\.defineProperty\(MapScene\.prototype, name/);
+});
+
+test('plano aéreo e ambiente derivado do raster são delegados ao módulo de cena', () => {
+  const composition = (read('components/map/map-scene-composition-v1.mjs') + read('components.js')),
+    scene = read('components/map/admin-reference-aerial-scene-v1.mjs'),
+    installAt = composition.indexOf('installAdminReferenceAerialSceneV1(MapScene'),
+    defineAt = composition.indexOf('customElements.define("map-scene", MapScene)');
+
+  assert.match(composition, /import \{ installAdminReferenceAerialSceneV1 \} from "\.\/admin-reference-aerial-scene-v1\.mjs\?/);
+  assert.ok(installAt >= 0 && defineAt > installAt);
+  assert.match(scene, /syncAdminReferenceAerialEnvironmentV1\(\)/);
+  assert.match(scene, /syncAdminReferenceAerialSurfaceV1\(\)/);
+  assert.match(scene, /document: documentRef = globalThis\.document/);
+  assert.doesNotMatch(composition, /^  syncAdminReferenceAerialEnvironmentV1\(/m);
+  assert.doesNotMatch(composition, /^  syncAdminReferenceAerialSurfaceV1\(/m);
 });
 
 test('lotes e ruas usam contornos extraídos da mesma imagem, sem esticar a malha PDF', () => {
@@ -141,5 +200,5 @@ assert.match(components, /buildAdminReferenceAerialRasterMaskModelV1/);
 assert.match(components, /site quad filtered from aerial pixels/);
 assert.match(components, /same aerial image UV used as model texture/);
 assert.match(components, /rasterMaskSourceHidden/);
-assert.match(app, /stage-shared-header-v55/);
+assert.match(app, /installStageHomeRaidAiRecordsCalendarV1\?\.\(\)/);
 });

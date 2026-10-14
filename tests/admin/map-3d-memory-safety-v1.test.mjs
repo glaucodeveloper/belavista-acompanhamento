@@ -4,7 +4,12 @@ import fs from "node:fs";
 import path from "node:path";
 
 const root = path.resolve(process.env.BELAVISTA_ROOT || process.cwd());
-const components = fs.readFileSync(path.join(root, "components.js"), "utf8");
+const components = [
+  (fs.readFileSync(path.resolve('components/map/map-scene-composition-v1.mjs'), 'utf8') + (fs.readFileSync(path.join(root, 'components/map/map-scene-composition-v1.mjs'), 'utf8') + fs.readFileSync(path.join(root, 'components.js'), 'utf8'))),
+  ...fs.readdirSync(path.join(root, "components/map"))
+    .filter((file) => file.endsWith(".mjs"))
+    .map((file) => fs.readFileSync(path.join(root, "components/map", file), "utf8")),
+].join("\n");
 const styles = fs.readFileSync(path.join(root, "styles.css"), "utf8");
 
 test("camada 3D reutiliza geometrias semânticas nativas quando a textura já foi ligada", () => {
@@ -23,7 +28,7 @@ test("admin mostra a imagem aérea e inicia o GLB depois do primeiro paint", () 
   );
   assert.match(components, /admin-reference-aerial-realistic-preview-v2/);
   assert.match(components, /admin3dAutostart = "after-static-first-paint"/);
-  assert.match(components, /window\.setTimeout\(\(\) => start\(\), 350\)/);
+  assert.match(components, /windowRef\.setTimeout\(\(\) => start\(\), 350\)/);
   assert.match(components, /button\.hidden = true/);
   assert.match(components, /button\.hidden = false/);
   assert.match(components, /renderer\.shadowMap\.enabled = false/);
@@ -58,7 +63,7 @@ test("admin mostra a imagem aérea e inicia o GLB depois do primeiro paint", () 
   assert.match(components, /adminStandaloneCurrentFocusPointV5370\(\)/);
   assert.match(components, /current-ground-focus/);
   assert.match(components, /_adminStandaloneFocusPointV5370 = point\.clone\(\)/);
-  assert.match(components, /range \+ buttons \+ shift-drag · standalone/);
+  assert.match(components, /range \+ buttons · standalone/);
   assert.match(components, /const controls = this\.querySelector\("\.map-rotation-controls"\)/);
   assert.match(components, /controls\.hidden = !interactiveMapViews\.has\(view\)/);
   assert.match(components, /adminReferenceAerialRoadAlignment/);

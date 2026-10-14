@@ -5,18 +5,19 @@ import path from 'node:path';
 
 const root=path.resolve(process.env.BELAVISTA_ROOT||process.cwd());
 const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
+const readMapScene=()=>read('components.js')+'\n'+read('components/map/public-terrain-environment-v1.mjs');
 
 test('mosaico satélite permanece visível enquanto o relevo 3D é adiado',()=>{
-  const components=read('components.js');
-  assert.match(components,/if\(!terrain\)\{/);
-  assert.match(components,/surface\.visible=true/);
-  assert.match(components,/publicTerrainSurface='satellite tile mosaic · DWG GPS centre · direct surface'/);
-  assert.match(components,/this\.mapSurface\.visible=!this\.isPublicMapVisual\(\)\|\|!this\.publicTerrainRelief/);
+  const components=readMapScene();
+  assert.match(components,/if\s*\(!terrain\)\s*\{/);
+  assert.match(components,/this\.dataset\.publicTerrainSurface\s*=\s*["']satellite tile mosaic · DWG GPS centre · direct surface["']/);
+  assert.match(components,/surface\.visible\s*=\s*true/);
+  assert.match(components,/surface\.visible\s*=\s*false/);
 });
 
 test('agendamento do entorno não depende de requestIdleCallback',()=>{
-  const components=read('components.js');
-  assert.match(components,/if\(!this\.masterplanModel\)\{/);
-  assert.match(components,/setTimeout\(\(\)=>this\.schedulePublicEnvironmentLoadingV1\(\),350\)/);
-  assert.match(components,/setTimeout\(\(\)=>\{/);
+  const components=readMapScene();
+  assert.match(components,/if\s*\(!this\.masterplanModel\)\s*\{/);
+  assert.match(components,/scheduleTimeout\(\(\)\s*=>\s*this\.schedulePublicEnvironmentLoadingV1\(\),\s*350\)/);
+  assert.match(components,/scheduleTimeout\(\(\)\s*=>\s*\{/);
 });

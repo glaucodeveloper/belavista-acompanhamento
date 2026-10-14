@@ -192,14 +192,6 @@ const startMapWarmup=()=>{
   if(qs.get('mapPreload')!=='1')return Promise.resolve([]);
   return mapWarmupPromise||(mapWarmupPromise=warmMapAssets());
 };
-const waitForMapWarmup=async(timeout=500)=>{
-  startMapWarmup();
-  const boot=document.querySelector('#boot'),text=boot?.querySelector('p');if(text)text.textContent='Abrindo painel operacional...';
-  await Promise.race([mapWarmupPromise,new Promise(resolve=>setTimeout(resolve,220))]);
-  const started=performance.now();
-  await new Promise(resolve=>{const tick=()=>{const map=document.querySelector('map-scene[data-persistent-map="true"]'),ready=['ready','partial','uploading'].includes(map?.dataset.mapTexture);if(ready||performance.now()-started>=timeout)return resolve();setTimeout(tick,60);};tick();});
-};
-
 class CloudflareBootstrap extends HTMLElement {
   connectedCallback(){
     this.hidden=true;
@@ -221,7 +213,7 @@ class BelavistaApp extends HTMLElement {
   connectedCallback(){ this.mountShell(); if(!this._bound){this._bound=true;this.bind();} }
   mountShell(){
     if(this.querySelector('.app-shell'))return;
-    this.innerHTML=`<div class="app-shell ${appStore.get().sidebarCollapsed?'sidebar-collapsed':''}"><app-sidebar></app-sidebar><div class="app-main"><app-topbar></app-topbar><main class="scene"><map-scene data-persistent-map="true" data-public-map="" data-public-presentation="true" data-base-map="" data-stage="Aliança Park · comercial" data-overlay="urbanizacao" data-admin-shared-public-map="v5352" data-dashboard-progress-map="true" data-admin-record-selection="true" data-map-context="admin" aria-label="Mapa operacional do Aliança Park"></map-scene><view-layer></view-layer></main></div></div>`;
+    this.innerHTML=`<div class="app-shell ${appStore.get().sidebarCollapsed?'sidebar-collapsed':''}"><app-sidebar></app-sidebar><div class="app-main"><app-topbar></app-topbar><main class="scene"><view-layer></view-layer></main></div></div>`;
     window.lucide?.createIcons();
     queueMicrotask(()=>globalThis.__ensureStageContextChromeV1?.(this.querySelector('view-layer')));
   }
@@ -302,8 +294,9 @@ async function startApp(config){
   // aquecimento, as ações de agenda, central, caixa e páginas de etapa ficam
   // dependentes de um gatilho que não existe na interface principal.
   setTimeout(()=>globalThis.loadBelavistaAdminExtensionsV5351?.(),900);
-  // O mapa é aquecido depois que o painel já está utilizável.
-  setTimeout(()=>waitForMapWarmup().catch(()=>{}),120);
+  // O mapa só é pré-carregado mediante solicitação explícita de diagnóstico;
+  // páginas sem mapa não montam nem aguardam uma cena global em segundo plano.
+  setTimeout(()=>startMapWarmup().catch(()=>{}),120);
   // No celular a aplicação mantém toda a navegação disponível. A tela de
   // Registros continua podendo ser aberta diretamente por `?mobile=records`,
   // mas não substitui mais a página que o usuário deixou salva.
