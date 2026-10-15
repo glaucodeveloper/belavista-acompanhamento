@@ -4,7 +4,7 @@
   globalThis.__belavistaBrandReturnResetV5346=true;
 
   const MAP_SELECTOR='map-scene[data-public-map],map-scene[data-public-presentation]';
-  const FULL_LOGO='./assets/public/alianca-park-logo-full-cutouts-v554.png';
+  const FULL_LOGO='./assets/public/alianca-park-logo-full-letter-cutouts-v555.png';
   const MARK_LOGO='./assets/public/alianca-park-logo-mark-transparent-v551.png?edited=20260915';
 
   const state={

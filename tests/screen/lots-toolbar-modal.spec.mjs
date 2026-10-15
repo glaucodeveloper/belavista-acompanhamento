@@ -15,7 +15,7 @@ test('linha abre ficha do lote e botão de controle preserva o modal CRUD', asyn
   await expect(page.locator('.brokers-board-page .repasse-card')).toHaveCount(0);
   await expect(page.locator('.brokers-board-page .repasse-layout')).toHaveCount(0);
   await expect(page.locator('.repasse-page-head [data-view="brokers"]')).toHaveCount(0);
-  await expect(catalog.locator('.lot-catalog-print-header img')).toHaveAttribute('src', './assets/public/alianca-park-logo-full-cutouts-v554.png');
+  await expect(catalog.locator('.lot-catalog-print-header img')).toHaveAttribute('src', './assets/public/alianca-park-logo-full-letter-cutouts-v555.png');
   await expect(catalog.locator('.lot-catalog-print-heading h1')).toHaveText('Repasse e valores por lote');
   await expect(catalog.locator('.lot-catalog-print-footer')).toContainText('Aliança Park');
   await expect(catalog.locator('[data-lot-catalog-print]')).toBeVisible();

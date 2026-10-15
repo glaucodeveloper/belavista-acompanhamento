@@ -20,10 +20,10 @@ test('marca do atendimento usa o mesmo símbolo oficial da capa do PDF',()=>{
   assert.match(context,/public-chat-v52-mark/);
   assert.match(html,/theme-color" content="#070b16"/);
   assert.match(html,/public-leads\.css\?v=[^"']+/);
-  assert.match(html,/public-leads-context-v521\.mjs\?v=logo-edited-mark-v551/);
+  assert.match(html,/public-leads-context-v521\.mjs\?v=public-usability-v1/);
 });
 
 test('assets oficiais da marca permanecem publicados',()=>{
-  for(const asset of ['alianca-park-logo-full-cutouts-v554.png','alianca-park-logo-mark-transparent-v551.png'])
+  for(const asset of ['alianca-park-logo-full-letter-cutouts-v555.png','alianca-park-logo-mark-transparent-v551.png'])
     assert.equal(fs.existsSync(path.join(root,'assets/public',asset)),true,asset);
 });

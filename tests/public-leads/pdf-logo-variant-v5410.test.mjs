@@ -14,7 +14,7 @@ test('a abertura pública e o PDF compartilham a variante com vãos internos pre
   const pdf=read('tmp/pdfs/build_manual_produto_alianca_park.py');
 
   for(const source of [loading,returnReset])
-  assert.match(source,/alianca-park-logo-full-cutouts-v554\.png/);
+  assert.match(source,/alianca-park-logo-full-letter-cutouts-v555\.png/);
   for(const source of [context,returnReset])
   assert.match(source,/alianca-park-logo-mark-transparent-v551\.png\?edited=20260915/);
 

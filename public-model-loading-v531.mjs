@@ -36,7 +36,7 @@ function markup(){
     </div>
     <div class="public-model-loading__shell">
       <header class="public-model-loading__head">
-        <img class="public-model-loading__logo" src="./assets/public/alianca-park-logo-full-cutouts-v554.png" alt="Aliança Park Loteamento">
+        <img class="public-model-loading__logo" src="./assets/public/alianca-park-logo-full-letter-cutouts-v555.png" alt="Aliança Park Loteamento">
         <span class="public-model-loading__place">AMARGOSA <i></i> BAHIA</span>
       </header>
       <div class="public-model-loading__body">

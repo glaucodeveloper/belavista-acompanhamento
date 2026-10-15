@@ -2,7 +2,7 @@
 // A variante transparente representa o resultado visual do PDF após remover
 // a textura verde: somente a marca (símbolo + nome) permanece sobre a cena.
 const PDF_SOURCE='./assets/public/alianca-park-masterplan-static-v535-no-photo.webp';
-const BRAND_SOURCE='./assets/public/alianca-park-logo-full-cutouts-v554.png';
+const BRAND_SOURCE='./assets/public/alianca-park-logo-full-letter-cutouts-v555.png';
 const VERSION='pdf-logo-cutout-v1';
 
 function mountPdfBrand(){
