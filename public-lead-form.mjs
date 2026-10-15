@@ -420,7 +420,9 @@ export class PublicLeadsSurface extends HTMLElement{
       const planZoom=smooth(titleEnd,titleEnd+innerHeight*.78,sceneY);
       this.style.setProperty('--public-plan-opacity',planReveal.toFixed(4));
       const scrollZoom=1+planZoom*.32,scrollPan=Math.min(innerWidth*.10,150)*planZoom;
-      this.style.setProperty('--public-plan-zoom',(scrollZoom*gesture.zoom).toFixed(4));
+      const totalPlanZoom=scrollZoom*gesture.zoom;
+      this.style.setProperty('--public-plan-zoom',totalPlanZoom.toFixed(4));
+      this.dataset.lotMarkerDetail=totalPlanZoom>=2.2?'circle':'number';
       this.style.setProperty('--public-plan-pan-x',(scrollPan+gesture.panX).toFixed(1)+'px');
       this.style.setProperty('--public-plan-pan-y',gesture.panY.toFixed(1)+'px');
       this.dataset.planProgress=planZoom.toFixed(4);

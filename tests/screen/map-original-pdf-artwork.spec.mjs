@@ -36,7 +36,7 @@ test('mapa aplica os pixels completos do PDF e mantém a calibração, sem conto
   expect(alignment.frame.left).toBeCloseTo(.2110515272100637,12);
   expect(alignment.frame.top).toBeCloseTo(.4572318077949459,12);
   await expect(map.locator('.satellite-lot-visual-recovery-outlines path')).toHaveCount(0);
-  await expect.poll(()=>map.locator('.satellite-lot-plan-marker').count()).toBe(261);
+  await expect.poll(()=>map.locator('.satellite-lot-plan-marker').count()).toBe(272);
   const syntheticStrokes=await map.locator('.satellite-lot-hit-area, .satellite-common-area-hit-area').evaluateAll(nodes=>
     nodes.filter(node=>getComputedStyle(node).stroke!=='none').length);
   expect(syntheticStrokes,'only the original PDF white lines may be drawn').toBe(0);

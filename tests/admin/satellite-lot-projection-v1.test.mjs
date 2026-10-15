@@ -41,8 +41,15 @@ test("projection uses the reviewed production PDF mapping and canonical lot trac
   assert.equal(projection.usesGreenLotMapping, true);
   assert.equal(projection.usesCanonicalTraceMarkers, true);
   assert.equal(projection.hasOfficialPdfLabels, true);
+  assert.deepEqual(labels.labels.map((item) => item.number).sort((a, b) => a - b),
+    Array.from({ length: 272 }, (_, index) => index + 1));
+  assert.equal(mapping.mappings.length, 272);
+  assert.equal(new Set(mapping.mappings.map((item) => item.lotId)).size, 272);
+  assert.equal(mapping.mappings.filter((item) => !item.greenPolygonId).length, 13);
+  assert.equal(projection.greenMappingByLot.size, 272);
   assert.equal(projection.canonicalTraceMarkerByLot.size, trace.lotCount);
   assert.equal(projection.projectedLots.length, validMappedLots.length);
+  assert.equal(projection.projectedLots.length, 259);
   assert.ok(Number.isFinite(projection.projectedBounds.minU));
   assert.ok(Number.isFinite(projection.projectedBounds.maxV));
   assert.deepEqual(
@@ -72,15 +79,15 @@ test("projection retains the official-label fallback when no masterplan overlay 
 
 test("MapScene delegates satellite geometry projection to its map-domain module", async () => {
   const [source, overlay] = await Promise.all([
-    readFile(new URL("../../components.js", import.meta.url), "utf8"),
+    readFile(new URL("../../components/map/map-scene-composition-v1.mjs", import.meta.url), "utf8"),
     readFile(new URL("../../components/map/satellite-lot-plan-overlay-v1.mjs", import.meta.url), "utf8"),
   ]);
-  assert.match(source, /import \{ createSatelliteLotProjectionV1 \} from "\.\/components\/map\/satellite-lot-projection-v1\.mjs\?/);
-  assert.match(source, /import \{ installSatelliteLotPlanOverlayV1 \} from "\.\/components\/map\/satellite-lot-plan-overlay-v1\.mjs\?/);
+  assert.match(source, /import \{ createSatelliteLotProjectionV1 \} from "\.\/satellite-lot-projection-v1\.mjs\?/);
+  assert.match(source, /import \{ installSatelliteLotPlanOverlayV1 \} from "\.\/satellite-lot-plan-overlay-v1\.mjs\?/);
   const installAt = source.indexOf("installSatelliteLotPlanOverlayV1(MapScene"),
-    defineAt = source.indexOf('customElements.define("map-scene", MapScene)');
-  assert.match(source, /installSatelliteLotPlanOverlayV1\(MapScene, \{[\s\S]{0,500}createSatelliteLotProjectionV1,[\s\S]{0,1200}\}\);/);
-  assert.ok(installAt >= 0 && defineAt > installAt);
+    returnAt = source.indexOf("\n  return {", installAt);
+  assert.match(source, /installSatelliteLotPlanOverlayV1\(MapScene, \{[\s\S]{0,1000}createSatelliteLotProjectionV1,[\s\S]{0,1200}\}\);/);
+  assert.ok(installAt >= 0 && returnAt > installAt);
   assert.match(overlay, /MapScene\.prototype\.installSatelliteLotPlanOverlayV1 = async function/);
   assert.match(overlay, /masterplanMarkerPosition,[\s\S]{0,150}createSatelliteLotProjectionV1\(/);
   assert.match(overlay, /const masterplanFrame = \(\(\) =>/);

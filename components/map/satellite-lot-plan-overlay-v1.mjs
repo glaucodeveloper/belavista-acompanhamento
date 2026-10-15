@@ -526,13 +526,15 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
         count++;
       });
 
-      // Um marcador de contingência só é permitido quando a própria revisão
-      // do PDF reconhece o número comercial, mas a segmentação não conseguiu
-      // materializar sua área. Isso impede que os antigos IDs técnicos
-      // 273–298 ou retângulos de rua virem lotes navegáveis.
-      if ((markers || this._satelliteLotPlanRequestedMarkersV1) && usesCanonicalTraceMarkers) {
+      // Todos os números conferidos no PDF permanecem visíveis. Quando a
+      // segmentação não cobre um lote, sua âncora vem do círculo original,
+      // sem associar a ele o polígono de outro lote.
+      if ((markers || this._satelliteLotPlanRequestedMarkersV1) && (usesGreenLotMapping || usesCanonicalTraceMarkers)) {
         const renderedLotIds = new Set(projectedLots.map(({ lotId }) => lotId));
-        [...canonicalTraceMarkerByLot.entries()]
+        const fallbackEntries = usesGreenLotMapping
+          ? [...greenMappingByLot.entries()]
+          : [...canonicalTraceMarkerByLot.entries()];
+        fallbackEntries
           .filter(([lotId]) =>
             !renderedLotIds.has(lotId) && officialMarkerByLot.has(lotId),
           )
@@ -548,7 +550,7 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
             marker.type = "button";
             marker.className = "satellite-lot-plan-marker";
             marker.dataset.lot = lotId;
-            marker.dataset.lotSource = "canonical-trace-fallback";
+            marker.dataset.lotSource = usesGreenLotMapping ? "pdf-circle-only" : "canonical-trace-fallback";
             marker.dataset.masterplanRelativeU = String(relative.u);
             marker.dataset.masterplanRelativeV = String(relative.v);
             marker.dataset.lotNumber = lotNumber;
@@ -561,7 +563,7 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
             marker.style.top = `${(markerV * 100).toFixed(4)}%`;
             marker.textContent = lotNumber;
             marker.setAttribute("aria-label", label);
-            marker.title = `${label} · contorno recuperado da geometria oficial`;
+            marker.title = usesGreenLotMapping ? `${label} · posição conferida no PDF` : `${label} · contorno recuperado da geometria oficial`;
             marker.addEventListener("pointerenter", () => showLotWidget(lotId, marker));
             marker.addEventListener("pointerleave", () => scheduleLotWidgetHide(lotId));
             marker.addEventListener("focus", () => showLotWidget(lotId, marker));
@@ -578,12 +580,12 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
               marker.classList.add("is-selected");
               prepareAssistantLotStatusPromptV1(label);
               this.dataset.selectedLot = lotId;
-              this.dataset.selectedLotSource = "canonical-trace-fallback";
+              this.dataset.selectedLotSource = marker.dataset.lotSource;
               this.selectedLotIds = new Set([lotId]);
               this.dataset.selectedLotCount = "1";
               this.dataset.selectedLots = lotId;
               surface.dataset.selectedLot = lotId;
-              surface.dataset.selectedLotSource = "canonical-trace-fallback";
+              surface.dataset.selectedLotSource = marker.dataset.lotSource;
               surface.dataset.selectedLotCount = "1";
               surface.dataset.selectedLots = lotId;
               showLotWidget(lotId, marker, { pinned: true });

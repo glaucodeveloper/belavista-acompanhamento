@@ -17,7 +17,7 @@ import { createPlanningRuntimeContextV1 } from "./planning/planning-runtime-cont
 import {
   CHAT_OPERATIONAL_EXECUTION_INSTRUCTION_V1,
 } from "./chat/policies.mjs";
-import { registerApplicationElementsV1 } from "./shared/application-elements-registration-v1.mjs?v=application-elements-registration-v4&pdf-marker-anchors-v1&pdf-yellow-circles-v2";
+import { registerApplicationElementsV1 } from "./shared/application-elements-registration-v1.mjs?v=application-elements-registration-v4&pdf-marker-anchors-v1&pdf-yellow-circles-v3";
 import { installApplicationEventCompositionV1 } from "./shared/application-event-composition-v1.mjs?v=application-event-composition-v1";
 import { INTEGRATION_SETTINGS_KEY } from "./shared/integration-settings-reader-v1.mjs?v=integration-settings-reader-v1";
 import { createCsvDownloaderV1 } from "./shared/csv-download-v1.mjs?v=csv-download-v1";
@@ -83,7 +83,7 @@ import {
   subscribeOperationalControlCenter,
   saveOperationalProposal,
 } from "../firebase.mjs?v=public-runtime-v49";
-import "../public-lead-form.mjs?v=public-usability-v1";
+import "../public-lead-form.mjs?v=pdf-lot-centers-v2";
 import "../reservation-flow.mjs?v=reservation-validation-v1";
 
 // O modelo 3D tem cerca de 22 MB. Não faça download durante a inicialização

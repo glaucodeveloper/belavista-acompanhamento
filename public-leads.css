@@ -653,6 +653,24 @@ body.public-leads-page .public-map-sticky>.public-map-static-bg{z-index:2;opacit
 body.public-leads-page .public-map-sticky>.admin-masterplan-overlay{z-index:3;overflow:clip;}
 body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay{z-index:4;overflow:clip;}
 body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-plan-marker{min-width:8px;height:8px;padding:0;border:1px solid #fff;border-radius:999px;background:#f1c21b;color:#161616;font:700 3px/8px "IBM Plex Mono",monospace;}
+/* A numeração permanece sobre o centro impresso no PDF. O círculo só ganha
+   espaço visual quando a planta já está ampliada o bastante para separá-los. */
+body.public-leads-page public-leads-surface[data-lot-marker-detail="number"] .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-plan-marker{
+  min-width:0;width:auto;height:auto;padding:0;border:0;border-radius:0;
+  background:transparent;box-shadow:none;color:#ffed86;
+  font:700 4px/1 "IBM Plex Mono",monospace;letter-spacing:-.12em;
+  text-shadow:0 0 1px #07101e,0 1px 2px #07101e;
+  transform:translate(-50%,-50%) scale(calc(1 / var(--public-plan-zoom,1)));
+}
+body.public-leads-page public-leads-surface[data-lot-marker-detail="number"] .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-plan-marker:is(:hover,:focus-visible,.is-selected){
+  width:auto;height:auto;background:transparent;box-shadow:none;color:#fff;
+  text-decoration:underline;
+}
+body.public-leads-page public-leads-surface[data-lot-marker-detail="circle"] .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-plan-marker{
+  min-width:11px;height:11px;padding:0;border:1px solid #fff;
+  font:700 5px/10px "IBM Plex Mono",monospace;
+  transform:translate(-50%,-50%) scale(calc(1 / var(--public-plan-zoom,1)));
+}
 body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-plan-polygons{display:block!important;}
 body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-hit-area{stroke:none;fill:transparent;}
 body.public-leads-page[data-public-scroll-section="title"] .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-plan-marker,

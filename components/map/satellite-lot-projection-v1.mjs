@@ -40,7 +40,7 @@ export const createSatelliteLotProjectionV1 = ({
           .filter((mapping) =>
             mapping &&
             /^Lote_\d{3}$/.test(String(mapping.lotId || "")) &&
-            /^Lote_\d{3}$/.test(String(mapping.greenPolygonId || "")) &&
+            (!mapping.greenPolygonId || /^Lote_\d{3}$/.test(String(mapping.greenPolygonId))) &&
             Number.isFinite(Number(mapping.u)) &&
             Number.isFinite(Number(mapping.v)),
           )
@@ -96,6 +96,7 @@ export const createSatelliteLotProjectionV1 = ({
   });
   const commonAreaPolygons = hasMasterplanOverlay && masterplanLots
     ? [...commonAreaSourceIds].flatMap((sourceId) => {
+        if ([...greenMappingByLot.values()].some((mapping) => mapping.greenPolygonId === sourceId)) return [];
         const polygon = masterplanLots[sourceId];
         if (!Array.isArray(polygon) || polygon.length < 3) return [];
         const projected = polygon

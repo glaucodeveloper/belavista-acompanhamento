@@ -18,7 +18,6 @@ const H = [
 ];
 const sourceSize = { width: 1800, height: 2098 };
 const overlaySize = { width: 2886, height: 3468 };
-const invalidOfficialLots = new Set([23, 41, 48, 69, 114, 133, 164, 195, 208, 212]);
 
 function project({ u, v }) {
   const x = u * sourceSize.width;
@@ -52,7 +51,6 @@ const polygonEntries = Object.entries(polygons).map(([greenPolygonId, points]) =
   polygon: points.map(([u, v]) => [u * overlaySize.width, v * overlaySize.height]),
 }));
 const candidates = labels
-  .filter((label) => !invalidOfficialLots.has(Number(label.number)))
   .map((label) => {
     const point = project(label);
     return {
@@ -77,12 +75,10 @@ for (const candidate of [...candidates].sort((a, b) => b.candidates[0].signedDis
   }
 }
 for (const candidate of candidates.filter(({ label }) => !resolved.has(label.lotId))) {
-  const pick = candidate.candidates.find((entry) => !claimed.has(entry.greenPolygonId));
-  if (!pick) throw new Error(`Sem polígono verde disponível para ${candidate.label.lotId}`);
-  claimed.add(pick.greenPolygonId);
-  // O polígono alternativo define apenas a área clicável. A posição visual
-  // permanece exatamente no círculo numerado da prancha original.
-  resolved.set(candidate.label.lotId, { candidate, pick, anchor: candidate.point, mode: "pdf-circle" });
+  // A segmentação não cobre todos os lotes desenhados na prancha. Associar o
+  // círculo a um polígono distante fazia o clique abrir outro lote. Mantemos
+  // o marcador oficial sem inventar uma geometria para esses casos.
+  resolved.set(candidate.label.lotId, { candidate, pick: null, anchor: candidate.point, mode: "pdf-circle-only" });
 }
 
 const mappings = candidates
@@ -90,7 +86,7 @@ const mappings = candidates
   .map(({ candidate, pick, anchor, mode }) => ({
     lotId: candidate.label.lotId,
     number: Number(candidate.label.number),
-    greenPolygonId: pick.greenPolygonId,
+    greenPolygonId: pick?.greenPolygonId || null,
     u: Number((anchor.x / overlaySize.width).toFixed(8)),
     v: Number((anchor.y / overlaySize.height).toFixed(8)),
     anchor: mode,
@@ -104,8 +100,8 @@ const output = {
     labels: "pdf-lot-labels-v1.json",
     polygons: "masterplan-lot-polygons-v2.json",
     overlay: "alianca-park-masterplan-lot-overlay-v2.webp",
-    method: "homography PDF circles for marker anchors; unique nearest polygon fallback for hit areas",
-    excludedOfficialLots: [...invalidOfficialLots].sort((a, b) => a - b),
+    method: "homography PDF circles for marker anchors; polygons only where the circle lies inside a unique segmented lot",
+    excludedOfficialLots: [],
   },
   mappings,
 };
@@ -113,4 +109,4 @@ fs.writeFileSync(
   path.join(root, "assets/data/pdf-lot-green-mapping-v1.json"),
   `${JSON.stringify(output, null, 2)}\n`,
 );
-console.log(JSON.stringify({ mappings: mappings.length, uniquePolygons: claimed.size, centroidFallbacks: mappings.filter((item) => item.anchor !== "pdf-circle").length }));
+console.log(JSON.stringify({ mappings: mappings.length, uniquePolygons: claimed.size, circleOnly: mappings.filter((item) => item.anchor === "pdf-circle-only").length }));

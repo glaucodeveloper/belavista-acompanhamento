@@ -45,16 +45,16 @@ test("mapa principal libera números de lotes a partir de 1,5× e envia o contex
   await expect(map).toBeVisible({ timeout: 20_000 });
 
   const markers = map.locator(".satellite-lot-plan-marker");
-  // Apenas os 261 lotes comerciais reconhecidos e associados à prancha PDF
-  // podem receber marcador; IDs técnicos/retângulos do DWG não são lotes.
-  await expect.poll(() => markers.count(), { timeout: 20_000 }).toBe(261);
+  // Os 272 números da prancha recebem marcador. Treze deles não possuem
+  // polígono segmentado confiável, mas mantêm a âncora do círculo original.
+  await expect.poll(() => markers.count(), { timeout: 20_000 }).toBe(272);
   const parcelHitAreas = map.locator(".satellite-lot-hit-area");
-  await expect.poll(() => parcelHitAreas.count(), { timeout: 20_000 }).toBe(261);
+  await expect.poll(() => parcelHitAreas.count(), { timeout: 20_000 }).toBe(259);
   await expect(map).toHaveAttribute(
     "data-satellite-lot-plan",
     /polígonos UV do masterplan · alinhados à arte v2/,
   );
-  await expect(map).toHaveAttribute("data-satellite-lot-markers", "261");
+  await expect(map).toHaveAttribute("data-satellite-lot-markers", "272");
   // O enquadramento inicial aproxima a prancha com uma margem visual; por
   // isso os marcadores comerciais já podem estar disponíveis ao abrir.
   await expect(markers.first()).toBeVisible();
@@ -123,7 +123,7 @@ test("mapa seletor em Valores por lote mostra e abre o controle pelo marcador", 
   await expect(map).toBeVisible();
 
   const markers = map.locator(".satellite-lot-plan-marker");
-  await expect.poll(() => markers.count(), { timeout: 20_000 }).toBe(261);
+  await expect.poll(() => markers.count(), { timeout: 20_000 }).toBe(272);
   await expect(markers.first()).toBeVisible();
   await markers.first().click({ force: true });
 

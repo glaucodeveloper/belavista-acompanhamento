@@ -107,7 +107,7 @@ test("preserva a fileira de borda do PDF original sem reconstruir contornos e ab
   const markers = map.locator(".satellite-lot-plan-marker");
   // No technical fallback parcels or white replacement rectangles. The
   // commercial markers are independent of the original artwork coverage.
-  await expect.poll(() => markers.count(), { timeout: 20_000 }).toBe(261);
+  await expect.poll(() => markers.count(), { timeout: 20_000 }).toBe(272);
   await expect(map.locator('[data-lot-source="canonical-trace-fallback"]')).toHaveCount(0);
   await expect(map.locator('.satellite-lot-visual-recovery-outline')).toHaveCount(0);
   const artwork=map.locator('[data-masterplan-original-pdf]');
