@@ -96,7 +96,7 @@
   "build": {
     "appId": "br.com.aliancapark.desktop",
     "productName": "Aliança Park Desktop",
-    "icon": "assets/public/alianca-park-logo-full-transparent-v552.png",
+    "icon": "assets/public/alianca-park-logo-full-letter-cutouts-v555.png",
     "asar": true,
     "files": [
       "**/*",
