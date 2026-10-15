@@ -1,0 +1,132 @@
+/* Public journey: expose the map before asking visitors to use the assistant. */
+body.public-leads-page .public-skip-link{
+  position:fixed;z-index:100;top:10px;left:12px;padding:12px 16px;
+  background:#f2b632;color:#10131b;font:600 14px/1.2 "IBM Plex Sans",sans-serif;
+  text-decoration:none;transform:translateY(-160%);
+}
+body.public-leads-page .public-skip-link:focus-visible{
+  transform:none;outline:3px solid #fff;outline-offset:2px;
+}
+body.public-leads-page .public-map-entry-target{
+  position:absolute;top:80svh;left:0;width:1px;height:1px;pointer-events:none;
+}
+body.public-leads-page .public-hero-map-link{
+  display:inline-flex;align-items:center;justify-content:space-between;gap:26px;
+  min-height:48px;margin-top:25px;padding:0 17px;
+  border:1px solid rgba(242,182,50,.76);background:#f2b632;
+  color:#10131b;font:600 14px/1.2 "IBM Plex Sans",sans-serif;
+  text-decoration:none;pointer-events:auto;
+  transition:background-color .2s ease,box-shadow .2s ease;
+}
+body.public-leads-page .public-hero-map-link:hover{background:#ffd27a;}
+body.public-leads-page .public-hero-map-link:focus-visible{
+  outline:3px solid #fff;outline-offset:3px;
+}
+body.public-leads-page .public-hero-map-link span{font-size:20px;line-height:1;}
+
+/* Contact is one working action, instead of links that only navigate to #. */
+body.public-leads-page .public-contact-actions{grid-template-columns:minmax(0,1fr);}
+body.public-leads-page .public-contact-actions button{
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:8px;
+  width:100%;min-height:96px;padding:20px;border:1px solid rgba(31,70,44,.38);
+  background:#fff;color:#19331f;text-align:left;cursor:pointer;
+  transition:background-color .2s ease,border-color .2s ease;
+}
+body.public-leads-page .public-contact-actions button:hover{
+  background:#f4f8e9;border-color:#5c8a2b;
+}
+body.public-leads-page .public-contact-actions button:focus-visible{
+  outline:3px solid #0f62fe;outline-offset:3px;
+}
+body.public-leads-page .public-contact-actions button b{font:600 17px/1.25 "IBM Plex Sans",sans-serif;}
+body.public-leads-page .public-contact-actions button small{font-size:13px;line-height:1.5;}
+body.public-leads-page .public-lead-modal header p,
+body.public-leads-page .public-modal-note{font-size:12px;line-height:1.5;}
+body.public-leads-page .public-lead-modal label{font-size:13px;line-height:1.4;}
+body.public-leads-page .public-lead-modal input{font-size:16px;}
+body.public-leads-page .public-modal-primary{min-height:44px;font-size:14px;}
+
+body.public-leads-page .public-chat-v52-collapse b{display:none;}
+@media(max-width:900px){
+  body.public-leads-page .public-hero-letter{
+    top:24%;max-width:calc(100vw - 40px);
+  }
+  body.public-leads-page .public-hero-letter h1{
+    font-size:clamp(39px,9vw,70px);line-height:.98;
+  }
+  body.public-leads-page .public-hero-letter p{
+    max-width:38ch;font-size:14px;line-height:1.5;
+  }
+  body.public-leads-page public-lead-chat:not([data-public-chat-collapsed="true"]){
+    left:12px!important;right:12px!important;top:auto!important;bottom:12px!important;
+    width:auto!important;max-width:calc(100vw - 24px)!important;transform:none!important;
+  }
+  body.public-leads-page public-lead-chat:not([data-public-chat-collapsed="true"]) .public-chatbox{
+    min-height:min(590px,calc(100svh - 24px))!important;
+    max-height:calc(100svh - 24px)!important;
+  }
+  body.public-leads-page .public-chatbox,
+  body.public-leads-page .public-chat-message,
+  body.public-leads-page .public-chat-input{min-width:0!important;}
+  body.public-leads-page .public-chat-message{
+    padding:42px 20px 20px!important;
+    font-size:clamp(17px,4vw,21px)!important;
+    line-height:1.42!important;overflow-wrap:anywhere;
+  }
+  body.public-leads-page .public-chat-v52-kicker{
+    top:17px;left:20px;font-size:9px;letter-spacing:.08em;
+  }
+  body.public-leads-page .public-chat-v52-chrome{min-height:64px;padding:12px 17px;}
+  body.public-leads-page .public-chat-v52-brand b{font-size:10px;letter-spacing:.08em;}
+  body.public-leads-page .public-chat-capabilities span{font-size:9px!important;}
+  body.public-leads-page .public-chat-media-row{font-size:10px;}
+  body.public-leads-page .public-chat-input textarea{font-size:16px!important;}
+
+  body.public-leads-page public-lead-chat[data-public-chat-collapsed="true"]{
+    left:auto!important;right:16px!important;top:auto!important;bottom:16px!important;
+    width:186px!important;max-width:calc(100vw - 32px)!important;
+    height:54px!important;transform:none!important;
+  }
+  body.public-leads-page public-lead-chat[data-public-chat-collapsed="true"] .public-chatbox{
+    display:block!important;height:54px!important;min-height:54px!important;
+    max-height:54px!important;padding:0!important;overflow:visible!important;
+    border-radius:4px!important;
+  }
+  body.public-leads-page public-lead-chat[data-public-chat-collapsed="true"] .public-chat-v52-chrome{
+    height:52px;min-height:52px;padding:0;border:0;background:transparent!important;
+  }
+  body.public-leads-page public-lead-chat[data-public-chat-collapsed="true"] .public-chat-v52-brand,
+  body.public-leads-page public-lead-chat[data-public-chat-collapsed="true"] .public-chat-v52-live{
+    display:none!important;
+  }
+  body.public-leads-page public-lead-chat[data-public-chat-collapsed="true"] .public-chat-v52-collapse{
+    position:static!important;display:flex!important;align-items:center;justify-content:space-between;
+    width:100%!important;height:52px!important;padding:0 14px!important;
+    border:0!important;border-radius:0!important;
+    background:#f2b632!important;color:#10131b!important;
+    font-size:16px!important;transform:none!important;
+  }
+  body.public-leads-page public-lead-chat[data-public-chat-collapsed="true"] .public-chat-v52-collapse b{
+    display:block;font:600 14px/1.2 "IBM Plex Sans",sans-serif;
+  }
+  body.public-leads-page public-lead-chat[data-public-chat-collapsed="true"] .public-chat-v52-collapse span{
+    font-size:24px;transform:rotate(180deg);
+  }
+}
+@media(max-width:600px){
+  body.public-leads-page .public-hero-letter{top:24%;}
+  body.public-leads-page .public-hero-map-link{min-height:44px;margin-top:18px;font-size:13px;}
+  body.public-leads-page .public-chat-v52-brand small,
+  body.public-leads-page .public-chat-v52-live{display:none!important;}
+  body.public-leads-page .public-chat-capabilities{margin:0 14px!important;}
+  body.public-leads-page .public-chat-input{margin:12px 14px 19px!important;}
+  body.public-leads-page .public-chat-media-row{margin:0 14px;}
+  body.public-leads-page .public-contact-actions button{min-height:88px;}
+}
+@media(max-width:900px) and (pointer:coarse){
+  body.public-leads-page .public-chat-media-row>span{display:none;}
+}
+@media(prefers-reduced-motion:reduce){
+  body.public-leads-page .public-hero-map-link,
+  body.public-leads-page .public-contact-actions button{transition:none;}
+}

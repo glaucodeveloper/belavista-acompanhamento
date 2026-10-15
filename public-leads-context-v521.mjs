@@ -719,7 +719,7 @@ function installChat(){
 
   const chrome=document.createElement('div');
   chrome.className='public-chat-v52-chrome';
-  chrome.innerHTML=`<div class="public-chat-v52-brand"><img class="public-chat-v52-mark" src="${BRAND_MARK}" alt=""><span><b>CORRETAGEM · ALIANÇA PARK</b><small>VENDA DE LOTES · INFORMAÇÃO DO VENDEDOR</small></span></div><div class="public-chat-v52-live"><i></i><span>ATIVA</span></div><button type="button" class="public-chat-v52-collapse" data-public-chat-collapse aria-expanded="true" aria-controls="${box.id}" aria-label="Recolher atendimento para a direita"><span aria-hidden="true">›</span></button>`;
+  chrome.innerHTML=`<div class="public-chat-v52-brand"><img class="public-chat-v52-mark" src="${BRAND_MARK}" alt=""><span><b>CORRETAGEM · ALIANÇA PARK</b><small>VENDA DE LOTES · INFORMAÇÃO DO VENDEDOR</small></span></div><div class="public-chat-v52-live"><i></i><span>ATIVA</span></div><button type="button" class="public-chat-v52-collapse" data-public-chat-collapse aria-expanded="true" aria-controls="${box.id}" aria-label="Recolher atendimento"><b>Falar sobre lotes</b><span aria-hidden="true">›</span></button>`;
   box.prepend(chrome);
 
   const collapseButton=chrome.querySelector('[data-public-chat-collapse]');
@@ -732,14 +732,23 @@ function installChat(){
     document.body.dataset.publicChatCollapsed=value?'true':'false';
     if(!collapseButton)return;
     collapseButton.setAttribute('aria-expanded',String(!value));
-    collapseButton.setAttribute('aria-label',value?'Abrir atendimento':'Recolher atendimento para a direita');
+    collapseButton.setAttribute('aria-label',value?'Abrir atendimento sobre lotes':'Recolher atendimento');
     collapseButton.dataset.state=value?'collapsed':'expanded';
     const glyph=collapseButton.querySelector('span');
     if(glyph)glyph.textContent=value?'‹':'›';
   };
   collapseButton?.addEventListener('click',()=>{
     autoCollapsedByScroll=false;
-    setChatCollapsed(box.dataset.publicChatCollapsed!=='true');
+    const next=box.dataset.publicChatCollapsed!=='true';
+    setChatCollapsed(next);
+    if(!next&&matchMedia('(max-width:900px)').matches){
+      requestAnimationFrame(()=>box.querySelector('[name="message"]')?.focus());
+    }
+  });
+  box.addEventListener('keydown',event=>{
+    if(event.key!=='Escape'||box.dataset.publicChatCollapsed==='true'||!matchMedia('(max-width:900px)').matches)return;
+    setChatCollapsed(true);
+    collapseButton?.focus();
   });
   chatHost?.addEventListener('belavista:public-map-scroll-zoom',event=>{
     const active=event.detail?.active===true;
@@ -753,7 +762,7 @@ function installChat(){
       autoCollapsedByScroll=false;
     }
   });
-  setChatCollapsed(false);
+  setChatCollapsed(matchMedia('(max-width:900px)').matches);
   if(Number(document.querySelector('public-leads-surface')?.dataset.planProgress||0)>.08){
     chatHost?.dispatchEvent(new CustomEvent('belavista:public-map-scroll-zoom',{detail:{active:true}}));
   }

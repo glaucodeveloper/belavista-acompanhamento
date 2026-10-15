@@ -83,7 +83,7 @@ import {
   subscribeOperationalControlCenter,
   saveOperationalProposal,
 } from "../firebase.mjs?v=public-runtime-v49";
-import "../public-lead-form.mjs?v=public-map-gestures-v6&scroll-chat-retract-v1";
+import "../public-lead-form.mjs?v=public-usability-v1";
 import "../reservation-flow.mjs?v=reservation-validation-v1";
 
 // O modelo 3D tem cerca de 22 MB. Não faça download durante a inicialização

@@ -1,4 +1,4 @@
-import './components.js?v=public-road-alignment-v5573&logo-transparent-v552&public-map-gestures-v6&pdf-marker-anchors-v1&pdf-yellow-circles-v2&scroll-chat-retract-v1&route=ngrok-route-v1';
+import './components.js?v=public-usability-v1';
 window.addEventListener('DOMContentLoaded',()=>window.lucide?.createIcons?.());
 if('serviceWorker' in navigator&&location.protocol!=='file:'){
   (async()=>{

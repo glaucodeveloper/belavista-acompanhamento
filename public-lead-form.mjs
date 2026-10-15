@@ -241,7 +241,9 @@ const HIGHLIGHT_COPY={
 };
 
 const pageMarkup=()=>`<div class="public-leads-experience">
+  <a class="public-skip-link" href="#mapa-de-lotes">Ir para o mapa de lotes</a>
   <section class="public-map-story" data-map-story>
+    <span class="public-map-entry-target" id="mapa-de-lotes" tabindex="-1" aria-label="Mapa de lotes"></span>
     <div class="public-map-sticky">
       <div class="public-map-static-bg" aria-hidden="true"></div>
       <map-scene data-public-map data-public-presentation data-admin-public-map data-public-static-only="true" data-stage="Aliança Park · comercial" aria-label="Mapa interativo dos lotes do loteamento" data-public-static-base="true" data-public-static-capture="/assets/public/dwg-satellite-public-v1.webp"></map-scene>
@@ -251,6 +253,7 @@ const pageMarkup=()=>`<div class="public-leads-experience">
         <span>ALIANÇA PARK · AMARGOSA, BAHIA</span>
         <h1>Escolha seu lote<br><em>em Amargosa, Bahia.</em></h1>
         <p>Consulte disponibilidade, compare posições e avance para uma reserva assistida.</p>
+        <a class="public-hero-map-link" href="#mapa-de-lotes">Explorar lotes no mapa <span aria-hidden="true">↓</span></a>
       </div>
 
       <div class="public-scroll-legend" data-scroll-legend aria-live="off">
@@ -300,8 +303,7 @@ const pageMarkup=()=>`<div class="public-leads-experience">
       <h2>Conheça o loteamento<br>do seu jeito.</h2>
       <p>Converse para consultar disponibilidade, organizar uma visita e entender as próximas etapas da reserva.</p>
       <div class="public-contact-actions">
-        <a href="#" data-contact-channel="instagram" aria-disabled="true"><b>Instagram</b><small>@instagram_do_empreendimento</small></a>
-        <a href="#" data-contact-channel="whatsapp" aria-disabled="true"><b>Mensagem pelo WhatsApp</b><small>Número a configurar</small></a>
+        <button type="button" data-open-public-chat><b>Iniciar conversa</b><small>Pergunte sobre lotes, valores e visita pelo atendimento desta página.</small></button>
       </div>
     </div>
     <aside class="public-credentials" aria-label="Dados legais do empreendimento">
@@ -355,6 +357,19 @@ export class PublicLeadsSurface extends HTMLElement{
     const letter=this.querySelector('[data-hero-letter]'),legend=this.querySelector('[data-scroll-legend]'),map=this.map(),lotBox=this.querySelector('[data-selected-lot]'),story=this.querySelector('[data-map-story]');
     const sticky=this.querySelector('.public-map-sticky'),gestureControls=this.querySelector('[data-public-map-controls]');
     if(!story||!letter||!legend)return;
+    this.querySelectorAll('a[href="#mapa-de-lotes"]').forEach(link=>link.addEventListener('click',event=>{
+      event.preventDefault();
+      const target=this.querySelector('#mapa-de-lotes');
+      const top=story.getBoundingClientRect().top+scrollY+innerHeight*1.12;
+      scrollTo({top,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+      target?.focus({preventScroll:true});
+    }));
+    this.querySelector('[data-open-public-chat]')?.addEventListener('click',()=>{
+      story.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});
+      const chat=this.querySelector('public-lead-chat');
+      if(chat?.dataset.publicChatCollapsed==='true')chat.querySelector('[data-public-chat-collapse]')?.click();
+      chat?.querySelector('[name="message"]')?.focus({preventScroll:true});
+    });
     const clamp=value=>Math.min(1,Math.max(0,value));
     const smooth=(a,b,value)=>{const t=clamp((value-a)/Math.max(.0001,b-a));return t*t*(3-2*t);};
     const gesture={zoom:1,panX:0,panY:0,drag:null};
@@ -384,6 +399,8 @@ export class PublicLeadsSurface extends HTMLElement{
       const lift=heroFade*34;
       const side=heroFade*10;
       letter.style.opacity=String(1-heroFade);
+      letter.inert=heroFade>.95;
+      letter.setAttribute('aria-hidden',heroFade>.95?'true':'false');
       letter.style.filter=`blur(${(heroFade*3.2).toFixed(2)}px)`;
       letter.style.setProperty('--public-letter-lift',`${lift.toFixed(2)}px`);
       letter.style.setProperty('--public-letter-side',`${side.toFixed(2)}px`);
