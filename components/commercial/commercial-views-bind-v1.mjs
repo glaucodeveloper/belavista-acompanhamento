@@ -64,7 +64,7 @@ ViewLayer.prototype.bind = function (...args) {
     });
     const printHeader = documentRef.createElement("div");
     printHeader.className = "lot-catalog-print-header";
-    printHeader.innerHTML = `<div class="lot-catalog-print-brand"><img src="./assets/public/alianca-park-logo-full-transparent-v553.png" alt="Aliança Park Loteamento"></div><div class="lot-catalog-print-heading"><span>RELATÓRIO OPERACIONAL · LOTES</span><h1>Repasse e valores por lote</h1><p>Tabela de referência para acompanhamento de entradas, pagamentos e repasses.</p></div><div class="lot-catalog-print-meta"><b>Aliança Park</b><span>${REPASSE_PRICE_CATALOG.length} lotes listados</span><span>Emitido em ${new DateRef().toLocaleString("pt-BR")}</span></div>`;
+    printHeader.innerHTML = `<div class="lot-catalog-print-brand"><img src="./assets/public/alianca-park-logo-full-cutouts-v554.png" alt="Aliança Park Loteamento"></div><div class="lot-catalog-print-heading"><span>RELATÓRIO OPERACIONAL · LOTES</span><h1>Repasse e valores por lote</h1><p>Tabela de referência para acompanhamento de entradas, pagamentos e repasses.</p></div><div class="lot-catalog-print-meta"><b>Aliança Park</b><span>${REPASSE_PRICE_CATALOG.length} lotes listados</span><span>Emitido em ${new DateRef().toLocaleString("pt-BR")}</span></div>`;
     catalog.prepend(printHeader);
     const printFooter = documentRef.createElement("footer");
     printFooter.className = "lot-catalog-print-footer";
@@ -375,4 +375,3 @@ ViewLayer.prototype.bind = function (...args) {
   return result;
   };
 }
-

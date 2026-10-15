@@ -10,7 +10,7 @@ const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 test('loading publico usa campanha visual Aliança Park',()=>{
   const source=read('public-model-loading-v531.mjs');
   assert.match(source,/const VERSION='5\.5\.0'/);
-  assert.match(source,/alianca-park-logo-full-transparent-v552\.png/);
+  assert.match(source,/alianca-park-logo-full-cutouts-v554\.png/);
   assert.match(source,/Seu lugar para/);
   assert.match(source,/crescer e florescer/);
   assert.match(source,/alianca-park-masterplan-static-v534\.webp/);
@@ -27,5 +27,5 @@ test('estilo troca spinner Android por emblema e formas organicas',()=>{
 
 test('pagina publica usa cachebuster da nova abertura',()=>{
   const html=read('public-leads.html');
-  assert.ok((html.match(/logo-edited-mark-v551/g)||[]).length>=3);
+  assert.ok((html.match(/logo-letter-counters-v554/g)||[]).length>=3);
 });

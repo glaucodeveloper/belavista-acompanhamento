@@ -24,6 +24,6 @@ test('marca do atendimento usa o mesmo símbolo oficial da capa do PDF',()=>{
 });
 
 test('assets oficiais da marca permanecem publicados',()=>{
-  for(const asset of ['alianca-park-logo-full-transparent-v552.png','alianca-park-logo-mark-transparent-v551.png'])
+  for(const asset of ['alianca-park-logo-full-cutouts-v554.png','alianca-park-logo-mark-transparent-v551.png'])
     assert.equal(fs.existsSync(path.join(root,'assets/public',asset)),true,asset);
 });

@@ -59,7 +59,7 @@ async function createWindow(){
     width:1440,
     height:920,
     backgroundColor:'#07131d',
-    icon:join(here,'..','assets','public','alianca-park-logo-full-transparent-v552.png'),
+    icon:join(here,'..','assets','public','alianca-park-logo-full-cutouts-v554.png'),
     show:false,
     webPreferences:{
       preload:join(here,'preload.mjs'),
