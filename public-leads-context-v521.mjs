@@ -60,7 +60,7 @@ function installStyles(){
       display:block!important;
       visibility:visible!important;
       opacity:1!important;
-      background-image:linear-gradient(90deg,rgba(3,17,12,.24),rgba(3,17,12,.02) 64%),url('/assets/public/dwg-satellite-treated-v5411.png')!important;
+      background-image:linear-gradient(90deg,rgba(3,17,12,.24),rgba(3,17,12,.02) 64%),url('/assets/public/dwg-satellite-public-v1.webp')!important;
       background-size:cover,cover!important;
       background-position:center,center!important;
       background-repeat:no-repeat!important;
@@ -148,7 +148,7 @@ function installStyles(){
       visibility:hidden!important;
     }
     body.public-leads-page .public-map-static-bg{
-      background-image:linear-gradient(90deg,rgba(3,17,12,.24),rgba(3,17,12,.02) 64%),url('/assets/public/dwg-satellite-treated-v5411.png')!important;
+      background-image:linear-gradient(90deg,rgba(3,17,12,.24),rgba(3,17,12,.02) 64%),url('/assets/public/dwg-satellite-public-v1.webp')!important;
       background-size:cover,cover!important;
       background-position:center,center!important;
       background-repeat:no-repeat!important;
@@ -376,12 +376,12 @@ function installStyles(){
       pointer-events:none;
     }
 
-    /* BELAVISTA_PUBLIC_FIXED_150VH_SCROLL_V5324 */
+    /* A cena permanece visível durante o zoom contínuo dos lotes. */
     html{scroll-behavior:smooth}
     body.public-leads-page .public-map-story{
       position:relative!important;
-      min-height:150vh!important;
-      height:150vh!important;
+      min-height:300vh!important;
+      height:300vh!important;
       overflow:visible!important;
       scroll-margin-top:0!important;
     }
@@ -403,7 +403,7 @@ function installStyles(){
     }
     body.public-leads-page .public-map-sticky[data-public-pin-state="released"]{
       position:absolute!important;
-      top:150vh!important;
+      top:200vh!important;
       z-index:20!important;
     }
     body.public-leads-page .public-hero-letter{
@@ -515,7 +515,7 @@ function ensureStaticFallback(){
   const sticky=document.querySelector('.public-map-sticky');
   const map=sticky?.querySelector(PUBLIC_MAP_SELECTOR)||document.querySelector(PUBLIC_MAP_SELECTOR);
   if(!map)return null;
-  const satelliteImageOnly=document.body.classList.contains('public-leads-page');
+  const satelliteImageOnly=document.body.classList.contains('public-leads-page')&&!map.hasAttribute('data-admin-public-map');
   if(satelliteImageOnly){
     map.setAttribute('data-public-static-only','true');
     map.dataset.publicSatelliteImageOnly='true';
@@ -525,7 +525,7 @@ function ensureStaticFallback(){
     bg=document.createElement('div');
     bg.className='public-map-static-bg';
     bg.setAttribute('aria-hidden','true');
-    bg.style.backgroundImage="linear-gradient(90deg,rgba(3,17,12,.24),rgba(3,17,12,.02) 64%),url('/assets/public/dwg-satellite-treated-v5411.png')";
+    bg.style.backgroundImage="linear-gradient(90deg,rgba(3,17,12,.24),rgba(3,17,12,.02) 64%),url('/assets/public/dwg-satellite-public-v1.webp')";
     bg.style.backgroundSize='cover,cover';
     bg.style.backgroundPosition='center,center';
     bg.dataset.publicFallback='DWG-centred treated satellite raster';
@@ -534,7 +534,7 @@ function ensureStaticFallback(){
   const staticOnly=map.hasAttribute('data-public-static-only');
   const leaflet=map.querySelector('.map-host');
   if(leaflet){
-    leaflet.style.backgroundImage="linear-gradient(90deg,rgba(3,17,12,.24),rgba(3,17,12,.02) 64%),url('/assets/public/dwg-satellite-treated-v5411.png')";
+    leaflet.style.backgroundImage="linear-gradient(90deg,rgba(3,17,12,.24),rgba(3,17,12,.02) 64%),url('/assets/public/dwg-satellite-public-v1.webp')";
     leaflet.style.backgroundSize='cover,cover';
     leaflet.style.backgroundPosition='center,center';
     leaflet.style.backgroundRepeat='no-repeat';
@@ -665,16 +665,16 @@ async function applyDwgSatelliteFrame(map,attempt=0){
       map.dataset.publicMapTexture='local captured satellite image · static-only · no Maps';
       if(map.dataset.publicSatelliteImageOnly==='true'){
         const visualSurface=map.closest('.public-map-sticky')||map;
-        visualSurface.querySelectorAll('.satellite-lot-plan-overlay,[data-public-static-lot-markers],.public-lot-info-v5318,[data-public-lot-details-v5335],[data-selected-lot]').forEach(node=>node.remove());
+        visualSurface.querySelectorAll('.satellite-lot-plan-overlay,[data-public-static-lot-markers],.public-lot-info-v5318,[data-public-lot-details-v5335],.public-selected-lot').forEach(node=>node.remove());
         map.dataset.publicStaticLotMarkers='0';
         map.dataset.publicLotPolygonCount='0';
         map.dataset.publicCommercialMarkerState='disabled-satellite-image-only';
         clearCommercialMarkers(map);
       }else{
-        // A camada PDF e seus marcadores continuam disponíveis nos mapas
-        // administrativos estáticos. A página pública pede somente a foto.
-        await map.installSatelliteLotPlanOverlayV1?.({markers:false});
-        installStaticLotMarkers(map,geo);
+        // Reutiliza a planta e os alvos de lote da área administrativa.
+        map.installAdminMasterplanOverlayV1?.();
+        await map.installSatelliteLotPlanOverlayV1?.({markers:true,outlines:false});
+        if(!map.hasAttribute('data-admin-public-map'))installStaticLotMarkers(map,geo);
         loadPublicCommercialDeals()
           .then(entries=>updateStaticLotMarkerStatuses(map,entries))
           .catch(()=>{});
@@ -723,6 +723,8 @@ function installChat(){
   box.prepend(chrome);
 
   const collapseButton=chrome.querySelector('[data-public-chat-collapse]');
+  let autoCollapsedByScroll=false;
+  let scrollZoomActive=false;
   const setChatCollapsed=collapsed=>{
     const value=Boolean(collapsed);
     box.dataset.publicChatCollapsed=value?'true':'false';
@@ -735,8 +737,26 @@ function installChat(){
     const glyph=collapseButton.querySelector('span');
     if(glyph)glyph.textContent=value?'‹':'›';
   };
-  collapseButton?.addEventListener('click',()=>setChatCollapsed(box.dataset.publicChatCollapsed!=='true'));
+  collapseButton?.addEventListener('click',()=>{
+    autoCollapsedByScroll=false;
+    setChatCollapsed(box.dataset.publicChatCollapsed!=='true');
+  });
+  chatHost?.addEventListener('belavista:public-map-scroll-zoom',event=>{
+    const active=event.detail?.active===true;
+    if(active===scrollZoomActive)return;
+    scrollZoomActive=active;
+    if(active&&box.dataset.publicChatCollapsed!=='true'){
+      setChatCollapsed(true);
+      autoCollapsedByScroll=true;
+    }else if(!active&&autoCollapsedByScroll){
+      setChatCollapsed(false);
+      autoCollapsedByScroll=false;
+    }
+  });
   setChatCollapsed(false);
+  if(Number(document.querySelector('public-leads-surface')?.dataset.planProgress||0)>.08){
+    chatHost?.dispatchEvent(new CustomEvent('belavista:public-map-scroll-zoom',{detail:{active:true}}));
+  }
 
   const message=box.querySelector('[data-chat-message]');
   if(message&&!message.dataset.salesSeedV5330){
@@ -2303,22 +2323,8 @@ let elasticBreakpoints={top:0,threshold:0,second:0,end:0};
 
 function ensureCaptionStack(){
   const sticky=document.querySelector('.public-map-sticky');
-  if(!sticky)return null;
-  let stack=sticky.querySelector('[data-public-scroll-captions]');
-  if(stack)return stack;
-  const legacy=sticky.querySelector('[data-scroll-legend]');
-  const legacyTitle=legacy?.querySelector('[data-legend-title]')?.textContent?.trim()||'Implantação';
-  const legacyText=legacy?.querySelector('[data-legend-text]')?.textContent?.trim()||'Leia o loteamento inteiro na mesma cena do modelo 3D.';
-  stack=document.createElement('div');
-  stack.className='public-scroll-caption-stack-v5319';
-  stack.dataset.publicScrollCaptions='true';
-  stack.setAttribute('aria-live','polite');
-  stack.innerHTML=`
-    <article><small>01 · LEITURA DO MAPA</small><b>${esc(legacyTitle)}</b><span>${esc(legacyText)}</span></article>
-    <article><small>02 · INTERAÇÃO</small><b>Escolha um lote</b><span>Rotacione, incline ou aproxime. Clique em um lote para abrir suas informações.</span></article>
-  `;
-  sticky.append(stack);
-  return stack;
+  sticky?.querySelectorAll('[data-public-scroll-captions],.public-scroll-caption-stack-v5319').forEach(node=>node.remove());
+  return null;
 }
 
 function syncPublicMapControls(map,enabled){

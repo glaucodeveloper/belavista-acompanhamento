@@ -17,7 +17,7 @@ import { createPlanningRuntimeContextV1 } from "./planning/planning-runtime-cont
 import {
   CHAT_OPERATIONAL_EXECUTION_INSTRUCTION_V1,
 } from "./chat/policies.mjs";
-import { registerApplicationElementsV1 } from "./shared/application-elements-registration-v1.mjs?v=application-elements-registration-v3";
+import { registerApplicationElementsV1 } from "./shared/application-elements-registration-v1.mjs?v=application-elements-registration-v4&pdf-marker-anchors-v1&pdf-yellow-circles-v2";
 import { installApplicationEventCompositionV1 } from "./shared/application-event-composition-v1.mjs?v=application-event-composition-v1";
 import { INTEGRATION_SETTINGS_KEY } from "./shared/integration-settings-reader-v1.mjs?v=integration-settings-reader-v1";
 import { createCsvDownloaderV1 } from "./shared/csv-download-v1.mjs?v=csv-download-v1";
@@ -33,6 +33,7 @@ import { brokerReasonsV9 } from "./commercial/broker-control-page-v1.mjs?v=broke
 import { commissionProfiles, commissionDeals } from "./commercial/commission-catalog-v1.mjs?v=commission-catalog-v1";
 import { installCommercialHistoryRegistrationV1 } from "./commercial/commercial-history-registration-v1.mjs?v=commercial-history-registration-v1";
 import { installCommercialDirectoryContractsRegistrationV1 } from "./commercial/commercial-directory-contracts-registration-v1.mjs?v=commercial-directory-contracts-registration-v1";
+import { installAiAgendaSettingsV1 } from "./shared/ai-agenda-settings-v1.mjs?v=2";
 import { installCommercialApplicationCompositionV1 } from "./commercial/commercial-application-composition-v1.mjs?v=commercial-application-composition-v1";
 import { installLeadsPageCompositionV1 } from "./commercial/leads-page-composition-v1.mjs?v=leads-operational-crm-v1";
 import { installFinanceApplicationCompositionV1 } from "./finance/finance-application-composition-v1.mjs?v=finance-application-composition-v1";
@@ -82,7 +83,7 @@ import {
   subscribeOperationalControlCenter,
   saveOperationalProposal,
 } from "../firebase.mjs?v=public-runtime-v49";
-import "../public-lead-form.mjs?v=public-instagram-handoff-v1";
+import "../public-lead-form.mjs?v=public-map-gestures-v6&scroll-chat-retract-v1";
 import "../reservation-flow.mjs?v=reservation-validation-v1";
 
 // O modelo 3D tem cerca de 22 MB. Não faça download durante a inicialização
@@ -671,6 +672,7 @@ installCommercialDirectoryContractsRegistrationV1({
   saveOperationalProposal,
   host: globalThis,
 });
+installAiAgendaSettingsV1(ViewLayer, { appStore, esc, notify });
 const AiChat = registerBelavistaAdminAiChatV1({
   host: globalThis,
   appStore,

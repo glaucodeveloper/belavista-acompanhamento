@@ -63,6 +63,7 @@ export const installStageAgendaApplicationCompositionV1 = ({
     notify,
     stagePersistentTimelineMarkupV1,
     stageV9LiveFor,
+    stageV9MaterialsFor,
     workbenchStageFromValueV1,
   });
 

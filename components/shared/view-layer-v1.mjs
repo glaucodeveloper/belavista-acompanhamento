@@ -1558,56 +1558,7 @@ export const createViewLayerV1 = (dependencies = {}) => {
       return `<div class="reports-workspace"><div class="reports-toolbar" aria-label="Toolbar de relatórios"><div class="report-toolbar-title"><span class="activity-kind">CENTRAL ADMINISTRATIVA</span><strong>Central de métricas</strong><small>${reportCatalog.length} leituras administrativas, operacionais e comerciais</small></div><label>Família<select data-report-family>${families.map((value) => `<option value="${esc(value)}" ${value === family ? "selected" : ""}>${esc(value)}</option>`).join("")}</select></label><label>Relatório<select data-report-type>${types.map((report) => `<option value="${esc(report.id)}" ${report.id === selected.id ? "selected" : ""}>${esc(report.label)}</option>`).join("")}</select></label><label>Período<select data-report-period><option value="2024-06" ${s.reportPeriod === "2024-06" ? "selected" : ""}>Junho de 2024</option><option value="2024-Q2" ${s.reportPeriod === "2024-Q2" ? "selected" : ""}>2º trimestre de 2024</option><option value="2024" ${s.reportPeriod === "2024" ? "selected" : ""}>Ano de 2024</option><option value="all" ${s.reportPeriod === "all" ? "selected" : ""}>Todo o projeto</option></select></label><button type="button" class="report-toolbar-button report-export" data-report-export>${ico("file-down")} Exportar CSV</button><button type="button" class="report-toolbar-button report-print" data-report-print>${ico("printer")} Imprimir</button></div><nav class="report-family-tabs" aria-label="Abas de família de métricas">${families.map((value) => `<button type="button" class="${value === family ? "active" : ""}" data-report-family-tab="${esc(value)}">${esc(value)}<small>${reportCatalog.filter((item) => item.family === value).length} métricas</small></button>`).join("")}</nav><section class="report-type-tabs" aria-label="Subitens explicativos da família">${types.map((report) => `<button type="button" class="${report.id === selected.id ? "active" : ""}" data-report-type-tab="${esc(report.id)}"><strong>${esc(report.label)}</strong><small>${esc(explanations[report.id] || report.description)}</small><span>${ico(report.icon)} ${esc(report.source)}</span></button>`).join("")}</section><glass-card class="float-card reports-main"><div class="card-head"><div><h3>${ico(selected.icon)} ${esc(selected.label)}</h3><small>${esc(selected.description)}</small></div><span class="chip violet">${esc(period)} · Atualizado agora</span></div><div class="report-context"><span>${ico("database")} Fonte: ${esc(selected.source)}</span><span>${esc(selected.family)} · relatório gerencial</span></div><div class="report-explainer"><b>${ico("circle-help")} Como interpretar</b><span>${esc(explanation)}</span><small>Planilha disponível: ${workbookSheets.join(" · ")}.</small></div><div class="report-grid">${selected.metrics.map((metric) => `<div class="report-metric"><small>${esc(metric[0])}</small><strong>${esc(metric[1])}</strong><span>${esc(metric[2])}</span></div>`).join("")}</div><div class="report-table-wrap"><table class="report-table"><thead><tr>${selected.columns.map((column) => `<th>${esc(column)}</th>`).join("")}<th>Desdobrar</th></tr></thead><tbody>${selected.rows.map((row, index) => `<tr class="report-data-row" data-report-row="${index}">${row.map((cell, col) => `<td>${col === row.length - 1 ? `<span class="report-signal ${signalClass(cell)}">${esc(cell)}</span>` : esc(cell)}</td>`).join("")}<td><button type="button" class="report-row-toggle" data-report-row-toggle="${index}" aria-expanded="false">Ver itens</button></td></tr>`).join("")}${rowDetails}</tbody></table></div><div class="report-footer"><span>${ico("link-2")} Relacionado às tabelas do projeto e ao período selecionado.</span><button type="button" class="report-inline-export" data-report-export>${ico("download")} Baixar relatório</button></div></glass-card></div>`;
     }
     settings() {
-      const s = appStore.get(),
-        actor = s.currentActor || { name: "Warley", label: "Dono" },
-        audit = [...(s.actionAudit || [])].reverse();
-      const category = (label = "") => {
-        const text = label.toLowerCase();
-        if (/mapa|lote|highlight|pintura|área|pan|street|segmento/.test(text))
-          return "Mapa";
-        if (/registro|diário|evidência|progresso|medição/.test(text))
-          return "Registros";
-        if (/relatório|export|impressão|métrica/.test(text)) return "Relatórios";
-        if (/lead|reserva|whatsapp|comiss|contrato/.test(text))
-          return "Comercial";
-        if (/etapa|atividade|agenda|afazer|canvas|workflow/.test(text))
-          return "Operação";
-        if (/sincron|config|sessão|instal|firebase|banco|pat/.test(text))
-          return "Sistema";
-        return "Navegação";
-      };
-      const groups = [
-        "Navegação",
-        "Operação",
-        "Mapa",
-        "Registros",
-        "Relatórios",
-        "Comercial",
-        "Sistema",
-      ]
-        .map((name) => [
-          name,
-          audit.filter((item) => category(item.label) === name).length,
-        ])
-        .filter(([, count]) => count);
-      const started = new Date(s.sessionStarted),
-        elapsed = Math.max(0, Date.now() - started.getTime()),
-        elapsedText =
-          elapsed < 60000 ? "agora" : `${Math.floor(elapsed / 60000)} min`;
-      const formatTime = (value) =>
-        new Date(value).toLocaleTimeString("pt-BR", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        });
-      return `<section class="settings-page">
-        <header class="settings-intro"><div><span class="activity-kind">GOVERNANÇA DE USO · SESSÃO ATUAL</span><h2>${ico("activity")} Métricas de ações do usuário</h2><p>Auditoria operacional das interações feitas no sistema por <b>${esc(actor.name)} · ${esc(actor.label)}</b>. O histórico permanece neste navegador durante esta sessão.</p></div><div class="settings-actions"><button type="button" class="ghost" data-audit-export>${ico("file-down")} Exportar histórico</button><button type="button" class="danger" data-audit-clear>${ico("trash-2")} Limpar sessão</button></div></header>
-        <section class="audit-summary" aria-label="Resumo de uso"><article><small>Ações registradas</small><strong>${audit.length}</strong><span>eventos desta sessão</span></article><article><small>Tempo em sessão</small><strong>${elapsedText}</strong><span>iniciada às ${formatTime(s.sessionStarted)}</span></article><article><small>Módulos utilizados</small><strong>${groups.length}</strong><span>${groups.map(([name]) => name).join(" · ") || "aguardando interação"}</span></article><article><small>Última ação</small><strong class="audit-last-action">${esc(s.lastAction || "—")}</strong><span>${audit[0] ? formatTime(audit[0].at) : "sem eventos"}</span></article></section>
-        <section class="audit-grid"><glass-card class="audit-card audit-distribution"><div class="card-head"><div><h3>${ico("chart-no-axes-combined")} Distribuição por área</h3><small>Classificação automática a partir da ação executada.</small></div><span class="chip violet">${s.sessionId}</span></div><div class="audit-bars">${groups.length ? groups.map(([name, count]) => `<div class="audit-bar"><span>${esc(name)}</span><b>${count}</b><i style="--audit-size:${Math.max(12, Math.round((count / audit.length) * 100))}%"></i></div>`).join("") : '<p class="audit-empty">As ações aparecerão aqui conforme a equipe utilizar os módulos.</p>'}</div></glass-card>
-        <glass-card class="audit-card audit-session"><div class="card-head"><div><h3>${ico("shield-check")} Contexto da sessão</h3><small>Rastreabilidade local de operação.</small></div></div><dl><div><dt>Ator</dt><dd>${esc(actor.name)} · ${esc(actor.label)}</dd></div><div><dt>ID da sessão</dt><dd><code>${esc(s.sessionId)}</code></dd></div><div><dt>Início</dt><dd>${new Date(s.sessionStarted).toLocaleString("pt-BR")}</dd></div><div><dt>Último módulo</dt><dd>${esc(audit[0]?.view || s.view)}</dd></div></dl><p class="audit-note">Esta métrica resume uso e navegação; não substitui uma trilha de auditoria imutável de servidor.</p></glass-card></section>
-        <glass-card class="audit-card audit-timeline"><div class="card-head"><div><h3>${ico("list-checks")} Linha do tempo de interações</h3><small>${audit.length} eventos capturados · mais recente primeiro</small></div></div><div class="audit-events">${audit.length ? audit.map((item) => `<article><time>${formatTime(item.at)}</time><div><b>${esc(item.label)}</b><small>${esc(category(item.label))} · ${esc(item.view || "dashboard")} · ${esc(item.actor || "Warley")}</small></div><span>${ico("circle-check")}</span></article>`).join("") : '<p class="audit-empty">Nenhuma ação registrada nesta sessão.</p>'}</div></glass-card>
-        <footer class="settings-tools"><span>Configuração de repositório e segredos gerenciada pelo Cloudflare Worker.</span></footer>
-      </section>`;
+      return `<section class="settings-page"><footer class="settings-tools"><span>Configuração de repositório e segredos gerenciada pelo Cloudflare Worker.</span></footer></section>`;
     }
   }
   return ViewLayer;

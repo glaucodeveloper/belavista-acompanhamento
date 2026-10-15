@@ -62,6 +62,7 @@ function patchCtor(Ctor){
   const originals={initWhenReady:proto.initWhenReady,scheduleThree:proto.scheduleThree,initThree:proto.initThree,refreshMapSurface:proto.refreshMapSurface,syncThree:proto.syncThree,loadMasterplan:proto.loadMasterplan,buildStageOverlayTargets:proto.buildStageOverlayTargets,startPublic3D:proto.startPublic3D};
   if(typeof originals.initWhenReady==='function')proto.initWhenReady=function(...args){
     if(!isPublic(this))return originals.initWhenReady.apply(this,args);
+    if(this.hasAttribute('data-admin-public-map'))return originals.initWhenReady.apply(this,args);
     if(isStaticOnly(this)){
       this.setAttribute('data-public-static-base','true');
       this.dataset.renderMode='static-satellite-markers';

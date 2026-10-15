@@ -5,6 +5,7 @@ export const createAiChatAgendaPortV1 = ({
   readCalendar,
   weekKey,
   writeCalendar,
+  refreshCalendar,
   normalizeActivityRouteText,
 } = {}) => {
   const dependencies = {
@@ -13,6 +14,7 @@ export const createAiChatAgendaPortV1 = ({
     readCalendar,
     weekKey,
     writeCalendar,
+    refreshCalendar,
     normalizeActivityRouteText,
   };
   for (const [name, implementation] of Object.entries(dependencies))
@@ -25,6 +27,7 @@ export const createAiChatAgendaPortV1 = ({
     readCalendar,
     weekKey,
     writeCalendar,
+    refreshCalendar,
     normalizeActivityRouteText,
   });
 };

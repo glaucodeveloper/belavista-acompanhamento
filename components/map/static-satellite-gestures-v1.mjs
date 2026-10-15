@@ -98,6 +98,8 @@ export const installStaticSatelliteGesturesV1 = (
     this.addEventListener(
       "wheel",
       (event) => {
+        // No /leads a roda conduz a narrativa e o zoom progressivo do mapa.
+        if (document.body.classList.contains("public-leads-page")) return;
         if (event.defaultPrevented) return;
         const rect = this.getBoundingClientRect();
         if (

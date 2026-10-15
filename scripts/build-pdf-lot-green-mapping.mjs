@@ -47,24 +47,6 @@ function signedDistance(point, polygon) {
   return (inside ? 1 : -1) * Math.sqrt(minDistanceSquared);
 }
 
-function centroid(polygon) {
-  let twiceArea = 0;
-  let x = 0;
-  let y = 0;
-  for (let index = 0; index < polygon.length; index += 1) {
-    const [ax, ay] = polygon[index];
-    const [bx, by] = polygon[(index + 1) % polygon.length];
-    const cross = ax * by - bx * ay;
-    twiceArea += cross;
-    x += (ax + bx) * cross;
-    y += (ay + by) * cross;
-  }
-  if (Math.abs(twiceArea) < 1e-9) {
-    return polygon.reduce((sum, point) => ({ x: sum.x + point[0], y: sum.y + point[1] }), { x: 0, y: 0, count: 0 });
-  }
-  return { x: x / (3 * twiceArea), y: y / (3 * twiceArea) };
-}
-
 const polygonEntries = Object.entries(polygons).map(([greenPolygonId, points]) => ({
   greenPolygonId,
   polygon: points.map(([u, v]) => [u * overlaySize.width, v * overlaySize.height]),
@@ -98,8 +80,9 @@ for (const candidate of candidates.filter(({ label }) => !resolved.has(label.lot
   const pick = candidate.candidates.find((entry) => !claimed.has(entry.greenPolygonId));
   if (!pick) throw new Error(`Sem polígono verde disponível para ${candidate.label.lotId}`);
   claimed.add(pick.greenPolygonId);
-  const point = pick.signedDistance >= 0 ? candidate.point : centroid(pick.polygon);
-  resolved.set(candidate.label.lotId, { candidate, pick, anchor: point, mode: pick.signedDistance >= 0 ? "pdf-circle" : "polygon-centroid-fallback" });
+  // O polígono alternativo define apenas a área clicável. A posição visual
+  // permanece exatamente no círculo numerado da prancha original.
+  resolved.set(candidate.label.lotId, { candidate, pick, anchor: candidate.point, mode: "pdf-circle" });
 }
 
 const mappings = candidates
@@ -121,7 +104,7 @@ const output = {
     labels: "pdf-lot-labels-v1.json",
     polygons: "masterplan-lot-polygons-v2.json",
     overlay: "alianca-park-masterplan-lot-overlay-v2.webp",
-    method: "homography PDF circles to green polygons; unique nearest polygon fallback",
+    method: "homography PDF circles for marker anchors; unique nearest polygon fallback for hit areas",
     excludedOfficialLots: [...invalidOfficialLots].sort((a, b) => a - b),
   },
   mappings,

@@ -3,6 +3,7 @@
 // dedicadas. O módulo não depende do shell que cada página reconstrói.
 import { parseLotStatusCommand, applyLotStatusCommand } from './lot-status-command.mjs';
 import { buildRecordInterpretationV1, resolveRequestStageV1, resolveStageMentionV1, resolveVisualStageV1 } from './record-stage-interpretation-v1.mjs';
+import { aiAgendaInstructionV1, normalizeAiAgendaComprehensionV1 } from './components/shared/ai-agenda-comprehension-v1.mjs?v=1';
 
 const THREAD_KEY = 'belavista.worker-context-chat.v1';
 const SERVICE_KEY = 'belavista.worker-context-chat.service-id.v1';
@@ -241,8 +242,7 @@ class WorkerContextChat {
 
   mount() {
     if (document.querySelector('[data-worker-context-assistant]')) return;
-    const mobileDefaultCollapsed = globalThis.matchMedia?.('(max-width: 760px)').matches === true ||
-      new URLSearchParams(location.search).get('view') === 'lot-development';
+    const mobileDefaultCollapsed = true;
     // Não recuperar pedidos antigos no assistente ao abrir a aplicação.
     try { localStorage.removeItem(SERVICE_KEY); } catch {}
     document.body.insertAdjacentHTML('beforeend', `
@@ -342,7 +342,8 @@ class WorkerContextChat {
       const target = record.allocationTarget === 'material' ? 'material' : 'service';
       const itemKey = target === 'material' ? `material:AI-MATERIAL-${record.id}` : `service:${record.id}`;
       store.set({
-        view: 'stages',
+        view: 'agenda',
+        selectedAgendaEventV3: `agenda-record-${record.id}`,
         selectedStageV9: record.stageKey || state.selectedStageV9 || state.selectedStage || '',
         selectedStage: record.stageKey || state.selectedStage || state.selectedStageV9 || '',
         stageSelected: true,
@@ -641,6 +642,37 @@ class WorkerContextChat {
       this.status.textContent = lotCommand.error ? 'Nenhuma alteração foi feita.' : answer;
       return;
     }
+    const explicitAgenda = !attachment && !files.length && /\b(crie|criar|agende|agendar|adicione|adicionar)\b/i.test(text) && /\b(compromisso|agenda|calend[aá]rio)\b/i.test(text);
+    if (explicitAgenda) {
+      const context = currentContext();
+      const stageMatch = resolveStageMentionV1(text, context.stages);
+      const title = String(text.match(/(?:chamad[oa]|t[ií]tulo)\s+["“]?([^"”,.;\n]+?)(?=["”]|,\s*(?:na|no|em)\b|$)/i)?.[1] || '').trim();
+      if (stageMatch.status !== 'matched' || !title) {
+        this.add('assistant', 'Para criar o compromisso, informe um título e uma etapa sem ambiguidade.');
+        this.status.textContent = 'Nenhum compromisso foi criado.';
+        return;
+      }
+      const tomorrow = /amanh[ãa]/i.test(text);
+      const date = new Date();
+      if (tomorrow) date.setDate(date.getDate() + 1);
+      const writtenDate = text.match(/\b(\d{2})\/(\d{2})\/(\d{4})\b/);
+      const isoDate = writtenDate
+        ? `${writtenDate[3]}-${writtenDate[2]}-${writtenDate[1]}`
+        : tomorrow ? `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}` : '';
+      const start = text.match(/\b(?:[01]?\d|2[0-3]):[0-5]\d\b/)?.[0] || '';
+      const materialName = String(text.match(/\bmaterial(?:\s+necess[aá]rio)?\s*:?\s+([^,.;\n]+)/i)?.[1] || '').trim();
+      const results = await this.executeToolCalls([{ name: 'agenda.create_pending', arguments: {
+        title, stageKey: stageMatch.stage.key, stageName: stageMatch.stage.name,
+        activityName: String(text.match(/atividade\s+([^,.;\n]+)/i)?.[1] || title).trim(),
+        date: isoDate, start, durationHours: Number(text.match(/(?:por|dura[cç][aã]o\s+de)\s+(\d+(?:[.,]\d+)?)\s*horas?/i)?.[1]?.replace(',','.') || 1),
+        notes: 'Compromisso solicitado pelo chat; confirme os detalhes antes da execução.',
+        materialIds: materialName ? [materialName] : []
+      }}]);
+      const answer = results.join(' ') || 'Não foi possível criar o compromisso.';
+      this.add('assistant', answer);
+      this.status.textContent = answer;
+      return;
+    }
     if(!directOperational&&/(estado|status|andamento)/i.test(text)&&/(solicita[cç][aã]o|pedido|servi[cç]o)/i.test(text)&&localStorage.getItem(SERVICE_KEY)){
       await this.refreshServiceRequest();
       const request=this.currentRequest;
@@ -653,7 +685,8 @@ class WorkerContextChat {
       !/^(qual|quais|como|quando|onde|por que|o que|me explique|explique)\b/i.test(String(text||'').trim()) &&
       resolveStageMentionV1(text,currentContext().stages).status==='matched'
     );
-    if(!directOperational&&(this.isServiceRequest(text)||stageOnlyVisualSubmission)){
+    const agendaIntent = /\b(agenda|compromisso|calend[aá]rio|hor[aá]rio)\b/i.test(text);
+    if(!directOperational&&((this.isServiceRequest(text)&&!agendaIntent)||stageOnlyVisualSubmission)){
       try{
         const shouldReadAttachment = Boolean(attachment && (stageOnlyVisualSubmission || /\b(nota|comprovante|registro|ocr|foto|imagem|anexo)\b/i.test(text)));
         const reply = shouldReadAttachment ? await this.ask(text, attachment, options) : null;
@@ -861,6 +894,10 @@ class WorkerContextChat {
       if (call?.name === 'agenda.create_pending') {
         if (!store) { results.push('Apontamento não criado: estado da aplicação indisponível.'); continue; }
         const state = store.get() || {};
+        if (!normalizeAiAgendaComprehensionV1(state.aiAgendaComprehensionV1).autoCreatePending) {
+          results.push('Apontamento não criado: geração pela IA desativada em Configurações.');
+          continue;
+        }
         const today = new Date();
         const iso = value => {
           const date = value ? new Date(`${value}T12:00:00`) : null;
@@ -868,11 +905,16 @@ class WorkerContextChat {
           return `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
         };
         const date = iso(String(args.date || '').trim());
-        let persisted = { version: 3, initialized: true, events: [] };
+        let persisted = { events: [] };
         try {
-          const parsed = JSON.parse(localStorage.getItem('belavista.agenda-calendar.v3') || 'null');
-          if (parsed && Array.isArray(parsed.events)) persisted = { version: 3, initialized: true, events: parsed.events };
-        } catch {}
+          const response = await fetch('/api/agenda-events', { cache: 'no-store' });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          persisted = await response.json();
+          if (!Array.isArray(persisted.events)) throw new Error('Agenda inválida.');
+        } catch (error) {
+          results.push(`Apontamento não criado: não foi possível carregar a agenda (${error.message}).`);
+          continue;
+        }
         const sameDay = persisted.events.filter(item => String(item?.date || '') === date);
         const toMinutes = value => { const match = String(value || '').match(/^(\d{2}):(\d{2})$/); return match ? Number(match[1])*60 + Number(match[2]) : 0; };
         const requestedStart = String(args.start || '').trim();
@@ -883,11 +925,23 @@ class WorkerContextChat {
         const stageName = String(args.stageName || args.relation || '').trim();
         const title = String(args.title || args.activityName || 'Apontamento pendente da IA').trim().slice(0,160);
         const id = `agenda-worker-ai-${Date.now().toString(36)}`;
-        const event = { id, title, stageKey, stageName, activityId:String(args.activityId||'').trim(), activityName:String(args.activityName||title).trim().slice(0,160), owner:String(args.owner||'').trim().slice(0,120), date, start, durationHours:Math.max(.5,Math.min(24,Number(args.durationHours)||1.5)), spanDays:Math.max(1,Math.min(7,Number(args.spanDays)||1)), status:'Pendente', aiPending:true, notes:String(args.notes||'').trim().slice(0,1200), detailsNeeded:String(args.detailsNeeded||'').trim().slice(0,800), evidenceRequired:Boolean(args.evidenceRequired) };
-        try { localStorage.setItem('belavista.agenda-calendar.v3', JSON.stringify({ version:3, initialized:true, events:[...persisted.events,event] })); } catch {}
+        const event = { id, title, stageKey, stageName, activityId:String(args.activityId||'').trim(), activityName:String(args.activityName||title).trim().slice(0,160), owner:String(args.owner||'').trim().slice(0,120), date, start, durationHours:Math.max(.5,Math.min(24,Number(args.durationHours)||1.5)), spanDays:Math.max(1,Math.min(7,Number(args.spanDays)||1)), status:'Pendente', aiPending:true, notes:String(args.notes||'').trim().slice(0,1200), materialIds:Array.isArray(args.materialIds)?args.materialIds.map(value=>String(value).trim()).filter(Boolean):[], detailsNeeded:String(args.detailsNeeded||'').trim().slice(0,800), evidenceRequired:Boolean(args.evidenceRequired) };
+        try {
+          const response = await fetch('/api/agenda-events', {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ events: [...persisted.events, event] })
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          persisted = await response.json();
+          localStorage.setItem('belavista.agenda-calendar.v3', JSON.stringify({ version:3, initialized:true, events:persisted.events }));
+        } catch (error) {
+          results.push(`Apontamento não criado: não foi possível salvar na agenda (${error.message}).`);
+          continue;
+        }
         const agendaItem = { ...event, name:title, activity:event.activityName, responsible:event.owner, time:start, plannedStart:`${date}T${start}:00` };
         store.set({ view:'agenda', ...(stageKey ? { selectedStageV9:stageKey, selectedStage:stageKey } : {}), selectedAgendaEventV3:id, operationalAgenda:[...(state.operationalAgenda||[]).filter(item=>String(item?.id||'')!==id),agendaItem], agendaCalendarRevisionV3:Date.now(), agendaCalendarRevisionV7:Date.now(), lastAction:`Assistente dos workers criou apontamento pendente ${title}` });
-        results.push(`Apontamento pendente criado no cronograma${stageName ? ` de ${stageName}` : ''}; complete os detalhes solicitados.`);
+        results.push(`Apontamento pendente criado na agenda${stageName ? ` de ${stageName}` : ''}; complete os detalhes solicitados.`);
         continue;
       }
       if (call?.name === 'documents.open_form') {
@@ -1019,7 +1073,7 @@ class WorkerContextChat {
         method: 'POST', cache: 'no-store', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           message, view: location.pathname.startsWith('/admin') ? (globalThis.__belavistaAppStore?.get()?.view || 'control') : 'workers',
-          instruction: String(options?.instruction || WORKER_OPERATIONAL_EXECUTION_INSTRUCTION_V2),
+          instruction: `${String(options?.instruction || WORKER_OPERATIONAL_EXECUTION_INSTRUCTION_V2)} ${aiAgendaInstructionV1(appState.aiAgendaComprehensionV1)}`,
           requestContext: options?.requestContext && typeof options.requestContext === 'object' ? options.requestContext : null,
           context: {
             ...context,

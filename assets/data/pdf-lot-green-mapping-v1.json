@@ -5,7 +5,7 @@
     "labels": "pdf-lot-labels-v1.json",
     "polygons": "masterplan-lot-polygons-v2.json",
     "overlay": "alianca-park-masterplan-lot-overlay-v2.webp",
-    "method": "homography PDF circles to green polygons; unique nearest polygon fallback",
+    "method": "homography PDF circles for marker anchors; unique nearest polygon fallback for hit areas",
     "excludedOfficialLots": [
       23,
       41,
@@ -216,9 +216,9 @@
       "lotId": "Lote_026",
       "number": 26,
       "greenPolygonId": "Lote_004",
-      "u": 0.43084059,
-      "v": 0.10332932,
-      "anchor": "polygon-centroid-fallback"
+      "u": 0.43499861,
+      "v": 0.01733969,
+      "anchor": "pdf-circle"
     },
     {
       "lotId": "Lote_027",
@@ -760,41 +760,41 @@
       "lotId": "Lote_098",
       "number": 98,
       "greenPolygonId": "Lote_212",
-      "u": 0.14340823,
-      "v": 0.72407802,
-      "anchor": "polygon-centroid-fallback"
+      "u": 0.16396905,
+      "v": 0.71075207,
+      "anchor": "pdf-circle"
     },
     {
       "lotId": "Lote_099",
       "number": 99,
       "greenPolygonId": "Lote_223",
-      "u": 0.16015724,
-      "v": 0.77580506,
-      "anchor": "polygon-centroid-fallback"
+      "u": 0.19306469,
+      "v": 0.6856297,
+      "anchor": "pdf-circle"
     },
     {
       "lotId": "Lote_100",
       "number": 100,
       "greenPolygonId": "Lote_251",
-      "u": 0.16866887,
-      "v": 0.80753133,
-      "anchor": "polygon-centroid-fallback"
+      "u": 0.23381458,
+      "v": 0.65224526,
+      "anchor": "pdf-circle"
     },
     {
       "lotId": "Lote_101",
       "number": 101,
       "greenPolygonId": "Lote_195",
-      "u": 0.42059057,
-      "v": 0.61108395,
-      "anchor": "polygon-centroid-fallback"
+      "u": 0.26820935,
+      "v": 0.62207393,
+      "anchor": "pdf-circle"
     },
     {
       "lotId": "Lote_102",
       "number": 102,
       "greenPolygonId": "Lote_208",
-      "u": 0.40362194,
-      "v": 0.61944383,
-      "anchor": "polygon-centroid-fallback"
+      "u": 0.29673612,
+      "v": 0.59680937,
+      "anchor": "pdf-circle"
     },
     {
       "lotId": "Lote_103",
@@ -1944,49 +1944,49 @@
       "lotId": "Lote_252",
       "number": 252,
       "greenPolygonId": "Lote_011",
-      "u": 0.53778959,
-      "v": 0.17249192,
-      "anchor": "polygon-centroid-fallback"
+      "u": 0.53875289,
+      "v": 0.05563634,
+      "anchor": "pdf-circle"
     },
     {
       "lotId": "Lote_253",
       "number": 253,
       "greenPolygonId": "Lote_017",
-      "u": 0.40849906,
-      "v": 0.20553419,
-      "anchor": "polygon-centroid-fallback"
+      "u": 0.58573892,
+      "v": 0.08449114,
+      "anchor": "pdf-circle"
     },
     {
       "lotId": "Lote_254",
       "number": 254,
       "greenPolygonId": "Lote_051",
-      "u": 0.70715626,
-      "v": 0.33420421,
-      "anchor": "polygon-centroid-fallback"
+      "u": 0.63108438,
+      "v": 0.12514361,
+      "anchor": "pdf-circle"
     },
     {
       "lotId": "Lote_255",
       "number": 255,
       "greenPolygonId": "Lote_088",
-      "u": 0.75815601,
-      "v": 0.38126752,
-      "anchor": "polygon-centroid-fallback"
+      "u": 0.68286381,
+      "v": 0.1701921,
+      "anchor": "pdf-circle"
     },
     {
       "lotId": "Lote_256",
       "number": 256,
       "greenPolygonId": "Lote_069",
-      "u": 0.51933996,
-      "v": 0.35559583,
-      "anchor": "polygon-centroid-fallback"
+      "u": 0.73383237,
+      "v": 0.22011844,
+      "anchor": "pdf-circle"
     },
     {
       "lotId": "Lote_257",
       "number": 257,
       "greenPolygonId": "Lote_114",
-      "u": 0.62584685,
-      "v": 0.45493777,
-      "anchor": "polygon-centroid-fallback"
+      "u": 0.78722127,
+      "v": 0.2697339,
+      "anchor": "pdf-circle"
     },
     {
       "lotId": "Lote_258",
@@ -2016,9 +2016,9 @@
       "lotId": "Lote_261",
       "number": 261,
       "greenPolygonId": "Lote_154",
-      "u": 0.7349335,
-      "v": 0.50453552,
-      "anchor": "polygon-centroid-fallback"
+      "u": 0.98158363,
+      "v": 0.44851042,
+      "anchor": "pdf-circle"
     },
     {
       "lotId": "Lote_262",

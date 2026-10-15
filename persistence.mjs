@@ -568,13 +568,15 @@ export function listActivities(){
     LEFT JOIN stages s ON s.id=a.stage_id
     ORDER BY a.stage_id,a.name`).all().map(row=>({...row,properties:JSON.parse(row.propertiesJson||'{}')}));
 }
+for(const [column,definition] of [['notes',"TEXT NOT NULL DEFAULT ''"],['material_ids_json',"TEXT NOT NULL DEFAULT '[]'"]])
+  try{db.exec(`ALTER TABLE agenda_events ADD COLUMN ${column} ${definition}`);}catch(error){if(!/duplicate column name/i.test(error.message))throw error;}
 const agendaSelect=`SELECT id,source_type AS sourceType,source_id AS sourceId,title,stage_key AS stageKey,
   stage_name AS stageName,activity_id AS activityId,activity_name AS activityName,owner,
   event_date AS date,start_time AS start,duration_hours AS durationHours,span_days AS spanDays,
-  status,related_from AS relatedFrom,user_edited AS userEdited,hidden,updated_at AS updatedAt FROM agenda_events`;
+  status,related_from AS relatedFrom,notes,material_ids_json AS materialIdsJson,user_edited AS userEdited,hidden,updated_at AS updatedAt FROM agenda_events`;
 export function listAgendaEvents(){
   return db.prepare(`${agendaSelect} WHERE hidden=0 ORDER BY event_date,start_time,id`).all()
-    .map(({hidden,userEdited,...event})=>({...event,userEdited:Boolean(userEdited)}));
+    .map(({hidden,userEdited,materialIdsJson,...event})=>({...event,materialIds:JSON.parse(materialIdsJson||'[]'),userEdited:Boolean(userEdited)}));
 }
 export function saveAgendaSnapshot(events){
   if(!Array.isArray(events)||events.length>10000)throw Object.assign(new Error('Lista da agenda inválida.'),{statusCode:400});
@@ -583,7 +585,7 @@ export function saveAgendaSnapshot(events){
     const durationHours=Number(input?.durationHours??1),spanDays=Number(input?.spanDays??1);
     if(!/^[a-zA-Z0-9_-]+$/.test(id)||!title||!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(`${date}T00:00:00Z`))||!/^([01]\d|2[0-3]):[0-5]\d$/.test(start)||!Number.isFinite(durationHours)||durationHours<0.5||durationHours>24||!Number.isInteger(spanDays)||spanDays<1||spanDays>366)
       throw Object.assign(new Error('Compromisso inválido: título, data, horário e duração são obrigatórios.'),{statusCode:400});
-    return {id,title,stageKey:asText(input.stageKey).slice(0,160),stageName:asText(input.stageName).slice(0,160),activityId:asText(input.activityId).slice(0,160),activityName:asText(input.activityName).slice(0,240),owner:asText(input.owner).slice(0,160),date,start,durationHours,spanDays,status:asText(input.status,'Planejado').slice(0,80),relatedFrom:asText(input.relatedFrom).slice(0,160)};
+    return {id,title,stageKey:asText(input.stageKey).slice(0,160),stageName:asText(input.stageName).slice(0,160),activityId:asText(input.activityId).slice(0,160),activityName:asText(input.activityName).slice(0,240),owner:asText(input.owner).slice(0,160),date,start,durationHours,spanDays,status:asText(input.status,'Planejado').slice(0,80),relatedFrom:asText(input.relatedFrom).slice(0,160),notes:asText(input.notes).slice(0,2000),materialIdsJson:JSON.stringify(Array.isArray(input.materialIds)?input.materialIds.map(value=>asText(value).slice(0,160)).slice(0,100):[])};
   });
   if(new Set(normalized.map(item=>item.id)).size!==normalized.length)throw Object.assign(new Error('IDs duplicados na agenda.'),{statusCode:400});
   const current=db.prepare(`${agendaSelect}`).all(),byId=new Map(current.map(item=>[item.id,item]));
@@ -593,12 +595,12 @@ export function saveAgendaSnapshot(events){
       const previous=byId.get(item.id);
       if(previous){
         if(!previous.hidden&&Object.entries(item).every(([key,value])=>previous[key]===value))continue;
-        db.prepare(`UPDATE agenda_events SET title=?,stage_key=?,stage_name=?,activity_id=?,activity_name=?,owner=?,event_date=?,start_time=?,duration_hours=?,span_days=?,status=?,related_from=?,user_edited=1,hidden=0,updated_at=? WHERE id=?`)
-          .run(item.title,item.stageKey,item.stageName,item.activityId,item.activityName,item.owner,item.date,item.start,item.durationHours,item.spanDays,item.status,item.relatedFrom,now(),item.id);
+        db.prepare(`UPDATE agenda_events SET title=?,stage_key=?,stage_name=?,activity_id=?,activity_name=?,owner=?,event_date=?,start_time=?,duration_hours=?,span_days=?,status=?,related_from=?,notes=?,material_ids_json=?,user_edited=1,hidden=0,updated_at=? WHERE id=?`)
+          .run(item.title,item.stageKey,item.stageName,item.activityId,item.activityName,item.owner,item.date,item.start,item.durationHours,item.spanDays,item.status,item.relatedFrom,item.notes,item.materialIdsJson,now(),item.id);
         audit.run('agenda_events',item.id,'updated',JSON.stringify(item),now());
       }else{
-        db.prepare(`INSERT INTO agenda_events(id,source_type,title,stage_key,stage_name,activity_id,activity_name,owner,event_date,start_time,duration_hours,span_days,status,related_from,user_edited,updated_at) VALUES(?,'manual',?,?,?,?,?,?,?,?,?,?,?,?,1,?)`)
-          .run(item.id,item.title,item.stageKey,item.stageName,item.activityId,item.activityName,item.owner,item.date,item.start,item.durationHours,item.spanDays,item.status,item.relatedFrom,now());
+        db.prepare(`INSERT INTO agenda_events(id,source_type,title,stage_key,stage_name,activity_id,activity_name,owner,event_date,start_time,duration_hours,span_days,status,related_from,notes,material_ids_json,user_edited,updated_at) VALUES(?,'manual',?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?)`)
+          .run(item.id,item.title,item.stageKey,item.stageName,item.activityId,item.activityName,item.owner,item.date,item.start,item.durationHours,item.spanDays,item.status,item.relatedFrom,item.notes,item.materialIdsJson,now());
         audit.run('agenda_events',item.id,'created',JSON.stringify(item),now());
       }
     }
@@ -1014,6 +1016,19 @@ export function getRecord(id){return parseRecordRow(db.prepare(`${recordSelect} 
 export function createRecord(input){
   const value=toRecordInput(input),id=asText(input.id)||`REG-${String(Date.now()).slice(-8)}`,timestamp=now();
   db.prepare(`INSERT INTO records(id,project_id,stage_id,activity_id,record_date,record_time,responsible_id,responsible_name,details,status,evidence_uri,map_area,properties_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,value.projectId,value.stageId,value.activityId,value.data,value.hora,value.responsibleId,value.responsavel,value.detalhes,value.status,value.evidenceUri,value.mapArea,value.propertiesJson,timestamp,timestamp);
+  if(input?.source==='chat-visual'){
+    const material=input.allocationTarget==='material', name=asText(input.atividade||input.activityName||input.materialName),
+      planned=new Date();
+    planned.setDate(planned.getDate()+1);
+    while(planned.getDay()===0||planned.getDay()===6)planned.setDate(planned.getDate()+1);
+    const date=planned.toISOString().slice(0,10);
+    const occupied=new Set(db.prepare(`SELECT start_time FROM agenda_events WHERE event_date=? AND hidden=0`).all(date).map(row=>row.start_time));
+    const start=Array.from({length:18},(_,index)=>`${String(8+Math.floor(index/2)).padStart(2,'0')}:${index%2?'30':'00'}`).find(time=>!occupied.has(time))||'08:00';
+    const materialName=asText(input.properties?.find(property=>property.id==='allocation_material')?.value||input.materialName);
+    db.prepare(`UPDATE agenda_events SET title=?,stage_key=?,stage_name=?,activity_id=?,activity_name=?,event_date=?,start_time=?,status='Pendente',notes=?,material_ids_json=?,updated_at=? WHERE source_type='record' AND source_id=? AND user_edited=0`).run(
+      material?`Revisar material: ${materialName||name}`:`Planejar serviço: ${name}`,asText(input.stageKey||input.etapa),asText(input.etapa),asText(input.activityId),name,date,start,
+      asText(input.detalhes).slice(0,2000),JSON.stringify(materialName?[materialName]:[]),timestamp,id);
+  }
   audit.run('records',id,'created',JSON.stringify(value),timestamp); return getRecord(id);
 }
 export function createMaterialTransition(input={}){

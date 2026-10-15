@@ -51,9 +51,7 @@ export const renderSidebarNavigationV1 = ({
       if (!groupItems.length) return "";
       return `<section class="navblock" aria-label="${label.toLowerCase()}"><div class="smallcaps nav-label">${label}</div>${groupItems.map(renderItem).join("")}</section>`;
     }).join(""),
-    mobileAgendaItem = !foremanSurface
-      ? `<button class="nav-item mobile-agenda-nav-item ${view === "agenda" ? "active" : ""}" data-view="agenda">${ico("calendar-days")}<span>Agenda</span></button>`
-      : "";
+    mobileAgendaItem = "";
 
   return Object.freeze({ markup, mobileAgendaItem });
 };

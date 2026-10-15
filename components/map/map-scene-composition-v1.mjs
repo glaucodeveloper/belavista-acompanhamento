@@ -4,7 +4,7 @@ import { REPASSE_PRICE_CATALOG } from "../../repasse-price-catalog.mjs";
 import { renderMapPdfLegends, ensureMapPdfLegendStyles } from "../../map-pdf-legends-v1.mjs?v=1";
 import { esc, ico, notify } from "../shared/dom.mjs";
 import { installAdminReferenceAerialFrameV1 } from "./admin-reference-aerial-frame-v1.mjs?v=admin-reference-aerial-frame-v1";
-import { installAdminMasterplanOverlayV1 } from "./admin-masterplan-overlay-v1.mjs?v=admin-masterplan-overlay-v1";
+import { installAdminMasterplanOverlayV1 } from "./admin-masterplan-overlay-v1.mjs?v=admin-masterplan-overlay-v2";
 import { installMapSceneStartupReadinessV1 } from "./map-scene-startup-readiness-v1.mjs?v=map-scene-startup-readiness-v1";
 import { installMapSceneCleanupV1 } from "./map-scene-cleanup-v1.mjs?v=map-scene-cleanup-v1";
 import { installMapSceneConnectionV1 } from "./map-scene-connection-v1.mjs?v=map-scene-connection-v1";
@@ -62,7 +62,7 @@ import {
   PDF_MASTERPLAN_PAGE_SIZE_V1,
   PDF_MASTERPLAN_SITE_FRAME_V1,
   PDF_MASTERPLAN_VEHICLE_ANCHORS_V1,
-} from "./georeference.mjs?v=admin-map-georeference-v1";
+} from "./georeference.mjs?v=admin-map-georeference-v1&pdf-yellow-circles-v2";
 import {
   MAP_GEOREFERENCE_FALLBACK,
   localClockHourForGeo,
@@ -75,8 +75,8 @@ import { installMapSolarLightingControllerV1 } from "./solar-lighting-controller
 import { installMapSceneControlsV1 } from "./map-scene-controls-v1.mjs?v=map-scene-controls-v1";
 import { installMapTileModeControllerV1 } from "./map-tile-mode-controller-v1.mjs?v=map-tile-mode-controller-v1";
 import { installSceneNavigationV1 } from "./scene-navigation-v1.mjs?v=scene-navigation-v1";
-import { createSatelliteLotProjectionV1 } from "./satellite-lot-projection-v1.mjs?v=satellite-lot-projection-v1";
-import { installSatelliteLotPlanOverlayV1 } from "./satellite-lot-plan-overlay-v1.mjs?v=satellite-lot-plan-overlay-v2";
+import { createSatelliteLotProjectionV1 } from "./satellite-lot-projection-v1.mjs?v=satellite-lot-projection-v2";
+import { installSatelliteLotPlanOverlayV1 } from "./satellite-lot-plan-overlay-v1.mjs?v=satellite-lot-plan-overlay-v5";
 import { installAdminStandaloneStartupV5370 } from "./admin-standalone-startup-v5370.mjs?v=admin-standalone-startup-v5370-v2";
 import { installAdminStandaloneAerialV5380 } from "./admin-standalone-aerial-v5380.mjs?v=admin-standalone-aerial-v5380-v1";
 import { installAdminReferenceAerialSceneV1 } from "./admin-reference-aerial-scene-v1.mjs?v=admin-reference-aerial-scene-v1";
@@ -516,7 +516,7 @@ export function installMapSceneCompositionV1(MapScene, dependencies) {
     },
     mapGeoreferenceFallback: MAP_GEOREFERENCE_FALLBACK,
     viewThemes,
-    leaflet: L,
+    leaflet: globalThis.L || {latLng:(lat,lng)=>({lat,lng})},
     syncCompactMapMirrors,
     logger: { warn: (...args) => console.warn(...args) },
   });
@@ -668,4 +668,3 @@ export function installMapSceneCompositionV1(MapScene, dependencies) {
     prepareAssistantMapAreaPromptV1,
   };
 }
-

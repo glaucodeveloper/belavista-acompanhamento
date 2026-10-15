@@ -171,13 +171,9 @@ body.public-leads-page map-scene[data-public-presentation] .three-overlay{filter
 
 
 /* BELAVISTA_PUBLIC_STATIC_CONTEXT_V521 */
-body.public-leads-page .public-map-static-bg{position:absolute;inset:0;z-index:0;background-image:linear-gradient(90deg,rgba(3,17,12,.24),rgba(3,17,12,.02) 64%),url('/assets/public/dwg-satellite-treated-v5411.png');background-size:cover,cover;background-position:center,center;background-repeat:no-repeat;filter:none;transform:scale(1.01);}
+body.public-leads-page .public-map-static-bg{position:absolute;inset:0;z-index:0;background-image:linear-gradient(90deg,rgba(3,17,12,.24),rgba(3,17,12,.02) 64%),url('/assets/public/dwg-satellite-public-v1.webp');background-size:cover,cover;background-position:center,center;background-repeat:no-repeat;filter:none;transform:scale(1.01);}
 body.public-leads-page .public-map-sticky>map-scene{z-index:1;background:transparent!important;}
-body.public-leads-page .public-map-sticky .satellite-lot-plan-overlay,
-body.public-leads-page .public-map-sticky [data-public-static-lot-markers],
-body.public-leads-page .public-map-sticky .public-lot-info-v5318,
-body.public-leads-page .public-map-sticky [data-public-lot-details-v5335],
-body.public-leads-page .public-map-sticky [data-selected-lot]{display:none!important;visibility:hidden!important;pointer-events:none!important;}
+body.public-leads-page .public-map-sticky [data-public-static-lot-markers]{display:none!important;}
 body.public-leads-page map-scene[data-public-satellite-base] .map-host{opacity:0!important;pointer-events:none!important;}
 body.public-leads-page map-scene[data-public-satellite-base] .map-tint{opacity:.1!important;background:linear-gradient(180deg,rgba(2,13,13,.04),rgba(1,9,9,.24))!important;mix-blend-mode:multiply!important;}
 body.public-leads-page map-scene[data-public-satellite-base] .three-overlay{filter:saturate(1.04) contrast(1.10) brightness(.96)!important;}
@@ -238,6 +234,9 @@ body.public-leads-page .public-seals header>span{
 }
 body.public-leads-page .public-hero-letter h1 em{
   color:var(--lead-green)!important;
+}
+body.public-leads-page .public-hero-letter h1{
+  color:var(--lead-ink)!important;
 }
 body.public-leads-page .public-hero-letter p{color:rgba(246,247,242,.74)!important;}
 body.public-leads-page .public-scroll-legend{
@@ -442,7 +441,7 @@ body.public-leads-page .public-map-sticky>map-scene[data-public-presentation]::a
   transition:left 280ms ease,top 280ms ease,width 280ms ease,height 280ms ease;
 }
 body.public-leads-page .public-map-static-bg{
-  background-image:linear-gradient(90deg,rgba(3,17,12,.24),rgba(3,17,12,.02) 64%),url('/assets/public/dwg-satellite-treated-v5411.png')!important;
+  background-image:linear-gradient(90deg,rgba(3,17,12,.24),rgba(3,17,12,.02) 64%),url('/assets/public/dwg-satellite-public-v1.webp')!important;
   background-size:cover,cover!important;
   background-position:center,center!important;
   background-repeat:no-repeat!important;
@@ -630,6 +629,89 @@ body.public-leads-page .public-credentials dl>div{display:grid;grid-template-col
 body.public-leads-page .public-credentials dt{font:600 12px/1.4 "IBM Plex Mono",monospace;letter-spacing:.1em;text-transform:uppercase;}
 body.public-leads-page .public-credentials dd{margin:0;color:#69756d;}
 body.public-leads-page .public-credentials>small{display:block;margin-top:24px;color:#6d786f;line-height:1.6;}
+
+/* O mapa administrativo completo aparece e aproxima junto com o scroll. */
+body.public-leads-page .public-map-sticky>map-scene[data-admin-public-map]{
+  z-index:1!important;
+  background:#07101e url('/assets/public/dwg-satellite-public-v1.webp') center/cover no-repeat!important;
+  --static-map-zoom:1!important;
+  --static-map-pan-x:0px!important;
+  --static-map-pan-y:0px!important;
+  opacity:0;
+  transform:none!important;
+  pointer-events:none!important;
+}
+body.public-leads-page .public-map-sticky>.public-map-static-bg,
+body.public-leads-page .public-map-sticky>.admin-masterplan-overlay,
+body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay{
+  opacity:var(--public-plan-opacity,0);
+  transform:translate3d(var(--public-plan-pan-x,var(--public-plan-pan,0px)),var(--public-plan-pan-y,0px),0) scale(var(--public-plan-zoom,1))!important;
+  transform-origin:50% 46%!important;
+  will-change:transform,opacity;
+}
+body.public-leads-page .public-map-sticky>.public-map-static-bg{z-index:2;opacity:1!important;}
+body.public-leads-page .public-map-sticky>.admin-masterplan-overlay{z-index:3;overflow:clip;}
+body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay{z-index:4;overflow:clip;}
+body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-plan-marker{min-width:8px;height:8px;padding:0;border:1px solid #fff;border-radius:999px;background:#f1c21b;color:#161616;font:700 3px/8px "IBM Plex Mono",monospace;}
+body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-plan-polygons{display:block!important;}
+body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-hit-area{stroke:none;fill:transparent;}
+body.public-leads-page[data-public-scroll-section="title"] .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-plan-marker,
+body.public-leads-page[data-public-scroll-section="title"] .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-hit-area{pointer-events:none!important;}
+body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-context-widget footer{display:none!important;}
+/* Os cartões acompanham o ponto selecionado, mas mantêm tamanho de tela
+   durante o zoom do mapa para que o texto continue legível. */
+body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-context-widget{
+  left:var(--map-context-widget-left,50%)!important;
+  top:var(--map-context-widget-top,50%)!important;
+  width:clamp(230px,27vw,360px)!important;
+  max-width:calc(100vw - 32px)!important;
+  padding:clamp(14px,1.35vw,20px)!important;
+  font-size:clamp(12px,.95vw,16px)!important;
+  transform:translate(-50%,calc(-100% - 12px)) scale(calc(1 / var(--public-plan-zoom,1)))!important;
+  transform-origin:center bottom!important;
+}
+body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-context-widget>strong{font-size:clamp(15px,1.2vw,19px)!important;}
+body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-context-widget>p{font-size:clamp(12px,.95vw,15px)!important;line-height:1.5!important;}
+body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-context-widget header button{font-size:24px!important;}
+@media(max-width:700px){
+  body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-context-widget{
+    position:absolute!important;right:auto!important;bottom:auto!important;
+    width:min(82vw,360px)!important;max-width:calc(100vw - 28px)!important;
+    padding:14px!important;transform:translate(-50%,calc(-100% - 10px)) scale(calc(1 / var(--public-plan-zoom,1)))!important;
+  }
+}
+body.public-leads-page .public-map-gesture-controls{
+  position:absolute;z-index:12;top:clamp(18px,4vh,42px);left:clamp(18px,4vw,64px);
+  display:grid;grid-template-columns:34px 34px 34px auto;align-items:center;gap:6px;
+  padding:7px 9px;border:1px solid rgba(220,239,230,.24);background:rgba(5,17,14,.78);
+  color:#edf8f2;backdrop-filter:blur(14px);opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .2s ease,visibility .2s ease;
+}
+body.public-leads-page .public-map-gesture-controls[data-visible="true"]{opacity:1;visibility:visible;pointer-events:auto;}
+body.public-leads-page .public-map-gesture-controls>span{grid-column:1/-1;color:#a7d8c6;font:700 9px/1 ui-monospace,monospace;letter-spacing:.15em}
+body.public-leads-page .public-map-gesture-controls button{
+  width:34px;height:32px;border:1px solid rgba(220,239,230,.2);background:rgba(255,255,255,.08);
+  color:#f5fbf7;font:600 18px/1 Inter,system-ui,sans-serif;cursor:pointer;
+}
+body.public-leads-page .public-map-gesture-controls button:hover,
+body.public-leads-page .public-map-gesture-controls button:focus-visible{background:#bcebdc;color:#082019;outline:2px solid transparent}
+body.public-leads-page .public-map-gesture-controls small{padding:0 6px;color:#b8c9c1;font-size:10px;white-space:nowrap}
+body.public-leads-page .public-map-sticky.is-public-map-panning{cursor:grabbing}
+body.public-leads-page .public-map-sticky{cursor:grab}
+@media(max-width:720px){
+  body.public-leads-page .public-map-gesture-controls{top:auto;bottom:clamp(16px,3vh,28px);left:14px;grid-template-columns:34px 34px 34px}
+  body.public-leads-page .public-map-gesture-controls small{grid-column:1/-1;white-space:normal;font-size:9px}
+}
+body.public-leads-page .public-map-sticky>map-scene[data-admin-public-map] .map-solar-control,
+body.public-leads-page .public-map-sticky>map-scene[data-admin-public-map] .map-marker-adjust-toolbar,
+body.public-leads-page .public-map-sticky>map-scene[data-admin-public-map] .admin-masterplan-adjust-toolbar,
+body.public-leads-page .public-map-sticky>map-scene[data-admin-public-map] [data-map-3d-loading],
+body.public-leads-page .public-map-sticky>map-scene[data-admin-public-map] .satellite-lot-context-widget footer{display:none!important;}
+body.public-leads-page[data-public-scroll-section="map"] .public-pdf-brand-layer{
+  opacity:0!important;
+  visibility:hidden!important;
+}
+@media(max-width:900px){body.public-leads-page .public-map-sticky>.public-map-static-bg,body.public-leads-page .public-map-sticky>.admin-masterplan-overlay,body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay{transform-origin:55% 42%!important;}}
 body.public-leads-page .public-reveal,
 body.public-leads-page .public-seals{opacity:0;transform:translateY(44px);transition:opacity .75s ease,transform .9s cubic-bezier(.2,.75,.2,1);}
 body.public-leads-page .public-reveal.is-visible,

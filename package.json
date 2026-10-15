@@ -140,6 +140,7 @@
     "hyperframes": "^0.8.31"
   },
   "dependencies": {
-    "firebase-admin": "^14.3.0"
+    "firebase-admin": "^14.3.0",
+    "tesseract.js": "^7.0.0"
   }
 }

@@ -164,7 +164,7 @@ export const PDF_LOT_LABELS_URL_V1 = "/assets/data/pdf-lot-labels-v1.json?v=1";
 // Relação entre o número oficial da prancha e a área verde correspondente.
 // Os IDs do arquivo de polígonos são apenas IDs técnicos da segmentação; não
 // podem ser usados como numeração comercial dos lotes.
-export const PDF_LOT_GREEN_MAPPING_URL_V1 = "/assets/data/pdf-lot-green-mapping-v1.json?v=1";
+export const PDF_LOT_GREEN_MAPPING_URL_V1 = "/assets/data/pdf-lot-green-mapping-v1.json?v=pdf-yellow-circles-v2";
 // Registro geométrico entre o traçado canônico (GLB/DWG, 298 unidades) e a
 // prancha vertical aplicada sobre o satélite. O mapeamento anterior partia de
 // círculos extraídos do PDF e acabava associando retângulos de borda a números

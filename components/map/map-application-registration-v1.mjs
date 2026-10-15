@@ -1,5 +1,5 @@
 import { installMapFilterRailCompositionV1 } from "./map-filter-rail-composition-v1.mjs?v=map-filter-rail-composition-v1";
-import { createMapSceneElementV1 } from "./map-scene-registration-v1.mjs?v=map-scene-registration-v1";
+import { createMapSceneElementV1 } from "./map-scene-registration-v1.mjs?v=map-scene-registration-v2&pdf-marker-anchors-v1&pdf-yellow-circles-v2";
 
 /** Register the map page's filters and physical scene as one map-owned surface. */
 export const installMapApplicationRegistrationV1 = ({

@@ -1,6 +1,6 @@
 import { registerPrimitiveElementsV1 } from "./primitive-elements-registration-v1.mjs?v=primitive-elements-registration-v1";
 import { createAppNavigationElementsV1, dashboardModeKeyV1 } from "./app-navigation-elements-v1.mjs?v=atlas-zip-shell-v2";
-import { installMapApplicationRegistrationV1 } from "../map/map-application-registration-v1.mjs?v=map-application-registration-v1";
+import { installMapApplicationRegistrationV1 } from "../map/map-application-registration-v1.mjs?v=map-application-registration-v2&pdf-marker-anchors-v1&pdf-yellow-circles-v2";
 import { createViewLayerV1 } from "./view-layer-v1.mjs?v=view-layer-v3";
 
 /** Register the shared custom elements in the original application boot order. */

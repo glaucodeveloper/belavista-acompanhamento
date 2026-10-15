@@ -1,4 +1,5 @@
 import { createServiceEventAdmin } from "../events/service-event-admin.mjs?v=service-event-admin-v4";
+import { apiFetch } from "../../api-client.mjs?v=instagram-api-live-v1";
 import {
   countUnreadTopbarNotificationsV1,
   readTopbarNotificationIdsV1,
@@ -44,11 +45,22 @@ export const createAppTopbar = ({
             eventType: "click",
             selector: "#syncBtn",
             action: "synchronize",
-            handler: ({ target }) => {
+            handler: async ({ target }) => {
               target.classList.add("spinning");
-              setTimeout(() => target.classList.remove("spinning"), 650);
-              appStore.set({ lastAction: "Sincronizou dados" });
-              notify("Dados sincronizados localmente.", "success");
+              target.disabled = true;
+              try {
+                const response = await apiFetch("/api/agenda-events", { cache: "no-store" });
+                const payload = await response.json();
+                if (!response.ok || !Array.isArray(payload.events)) throw new Error(payload.error || `HTTP ${response.status}`);
+                appStore.set({ agendaDatabaseEventsV3: payload.events, agendaCalendarLoadedV3: true,
+                  agendaCalendarErrorV3: "", agendaCalendarRevisionV3: Date.now(), lastAction: "Agenda sincronizada com o banco de dados" });
+                notify(`${payload.events.length} compromisso(s) sincronizado(s).`, "success");
+              } catch (error) {
+                notify(`Falha ao sincronizar agenda: ${error.message}`, "error");
+              } finally {
+                target.disabled = false;
+                target.classList.remove("spinning");
+              }
             },
           },
           {
@@ -191,7 +203,7 @@ export const createAppTopbar = ({
       window.lucide?.createIcons();
     }
     updateAtlasNavigation(state = appStore.get()) {
-      const routeLabels = { control: "Visão geral", map: "Mapa de lotes", stages: "Cronograma", agenda: "Agenda", activities: "Atividades", progress: "Progresso", records: "Registros de obras", materials: "Materiais", "lot-development": "Loteamento", "brokers-board": "Lotes", brokers: "Corretores", repasses: "Repasses", "sales-history": "Histórico de movimentações", settings: "Configurações" },
+      const routeLabels = { control: "Visão geral", map: "Mapa de lotes", stages: "Agenda", agenda: "Agenda", activities: "Atividades", progress: "Progresso", records: "Registros de obras", materials: "Materiais", "lot-development": "Loteamento", "brokers-board": "Lotes", brokers: "Corretores", "broker-detail": "Perfil do corretor", repasses: "Repasses", "sales-history": "Histórico de movimentações", settings: "Configurações" },
         title = routeLabels[state.view] || "Acompanhamento",
         titleNode = this.querySelector(".atlas-breadcrumbs strong");
       if (titleNode) titleNode.textContent = title;
@@ -199,7 +211,7 @@ export const createAppTopbar = ({
         const view = button.dataset.atlasView,
           allowed = actorCanOpenView(state.currentActor || {}, view),
           active = view === state.view ||
-            (view === "stages" && ["agenda", "activities", "progress", "foremen", "activity-installation"].includes(state.view));
+            (view === "agenda" && state.view === "stages");
         button.hidden = !allowed;
         button.classList.toggle("active", active);
       });
@@ -209,13 +221,12 @@ export const createAppTopbar = ({
         actor = s.currentActor || { name: "Warley", label: "Dono" },
         normalizedRole = normalizeOperationalRole(actor.role || "owner");
       this.dataset.role = normalizedRole;
-      const routeLabels = { control: "Visão geral", map: "Mapa de lotes", stages: "Cronograma", agenda: "Agenda", activities: "Atividades", progress: "Progresso", records: "Registros de obras", materials: "Materiais", "lot-development": "Loteamento", "brokers-board": "Lotes", brokers: "Corretores", repasses: "Repasses", "sales-history": "Histórico de movimentações", settings: "Configurações" };
+      const routeLabels = { control: "Visão geral", map: "Mapa de lotes", stages: "Agenda", agenda: "Agenda", activities: "Atividades", progress: "Progresso", records: "Registros de obras", materials: "Materiais", "lot-development": "Loteamento", "brokers-board": "Lotes", brokers: "Corretores", "broker-detail": "Perfil do corretor", repasses: "Repasses", "sales-history": "Histórico de movimentações", settings: "Configurações" };
       const title = routeLabels[s.view] || "Acompanhamento";
       const toolbar = [
         ["control", "layout-dashboard", "Visão"],
         ["map", "map", "Mapa"],
-        ["stages", "calendar-days", "Cronograma"],
-        ["records", "scan-line", "OCR"],
+        ["agenda", "calendar-days", "Agenda"],
       ].map(([view, icon, label]) => `<button type="button" data-atlas-view="${view}" title="Abrir ${label}">${ico(icon)}<span>${label}</span></button>`).join("");
       this.innerHTML = `<header class="topbar atlas-topbar"><div class="atlas-topbar-leading"><button type="button" class="icon-btn menu-toggle" data-sidebar-menu-toggle aria-label="Abrir menu" aria-expanded="false">${ico("menu")}</button><div class="atlas-breadcrumbs"><span>Empreendimentos</span><span>›</span><strong>${esc(title)}</strong></div></div><nav class="atlas-toolbar" role="toolbar" aria-label="Barra de ferramentas da aplicação">${toolbar}</nav><div class="top-actions"><span class="atlas-session"><i></i>Sessão ativa</span><button id="syncBtn" class="ghost">${ico("refresh-cw")}<span>Sincronizar</span></button><button class="icon-btn" aria-label="Notificações">${ico("bell")}<span class="badge">0</span></button><div class="top-admin-wrap"><div class="profile top-profile" id="topAdminTrigger" tabindex="0" role="button"><span class="avatar">${esc(actor.name?.[0] || "W")}</span><div><strong>${esc(actor.name || "Warley")}</strong><small>${esc(actor.label || "Dono")}</small></div>${ico("chevron-down")}</div><div class="top-admin-menu"><button>Perfil e permissões</button><button>Auditoria da sessão</button><button>Encerrar sessão</button></div></div></div></header>`;
       this.updateAtlasNavigation(s);

@@ -62,17 +62,22 @@ export const installBrokersPageV1 = (
         },
         {
           service: "brokers-profile-navigation",
+          capture: true,
           routes: [
             {
               eventType: "click",
               selector: "[data-broker-open]",
               action: "open-broker-profile",
-              handler: ({ target }) => {
+              handler: ({ event, target }) => {
+                event.preventDefault();
+                event.stopPropagation();
+                target.blur();
                 appStore.set({
                   view: "broker-detail",
                   selectedBrokerDirectoryId: target.dataset.brokerOpen,
                   lastAction: "Abriu a página dedicada do corretor",
                 });
+                requestAnimationFrame(() => window.scrollTo(0, 0));
               },
             },
           ],

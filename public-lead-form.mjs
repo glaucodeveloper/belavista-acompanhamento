@@ -244,7 +244,7 @@ const pageMarkup=()=>`<div class="public-leads-experience">
   <section class="public-map-story" data-map-story>
     <div class="public-map-sticky">
       <div class="public-map-static-bg" aria-hidden="true"></div>
-      <map-scene data-public-map data-public-presentation data-public-static-only="true" data-stage="Aliança Park · comercial" aria-label="Mapa interativo do loteamento" data-public-static-base="true" data-public-static-capture="/assets/public/dwg-satellite-treated-v5411.png"></map-scene>
+      <map-scene data-public-map data-public-presentation data-admin-public-map data-public-static-only="true" data-stage="Aliança Park · comercial" aria-label="Mapa interativo dos lotes do loteamento" data-public-static-base="true" data-public-static-capture="/assets/public/dwg-satellite-public-v1.webp"></map-scene>
       <div class="public-map-vignette"></div>
 
       <div class="public-hero-letter" data-hero-letter>
@@ -256,6 +256,14 @@ const pageMarkup=()=>`<div class="public-leads-experience">
       <div class="public-scroll-legend" data-scroll-legend aria-live="off">
         <span data-legend-index>MAPA</span>
         <div><b data-legend-title>Encontre seu lugar</b><small data-legend-text>Consulte lotes, compare posições e converse com a equipe para planejar sua visita ou iniciar uma reserva.</small></div>
+      </div>
+
+      <div class="public-map-gesture-controls" data-public-map-controls aria-label="Controles do mapa">
+        <span>MAPA</span>
+        <button type="button" data-map-zoom="out" aria-label="Diminuir zoom" title="Diminuir zoom">−</button>
+        <button type="button" data-map-zoom="in" aria-label="Aumentar zoom" title="Aumentar zoom">+</button>
+        <button type="button" data-map-zoom="reset" aria-label="Recentralizar mapa" title="Recentralizar mapa">⌖</button>
+        <small>Arraste para mover · Shift + arraste para aproximar</small>
       </div>
 
       <public-lead-chat></public-lead-chat>
@@ -323,7 +331,7 @@ export class PublicLeadsSurface extends HTMLElement{
   }
   render(){this.innerHTML=pageMarkup();}
   map(){return this.querySelector('map-scene[data-public-map]');}
-  selectedLot(){const map=this.map(),value=clean(map?.dataset.selectedPart);return value&&value!=='Nenhum lote selecionado'?{id:value,label:value,status:'unknown'}:null;}
+  selectedLot(){const map=this.map(),value=clean(map?.dataset.selectedLot||map?.dataset.selectedPart);return value&&value!=='Nenhum lote selecionado'?{id:value,label:value,status:'unknown'}:null;}
   activateHighlight(key,source='interactive'){
     if(!mapKeys.has(key))return;
     const map=this.map(),copy=HIGHLIGHT_COPY[key]||HIGHLIGHT_COPY.urbanizacao;
@@ -345,9 +353,21 @@ export class PublicLeadsSurface extends HTMLElement{
   markReserved(lot){const box=this.querySelector('[data-selected-lot]');box.hidden=false;box.innerHTML=`<span>RESERVADO</span><b>${esc(lot.code||lot.label||lot.id)}</b>`;}
   bind(){
     const letter=this.querySelector('[data-hero-letter]'),legend=this.querySelector('[data-scroll-legend]'),map=this.map(),lotBox=this.querySelector('[data-selected-lot]'),story=this.querySelector('[data-map-story]');
+    const sticky=this.querySelector('.public-map-sticky'),gestureControls=this.querySelector('[data-public-map-controls]');
     if(!story||!letter||!legend)return;
     const clamp=value=>Math.min(1,Math.max(0,value));
     const smooth=(a,b,value)=>{const t=clamp((value-a)/Math.max(.0001,b-a));return t*t*(3-2*t);};
+    const gesture={zoom:1,panX:0,panY:0,drag:null};
+    const publishGesture=()=>{
+      this.style.setProperty('--public-plan-gesture-zoom',String(gesture.zoom));
+      this.style.setProperty('--public-plan-gesture-pan-x',gesture.panX+'px');
+      this.style.setProperty('--public-plan-gesture-pan-y',gesture.panY+'px');
+      if(map){
+        map.dataset.publicGestureZoom=gesture.zoom.toFixed(3);
+        map.dataset.publicGesturePan=Math.round(gesture.panX)+','+Math.round(gesture.panY);
+      }
+    };
+    const clearGesture=()=>{gesture.zoom=1;gesture.panX=0;gesture.panY=0;publishGesture();};
     const disableAdministrativeMapControls=()=>{
       if(!map)return;
       map.dataset.publicPresentation='true';
@@ -377,6 +397,29 @@ export class PublicLeadsSurface extends HTMLElement{
       const storyTop=story.getBoundingClientRect().top+scrollY;
       const travel=Math.max(1,story.offsetHeight-innerHeight);
       const p=clamp((scrollY-storyTop)/travel);
+      const sceneY=Math.max(0,scrollY-storyTop);
+      const titleEnd=innerHeight*.30;
+      const planReveal=smooth(titleEnd,titleEnd+innerHeight*.24,sceneY);
+      const planZoom=smooth(titleEnd,titleEnd+innerHeight*.78,sceneY);
+      this.style.setProperty('--public-plan-opacity',planReveal.toFixed(4));
+      const scrollZoom=1+planZoom*.32,scrollPan=Math.min(innerWidth*.10,150)*planZoom;
+      this.style.setProperty('--public-plan-zoom',(scrollZoom*gesture.zoom).toFixed(4));
+      this.style.setProperty('--public-plan-pan-x',(scrollPan+gesture.panX).toFixed(1)+'px');
+      this.style.setProperty('--public-plan-pan-y',gesture.panY.toFixed(1)+'px');
+      this.dataset.planProgress=planZoom.toFixed(4);
+      this.querySelector('public-lead-chat')?.dispatchEvent(new CustomEvent('belavista:public-map-scroll-zoom',{
+        detail:{active:planZoom>.08}
+      }));
+      if(gestureControls)gestureControls.dataset.visible=planZoom>.42?'true':'false';
+      if(map){
+        map.dataset.publicScrollZoom=planZoom.toFixed(4);
+        const lotLayer=story.querySelector('.satellite-lot-plan-overlay');
+        lotLayer?.setAttribute('aria-hidden',planZoom>.42?'false':'true');
+        lotLayer?.querySelectorAll('.satellite-lot-plan-marker').forEach(marker=>{
+          marker.tabIndex=planZoom>.42?0:-1;
+          marker.setAttribute('aria-hidden',planZoom>.42?'false':'true');
+        });
+      }
       const release=scrollY>=storyTop+travel-.5;
       story.dataset.sceneReleased=release?'true':'false';
       this.dataset.scenePinned=release?'false':'true';
@@ -394,68 +437,74 @@ export class PublicLeadsSurface extends HTMLElement{
     addEventListener('scroll',requestRender,{passive:true});
     addEventListener('resize',requestRender,{passive:true});
 
+    const activateZoomControl=button=>{
+      if(button.dataset.mapZoom==='reset')clearGesture();
+      else gesture.zoom=clamp((button.dataset.mapZoom==='in'?gesture.zoom*1.2:gesture.zoom/1.2),.65,3.5);
+      publishGesture();requestRender();
+    };
+    sticky?.addEventListener('pointerdown',event=>{
+      const zoomButton=event.target.closest?.('[data-map-zoom]');
+      if(zoomButton&&gestureControls?.contains(zoomButton)){
+        event.preventDefault();event.stopPropagation();activateZoomControl(zoomButton);return;
+      }
+      if(event.button!==0||Number(this.dataset.planProgress||0)<.42||
+        event.target.closest('button,a,input,select,textarea,[role="button"],[contenteditable="true"],.satellite-lot-plan-marker,.satellite-lot-hit-area,public-lead-chat,[data-public-map-controls]'))return;
+      gesture.drag={x:event.clientX,y:event.clientY,mode:event.shiftKey||event.ctrlKey?'zoom':'pan'};
+      sticky.dataset.mapGesture=gesture.drag.mode==='zoom'?'shift-drag-zoom':'drag-pan';
+      sticky.classList.toggle('is-public-map-panning',gesture.drag.mode==='pan');
+      try{sticky.setPointerCapture(event.pointerId);}catch{}
+      event.preventDefault();
+    });
+    sticky?.addEventListener('pointermove',event=>{
+      if(!gesture.drag)return;
+      const dx=event.clientX-gesture.drag.x,dy=event.clientY-gesture.drag.y;
+      if(gesture.drag.mode==='pan'){
+        gesture.panX+=dx;gesture.panY+=dy;
+      }else if(dy){
+        const rect=sticky.getBoundingClientRect(),oldZoom=gesture.zoom;
+        const nextZoom=clamp(oldZoom-dy*.008,.65,3.5),ratio=nextZoom/oldZoom;
+        const offsetX=event.clientX-(rect.left+rect.width/2),offsetY=event.clientY-(rect.top+rect.height/2);
+        gesture.panX=offsetX-(offsetX-gesture.panX)*ratio;
+        gesture.panY=offsetY-(offsetY-gesture.panY)*ratio;
+        gesture.zoom=nextZoom;
+      }
+      gesture.drag.x=event.clientX;gesture.drag.y=event.clientY;
+      publishGesture();requestRender();event.preventDefault();
+    });
+    const endMapDrag=event=>{
+      if(!gesture.drag)return;
+      gesture.drag=null;
+      delete sticky.dataset.mapGesture;
+      sticky.classList.remove('is-public-map-panning');
+      try{if(sticky.hasPointerCapture(event.pointerId))sticky.releasePointerCapture(event.pointerId);}catch{}
+    };
+    sticky?.addEventListener('pointerup',endMapDrag);
+    sticky?.addEventListener('pointercancel',endMapDrag);
+    gestureControls?.addEventListener('click',event=>{
+      const button=event.target.closest?.('[data-map-zoom]');
+      if(button&&event.detail===0)activateZoomControl(button);
+    });
+    publishGesture();
+
     const revealNodes=[...this.querySelectorAll('[data-public-reveal],.public-seals')];
     this._publicRevealObserver=new IntersectionObserver(entries=>entries.forEach(entry=>{
       if(entry.isIntersecting)entry.target.classList.add('is-visible');
     }),{threshold:.16,rootMargin:'0px 0px -8%'});
     revealNodes.forEach(node=>this._publicRevealObserver.observe(node));
 
-    let wheelCharge=0,lastWheelAt=0,snapLocked=false;
-    this._publicWheelHandler=event=>{
-      if(event.ctrlKey||event.metaKey||Math.abs(event.deltaX)>Math.abs(event.deltaY)||snapLocked)return;
-      const now=performance.now();
-      if(now-lastWheelAt>420)wheelCharge=0;
-      lastWheelAt=now;
-      const top=story.getBoundingClientRect().top+scrollY;
-      const travel=Math.max(1,story.offsetHeight-innerHeight);
-      const firstGate=top+innerHeight*.2;
-      const secondGate=top+travel-innerHeight*.12;
-      const down=event.deltaY>0;
-      const nearFirst=down&&scrollY>=top&&scrollY<firstGate;
-      const nearSecond=down&&scrollY>=secondGate-innerHeight*.22&&scrollY<secondGate;
-      if(!nearFirst&&!nearSecond){wheelCharge=0;return;}
-      event.preventDefault();
-      wheelCharge+=Math.abs(event.deltaY);
-      const resistance=nearFirst?180:240;
-      if(wheelCharge<resistance)return;
-      wheelCharge=0;snapLocked=true;
-      const target=nearFirst?top+innerHeight*.42:story.nextElementSibling?.getBoundingClientRect().top+scrollY;
-      scrollTo({top:Number.isFinite(target)?target:secondGate,behavior:'smooth'});
-      setTimeout(()=>{snapLocked=false;},720);
-    };
-    addEventListener('wheel',this._publicWheelHandler,{passive:false,capture:true});
-
-    let touchStartY=0,touchCharge=0;
-    const snapForTouch=()=>{
-      const top=story.getBoundingClientRect().top+scrollY;
-      const travel=Math.max(1,story.offsetHeight-innerHeight);
-      const firstGate=top+innerHeight*.2;
-      const secondGate=top+travel-innerHeight*.12;
-      if(touchCharge<72||snapLocked)return;
-      let target=null;
-      if(scrollY>=top&&scrollY<firstGate)target=top+innerHeight*.42;
-      else if(scrollY>=secondGate-innerHeight*.22&&scrollY<secondGate)target=story.nextElementSibling?.getBoundingClientRect().top+scrollY;
-      if(!Number.isFinite(target))return;
-      snapLocked=true;
-      scrollTo({top:target,behavior:'smooth'});
-      setTimeout(()=>{snapLocked=false;},720);
-    };
-    this._publicTouchStartHandler=event=>{touchStartY=event.touches?.[0]?.clientY||0;touchCharge=0;};
-    this._publicTouchMoveHandler=event=>{
-      const y=event.touches?.[0]?.clientY||touchStartY;
-      const delta=touchStartY-y;
-      if(delta>0)touchCharge+=delta;
-      touchStartY=y;
-    };
-    this._publicTouchEndHandler=()=>{snapForTouch();touchCharge=0;};
-    addEventListener('touchstart',this._publicTouchStartHandler,{passive:true,capture:true});
-    addEventListener('touchmove',this._publicTouchMoveHandler,{passive:true,capture:true});
-    addEventListener('touchend',this._publicTouchEndHandler,{passive:true,capture:true});
-
     const startPublic3D=()=>map?.startPublic3D?.();
     // O modelo é parte da composição inicial; não deve depender do primeiro scroll.
     this._publicModelStartTimer=setTimeout(startPublic3D,180);
     map?.addEventListener('pointerdown',startPublic3D,{once:true,passive:true});
+    this.addEventListener('belavista:lot-marker-selected',event=>{
+      const lotId=clean(event.detail?.lotId);
+      if(!lotId)return;
+      const lot={id:lotId,label:clean(event.detail?.label)||lotId,status:'unknown'};
+      lotBox.hidden=false;
+      lotBox.innerHTML=`<span>LOTE SELECIONADO</span><b>${esc(lot.label)}</b><small>Peça disponibilidade ou reserva no chat.</small>`;
+      const chat=this.querySelector('public-lead-chat');
+      if(chat)chat.session=saveSession({...chat.session,selectedLot:lot});
+    });
     map?.addEventListener('click',()=>setTimeout(()=>{
       const lot=this.selectedLot();if(!lot)return;
       lotBox.hidden=false;lotBox.innerHTML=`<span>LOTE SELECIONADO</span><b>${esc(lot.label)}</b><small>Peça disponibilidade ou reserva no chat.</small>`;

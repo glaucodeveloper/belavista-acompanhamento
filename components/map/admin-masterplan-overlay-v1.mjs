@@ -27,14 +27,20 @@ export const installAdminMasterplanOverlayV1 = (MapScene, {
       !this.isAdminPublicMapV1?.()
     )
       return false;
-    if (this.querySelector("[data-admin-masterplan-overlay]")) return true;
+    const surface = document.body.classList.contains("public-leads-page")
+      ? this.closest(".public-map-sticky") || this
+      : this;
+    if (surface.querySelector("[data-admin-masterplan-overlay]")) return true;
 
     const layer = document.createElement("div");
     layer.className = "admin-masterplan-overlay";
     layer.dataset.adminMasterplanOverlay = "true";
     layer.setAttribute("aria-hidden", "false");
-    layer.innerHTML = `<div class="admin-masterplan-fit"><div class="admin-masterplan-transform" data-admin-masterplan-transform><img src="${artwork.url}" data-masterplan-original-pdf alt="Planta original do loteamento, com todos os preenchimentos e divisões do PDF"></div></div>`;
-    this.append(layer);
+    const artworkUrl = document.body.classList.contains("public-leads-page")
+      ? "/assets/public/alianca-park-masterplan-lot-overlay-public-v1.webp"
+      : artwork.url;
+    layer.innerHTML = `<div class="admin-masterplan-fit"><div class="admin-masterplan-transform" data-admin-masterplan-transform><img src="${artworkUrl}" data-masterplan-original-pdf alt="Planta original do loteamento, com todos os preenchimentos e divisões do PDF"></div></div>`;
+    surface.append(layer);
     const fit = layer.querySelector(".admin-masterplan-fit");
     const transform = layer.querySelector("[data-admin-masterplan-transform]");
     const image = transform.querySelector('[data-masterplan-original-pdf]');

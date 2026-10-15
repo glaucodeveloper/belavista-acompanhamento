@@ -796,7 +796,7 @@ export function buildWorkerMonitor(role='admin'){
     priority:stage.automation.priority
   }))).sort((a,b)=>String(a.plannedStart||a.plannedEnd||'').localeCompare(String(b.plannedStart||b.plannedEnd||''))).slice(0,18);
   const aiProvider=String(process.env.AI_PROVIDER||'gemini').trim().toLowerCase();
-  const aiConfigured=aiProvider==='nvidia'?Boolean(process.env.NVIDIA_API_KEY):Boolean(process.env.GEMINI_API_KEY);
+  const aiConfigured=aiProvider==='minicpm'?Boolean(process.env.MINICPM_API_URL||'http://127.0.0.1:19200/v1/chat/completions'):aiProvider==='nvidia'?Boolean(process.env.NVIDIA_API_KEY):Boolean(process.env.GEMINI_API_KEY);
   return {
     generatedAt:now(),
     role:text(role||'admin'),

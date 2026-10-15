@@ -1,5 +1,6 @@
 /** Installs the complete PDF/satellite lot overlay behavior on MapScene. */
 export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) => {
+  const formatBRL = value => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value) || 0);
   const {
     ADMIN_MASTERPLAN_LOT_POLYGONS_URL_V2,
     ADMIN_MASTERPLAN_SATELLITE_FRAME_V1,
@@ -25,8 +26,11 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
   } = dependencies;
 
   MapScene.prototype.installSatelliteLotPlanOverlayV1 = async function({ markers = true, outlines = true } = {}) {
+    // Na página de leads a planta administrativa deve acompanhar o mesmo
+    // elemento que recebe o zoom do scroll, junto com a imagem satélite.
     const surface = this.closest(".public-map-sticky") || this;
     if (!surface?.isConnected) return false;
+    const isPublicLeadsMap = document.body.classList.contains("public-leads-page");
 
     // O traçado pode ser requisitado antes do primeiro frame da cena. Garante
     // que a camada visual oficial exista antes de decidir entre coordenadas
@@ -170,6 +174,8 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
         lotWidget.dataset.pinned = pinnedLotWidgetId === lotId ? "true" : "false";
         lotWidget.style.left = marker?.style.left || "50%";
         lotWidget.style.top = marker?.style.top || "50%";
+        lotWidget.style.setProperty("--map-context-widget-left", lotWidget.style.left);
+        lotWidget.style.setProperty("--map-context-widget-top", lotWidget.style.top);
         lotWidget.hidden = false;
         lotWidget.innerHTML = `<header><span class="activity-kind">LOTE ${esc(lotNumber)}</span><button type="button" data-lot-widget-close aria-label="Fechar widget do lote">×</button></header><strong>${esc(match?.label || `Lote ${lotNumber}`)}</strong><dl><div><dt>Status</dt><dd>${esc(status?.status || "Disponível")}</dd></div><div><dt>Valor</dt><dd>${esc(price)}</dd></div>${match ? `<div><dt>Quadra</dt><dd>${esc(match.quadra)} · ${esc(match.area)} m²</dd></div>` : ""}</dl><footer><button type="button" data-lot-widget-assistant>${ico("message-circle")} Perguntar à IA</button>${match ? `<button type="button" data-lot-widget-open class="primary">Abrir ficha</button>` : `<button type="button" data-lot-widget-open class="primary">Abrir controle</button>`}</footer>`;
         lotWidget.querySelector("[data-lot-widget-close]")?.addEventListener("click", () => {
@@ -193,6 +199,8 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
         commonAreaWidget.dataset.sourceId = sourceId;
         commonAreaWidget.style.left = `${(u * 100).toFixed(4)}%`;
         commonAreaWidget.style.top = `${(v * 100).toFixed(4)}%`;
+        commonAreaWidget.style.setProperty("--map-context-widget-left", commonAreaWidget.style.left);
+        commonAreaWidget.style.setProperty("--map-context-widget-top", commonAreaWidget.style.top);
         commonAreaWidget.hidden = false;
         commonAreaWidget.innerHTML = `<header><span class="activity-kind">ÁREA COMPARTILHADA</span><button type="button" data-common-area-widget-close aria-label="Fechar contexto da área comum">×</button></header><strong>${esc(MASTERPLAN_COMMON_AREA_LABEL_V1)}</strong><p>Use o assistente para consultar uso, manutenção, ocorrências ou planejamento desta área.</p><footer><button type="button" class="primary" data-common-area-widget-assistant>${ico("message-circle")} Perguntar à IA</button></footer>`;
         commonAreaWidget.querySelector("[data-common-area-widget-close]")?.addEventListener("click", () => {
@@ -231,7 +239,7 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
           row,
         ]),
       );
-      const masterplanOverlay = this.querySelector("[data-admin-masterplan-overlay]");
+      const masterplanOverlay = surface.querySelector("[data-admin-masterplan-overlay]");
       let markerOverrides = {};
       try {
         const stored = JSON.parse(localStorage.getItem("belavista.map.lot-marker-overrides.v1") || "{}");
@@ -417,9 +425,11 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
           marker.type = "button";
           marker.className = "satellite-lot-plan-marker";
           marker.dataset.lot = lotId;
-          marker.dataset.lotSource = usesCanonicalTraceMarkers
-            ? "canonical-trace"
-            : "pdf-green-mapping";
+          marker.dataset.lotSource = greenMapping
+            ? "pdf-original-label"
+            : usesCanonicalTraceMarkers
+              ? "canonical-trace"
+              : "pdf-green-mapping";
           // Nas faixas onde a escala inicial comprime dois lotes vizinhos,
           // preserva-se a ordem numérica da prancha para que o alvo visível
           // não seja trocado pelo último elemento inserido.
@@ -427,19 +437,22 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
           if ((masterplanOverlay || hasOfficialPdfLabels) && projectedBounds.maxU > projectedBounds.minU && projectedBounds.maxV > projectedBounds.minV) {
             const canonicalMarker = canonicalTraceMarkerByLot.get(lotId);
             const officialMarker = officialMarkerByLot.get(lotId);
-            const relativeU = canonicalMarker
-              ? Number(canonicalMarker.u)
-              : greenMapping
+            // O número impresso no PDF já foi associado a exatamente um
+            // polígono verde. A projeção DWG é apenas contingência: sua
+            // homografia desloca quase todos os números para outro lote.
+            const relativeU = greenMapping
               ? Number(greenMapping.u)
+              : canonicalMarker
+              ? Number(canonicalMarker.u)
               : officialMarker
               ? Number(officialMarker.u)
               : usesNativeMasterplanPolygons
               ? center.u
               : (center.u - projectedBounds.minU) / (projectedBounds.maxU - projectedBounds.minU);
-            const relativeV = canonicalMarker
-              ? Number(canonicalMarker.v)
-              : greenMapping
+            const relativeV = greenMapping
               ? Number(greenMapping.v)
+              : canonicalMarker
+              ? Number(canonicalMarker.v)
               : officialMarker
               ? Number(officialMarker.v)
               : usesNativeMasterplanPolygons
@@ -451,7 +464,7 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
             markerU = position.u;
             markerV = position.v;
           }
-          const manualPosition = markerOverrides[lotId];
+          const manualPosition = isPublicLeadsMap ? null : markerOverrides[lotId];
           if (
             manualPosition &&
             Number.isFinite(Number(manualPosition.u)) &&
@@ -529,7 +542,7 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
             const lotNumber = String(lotId.match(/\d+/g)?.at(-1) || "").padStart(3, "0");
             const label = `Lote ${lotNumber || lotId.replace(/^Lote_?/, "")}`;
             const position = masterplanMarkerPosition(relative.u, relative.v, masterplanFrame);
-            const manualPosition = markerOverrides[lotId];
+            const manualPosition = isPublicLeadsMap ? null : markerOverrides[lotId];
             const markerU = Number.isFinite(Number(manualPosition?.u)) ? Number(manualPosition.u) : position.u;
             const markerV = Number.isFinite(Number(manualPosition?.v)) ? Number(manualPosition.v) : position.v;
             marker.type = "button";
@@ -712,4 +725,3 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
     }
   };
 };
-

@@ -1,4 +1,4 @@
-import { installBrokersPageV1 } from "./brokers-page.mjs?v=brokers-page-v4";
+import { installBrokersPageV1 } from "./brokers-page.mjs?v=brokers-page-v7";
 import { installContractsPageV1 } from "./contracts-page-v1.mjs?v=contracts-page-v1";
 
 /** Install the broker directory and contract/proposal routes in source order. */

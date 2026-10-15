@@ -37,6 +37,14 @@ export const registerBelavistaAdminAiChatV1 = ({
       readCalendar: agendaCalendar.read,
       weekKey: agendaCalendar.weekKey,
       writeCalendar: agendaCalendar.write,
+      refreshCalendar: async () => {
+        const response = await apiFetch('/api/agenda-events', { cache: 'no-store' });
+        const payload = await response.json();
+        if (!response.ok || !Array.isArray(payload.events)) throw new Error(payload.error || `HTTP ${response.status}`);
+        appStore.set({ agendaDatabaseEventsV3: payload.events, agendaCalendarLoadedV3: true,
+          agendaCalendarErrorV3: '', agendaCalendarRevisionV3: Date.now() });
+        return payload.events;
+      },
       normalizeActivityRouteText: agendaCalendar.normalizeActivityRouteText,
     },
     commands: { applyLotStatusCommand, parseLotStatusCommand },

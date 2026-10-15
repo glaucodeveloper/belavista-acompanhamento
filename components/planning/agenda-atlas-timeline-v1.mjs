@@ -25,7 +25,7 @@ export const AgendaAtlasTimelineV1 = ({ props = {}, children = [] } = {}) => ({
     }).join("");
     return {
       done: false,
-      value: `<section class="agenda-atlas-timeline" aria-label="Linha do tempo da agenda"><header><div><span class="activity-kind">LINHA DO TEMPO · AGENDA</span><h2>Compromissos da semana</h2><p>Selecione um compromisso para revisar os dados e o horário.</p></div><button type="button" class="agenda-atlas-calendar-toggle" data-atlas-calendar-toggle aria-expanded="false">Ajustar horários no calendário</button></header><div class="agenda-atlas-rail" role="group" aria-label="Dias da semana">${rail}</div><div class="agenda-atlas-events" data-atlas-timeline-events>${cards || '<p class="agenda-atlas-empty">Nenhum compromisso registrado nesta semana.</p>'}</div>${children.join("")}</section>`,
+      value: `<section class="agenda-atlas-timeline" aria-label="Compromissos da agenda"><header><div><span class="activity-kind">AGENDA · COMPROMISSOS</span><h2>Compromissos da semana</h2><p>Selecione um compromisso para revisar os dados, a atividade e o horário.</p></div><button type="button" class="agenda-atlas-calendar-toggle" data-atlas-calendar-toggle aria-expanded="false">Ajustar horários no calendário</button></header><div class="agenda-atlas-rail" role="group" aria-label="Dias da semana">${rail}</div><div class="agenda-atlas-events" data-atlas-timeline-events>${cards || '<p class="agenda-atlas-empty">Nenhum compromisso registrado nesta semana.</p>'}</div>${children.join("")}</section>`,
     };
   },
 });

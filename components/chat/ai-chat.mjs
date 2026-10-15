@@ -1,4 +1,5 @@
 import { createAiChatDependenciesV1 } from "./ai-chat-dependencies-v1.mjs?v=ai-chat-dependencies-v6";
+import { aiAgendaInstructionV1, normalizeAiAgendaComprehensionV1 } from "../shared/ai-agenda-comprehension-v1.mjs?v=1";
 
 export { assertAiChatDependenciesV1 } from "./ai-chat-dependencies-v1.mjs";
 
@@ -25,6 +26,7 @@ export const createAiChat = ({ browser, ports }) => {
       readCalendar,
       weekKey,
       writeCalendar,
+      refreshCalendar,
       normalizeActivityRouteText,
     },
     state: chatState,
@@ -1318,6 +1320,8 @@ export const createAiChat = ({ browser, ports }) => {
           : current.materialCatalogAdditions || [],
         lastAction: `Alocou leitura visual em ${target === "material" ? "Materiais" : "Serviços"} · ${stage.name}`,
       }));
+      try { await refreshCalendar(); }
+      catch (error) { this.addToolFeedback(`Registro salvo, mas a agenda precisa ser sincronizada: ${error.message}`, "warning"); }
       const destination = target === "material" ? "Materiais" : "Serviços";
       this.addToolFeedback(`Leitura visual alocada em ${destination} · ${stage.name}${title ? ` · ${title}` : ""}. Status: Pendente para revisão humana.`, "pending");
       return `Alocou a leitura visual em ${destination} na etapa ${stage.name}, com status Pendente para revisão humana.`;
@@ -1435,6 +1439,7 @@ export const createAiChat = ({ browser, ports }) => {
         }
         if (name === "agenda.create_pending") {
           const state = appStore.get(),
+            comprehension = normalizeAiAgendaComprehensionV1(state.aiAgendaComprehensionV1),
             stages = executionModel.stages || [],
             stageKey = String(args.stageKey || "").trim(),
             stageName = String(args.stageName || args.relation || "").trim(),
@@ -1447,11 +1452,20 @@ export const createAiChat = ({ browser, ports }) => {
                 normalizeActivityRouteText(item.name) === normalizedStageName,
               ) ||
               stages.find((item) => String(item.key) === selectedKey);
+          if (!comprehension.autoCreatePending) {
+            this.addToolFeedback("A criação de apontamentos pela IA está desativada em Configurações.", "warning");
+            continue;
+          }
           if (!stage) {
             this.addToolFeedback(
-              "A IA precisa confirmar a etapa antes de criar o apontamento no cronograma.",
+              "A IA precisa confirmar a etapa antes de criar o apontamento na agenda.",
               "warning",
             );
+            continue;
+          }
+          try { await refreshCalendar(); }
+          catch (error) {
+            this.addToolFeedback(`Não foi possível carregar a agenda: ${error.message}`, "warning");
             continue;
           }
           const data = readCalendar(),
@@ -1489,14 +1503,16 @@ export const createAiChat = ({ browser, ports }) => {
               status: "Pendente",
               aiPending: true,
               notes: String(args.notes || "").trim().slice(0, 1200),
+              materialIds: Array.isArray(args.materialIds) ? args.materialIds.map(value => String(value).trim()).filter(Boolean) : [],
               detailsNeeded: String(args.detailsNeeded || "").trim().slice(0, 800),
               evidenceRequired: Boolean(args.evidenceRequired),
             };
-          writeCalendar({
-            version: 3,
-            initialized: true,
-            events: [...events, event],
-          });
+          try {
+            await writeCalendar({ version: 3, initialized: true, events: [...events, event] });
+          } catch (error) {
+            this.addToolFeedback(`Não foi possível salvar o compromisso na agenda: ${error.message}`, "warning");
+            continue;
+          }
           const agendaItem = {
             id,
             title,
@@ -1535,7 +1551,7 @@ export const createAiChat = ({ browser, ports }) => {
             lastAction: `IA criou apontamento pendente ${title} em ${stage.name}`,
           });
           executed.push(
-            `Criou apontamento pendente no cronograma de ${stage.name} e abriu para completar os dados.`,
+            `Criou apontamento pendente na agenda de ${stage.name} e abriu para completar os dados.`,
           );
           continue;
         }
@@ -1620,7 +1636,7 @@ export const createAiChat = ({ browser, ports }) => {
             message: text,
             view: appStore.get().view,
             mapContext: this.chatMapContext,
-            instruction: `${CHAT_OPERATIONAL_EXECUTION_INSTRUCTION_V1} ${CHAT_VISUAL_ALLOCATION_POLICY_V1}`,
+            instruction: `${CHAT_OPERATIONAL_EXECUTION_INSTRUCTION_V1} ${CHAT_VISUAL_ALLOCATION_POLICY_V1} ${aiAgendaInstructionV1(appStore.get().aiAgendaComprehensionV1)}`,
             requestContext:
               options?.requestContext && typeof options.requestContext === "object"
                 ? options.requestContext

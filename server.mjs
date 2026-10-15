@@ -24,6 +24,8 @@ const geminiModel = process.env.GEMINI_MODEL || 'gemini-3.7-flash';
 const nvidiaModel = process.env.NVIDIA_MODEL || 'meta/llama-3.2-11b-vision-instruct';
 const nvidiaVisionModel = process.env.NVIDIA_VISION_MODEL || process.env.NVIDIA_VLM_MODEL || 'meta/llama-3.2-90b-vision-instruct';
 const nvidiaApiUrl = process.env.NVIDIA_API_URL || 'https://integrate.api.nvidia.com/v1/chat/completions';
+const minicpmApiUrl = process.env.MINICPM_API_URL || 'http://127.0.0.1:19200/v1/chat/completions';
+const minicpmModel = process.env.MINICPM_MODEL || 'minicpm5-2b';
 const nvidiaReasoningVisionModel = process.env.NVIDIA_REASONING_VISION_MODEL || process.env.NVIDIA_REASONING_VLM_MODEL || nvidiaVisionModel;
 const nvidiaReasoningApiUrl = process.env.NVIDIA_REASONING_API_URL || nvidiaApiUrl;
 const nvidiaReasoningBudget = Math.max(256,Math.min(16384,Number(process.env.NVIDIA_REASONING_BUDGET)||2048));
@@ -41,6 +43,7 @@ const {getCalibration,updateCalibration,recordAgentEvent,recalculateOperationalS
 const {getProductionBaseline,getProductionPlan}=await import('./production-planning.mjs');
 const {publishBridgeEvent}=await import('./firebase-bridge.mjs');
 const {runOperationalAssistant,extractInstantRecordOcr}=await import('./worker/src/nvidia.js');
+const {extractLocalRecordOcr}=await import('./local-record-ocr.mjs');
 const {buildRecordInterpretationV1}=await import('./record-stage-interpretation-v1.mjs');
 const {getCamofoxBridgeStatus,openInstagramInbox,fallbackInstagramDraft}=await import('./desktop/instagram-bridge.mjs');
 const {listInstagramFeed,replyInstagramComment,defaultInstagramAutomationPolicy}=await import('./worker/src/social.js');
@@ -384,14 +387,40 @@ async function nvidia(req,res){
   result.toolCalls=mergeToolCalls(result.toolCalls,inferredToolCalls(requestMessage));
   return send(res,200,{...result,provider:'nvidia',model,endpoint,vision:Boolean(image),reasoning:Boolean(image&&reasoningVision),recordOcr,visionPipeline:image?{ocrModel:recordOcr?.model||null,ocrImageSent:true,assistantImageSent:assistantReceivesImage,assistantModel:model}:null,attachmentAccepted:Boolean(image),attachment:attachmentRef,attachmentStorage:'local-ephemeral',inference:{protocol:'belavista-operational-inference/v1',endpoint:requestPath,systemModel,systemRuntime:'open-jev',jev:jevDecision}});
 }
+function minicpmOperationalPrompt(message,view,context){
+  let compactContext='{}';
+  try{compactContext=JSON.stringify(context||{}).slice(0,2200);}catch{}
+  return `Você é o assistente operacional do empreendimento Aliança Park. Responda em português do Brasil. Não invente fatos nem confirme ações executadas. Para perguntas informativas, retorne JSON válido {"reply":"resposta","toolCalls":[]}. Contexto da tela: ${String(view||'assistant').slice(0,80)}. Estado disponível (resumido): ${compactContext}. Pedido: ${String(message||'').trim().slice(0,1200)}`;
+}
+async function minicpm(req,res){
+  const {message,view='assistant',attachment=null,context={}}=await body(req);
+  if(typeof message!=='string'||!message.trim())return send(res,400,{error:'Mensagem inválida.'});
+  if(attachment?.dataUrl){
+    const image=normalizeNvidiaImageAttachment(attachment);
+    if(!image)return send(res,400,{error:'Imagem inválida. Use PNG, JPEG ou WEBP de até 6 MB.'});
+    const input={attachment:{...attachment,...image},context:{userDescription:message,stages:context?.stages||[],selectedStageKey:context?.selectedStageKey||'',selectedStageName:context?.selectedStageName||''}};
+    const recordOcr=process.env.NVIDIA_API_KEY?await extractInstantRecordOcr(process.env,input):await extractLocalRecordOcr(input);
+    const interpretation=buildRecordInterpretationV1({message,stages:context?.stages,selectedStageKey:context?.selectedStageKey,recordOcr});
+    const toolCalls=receiptMaterialAllocationCalls(recordOcr,interpretation);
+    const reply=toolCalls.length?`OCR concluído: ${toolCalls.length} material(is) proposto(s) para ${interpretation.explicitStage.name}, pendente(s) de revisão humana.`:'OCR concluído. Revise os dados da nota e indique a etapa de destino antes de alocar o material.';
+    return send(res,200,{reply,text:reply,toolCalls,provider:recordOcr.provider,model:recordOcr.model,vision:true,reasoning:false,recordOcr,attachmentAccepted:true,ocrAllocation:toolCalls.length?'deterministic-from-image-ocr':'awaiting-explicit-stage'});
+  }
+  const upstream=await fetch(minicpmApiUrl,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({model:minicpmModel,messages:[{role:'system',content:'Responda apenas com JSON válido contendo reply e toolCalls. Não exponha raciocínio interno.'},{role:'user',content:minicpmOperationalPrompt(message,view,context)}],temperature:.15,max_tokens:500,stream:false}),signal:AbortSignal.timeout(120000)});
+  const json=await upstream.json();
+  if(!upstream.ok)return send(res,502,{error:json?.detail||json?.message||json?.error?.message||'MiniCPM local recusou a solicitação.'});
+  const result=parseToolEnvelope(json?.choices?.[0]?.message?.content||'MiniCPM não retornou texto.');
+  result.toolCalls=mergeToolCalls(result.toolCalls,inferredToolCalls(message));
+  return send(res,200,{...result,provider:'minicpm',model:minicpmModel,vision:false});
+}
 async function ai(req,res){
+  if(aiProvider==='minicpm') return minicpm(req,res);
   if(aiProvider==='nvidia') return nvidia(req,res);
   if(aiProvider==='gemini') return gemini(req,res);
-  return send(res,500,{error:`AI_PROVIDER inválido: ${aiProvider}. Use nvidia ou gemini.`});
+  return send(res,500,{error:`AI_PROVIDER inválido: ${aiProvider}. Use minicpm, nvidia ou gemini.`});
 }
 function aiStatus(){
-  const configured=aiProvider==='nvidia'?Boolean(process.env.NVIDIA_API_KEY):aiProvider==='gemini'?Boolean(process.env.GEMINI_API_KEY):false;
-  return {provider:aiProvider,model:aiProvider==='nvidia'?nvidiaModel:geminiModel,visionModel:nvidiaVisionModel,reasoningVisionModel:nvidiaReasoningVisionModel,reasoningVisionEndpoint:nvidiaReasoningApiUrl,reasoningBudget:nvidiaReasoningBudget,configured,supportsImages:aiProvider==='nvidia'||aiProvider==='gemini',supportsImageReasoning:aiProvider==='nvidia',attachmentStorage:'local-ephemeral',toolProtocol:'belavista-client-tools/v1',toolCount:clientTools.length};
+  const configured=aiProvider==='minicpm'?Boolean(minicpmApiUrl):aiProvider==='nvidia'?Boolean(process.env.NVIDIA_API_KEY):aiProvider==='gemini'?Boolean(process.env.GEMINI_API_KEY):false;
+  return {provider:aiProvider,model:aiProvider==='minicpm'?minicpmModel:aiProvider==='nvidia'?nvidiaModel:geminiModel,endpoint:aiProvider==='minicpm'?minicpmApiUrl:undefined,visionModel:nvidiaVisionModel,reasoningVisionModel:nvidiaReasoningVisionModel,reasoningVisionEndpoint:nvidiaReasoningApiUrl,reasoningBudget:nvidiaReasoningBudget,configured,supportsImages:aiProvider==='nvidia'||aiProvider==='gemini',supportsImageReasoning:aiProvider==='nvidia',attachmentStorage:'local-ephemeral',toolProtocol:'belavista-client-tools/v1',toolCount:clientTools.length};
 }
 function inferenceStatus(){
   return {
@@ -522,6 +551,15 @@ async function activitiesApi(req,res,pathname){
   return send(res,405,{error:'Método não permitido.'});
 }
 async function recordsApi(req,res,pathname){
+  if(req.method==='POST'&&pathname==='/api/records/ocr'){
+    await requireRoles(req,recordRoles);
+    const payload=await body(req);
+    const image=normalizeNvidiaImageAttachment(payload.attachment);
+    if(!image)return send(res,400,{error:'Imagem OCR inválida. Use PNG, JPEG ou WEBP de até 6 MB.'});
+    const input={attachment:{name:String(payload.attachment?.name||'imagem'),...image},context:payload.context||null};
+    const result=process.env.NVIDIA_API_KEY?await extractInstantRecordOcr(process.env,input):await extractLocalRecordOcr(input);
+    return send(res,200,result);
+  }
   if(req.method==='GET'&&pathname==='/api/records'){await requireRoles(req,recordRoles);return send(res,200,{records:listRecords(),entities:entitySummary()});}
   if(req.method==='POST'&&pathname==='/api/records'){const actor=await requireRoles(req,recordRoles),record=createRecord(await body(req));bridgeAgentEvent({type:'record.created',entity:'records',entityId:record.id,actor,payload:record});return send(res,201,{...record,...refreshPlanningAfter('record.created',actor.role)});}
   const match=pathname.match(/^\/api\/records\/([^/]+)$/); if(!match)return send(res,404,{error:'Registro não encontrado.'});

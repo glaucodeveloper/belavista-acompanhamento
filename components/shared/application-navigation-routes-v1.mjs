@@ -1,5 +1,6 @@
 /** Canonical URL routes and sidebar transitions shared by app startup and navigation. */
 export const APP_VIEW_ALIASES_V1 = Object.freeze({
+  stages: "agenda",
   lotes: "brokers-board",
   repasse: "repasses",
   finance: "control",
@@ -22,7 +23,7 @@ export const resolveApplicationRouteV1 = (rawView) => {
     requestedView = aliasedView === "assistant"
       ? "map"
       : ["pert", "raid", "raci"].includes(aliasedView)
-        ? "stages"
+        ? "agenda"
         : APP_DIRECT_VIEWS_V1.has(aliasedView)
           ? aliasedView
           : "map";
@@ -37,6 +38,6 @@ export const resolveSidebarNavigationTargetV1 = (rawView) => {
       ? "map"
       : ["contracts", "commission-deal", "proposals"].includes(requestedNext)
         ? "control"
-        : requestedNext === "actions" ? "activities" : requestedNext;
+      : requestedNext === "actions" ? "activities" : requestedNext === "stages" ? "agenda" : requestedNext;
   return Object.freeze({ requestedNext, next });
 };

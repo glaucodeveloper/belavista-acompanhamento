@@ -10,7 +10,7 @@ const AI_CHAT_PORT_CONTRACT_V1 = Object.freeze({
   ],
   agenda: [
     "findLastAvailableSlot", "parseDate", "readCalendar", "weekKey",
-    "writeCalendar", "normalizeActivityRouteText",
+    "writeCalendar", "refreshCalendar", "normalizeActivityRouteText",
   ],
   state: ["get", "set", "update", "subscribe"],
   projectContext: [],

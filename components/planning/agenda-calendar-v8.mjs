@@ -4,7 +4,7 @@ export const installAgendaCalendarPageV8 = (ViewLayer, dependencies = {}) => {
   const {
     STAGE_WORKBENCH, appStore, apiFetch, beginCardCanvasLinkV1, demoData, esc,
     executionModel, extensionStage, ico, normalizeActivityRouteTextV1,
-    notify, stagePersistentTimelineMarkupV1, stageV9LiveFor,
+    notify, stagePersistentTimelineMarkupV1, stageV9LiveFor, stageV9MaterialsFor,
     workbenchStageFromValueV1, host = globalThis,
   } = dependencies;
   const document = host.document;
@@ -563,8 +563,11 @@ export const installAgendaCalendarPageV8 = (ViewLayer, dependencies = {}) => {
               `<option value="${esc(activity.id)}" data-agenda-activity-stage="${esc(item.key)}" data-agenda-activity-title="${esc(activity.title)}">${esc(item.name)} · ${esc(activity.title)}</option>`,
           ),
         )
-        .join("");
-    return `<section class="agenda-month-editor-v3" data-agenda-editor-v3 hidden><header><div><span class="activity-kind">NOVO COMPROMISSO / APONTAMENTO</span><h3 data-agenda-editor-title>Adicionar compromisso</h3><p>Associe à etapa e à atividade. Sem data/hora manual, o formulário começa no último horário disponível do mês.</p></div><button type="button" class="ghost" data-agenda-editor-close>Fechar</button></header><form data-agenda-editor-form><input type="hidden" name="id"><div class="agenda-editor-grid-v3"><label>Título<input name="title" placeholder="Ex.: Conferir medição"></label><label>Etapa<select name="stageKey" data-agenda-editor-stage>${stageOptions}</select></label><label>Atividade<select name="activityId" data-agenda-editor-activity>${activityOptions}</select></label><label>Responsável<input name="owner" value="${esc(stageV9LiveFor(stage)?.owner || stage?.owner || "")}" placeholder="Responsável ou equipe"></label><label>Data<input type="date" name="date" value="${esc(slot.date)}"></label><label>Hora inicial<input type="time" name="start" step="1800" value="${esc(slot.start)}"></label><label>Duração em horas<input type="number" name="durationHours" min="0.5" max="24" step="0.5" value="1.5"></label><label>Duração em dias<input type="number" name="spanDays" min="1" max="7" step="1" value="1"></label><label>Status<select name="status"><option>Planejado</option><option>Em andamento</option><option>Pendente</option><option>Concluído</option></select></label></div><footer><button type="button" class="ghost danger" data-agenda-editor-delete hidden>${ico("trash-2")} Excluir</button><span data-agenda-editor-feedback>O card será colocado no último espaço disponível caso você mantenha a posição sugerida.</span><button type="submit" class="activity-install-primary">${ico("save")} Salvar compromisso</button></footer></form></section>`;
+        .join(""),
+      materialOptions = stages.flatMap(item => (stageV9MaterialsFor?.(item) || []).map(material => ({
+        stageKey: item.key, id: String(material.id || material.name || ""), name: String(material.name || material.id || "")
+      }))).filter(item => item.id && item.name).map(item => `<label data-agenda-material-stage="${esc(item.stageKey)}"><input type="checkbox" name="materialIds" value="${esc(item.id)}"> ${esc(item.name)}</label>`).join("");
+    return `<section class="agenda-month-editor-v3" data-agenda-editor-v3 hidden><header><div><span class="activity-kind">NOVO COMPROMISSO / APONTAMENTO</span><h3 data-agenda-editor-title>Adicionar compromisso</h3><p>Associe à etapa, à atividade e aos materiais necessários.</p></div><button type="button" class="ghost" data-agenda-editor-close>Fechar</button></header><form data-agenda-editor-form><input type="hidden" name="id"><div class="agenda-editor-grid-v3"><label>Título<input name="title" placeholder="Ex.: Conferir medição" required></label><label>Etapa<select name="stageKey" data-agenda-editor-stage>${stageOptions}</select></label><label>Atividade<select name="activityId" data-agenda-editor-activity>${activityOptions}</select></label><label>Responsável<input name="owner" value="${esc(stageV9LiveFor(stage)?.owner || stage?.owner || "")}" placeholder="Responsável ou equipe"></label><label>Data<input type="date" name="date" value="${esc(slot.date)}" required></label><label>Hora inicial<input type="time" name="start" step="1800" value="${esc(slot.start)}" required></label><label>Duração em horas<input type="number" name="durationHours" min="0.5" max="24" step="0.5" value="1.5"></label><label>Duração em dias<input type="number" name="spanDays" min="1" max="7" step="1" value="1"></label><label>Status<select name="status"><option>Planejado</option><option>Em andamento</option><option>Pendente</option><option>Concluído</option></select></label></div><label class="agenda-editor-notes">Descrição e orientação para a equipe<textarea name="notes" rows="2" maxlength="2000" placeholder="Descreva a entrega e o que deve ser preparado"></textarea></label><fieldset class="agenda-editor-materials"><legend>Materiais alocados</legend><div data-agenda-material-options>${materialOptions || "<small>Nenhum material cadastrado.</small>"}</div></fieldset><footer><button type="button" class="ghost danger" data-agenda-editor-delete hidden>${ico("trash-2")} Excluir</button><span data-agenda-editor-feedback>O compromisso será salvo na agenda compartilhada.</span><button type="submit" class="activity-install-primary">${ico("save")} Salvar compromisso</button></footer></form></section>`;
   };
   const agendaCalendarMarkupV3 = (stage) => {
     const state = appStore.get(),
@@ -694,7 +697,7 @@ export const installAgendaCalendarPageV8 = (ViewLayer, dependencies = {}) => {
       <div>
         <span class="activity-kind">CALENDÁRIO OPERACIONAL · OBRA</span>
         <h1>Agenda</h1>
-        <p>Linha do tempo dos compromissos da obra.</p>
+        <p>Compromissos, atividades e materiais da obra.</p>
       </div>
       <div class="agenda-month-pagination-v3">
         <button type="button" data-agenda-week-shift-v8="-1" aria-label="Semana anterior">‹</button>
@@ -791,60 +794,10 @@ export const installAgendaCalendarPageV8 = (ViewLayer, dependencies = {}) => {
               const stored = agendaCalendarReadV3();
               return stored;
             },
-            commit = async (events, action) => {
-              events=await agendaCalendarWriteV3({ version: 3, initialized: true, events });
-      
-              // O calendário é uma projeção visual dos apontamentos. Sempre que um
-              // card muda, data/hora/duração precisam voltar ao modelo operacional.
-              const current = appStore.get(),
-                existingAgenda = Array.isArray(current.operationalAgenda)
-                  ? current.operationalAgenda
-                  : [],
-                represented = new Set(),
-                projectedAgenda = (events || []).map((event) => {
-                  const rawId = String(event.id || ""),
-                    sourceId = rawId.startsWith("agenda-op-")
-                      ? rawId.slice("agenda-op-".length)
-                      : rawId,
-                    existing =
-                      existingAgenda.find(
-                        (item) =>
-                          String(item?.id || "") === sourceId ||
-                          `agenda-op-${String(item?.id || "")}` === rawId,
-                      ) || {};
-                  represented.add(String(existing?.id || sourceId));
-                  return {
-                    ...existing,
-                    id: existing?.id || sourceId,
-                    title: event.title,
-                    name: event.title,
-                    stageKey: event.stageKey,
-                    stageName: event.stageName,
-                    activityId: event.activityId,
-                    activity: event.activityName,
-                    relatedFrom: event.relatedFrom || "",
-                    owner: event.owner,
-                    responsible: event.owner,
-                    status: event.status,
-                    date: event.date,
-                    start: event.start,
-                    time: event.start,
-                    durationHours: Number(event.durationHours || 0.5),
-                    spanDays: Number(event.spanDays || 1),
-                    durationDays: Number(event.spanDays || 1),
-                    plannedStart: `${event.date}T${event.start}:00`,
-                  };
-                }),
-                untouched = existingAgenda.filter(
-                  (item) => !represented.has(String(item?.id || "")),
-                );
-      
-              appStore.set({
-                operationalAgenda: [...untouched, ...projectedAgenda],
-                agendaCalendarRevisionV3: Date.now(),
-                agendaCalendarRevisionV7: Date.now(),
-                lastAction: action,
-              });
+            commit = async (events) => {
+              // The database is authoritative. agendaCalendarWriteV3 updates the
+              // local view state after the server confirms the snapshot.
+              return agendaCalendarWriteV3({ version: 3, initialized: true, events });
             },
             visibleWeek =
               calendarRoot?.dataset.agendaWeekV8 ||
@@ -888,6 +841,7 @@ export const installAgendaCalendarPageV8 = (ViewLayer, dependencies = {}) => {
               form.elements.stageKey.value =
                 event?.stageKey || selectedStage?.key || form.elements.stageKey.value;
               filterActivityOptions();
+              filterMaterials();
       
               if (event?.activityId)
                 form.elements.activityId.value = event.activityId;
@@ -902,6 +856,8 @@ export const installAgendaCalendarPageV8 = (ViewLayer, dependencies = {}) => {
               form.elements.durationHours.value = Number(event?.durationHours || 1.5);
               form.elements.spanDays.value = Number(event?.spanDays || 1);
               form.elements.status.value = event?.status || "Planejado";
+              form.elements.notes.value = event?.notes || "";
+              form.querySelectorAll('[name="materialIds"]').forEach(input => { input.checked = (event?.materialIds || []).includes(input.value); });
       
               editor.hidden = false;
               editor.querySelector("[data-agenda-editor-title]").textContent = event
@@ -918,6 +874,7 @@ export const installAgendaCalendarPageV8 = (ViewLayer, dependencies = {}) => {
                 );
               commit(events, action).catch(error=>notify(`Não foi possível salvar a agenda: ${error.message}`,"error"));
             };
+
 
           const calendarViewport = calendarRoot.querySelector("[data-agenda-week-scroll-v8]");
           const calendarToggle = calendarRoot.querySelector("[data-atlas-calendar-toggle]");
@@ -990,8 +947,12 @@ export const installAgendaCalendarPageV8 = (ViewLayer, dependencies = {}) => {
               editor.hidden = true;
             });
       
-          form?.elements.stageKey?.addEventListener("change", filterActivityOptions);
+          const filterMaterials = () => calendarRoot.querySelectorAll('[data-agenda-material-stage]').forEach(label => {
+            label.hidden = label.dataset.agendaMaterialStage !== form.elements.stageKey.value;
+          });
+          form?.elements.stageKey?.addEventListener("change", () => { filterActivityOptions(); filterMaterials(); });
           filterActivityOptions();
+          if (form) filterMaterials();
       
           form?.elements.activityId?.addEventListener("change", () => {
             const option = form.elements.activityId.selectedOptions?.[0];
@@ -1035,6 +996,8 @@ export const installAgendaCalendarPageV8 = (ViewLayer, dependencies = {}) => {
                 ),
                 status: String(fd.get("status") || "Planejado"),
                 relatedFrom: agendaLinkSourceV1,
+                notes: String(fd.get("notes") || "").trim(),
+                materialIds: fd.getAll("materialIds").map(String),
               },
               data = readData(),
               events = [...(data.events || [])],
@@ -1661,6 +1624,74 @@ export const installAgendaCalendarPageV8 = (ViewLayer, dependencies = {}) => {
       return result;
     };
   };
+
+  // The application replaces calendar markup as data arrives. Keep core
+  // controls attached to the stable document instead of a replaced card.
+  const currentCalendar = () => document.querySelector('view-layer[data-view="agenda"] .stage-agenda-month-page-v3');
+  const openCurrentEditor = (item = null) => {
+    const root = currentCalendar(), editor = root?.querySelector('[data-agenda-editor-v3]'), form = editor?.querySelector('form');
+    if (!form) return;
+    const events = agendaCalendarReadV3().events, slot = agendaCalendarLastAvailableSlotV8(events, root.dataset.agendaWeekV8);
+    form.reset();
+    for (const [key,value] of Object.entries({id:item?.id||'',title:item?.title||'',stageKey:item?.stageKey||extensionStage()?.key||'',activityId:item?.activityId||'',owner:item?.owner||'',date:item?.date||slot.date,start:item?.start||slot.start,durationHours:item?.durationHours||1.5,spanDays:item?.spanDays||1,status:item?.status||'Planejado',notes:item?.notes||''}))
+      if (form.elements[key]) form.elements[key].value=value;
+    root.querySelectorAll('[data-agenda-material-stage]').forEach(label=>{label.hidden=label.dataset.agendaMaterialStage!==form.elements.stageKey.value;});
+    form.querySelector('[data-agenda-inferred-materials]')?.remove();
+    const knownMaterials = new Set([...form.querySelectorAll('input[type="checkbox"][name="materialIds"]')].map(input=>input.value));
+    form.querySelectorAll('input[type="checkbox"][name="materialIds"]').forEach(input=>{input.checked=(item?.materialIds||[]).includes(input.value);});
+    const inferredMaterials = (item?.materialIds||[]).filter(value=>!knownMaterials.has(value));
+    if(inferredMaterials.length){
+      const inferred=document.createElement('div');
+      inferred.dataset.agendaInferredMaterials='';
+      inferred.textContent=`Material identificado no registro: ${inferredMaterials.join(', ')}`;
+      for(const value of inferredMaterials){const hidden=document.createElement('input');hidden.type='hidden';hidden.name='materialIds';hidden.value=value;inferred.append(hidden);}
+      form.querySelector('.agenda-editor-materials').append(inferred);
+    }
+    editor.querySelector('[data-agenda-editor-title]').textContent=item?`Editar · ${item.title}`:'Adicionar compromisso';
+    editor.querySelector('[data-agenda-editor-delete]').hidden=!item;
+    editor.hidden=false;
+    form.elements.title.focus();
+  };
+  document.addEventListener('click', async event => {
+    const root=currentCalendar(), button=event.target.closest?.('button');
+    if(!root||!button||!root.contains(button))return;
+    if(button.matches('[data-agenda-new-v3]')){event.stopImmediatePropagation();openCurrentEditor();return;}
+    if(button.matches('[data-agenda-mobile-edit]')){
+      event.stopImmediatePropagation();
+      const item=agendaCalendarReadV3().events.find(entry=>entry.id===button.dataset.agendaMobileEdit);
+      if(item)openCurrentEditor(item);
+      return;
+    }
+    if(button.matches('[data-agenda-editor-close]')){event.stopImmediatePropagation();root.querySelector('[data-agenda-editor-v3]').hidden=true;return;}
+    if(button.matches('[data-agenda-editor-delete]')){
+      event.stopImmediatePropagation();
+      const id=root.querySelector('[data-agenda-editor-form] [name="id"]').value;
+      try{await agendaCalendarWriteV3({events:agendaCalendarReadV3().events.filter(item=>item.id!==id)});root.querySelector('[data-agenda-editor-v3]').hidden=true;notify('Compromisso removido.','success');}
+      catch(error){notify(`Não foi possível excluir o compromisso: ${error.message}`,'error');}
+      return;
+    }
+    if(button.matches('[data-atlas-calendar-toggle]')){
+      event.stopImmediatePropagation();const viewport=root.querySelector('[data-agenda-week-scroll-v8]'),opening=viewport.hidden;
+      viewport.hidden=!opening;button.setAttribute('aria-expanded',String(opening));
+      button.textContent=opening?'Fechar ajuste de horários':'Ajustar horários no calendário';return;
+    }
+    if(button.matches('[data-agenda-week-shift-v8]')){
+      event.stopImmediatePropagation();appStore.set({agendaCalendarWeekV8:agendaCalendarShiftWeekV8(root.dataset.agendaWeekV8,Number(button.dataset.agendaWeekShiftV8))});
+    }
+  },true);
+  document.addEventListener('change',event=>{
+    const root=currentCalendar();if(!root||!root.contains(event.target))return;
+    if(event.target.matches('[data-agenda-week-picker-v8]'))appStore.set({agendaCalendarWeekV8:agendaCalendarWeekKeyV8(event.target.value)});
+    if(event.target.matches('[data-agenda-editor-stage]'))root.querySelectorAll('[data-agenda-material-stage]').forEach(label=>{label.hidden=label.dataset.agendaMaterialStage!==event.target.value;});
+  },true);
+  document.addEventListener('submit',async event=>{
+    const root=currentCalendar(),form=event.target;if(!root||!root.contains(form)||!form.matches('[data-agenda-editor-form]'))return;
+    event.preventDefault();event.stopImmediatePropagation();
+    const fd=new FormData(form),current=agendaCalendarReadV3(),id=String(fd.get('id')||`agenda-${Date.now().toString(36)}`),previous=current.events.find(item=>item.id===id),stage=agendaCalendarFindStageV3(fd.get('stageKey'));
+    const item={...previous,id,title:String(fd.get('title')||'').trim(),stageKey:String(fd.get('stageKey')||''),stageName:stage?.name||'',activityId:String(fd.get('activityId')||''),activityName:form.elements.activityId.selectedOptions?.[0]?.dataset.agendaActivityTitle||String(fd.get('title')||''),owner:String(fd.get('owner')||''),date:String(fd.get('date')||''),start:String(fd.get('start')||'08:00'),durationHours:Number(fd.get('durationHours')||1.5),spanDays:Number(fd.get('spanDays')||1),status:String(fd.get('status')||'Planejado'),notes:String(fd.get('notes')||''),materialIds:fd.getAll('materialIds').map(String)};
+    try{await agendaCalendarWriteV3({events:[...current.events.filter(entry=>entry.id!==id),item]});const editor=currentCalendar()?.querySelector('[data-agenda-editor-v3]');if(editor)editor.hidden=true;notify(previous?'Compromisso atualizado.':'Compromisso adicionado.','success');}
+    catch(error){notify(`Não foi possível salvar o compromisso: ${error.message}`,'error');}
+  },true);
 
   bindAgendaCalendarV8(ViewLayer);
 

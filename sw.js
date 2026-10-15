@@ -1,6 +1,6 @@
 // v12: inclui a navegação da agenda e o chat mobile compacto no shell atualizado.
-const SHELL = 'belavista-shell-admin-twa-v82-mobile-agenda';
-const RUNTIME = 'belavista-runtime-admin-twa-v33-pdf-original-perimeter';
+const SHELL = 'belavista-shell-admin-twa-v83-agenda-atlas';
+const RUNTIME = 'belavista-runtime-admin-twa-v34-agenda-atlas';
 const APP_SHELL = [
   './masterplan-pdf-artwork-v3.mjs', './app.js?v=mobile-agenda-v1', './components.js?v=mobile-agenda-v1',
   './mobile-operational-v1.css?v=mobile-agenda-v2', './worker-context-chat.mjs?v=mobile-compact-v1',
@@ -37,6 +37,10 @@ self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+  if (url.origin === self.location.origin && /^(?:localhost|127\.0\.0\.1)$/i.test(url.hostname)) {
+    event.respondWith(fetch(req));
+    return;
+  }
   if (url.hostname === 'api.github.com') return; // never cache token-backed GitHub responses
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(fetch(req));
