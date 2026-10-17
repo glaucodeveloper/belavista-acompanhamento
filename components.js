@@ -1,2 +1,2 @@
 // Compatibility entry: component definitions and registration live under ./components/.
-export * from './components/index.mjs?v=pdf-lot-centers-v2';
+export * from './components/index.mjs?v=dynamic-access-roles-v1';

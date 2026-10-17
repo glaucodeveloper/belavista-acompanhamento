@@ -1,5 +1,7 @@
 import {routeRequest, handleQueueBatch, handleScheduled} from './routes.js';
 import {RecordDigestWorkflow, PurchaseReceiptDigestWorkflow} from './workflows.js';
+import {requireAdminRequest} from './request-auth.js';
+import {limitedActorCanAccessApi} from '../../api-access-policy.mjs';
 
 export default {
   async fetch(request,env,ctx){
@@ -15,14 +17,18 @@ export default {
     };
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
     const pathname=new URL(request.url).pathname.replace(/\/+$/,'')||'/';
-    // BELAVISTA_RECORD_OCR_AUTH_ROUTE_V22
-    const authManagedByRoute=pathname==='/api/public/lead-chat'||pathname==='/api/public/lead-register'||pathname==='/api/operational-loop'||pathname==='/api/ai'||pathname==='/api/ai/vision-reasoning'||pathname==='/api/gemini'||pathname.startsWith('/api/admin/')||pathname.startsWith('/api/live-tests')||pathname==='/instagram/webhook'||pathname==='/whatsapp/webhook'||pathname==='/api/records/ocr';
-    if(env.BELAVISTA_API_TOKEN&&request.method!=='GET'&&!authManagedByRoute){
-      const bearer=request.headers.get('authorization')?.replace(/^Bearer\s+/i,'');
-      const token=request.headers.get('x-belavista-token')||bearer;
-      if(token!==env.BELAVISTA_API_TOKEN)return new Response(JSON.stringify({error:'Não autorizado.'}),{status:401,headers:{'content-type':'application/json; charset=utf-8',...cors}});
-    }
     try{
+      const publicApi=pathname==='/api/health'||pathname==='/api/runtime'
+        ||pathname==='/api/ai/status'||pathname==='/api/inference/status'
+        ||pathname==='/api/ai/tools'||pathname.startsWith('/api/public/')
+        ||pathname==='/api/auth/session';
+      if(pathname.startsWith('/api/')&&!publicApi){
+        const actor=await requireAdminRequest(request,env);
+        if(!limitedActorCanAccessApi(actor,pathname,request.method,new URL(request.url).search)){
+          return new Response(JSON.stringify({error:'Este perfil só pode acessar registros e a linha do tempo do cronograma.'}),
+            {status:403,headers:{'content-type':'application/json; charset=utf-8',...cors}});
+        }
+      }
       const response=await routeRequest(request,env,ctx);
       const headers=new Headers(response.headers);
       for(const [name,value] of Object.entries(cors))headers.set(name,value);

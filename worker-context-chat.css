@@ -158,6 +158,30 @@ body.admin-shell-page .worker-context-chat-form>div:last-child{margin-top:10px}
 }
 
 /* Codex-like response area and compact, real attachment/camera actions. */
+@media(max-width:760px){
+  body.admin-shell-page .worker-context-assistant.is-native-swipe-sheet:not(.is-collapsed){
+    top:auto!important;left:0!important;right:0!important;bottom:var(--worker-chat-viewport-bottom,0px)!important;
+    width:100vw!important;max-width:100vw!important;height:var(--worker-chat-sheet-height,min(84dvh,760px))!important;
+    max-height:calc(100dvh - env(safe-area-inset-top) - 8px)!important;
+    transform:none!important;border-radius:22px 22px 0 0!important;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  body.admin-shell-page .worker-context-assistant.is-native-swipe-sheet.is-collapsed{
+    top:auto!important;left:50%!important;right:auto!important;
+    bottom:calc(72px + env(safe-area-inset-bottom) + var(--worker-chat-viewport-bottom,0px))!important;
+    width:min(240px,calc(100vw - 24px))!important;height:56px!important;
+    min-height:56px!important;max-height:56px!important;
+    transform:translateX(-50%)!important;border-radius:16px!important;
+  }
+  body.admin-shell-page .worker-context-assistant.is-native-swipe-sheet .worker-context-chat-head{touch-action:none;user-select:none;cursor:grab}
+  body.admin-shell-page .worker-context-assistant.is-native-swipe-sheet .worker-context-chat-head:active{cursor:grabbing}
+  body.admin-shell-page .worker-context-assistant.is-native-swipe-sheet:not(.is-collapsed) .worker-context-chat-head{position:relative;padding-top:18px!important}
+  body.admin-shell-page .worker-context-assistant.is-native-swipe-sheet:not(.is-collapsed) .worker-context-chat-head::before{content:"";position:absolute;top:7px;left:50%;width:38px;height:4px;border-radius:999px;background:#8d8d8d;transform:translateX(-50%)}
+  body.admin-shell-page .worker-context-assistant.is-native-compact-viewport .worker-chat-key-hint{display:none!important}
+  body.admin-shell-page .worker-context-assistant.is-native-compact-viewport .worker-context-chat-form{padding:8px 12px!important}
+  body.admin-shell-page .worker-context-assistant.is-native-compact-viewport .worker-context-chat-form .worker-context-chat-input-shell{min-height:78px!important;padding:8px 10px!important}
+  body.admin-shell-page .worker-context-assistant.is-native-compact-viewport .worker-context-chat-form .worker-context-chat-input-shell textarea{min-height:32px!important}
+}
 body.admin-shell-page .worker-context-chat-intro{display:none!important}
 body.admin-shell-page .worker-chat-speaker-panel{display:none!important}
 body.admin-shell-page .worker-context-chat-head{background:#2b2b2b!important;color:#f4f4f4!important;border-color:rgba(255,255,255,.12)!important}

@@ -70,6 +70,11 @@ export const installStageOperationalPagesCompositionV1 = ({
     ico,
     stageV9DirectiveText,
     stageV9ProfileFor,
+    apiFetch,
+    document: globalRef.document,
+    URL: globalRef.URL,
+    Blob: globalRef.Blob,
+    notify,
     window: globalRef.window,
     workbenchActivityRouteV1,
   });

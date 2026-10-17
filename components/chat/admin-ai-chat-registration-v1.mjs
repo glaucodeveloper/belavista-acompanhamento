@@ -1,5 +1,5 @@
 import { CHAT_OPERATIONAL_EXECUTION_INSTRUCTION_V1, CHAT_VISUAL_ALLOCATION_POLICY_V1 } from "./policies.mjs";
-import { registerBelavistaAiChatElementV1 } from "./ai-chat-element-v1.mjs?v=ai-chat-element-v1";
+import { registerBelavistaAiChatElementV1 } from "./ai-chat-element-v1.mjs?v=mobile-focus-v1";
 import { MASTERPLAN_COMMON_AREA_LABEL_V1 } from "../map/georeference.mjs?v=admin-map-georeference-v1";
 import { createServiceEventAdministrators } from "../events/service-event-admin.mjs?v=service-event-admin-v4";
 import { parseLotStatusCommand, applyLotStatusCommand } from "../../lot-status-command.mjs";

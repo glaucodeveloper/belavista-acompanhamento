@@ -1,9 +1,9 @@
 // BELAVISTA_ADMIN_PUBLIC_MAP_SURFACE_V5352
 // v5.3.51 deferred after shell: import './admin-runtime-v11.js?v=admin-runtime-v11';
 // v5.3.51 deferred after shell: import './admin-lots-canvas-v1.js?v=admin-lots-canvas-v1';
-import './components.js?v=atlas-zip-front-structure-v2';
+import './components.js?v=dynamic-access-roles-v1';
 import {appStore, persistUiState, restoreUiState, viewThemes} from './state.js?v=system-metrics-v1-20260919';
-import {apiFetch} from './api-client.mjs?v=instagram-api-live-v1';
+import {apiFetch} from './api-client.mjs?v=github-pat-gateway-v1';
 import {actorCanOpenView, isLimitedOperationalActor, normalizeOperationalRole, resolveStartupActorV1} from './admin-role-policy.mjs?v=admin-role-policy-v3';
 import {readUsagePreferences} from './usage-settings-v1.mjs?v=2-labels';
 import {resolveApplicationRouteV1} from './components/shared/application-navigation-routes-v1.mjs?v=application-navigation-routes-v1';
@@ -34,7 +34,7 @@ const ADMIN_DEFERRED_MODULES_V5351=[
   "./final-workspaces-v5360.mjs?v=5.3.60",
   "./stages-landing-v5361.mjs?v=5.3.61",
   "./belavista-final-ui-v5362.mjs?v=5.3.62",
-  "./records-activity-drill-in-v5377.mjs?v=lot-uv-hit-areas-v3"
+  "./records-activity-drill-in-v5377.mjs?v=mobile-focus-v1"
 ];
 
 // O mapa administrativo abre primeiro como fotografia aérea estática. Os
@@ -230,7 +230,7 @@ class BelavistaApp extends HTMLElement {
     // unrelated pages such as repasses, materials, or brokers.
     this.querySelectorAll('.scene > map-scene[data-persistent-map="true"]').forEach(map=>map.remove());
     if(this.querySelector('#app.app'))return;
-    this.innerHTML=`<div class="app" id="app" data-layout="atlas-zip"><app-sidebar></app-sidebar><div id="sidebarOverlay" class="sidebar-overlay" data-sidebar-overlay aria-hidden="true"></div><main class="workspace app-main atlas-workspace"><app-topbar></app-topbar><section class="scene"><view-layer></view-layer></section></main><nav class="mobile-bottom atlas-mobile-bottom" aria-label="Navegação mobile"><button data-mobile-view="control"><i data-lucide="layout-dashboard"></i><span>Início</span></button><button data-mobile-view="map"><i data-lucide="map"></i><span>Mapa</span></button><button data-mobile-view="records"><i data-lucide="clipboard-pen-line"></i><span>Registros</span></button><button data-mobile-view="agenda"><i data-lucide="calendar-days"></i><span>Agenda</span></button></nav></div>`;
+    this.innerHTML=`<div class="app" id="app" data-layout="atlas-zip"><app-sidebar></app-sidebar><div id="sidebarOverlay" class="sidebar-overlay" data-sidebar-overlay aria-hidden="true"></div><main class="workspace app-main atlas-workspace"><app-topbar></app-topbar><section class="scene"><view-layer></view-layer></section></main><nav class="mobile-bottom atlas-mobile-bottom" aria-label="Navegação mobile"><button data-mobile-view="map"><i data-lucide="map"></i><span>Mapa</span></button><button data-mobile-view="agenda"><i data-lucide="calendar-days"></i><span>Agenda</span></button><button data-mobile-view="records"><i data-lucide="clipboard-pen-line"></i><span>Registros</span></button><button type="button" data-mobile-chat-tab aria-controls="worker-context-chat" aria-expanded="false"><i data-lucide="message-circle"></i><span>Chat</span></button></nav></div>`;
      this.querySelectorAll('[data-atlas-view]').forEach(button=>button.classList.toggle('active',button.dataset.atlasView===appStore.get().view));
     window.lucide?.createIcons();
     queueMicrotask(()=>globalThis.__ensureStageContextChromeV1?.(this.querySelector('view-layer')));
@@ -268,6 +268,8 @@ class BelavistaApp extends HTMLElement {
         button.hidden=!actorCanOpenView(s.currentActor||{},view);
         button.classList.toggle('active',view===s.view||view==='stages'&&['agenda','actions','activities','progress','foremen','activity-installation'].includes(s.view));
       });
+      const mobileChatActive=shell?.dataset.mobileTab==='chat';
+      this.querySelector('[data-mobile-chat-tab]')?.classList.toggle('active',mobileChatActive);
       queueMicrotask(()=>{
         const current=appStore.get(),layer=this.querySelector('view-layer');
         if(!layer||layer.dataset.view===current.view||typeof layer.render!=='function')return;
@@ -307,7 +309,17 @@ class BelavistaApp extends HTMLElement {
         return;
       }
       const mobile=event.target?.closest?.('[data-mobile-view]');
-      if(mobile){event.preventDefault();appStore.set({view:mobile.dataset.mobileView,activityDedicated:false,stageActivityDedicatedV9:false,lastAction:`Abriu ${mobile.textContent.trim()}`});return;}
+      if(mobile){event.preventDefault();globalThis.belavistaWorkerAssistant?.setCollapsed(true);const shell=this.querySelector('#app.app');if(shell)delete shell.dataset.mobileTab;document.body.classList.remove('mobile-chat-tab-active');this.querySelector('[data-mobile-chat-tab]')?.setAttribute('aria-expanded','false');appStore.set({view:mobile.dataset.mobileView,activityDedicated:false,stageActivityDedicatedV9:false,lastAction:`Abriu ${mobile.textContent.trim()}`});return;}
+      const chatTab=event.target?.closest?.('[data-mobile-chat-tab]');
+      if(chatTab){
+        event.preventDefault();
+        const assistant=globalThis.belavistaWorkerAssistant;
+        const shell=this.querySelector('#app.app');
+        const open=shell?.dataset.mobileTab==='chat';
+        if(open){assistant?.setCollapsed(true);if(shell)delete shell.dataset.mobileTab;document.body.classList.remove('mobile-chat-tab-active');chatTab.setAttribute('aria-expanded','false');}
+        else if(assistant){assistant.setTab('conversation');assistant.setCollapsed(false);if(shell)shell.dataset.mobileTab='chat';document.body.classList.add('mobile-chat-tab-active');chatTab.setAttribute('aria-expanded','true');}
+        return;
+      }
       const atlas=event.target?.closest?.('[data-atlas-view]');
       if(atlas){event.preventDefault();appStore.set({view:atlas.dataset.atlasView,activityDedicated:false,stageActivityDedicatedV9:false,lastAction:`Abriu ${atlas.textContent.trim()}`});return;}
       if(!event.target?.closest?.('[data-load-admin-extensions]'))return;

@@ -68,7 +68,10 @@ const watchdog=setTimeout(()=>{
 
 try{
   globalThis.__BELAVISTA_BOOT_V5351.phase='import-app';
-  await import('../app.js?v=atlas-zip-front-structure-v5');
+  // Module scripts in index.html may finish out of order. Install the auth gate
+  // before app.js checks BELAVISTA_ADMIN_AUTH_REQUIRED and mounts API-backed views.
+  await import('../admin-auth.mjs?v=github-pat-key-only-v2');
+  await import('../app.js?v=dynamic-access-roles-v1');
   globalThis.__BELAVISTA_BOOT_V5351.phase='app-imported';
   globalThis.__BELAVISTA_BOOT_V5351.importedAt=performance.now();
   clearTimeout(watchdog);

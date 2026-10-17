@@ -61,9 +61,9 @@ export const createSidebarRouteControllerV1 = ({
           closeMobileNavigation,
           navigate: navigateToView,
           openMessages: () => {
-            const launcher = documentRef?.querySelector("[data-admin-message-open]");
-            if (launcher) launcher.click();
-            else notify("A central de mensagens será carregada ao abrir as extensões.", "info");
+            documentRef?.dispatchEvent?.(new CustomEvent("belavista:open-communications", {
+              detail: { tab: "personal" },
+            }));
           },
         }),
       });

@@ -4,6 +4,9 @@
 import { parseLotStatusCommand, applyLotStatusCommand } from './lot-status-command.mjs';
 import { buildRecordInterpretationV1, resolveRequestStageV1, resolveStageMentionV1, resolveVisualStageV1 } from './record-stage-interpretation-v1.mjs';
 import { aiAgendaInstructionV1, normalizeAiAgendaComprehensionV1 } from './components/shared/ai-agenda-comprehension-v1.mjs?v=1';
+import { installWorkerChatSwipeSheetV1 } from './components/chat/worker-chat-swipe-sheet-v1.mjs';
+import { isLimitedOperationalActor } from './admin-role-policy.mjs';
+import { apiFetch } from './api-client.mjs';
 
 const THREAD_KEY = 'belavista.worker-context-chat.v1';
 const SERVICE_KEY = 'belavista.worker-context-chat.service-id.v1';
@@ -246,12 +249,14 @@ class WorkerContextChat {
     // Não recuperar pedidos antigos no assistente ao abrir a aplicação.
     try { localStorage.removeItem(SERVICE_KEY); } catch {}
     document.body.insertAdjacentHTML('beforeend', `
-      <aside class="worker-context-assistant${mobileDefaultCollapsed ? ' is-collapsed' : ''}" data-worker-context-assistant data-collapsed="${String(mobileDefaultCollapsed)}" aria-label="Assistente operacional dos workers">
+      <aside id="worker-context-chat" class="worker-context-assistant${mobileDefaultCollapsed ? ' is-collapsed' : ''}" data-worker-context-assistant data-collapsed="${String(mobileDefaultCollapsed)}" data-chat-tab="conversation" aria-label="Assistente operacional dos workers">
         <header class="worker-context-chat-head">
           <div><span class="worker-context-mark">✦</span><div><strong>IA · worker operacional</strong><small data-worker-chat-monitor>Observando ${esc(labelForPath(location.pathname))}</small></div></div>
           <div class="worker-context-chat-head-actions"><button type="button" data-worker-chat-voice aria-pressed="${String(this.voiceEnabled)}" title="Ativar avisos falados">◖</button><button type="button" data-worker-chat-minimize aria-label="${mobileDefaultCollapsed ? 'Restaurar assistente' : 'Minimizar assistente'}">${mobileDefaultCollapsed ? '+' : '−'}</button></div>
         </header>
         <div class="worker-context-chat-body">
+          <div class="worker-chat-tabs" role="tablist" aria-label="Chat operacional"><button type="button" role="tab" data-worker-chat-tab="conversation" aria-selected="true">Conversa</button><button type="button" role="tab" data-worker-chat-tab="register" aria-selected="false">Registrar por câmera</button></div>
+          <div class="worker-chat-register-panel" data-worker-chat-register-panel role="tabpanel" hidden><strong>Registro com evidência</strong><p>Capture uma foto ou selecione um arquivo. Descreva o fato e envie para leitura; confirme a alocação antes de salvar o registro.</p><button type="button" data-worker-chat-capture> Abrir câmera</button></div>
           <div class="worker-context-chat-intro"><strong>Resposta atual</strong><span>Peça um serviço de qualquer área; solicitações e arquivos ficam acompanháveis pelo número gerado.</span></div>
           <div class="worker-chat-speaker-panel" data-worker-chat-speaker-panel>
             <label><span>Modelo de speaker</span><select data-worker-chat-speaker aria-label="Modelo de voz do assistente">${SPEAKER_PROFILES.map(item => `<option value="${item.id}" ${item.id === this.speakerProfile ? 'selected' : ''}>${item.label}</option>`).join('')}</select></label>
@@ -313,6 +318,11 @@ class WorkerContextChat {
   }
 
   bind() {
+    installWorkerChatSwipeSheetV1({
+      root: this.root,
+      setCollapsed: collapsed => this.setCollapsed(collapsed),
+      native: globalThis.Capacitor?.isNativePlatform?.() === true,
+    });
     this.root.addEventListener('click', event => {
       if (event.target.closest('[data-chat-discard="record"]')) {
         this.recordDraft = null;
@@ -337,6 +347,13 @@ class WorkerContextChat {
       }) || [...(state.records || [])].reverse().find(item => item?.source === 'chat-visual');
       if (!record) {
         this.status.textContent = 'A leitura foi preservada, mas ainda falta a etapa para alocar o item.';
+        return;
+      }
+      if (isLimitedOperationalActor(state.currentActor || {})) {
+        store.set({ view: 'records', selectedRecordV5360: record.id, lastAction: 'Abriu registro visual do próprio perfil para revisão' });
+        this.setCollapsed(true);
+        this.recordDraft = null;
+        this.render();
         return;
       }
       const target = record.allocationTarget === 'material' ? 'material' : 'service';
@@ -366,6 +383,9 @@ class WorkerContextChat {
     qs('[data-worker-chat-minimize]', this.root)?.addEventListener('click', () => {
       this.setCollapsed(!this.root.classList.contains('is-collapsed'));
     });
+    qs('.worker-context-chat-head', this.root)?.addEventListener('click', event => {
+      if (this.root.classList.contains('is-collapsed') && !event.target.closest('button')) this.setCollapsed(false);
+    });
     qs('[data-worker-chat-voice]', this.root)?.addEventListener('click', event => {
       this.voiceEnabled = !this.voiceEnabled;
       localStorage.setItem(VOICE_KEY, JSON.stringify(this.voiceEnabled));
@@ -386,6 +406,8 @@ class WorkerContextChat {
     });
     const cameraInput = qs('[data-worker-chat-camera-input]', this.root);
     const fileInput = qs('[data-worker-chat-file-input]', this.root);
+    this.root.querySelectorAll('[data-worker-chat-tab]').forEach(button=>button.addEventListener('click',()=>this.setTab(button.dataset.workerChatTab)));
+    qs('[data-worker-chat-capture]',this.root)?.addEventListener('click',()=>cameraInput?.click());
     qs('[data-worker-chat-camera]', this.root)?.addEventListener('click', () => cameraInput?.click());
     qs('[data-worker-chat-file]', this.root)?.addEventListener('click', () => fileInput?.click());
     for(const [input,source] of [[cameraInput,'camera'],[fileInput,'file']]) input?.addEventListener('change', event => {
@@ -449,11 +471,28 @@ class WorkerContextChat {
     if (!this.root) return;
     this.root.classList.toggle('is-collapsed', collapsed);
     this.root.dataset.collapsed = String(collapsed);
+    const mobileTab=document.querySelector('[data-mobile-chat-tab]');
+    if(mobileTab){mobileTab.setAttribute('aria-expanded',String(!collapsed));mobileTab.classList.toggle('active',!collapsed);}
+    if(globalThis.BELAVISTA_CAPACITOR_NATIVE===true){
+      const app=document.querySelector('#app.app');
+      if(collapsed){if(app)delete app.dataset.mobileTab;document.body.classList.remove('mobile-chat-tab-active');}
+      else{if(app)app.dataset.mobileTab='chat';document.body.classList.add('mobile-chat-tab-active');}
+    }
     const minimize = qs('[data-worker-chat-minimize]', this.root);
     if (minimize) {
       minimize.textContent = collapsed ? '+' : '−';
       minimize.setAttribute('aria-label', collapsed ? 'Restaurar assistente' : 'Minimizar assistente');
     }
+  }
+
+  setTab(tab) {
+    if (!this.root) return;
+    const selected = tab === 'register' ? 'register' : 'conversation';
+    this.root.dataset.chatTab = selected;
+    this.root.querySelectorAll('[data-worker-chat-tab]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.workerChatTab === selected)));
+    const panel = qs('[data-worker-chat-register-panel]', this.root);
+    if (panel) panel.hidden = selected !== 'register';
+    this.input.placeholder = selected === 'register' ? 'Descreva a foto ou o registro…' : 'Descreva um fato, peça uma ação ou revise uma diretriz…';
   }
 
   openLotStatusContext(lotLabel) {
@@ -465,8 +504,7 @@ class WorkerContextChat {
 
     // O mapa só prepara o contexto visual. A pergunta é sempre escrita e
     // enviada manualmente pela pessoa — nenhum valor é colocado no textarea.
-    root.classList.remove('is-collapsed');
-    root.dataset.collapsed = 'false';
+    this.setCollapsed(false);
     const minimize = qs('[data-worker-chat-minimize]', root);
     if (minimize) {
       minimize.textContent = '−';
@@ -491,8 +529,7 @@ class WorkerContextChat {
     const input = this.input || qs('textarea[name="message"]', root);
     if (!root || !input) return false;
 
-    root.classList.remove('is-collapsed');
-    root.dataset.collapsed = 'false';
+    this.setCollapsed(false);
     const minimize = qs('[data-worker-chat-minimize]', root);
     if (minimize) {
       minimize.textContent = '−';
@@ -541,7 +578,8 @@ class WorkerContextChat {
       const details = String(item.details || '').trim();
       return `<article class="worker-chat-allocation" data-record-allocation-index="${index}"><div><b>${esc(title)}</b><span>${esc(kind)} · ${esc(quantity)}</span></div><dl><dt>Etapa</dt><dd>${esc(item.stageName || item.stageKey || 'A confirmar')}</dd><dt>Serviço / atividade</dt><dd>${esc(item.activityName || item.activityId || 'A confirmar')}</dd><dt>Material</dt><dd>${esc(material)}</dd></dl>${details ? `<p>${esc(details)}</p>` : ''}</article>`;
     }).join('');
-    return `<section class="worker-chat-record-verification" data-record-verification aria-label="Verificação do anexo"><header><div><span>ETAPA 1 · VERIFICAÇÃO</span><h3>Confira os dados antes da alocação</h3></div><strong>${esc(ocr.reviewRequired === false ? 'Leitura consistente' : 'Revisão humana')}</strong></header>${attachmentName ? `<p class="worker-chat-record-extracted"><b>Anexo analisado</b><span>${esc(attachmentName)}</span></p>` : ''}${extractedText ? `<p class="worker-chat-record-extracted"><b>Texto identificado</b><span>${esc(extractedText)}</span></p>` : ''}${rows ? `<dl>${rows}</dl>` : `<p class="worker-chat-record-empty">${allocations ? 'OCR sem campos estruturados; a proposta abaixo usa a descrição enviada e permanece pendente de revisão.' : 'O worker não retornou campos estruturados. Revise o anexo antes de alocar.'}</p>`}${allocations ? `<section class="worker-chat-allocation-section"><header><b>Proposta de alocação do assistente</b><span>Etapa · serviço · material</span></header>${allocations}<small>Confira a etapa e as propriedades no Dashboard.</small></section>` : ''}<footer><button type="button" data-chat-discard="record">Descartar leitura</button><button type="button" data-chat-apply="record" data-request-id="${esc(this.recordDraft.requestId || '')}">Abrir alocação no Dashboard</button></footer></section>`;
+    const limited = isLimitedOperationalActor(globalThis.__belavistaAppStore?.get?.()?.currentActor || {});
+    return `<section class="worker-chat-record-verification" data-record-verification aria-label="Verificação do anexo"><header><div><span>ETAPA 1 · VERIFICAÇÃO</span><h3>Confira os dados antes da alocação</h3></div><strong>${esc(ocr.reviewRequired === false ? 'Leitura consistente' : 'Revisão humana')}</strong></header>${attachmentName ? `<p class="worker-chat-record-extracted"><b>Anexo analisado</b><span>${esc(attachmentName)}</span></p>` : ''}${extractedText ? `<p class="worker-chat-record-extracted"><b>Texto identificado</b><span>${esc(extractedText)}</span></p>` : ''}${rows ? `<dl>${rows}</dl>` : `<p class="worker-chat-record-empty">${allocations ? 'OCR sem campos estruturados; a proposta abaixo usa a descrição enviada e permanece pendente de revisão.' : 'O worker não retornou campos estruturados. Revise o anexo antes de alocar.'}</p>`}${allocations ? `<section class="worker-chat-allocation-section"><header><b>Proposta de alocação do assistente</b><span>Etapa · serviço · material</span></header>${allocations}<small>Confira a etapa e as propriedades em ${limited ? 'Registros' : 'Dashboard'}.</small></section>` : ''}<footer><button type="button" data-chat-discard="record">Descartar leitura</button><button type="button" data-chat-apply="record" data-request-id="${esc(this.recordDraft.requestId || '')}">Abrir ${limited ? 'meu registro' : 'alocação no Dashboard'}</button></footer></section>`;
   }
 
   openRecordDrawer() {
@@ -719,7 +757,9 @@ class WorkerContextChat {
             });
             if (allocationResults.length) {
               this.add('assistant', allocationResults.join('\n'));
-              this.status.textContent = 'Leitura concluída e alocada no Dashboard para revisão humana.';
+              this.status.textContent = allocationResults.some(result => /^Alocou a leitura visual/i.test(String(result)))
+                ? 'Leitura persistida; abra o registro para revisão humana.'
+                : 'Leitura recebida, mas o registro ainda não foi persistido.';
             } else if (attachment && reply.recordOcr?.items?.length) {
                this.add('assistant', visualClarificationForV1(reply.recordOcr));
               this.status.textContent = 'Leitura preservada; falta confirmar a etapa ou atividade.';
@@ -769,8 +809,9 @@ class WorkerContextChat {
 
   isServiceRequest(text) {
     const value=String(text||'').trim();
-    if(/^(qual|quais|como|quando|onde|por que|o que|me explique|explique)\b/i.test(value))return false;
-    return /\b(solicito|solicitar|preciso que|fa[cç]a|fazer|crie|criar|prepare|preparar|atualize|atualizar|alterar|corrija|corrigir|revisar|agendar|comprar|registrar|gerar|elabore|executar)\b/i.test(value);
+    const actionableText=value.replace(/\b(?:n[aã]o|nao)\b[^.!?;\n]*/gi," ").trim();
+    if(/^(qual|quais|como|quando|onde|por que|o que|me explique|explique|confirme|confirma)\b/i.test(actionableText))return false;
+    return /\b(solicito|solicitar|preciso que|fa[cç]a|fazer|crie|criar|prepare|preparar|atualize|atualizar|alterar|corrija|corrigir|revisar|agendar|comprar|registrar|gerar|elabore|executar)\b/i.test(actionableText);
   }
 
   async createServiceRequest(text,files=[],{recordOcr=null}={}) {
@@ -785,7 +826,7 @@ class WorkerContextChat {
     const activityId=stageKey&&stageKey!==selectedStageKey?'':selectedActivityId;
     const lower=String(text).toLocaleLowerCase('pt-BR');
     const domain=[['obra',/obra|etapa|atividade|cronograma|drenagem|pavimenta/],['suprimentos',/material|compra|fornecedor|estoque/],['documentos',/documento|pdf|dwg|licen[cç]a|projeto/],['comercial',/lead|cliente|reserva|contrato|comiss[aã]o|corretor/],['financeiro',/caixa|pagamento|lan[cç]amento|despesa|financeir/],['relatorios',/relat[oó]rio|indicador|balan[cç]o/]].find(([,pattern])=>pattern.test(lower))?.[0]||String(state.view||'geral');
-    const response=await fetch('/api/service-requests',{method:'POST',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({title:String(text).trim().slice(0,140),description:String(text).trim(),domain,stageKey:stageIsUnresolved?'':stageKey||selectedStageKey,activityId:stageIsUnresolved?'':activityId,files:files.map(file=>({fileName:file.name,dataUrl:file.dataUrl}))})});
+    const response=await apiFetch('/api/service-requests',{method:'POST',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({title:String(text).trim().slice(0,140),description:String(text).trim(),domain,stageKey:stageIsUnresolved?'':stageKey||selectedStageKey,activityId:stageIsUnresolved?'':activityId,files:files.map(file=>({fileName:file.name,dataUrl:file.dataUrl}))})});
     const payload=await response.json().catch(()=>({}));
     if(!response.ok||!payload.request)throw new Error(payload.error||`HTTP ${response.status}`);
     this.currentRequest=payload.request;
@@ -801,13 +842,13 @@ class WorkerContextChat {
   async refreshServiceRequest(){
     const id=localStorage.getItem(SERVICE_KEY);
     if(!id)return;
-    try{const response=await fetch(`/api/service-requests/${encodeURIComponent(id)}`,{cache:'no-store'});if(!response.ok)return;const payload=await response.json();this.currentRequest=payload.request||null;this.render();}
+    try{const response=await apiFetch(`/api/service-requests/${encodeURIComponent(id)}`,{cache:'no-store'});if(!response.ok)return;const payload=await response.json();this.currentRequest=payload.request||null;this.render();}
     catch{this.status.textContent='Acompanhamento temporariamente indisponível.';}
   }
 
   async refreshServiceRequests(){
     try{
-      const response=await fetch('/api/service-requests',{cache:'no-store'});
+      const response=await apiFetch('/api/service-requests',{cache:'no-store'});
       if(!response.ok)return;
       const payload=await response.json();
       this.requests=Array.isArray(payload.requests)?payload.requests:[];
@@ -907,7 +948,7 @@ class WorkerContextChat {
         const date = iso(String(args.date || '').trim());
         let persisted = { events: [] };
         try {
-          const response = await fetch('/api/agenda-events', { cache: 'no-store' });
+          const response = await apiFetch('/api/agenda-events', { cache: 'no-store' });
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           persisted = await response.json();
           if (!Array.isArray(persisted.events)) throw new Error('Agenda inválida.');
@@ -927,7 +968,7 @@ class WorkerContextChat {
         const id = `agenda-worker-ai-${Date.now().toString(36)}`;
         const event = { id, title, stageKey, stageName, activityId:String(args.activityId||'').trim(), activityName:String(args.activityName||title).trim().slice(0,160), owner:String(args.owner||'').trim().slice(0,120), date, start, durationHours:Math.max(.5,Math.min(24,Number(args.durationHours)||1.5)), spanDays:Math.max(1,Math.min(7,Number(args.spanDays)||1)), status:'Pendente', aiPending:true, notes:String(args.notes||'').trim().slice(0,1200), materialIds:Array.isArray(args.materialIds)?args.materialIds.map(value=>String(value).trim()).filter(Boolean):[], detailsNeeded:String(args.detailsNeeded||'').trim().slice(0,800), evidenceRequired:Boolean(args.evidenceRequired) };
         try {
-          const response = await fetch('/api/agenda-events', {
+          const response = await apiFetch('/api/agenda-events', {
             method: 'PUT',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ events: [...persisted.events, event] })
@@ -1032,6 +1073,7 @@ class WorkerContextChat {
       const prepared={name:String(file.name||`arquivo-${source}`),mimeType,dataUrl,source};
       this.files = [prepared];
       this.attachment = /^image\//.test(mimeType) ? prepared : null;
+      if (source === 'camera') this.setTab('register');
       this.renderAttachment();
       // O anexo fica visível para que a mensagem possa ser contextualizada;
       // ele é enviado automaticamente junto com o próximo envio do formulário.
@@ -1069,7 +1111,7 @@ class WorkerContextChat {
     const mapContext=mapContextLabel?{kind:mapContextKind||'map',label:mapContextLabel}:null;
     try {
       const endpoint = attachment ? '/api/ai/vision-reasoning' : '/api/ai';
-      const response = await fetch(endpoint, {
+      const response = await apiFetch(endpoint, {
         method: 'POST', cache: 'no-store', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           message, view: location.pathname.startsWith('/admin') ? (globalThis.__belavistaAppStore?.get()?.view || 'control') : 'workers',

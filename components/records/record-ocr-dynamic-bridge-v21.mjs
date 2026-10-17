@@ -36,6 +36,7 @@ export const installRecordOcrDynamicBridgeV21 = ({
           ).slice(0, 900),
           activityHints: [
             ...labels(profile.requestHints),
+            ...labels(profile.expectedActivities),
             ...labels(profile.evidenceFocus),
           ].slice(0, 20),
           activities: (Array.isArray(stage.activities) ? stage.activities : [])

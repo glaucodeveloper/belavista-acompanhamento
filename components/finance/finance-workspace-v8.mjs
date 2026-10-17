@@ -13,7 +13,7 @@ const cashRecordStagesV1 = () =>
 const cashRecordLauncherMarkupV1 = (returnView = "finance") => {
   const actor = appStore.get().currentActor || { role: "owner", label: "Dono" };
   const allowed = actor.role === "owner" || actor.role === "developer";
-  return `<section class="cash-record-launcher" data-cash-record-launcher><div><span class="activity-kind">REGISTRO DE CAIXA</span><h2>Novo registro</h2><p>Nomeie o lançamento, vincule uma etapa e anexe um comprovante opcional.</p></div>${allowed ? `<button type="button" class="toolbar-primary" data-cash-record-open data-return-view="${esc(returnView)}">${ico("plus")} Novo registro</button>` : `<span class="cash-record-permission">Somente o Dono pode registrar movimentações.</span>`}</section>`;
+  return `<section class="cash-record-launcher" data-cash-record-launcher><div><span class="activity-kind">SAÍDAS DE CAIXA</span><h2>Registrar uma saída</h2><p>Entradas de lotes e repasses são registradas exclusivamente na página Repasses.</p></div>${allowed ? `<button type="button" class="toolbar-primary" data-cash-record-open data-return-view="${esc(returnView)}">${ico("plus")} Nova saída</button>` : `<span class="cash-record-permission">Somente o Dono pode registrar movimentações.</span>`}</section>`;
 };
 
 const CashRecordPageV1 = ({ props = {} } = {}) => ({
@@ -26,21 +26,15 @@ const CashRecordPageV1 = ({ props = {} } = {}) => ({
       returnView = model.returnView || "finance";
     return {
       done: false,
-      value: `<section class="cash-record-page control-page"><header class="cash-record-page-head"><div><button type="button" class="cash-record-back" data-cash-record-back data-return-view="${esc(returnView)}">${ico("arrow-left")} Voltar</button><span class="activity-kind">ANOTAÇÃO DE CAIXA · NOVO REGISTRO</span><h1>Novo registro de caixa</h1><p>Registre uma entrada ou saída com identificação clara, etapa relacionada e anexo opcional.</p></div><span class="cash-record-actor">${esc(actor.label || actor.role)}</span></header>${allowed ? `<form class="cash-record-form" data-cash-record-form><input type="hidden" name="date" value="${today}"><div class="cash-record-form-grid"><label>Nome do registro<input name="name" required maxlength="120" placeholder="Ex.: Sinal de compra de materiais"></label><label>Tipo<select name="kind"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></label><label>Etapa<select name="stage"><option value="Geral">Geral</option>${stages.map((item) => `<option value="${esc(item.value)}">${esc(item.label)}</option>`).join("")}</select></label><label>Valor (R$)<input name="amount" inputmode="decimal" required placeholder="0,00"></label><label class="cash-record-description">Descrição<textarea name="description" required maxlength="800" rows="6" placeholder="Explique a origem, finalidade ou condição do lançamento."></textarea></label><label class="cash-record-attachment">Anexo opcional<input type="file" name="attachment" accept="image/jpeg,image/png,image/webp,application/pdf"><small>PDF, JPG, PNG ou WEBP · até 6 MB.</small></label></div><footer><span data-cash-record-status>O lançamento será incorporado ao caixa e recalculará as frentes relacionadas.</span><button type="submit" class="toolbar-primary">${ico("save")} Registrar lançamento</button></footer></form>` : `<div class="role-boundary-notice">${ico("lock-keyhole")} Seu perfil (${esc(actor.label || actor.role)}) pode consultar o caixa, mas não criar lançamentos.</div>`}</section>`,
+      value: `<section class="cash-record-page control-page"><header class="cash-record-page-head"><div><button type="button" class="cash-record-back" data-cash-record-back data-return-view="${esc(returnView)}">${ico("arrow-left")} Voltar</button><span class="activity-kind">CAIXA · SAÍDA</span><h1>Registrar saída de caixa</h1><p>Entradas comerciais são registradas e conciliadas somente em Repasses.</p></div><span class="cash-record-actor">${esc(actor.label || actor.role)}</span></header>${allowed ? `<form class="cash-record-form" data-cash-record-form><input type="hidden" name="date" value="${today}"><input type="hidden" name="kind" value="saida"><div class="cash-record-form-grid"><label>Nome do registro<input name="name" required maxlength="120" placeholder="Ex.: pagamento de serviço"></label><label>Etapa<select name="stage"><option value="Geral">Geral</option>${stages.map((item) => `<option value="${esc(item.value)}">${esc(item.label)}</option>`).join("")}</select></label><label>Valor (R$)<input name="amount" inputmode="decimal" required placeholder="0,00"></label><label class="cash-record-description">Descrição<textarea name="description" required maxlength="800" rows="6" placeholder="Explique a finalidade e condição do lançamento."></textarea></label><label class="cash-record-attachment">Anexo opcional<input type="file" name="attachment" accept="image/jpeg,image/png,image/webp,application/pdf"><small>PDF, JPG, PNG ou WEBP · até 6 MB.</small></label></div><footer><span data-cash-record-status>A saída será incorporada ao caixa e recalculará as frentes relacionadas.</span><button type="submit" class="toolbar-primary">${ico("save")} Registrar saída</button></footer></form>` : `<div class="role-boundary-notice">${ico("lock-keyhole")} Seu perfil (${esc(actor.label || actor.role)}) pode consultar o caixa, mas não criar lançamentos.</div>`}</section>`,
     };
   },
 });
 
 const cashRecordPageV1 = function () {
-  const html = CashRecordPageV1({
+  return CashRecordPageV1({
     props: { returnView: appStore.get().cashRecordReturnView || "finance" },
   }).next().value;
-  const lotKey = String(appStore.get().cashRecordDraft?.lotKey || "");
-  if (!lotKey) return html;
-  return html
-    .replace('<div class="cash-record-form-grid">', `<input type="hidden" name="lotKey" value="${esc(lotKey)}"><div class="cash-record-form-grid">`)
-    .replace('<label>Tipo<select name="kind"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></label>', `<input type="hidden" name="kind" value="entrada"><label>Lote<input value="${esc(lotKey)}" readonly></label>`)
-    .replace('<h1>Novo registro de caixa</h1>', `<h1>Entrada de caixa · ${esc(lotKey)}</h1>`);
 };
 
 

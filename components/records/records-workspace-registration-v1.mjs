@@ -1,5 +1,5 @@
 import { installMaterialsWorkspaceV1 } from "./materials-workspace-v1.mjs?v=materials-workspace-v1";
-import { installMaterialsDatabasePageV1 } from "./materials-database-page-v1.mjs?v=materials-database-v4";
+import { installMaterialsDatabasePageV1 } from "./materials-database-page-v1.mjs?v=materials-stage-tabs-v1";
 import { installControlRecordDrawerV2 } from "./control-record-drawer-v2.mjs?v=control-record-accordion-v1";
 import { installMaterialTransitionV1 } from "./material-transition-v1.mjs?v=material-transition-v1";
 
@@ -39,7 +39,7 @@ export const installRecordsWorkspaceRegistrationV1 = ({
     stageProfileSettingsFor,
     stageV9FlowPackets,
   });
-  materialsDatabaseInstallerV1(ViewLayer);
+  materialsDatabaseInstallerV1(ViewLayer, { appStore, controlCenterMaterialRowsV1, executionModel });
   controlRecordDrawerInstallerV1(ViewLayer, {
     appStore,
     ico,

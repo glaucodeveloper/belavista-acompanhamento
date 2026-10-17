@@ -33,12 +33,13 @@ function isAiPath(path=''){
 export function apiBase(){
   const proxy=ngrokPortProxyBase();
   if(proxy)return proxy;
+  const isLocalHost=globalThis.BELAVISTA_CAPACITOR_NATIVE!==true
+    &&typeof location!=='undefined'&&/^(localhost|127\.0\.0\.1)$/i.test(String(location.hostname||''));
+  if(isLocalHost)return '';
   const runtime=trimBase(globalThis.BELAVISTA_API_BASE);
   if(runtime)return runtime;
   const saved=trimBase(readSavedSettings().apiBase);
   if(saved)return saved;
-  const isLocalHost=typeof location!=='undefined'&&/^(localhost|127\.0\.0\.1)$/i.test(String(location.hostname||''));
-  if(isLocalHost)return '';
   const meta=trimBase(document.querySelector(API_BASE_META)?.getAttribute('content'));
   if(meta)return meta;
   return '';
@@ -47,6 +48,9 @@ export function apiBase(){
 export function aiBase(){
   const proxy=ngrokPortProxyBase();
   if(proxy)return proxy;
+  const isLocalHost=globalThis.BELAVISTA_CAPACITOR_NATIVE!==true
+    &&typeof location!=='undefined'&&/^(localhost|127\.0\.0\.1)$/i.test(String(location.hostname||''));
+  if(isLocalHost)return '';
   const runtime=trimBase(globalThis.BELAVISTA_AI_BASE);
   if(runtime)return runtime;
   const savedSettings=readSavedSettings();
@@ -67,6 +71,9 @@ export function apiUrl(path=''){
 }
 
 export async function apiFetch(path, init={}){
+  if(globalThis.BELAVISTA_ADMIN_AUTH_REQUIRED&&String(path)!=='/api/auth/session'){
+    await globalThis.BELAVISTA_ADMIN_AUTH_READY;
+  }
   const headers=new Headers(init.headers||{});
   try{
     const token=await globalThis.BELAVISTA_GET_ID_TOKEN?.();
@@ -78,7 +85,11 @@ export async function apiFetch(path, init={}){
     headers.set('X-Belavista-User',String(actor.uid||'local-developer'));
     headers.set('X-Belavista-Name',String(actor.name||actor.email||'TI · Desenvolvimento'));
   }
-  return fetch(apiUrl(path),{...init,headers});
+  const response=await fetch(apiUrl(path),{...init,headers});
+  if(response.status===401&&headers.has('Authorization')&&String(path)!='/api/auth/session'&&!isAiPath(path)){
+    globalThis.BELAVISTA_ADMIN_AUTH_INVALIDATE?.();
+  }
+  return response;
 }
 
 export function firebaseMessagingVapidKey(){

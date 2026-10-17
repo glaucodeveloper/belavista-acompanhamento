@@ -4,16 +4,19 @@ import { readFile } from "node:fs/promises";
 import { limitedActorCanAccessApi } from "../../api-access-policy.mjs";
 import { createStagePersistentTimelineMarkupV1 } from "../../components/planning/stage-context-chrome-v1.mjs";
 import { actorCanOpenView, navigationItemsForActor } from "../../admin-role-policy.mjs";
+import { readFileSync } from "node:fs";
 
 const foreman = { role: "admin", userType: "foreman" };
 const broker = { role: "corretor" };
 
-test("encarregado e corretor só veem registros e cronograma na navegação", () => {
+test("encarregado e corretor veem mapa, agenda e registros sem áreas administrativas", () => {
   for (const actor of [foreman, broker]) {
-    assert.deepEqual(navigationItemsForActor(actor, []).map(([id]) => id), ["records", "stages"]);
+    assert.deepEqual(navigationItemsForActor(actor, []).map(([id]) => id), ["map", "records", "stages"]);
+    assert.equal(actorCanOpenView(actor, "map"), true);
+    assert.equal(actorCanOpenView(actor, "agenda"), true);
     assert.equal(actorCanOpenView(actor, "records"), true);
     assert.equal(actorCanOpenView(actor, "stages"), true);
-    for (const view of ["map", "materials", "agenda", "brokers", "repasses", "settings", "actions"])
+    for (const view of ["materials", "brokers", "repasses", "settings", "actions"])
       assert.equal(actorCanOpenView(actor, view), false, `${view} liberada indevidamente`);
   }
 });
@@ -57,13 +60,25 @@ test("API bloqueia áreas fora do escopo e preserva leituras/gravações de regi
   assert.equal(limitedActorCanAccessApi({ role: "owner" }, "/api/materials", "GET"), true);
 });
 
-test("web e Capacitor exigem autenticação e servidor usa Firebase como padrão", async () => {
+test("web e Capacitor exigem sessão autenticada e o gateway local preserva o perfil delegado", async () => {
   const [auth, service] = await Promise.all([
     readFile(new URL("../../admin-auth.mjs", import.meta.url), "utf8"),
     readFile(new URL("../../auth-service.mjs", import.meta.url), "utf8"),
   ]);
-  assert.match(auth, /const required=true/);
+  assert.match(auth, /BELAVISTA_ADMIN_AUTH_REQUIRED=true/);
   assert.match(auth, /BELAVISTA_CAPACITOR_NATIVE===true/);
-  assert.match(service, /BELAVISTA_AUTH_MODE\|\|'firebase'/);
-  assert.match(service, /Autenticação Firebase obrigatória fora do ambiente local/);
+  assert.match(service, /BELAVISTA_AUTH_MODE\|\|'github-pat'/);
+  assert.match(service, /actor\.mode\|\|'github-pat'/);
+});
+
+test("navegação mobile expõe mapa e transforma Chat em uma aba selecionável", () => {
+  const app = readFileSync(new URL("../../app.js", import.meta.url), "utf8"),
+    mobile = readFileSync(new URL("../../atlas-mobile-focus-v1.css", import.meta.url), "utf8"),
+    chat = readFileSync(new URL("../../worker-context-chat.mjs", import.meta.url), "utf8");
+  assert.match(app, /data-mobile-view="map"/);
+  assert.match(app, /shell\.dataset\.mobileTab='chat'/);
+  assert.match(app, /mobile\.dataset\.mobileView/);
+  assert.match(mobile, /grid-template-columns:\s*repeat\(4,/);
+  assert.match(mobile, /mobile-chat-tab-active \.worker-context-assistant/);
+  assert.match(chat, /mobile-chat-tab-active/);
 });

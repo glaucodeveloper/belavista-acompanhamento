@@ -17,21 +17,21 @@ test('TWA administrativo aponta para /admin e usa orientação mobile',()=>{
   assert.match(twa.webManifestUrl,/admin-twa-manifest/);
 });
 
-test('login operacional valida Firebase Auth e claims de função',()=>{
+test('login operacional valida PAT e sessão no serviço autoritativo',()=>{
   const auth=read('admin-auth.mjs');
-  const firebase=read('firebase.mjs');
   const service=read('auth-service.mjs');
+  const server=read('server.mjs');
   const app=read('app.js');
-  assert.match(auth,/signInOperationalUser/);
-  assert.match(auth,/allowedRoles/);
-  assert.match(auth,/foreman/);
-  assert.match(auth,/admin/);
-  assert.match(auth,/developer/);
-  assert.match(auth,/TI · Desenvolvimento/);
-  assert.match(firebase,/getIdTokenResult/);
-  assert.match(firebase,/custom claim `role`/);
-  assert.match(firebase,/icaroglaucooliveira@gmail\.com/);
-  assert.match(service,/localhost only/);
+  assert.match(auth,/api\/auth\/session/);
+  assert.match(auth,/new AbortController\(\)/);
+  assert.match(auth,/controller\.abort\(\),15000/);
+  assert.match(auth,/O serviço de autenticação não respondeu em 15 segundos/);
+  assert.match(auth,/saveGithubPat/);
+  assert.match(auth,/readGithubPat/);
+  assert.match(service,/BELAVISTA_API_BASE/);
+  assert.match(service,/foreman/);
+  assert.match(service,/developer/);
+  assert.match(server,/['"]\/api\/auth\/session['"]/);
   assert.match(service,/requireRoles/);
   assert.match(app,/BELAVISTA_ADMIN_AUTH_READY/);
   assert.match(read('api-client.mjs'),/Authorization/);

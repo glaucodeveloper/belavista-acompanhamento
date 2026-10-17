@@ -1,9 +1,9 @@
 import {
   createStageRecordServicesV1,
   installStageRecordCenterV1,
-} from "./stage-record-center-v1.mjs?v=stage-record-center-v3";
+} from "./stage-record-center-v1.mjs?v=stage-record-center-v4";
 import { installLotDetailEventsV1 } from "../lots/lot-detail-events-v1.mjs?v=lot-detail-events-v1";
-import { installRecordOcrDynamicBridgeV21 } from "./record-ocr-dynamic-bridge-v21.mjs?v=record-ocr-dynamic-bridge-v21";
+import { installRecordOcrDynamicBridgeV21 } from "./record-ocr-dynamic-bridge-v21.mjs?v=stage-comprehension-settings-v1";
 
 /** Compose stage records, lot detail interactions, and the OCR bridge in bootstrap order. */
 export const installRecordApplicationCompositionV1 = ({
@@ -43,6 +43,7 @@ export const installRecordApplicationCompositionV1 = ({
 
   const stageRecordCenterModulesV1 = installStageRecordCenterV1(ViewLayer, {
     REPASSE_PRICE_CATALOG,
+    apiFetch,
     appStore,
     defaultStageMaterialRows,
     demoData,
@@ -50,6 +51,8 @@ export const installRecordApplicationCompositionV1 = ({
     formatBRL,
     ico,
     isAssistantVisualAdditionV1,
+    operationalHeaders,
+    notify,
     renderStageHomePageV1,
     stageContextV1,
     stageHomeSnapshotV1,

@@ -49,6 +49,7 @@ const createComposition = () => {
     stageProfileSettingsFor: () => ({}),
     stageMaterialsFor: () => [{ id: "material-gravel", name: "Brita", stageKey: "earth" }],
     formatBRL: (value) => `R$ ${Number(value).toFixed(2)}`,
+    apiFetch: async () => ({ ok: true, json: async () => ({}) }),
     esc: (value) => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;"),
     ico: (name) => `<svg data-icon="${name}"></svg>`,
     globalRef,
@@ -79,13 +80,16 @@ test("stage operational composition installs its complete renderer and event gro
   assert.equal(typeof ViewLayer.prototype.assistant, "function");
   assert.match(view.activityDedicatedPage(), /class="stage-v9-dedicated-page stage-agenda-page/);
   assert.match(view.activityDedicatedPage(), /Agenda de atividades/);
-  assert.match(view.activities(), /Atividades da etapa/);
+  assert.match(view.activities(), /<h1>Atividades<\/h1>/);
   assert.equal(view.bind(), undefined);
   assert.equal(setup.baseBindCalls, 1);
 });
 
 test("components root delegates dashboard, agenda, and activity page setup in architecture module", async () => {
-  const root = await readFile(new URL("../../components.js", import.meta.url), "utf8");
+  const root = (await Promise.all([
+    readFile(new URL("../../components.js", import.meta.url), "utf8"),
+    readFile(new URL("../../components/index.mjs", import.meta.url), "utf8"),
+  ])).join("\n");
   const planning = await readFile(new URL("../../components/planning/planning-pages-application-v1.mjs", import.meta.url), "utf8");
   const composition = await readFile(new URL("../../components/planning/stage-operational-pages-composition-v1.mjs", import.meta.url), "utf8");
   const ordered = [

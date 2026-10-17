@@ -1,9 +1,11 @@
 // BELAVISTA_RECORDS_ACTIVITY_DRILL_IN_V5377
 // Registros: etapa -> atividade -> apontamento. Materiais permanecem na
 // central única de caixa, com o mesmo contexto de evidência financeira.
-import {ViewLayer as ImportedViewLayer, ico, esc} from './components.js?v=pdf-reviewed-lot-areas-v1';
-import {appStore, demoData} from './state.js?v=personnel-production-v5373';
+import {ViewLayer as ImportedViewLayer, ico, esc} from './components.js?v=mobile-focus-v1';
+import {appStore, demoData} from './state.js?v=system-metrics-v1-20260919';
 import {apiFetch} from './api-client.mjs';
+import {createFinalOperationalRecordsPageV5360} from './components/records/final-operational-records-page-v5360.mjs?v=mobile-focus-v1';
+import {recordStageV5360, toneV5360} from './components/shared/final-workspace-formatters-v5360.mjs';
 
 // A bootstrap legada pode carregar mais de uma URL cache-busted do módulo.
 // Sempre estenda a classe realmente registrada no custom element.
@@ -735,6 +737,12 @@ const installRecordsActivityDrillInV5377 = () => {
   };
 
   const recordsRenderer = function recordsActivityDrillInV5377() {
+    if (globalThis.matchMedia?.('(max-width: 760px)').matches) {
+      return createFinalOperationalRecordsPageV5360({
+        appStore: {get: () => ({...appStore.get(), selectedStage: ''})},
+        demoData, esc, ico, recordStage: recordStageV5360, tone: toneV5360,
+      })();
+    }
     return stageShell(renderRecordsPage(this), appStore.get());
   };
   recordsRenderer.__recordsActivityDrillInV5377 = true;
@@ -742,6 +750,11 @@ const installRecordsActivityDrillInV5377 = () => {
 
   const bindRenderer = function bindRecordsActivityDrillInV5377() {
     currentBind?.call(this);
+    if (this.querySelector('.atlas-profile-records')) {
+      this.querySelectorAll('[data-v5360-record]').forEach(button => button.addEventListener('click', () => { appStore.set({selectedRecordV5360: button.dataset.v5360Record, lastAction: 'Abriu registro do perfil'}); this.render(); }));
+      this.querySelector('[data-v5360-record-back]')?.addEventListener('click', () => { appStore.set({selectedRecordV5360: null, lastAction: 'Voltou aos registros do perfil'}); this.render(); });
+      return;
+    }
     if (appStore.get().view === 'records' || this.querySelector('.records-drill-page-v5377')) bindRecordsDrill(this);
     this.querySelector('[data-records-stage-fit]')?.addEventListener('click', () => this.querySelector('[data-records-stage-map]')?.fitSceneView?.(true));
     const stage = demoData.activities.find(item => String(item.id) === String(appStore.get().selectedStage)) || demoData.activities[1] || demoData.activities[0];

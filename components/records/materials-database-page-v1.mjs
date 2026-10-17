@@ -1,14 +1,37 @@
-import { apiFetch } from "../../api-client.mjs?v=materials-database-v1";
+import { apiFetch } from "../../api-client.mjs?v=github-pat-gateway-v1";
 
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
 }[char]));
 const quantity = (value) => Number(value || 0).toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 
-export function installMaterialsDatabasePageV1(ViewLayer) {
+export function installMaterialsDatabasePageV1(ViewLayer, {
+  appStore,
+  controlCenterMaterialRowsV1,
+  executionModel,
+} = {}) {
   ViewLayer.prototype.materials = function () {
     const rows = this._materialsDatabaseRowsV1 || [], editing = this._materialsDatabaseEditingV1 || null,
-      loading = this._materialsDatabaseLoadingV1, error = this._materialsDatabaseErrorV1 || "";
+      loading = this._materialsDatabaseLoadingV1, error = this._materialsDatabaseErrorV1 || "",
+      stages = executionModel?.stages || [],
+      stageRows = typeof controlCenterMaterialRowsV1 === "function" && typeof appStore?.get === "function"
+        ? controlCenterMaterialRowsV1(appStore.get())
+        : [],
+      populatedStages = stages.map((stage) => ({
+        stage,
+        items: stageRows.filter((item) => String(item.stageKey || "") === String(stage.key)),
+      })),
+      requestedTab = this._materialsStageTabV1,
+      initialStage = populatedStages.find(({ items }) => items.length)?.stage.key,
+      activeTab = populatedStages.some(({ stage }) => String(stage.key) === String(requestedTab)) || requestedTab === "inventory"
+        ? requestedTab
+        : initialStage || "inventory",
+      activeStage = populatedStages.find(({ stage }) => String(stage.key) === String(activeTab)),
+      stageRowsMarkup = activeStage?.items.map((item) => `<tr>
+        <td><strong>${escapeHtml(item.name || item.description || "Material")}</strong><small>${escapeHtml(item.id || "")}</small></td>
+        <td>${escapeHtml(item.activityName || "—")}</td><td>${item.quantity == null ? "—" : quantity(item.quantity)}</td>
+        <td>${escapeHtml(item.unit || "—")}</td><td>${escapeHtml(item.status || "—")}</td>
+        <td>${escapeHtml(item.scope || "—")}</td></tr>`).join("") || "";
     const rowMarkup = rows.map((item) => `<tr data-material-row="${escapeHtml(item.id)}">
       <td><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.id)}</small></td>
       <td>${escapeHtml(item.unit || "un")}</td><td>${quantity(item.plannedQuantity)}</td>
@@ -19,9 +42,20 @@ export function installMaterialsDatabasePageV1(ViewLayer) {
     const values = editing || { name: "", unit: "un", plannedQuantity: 0, receivedQuantity: 0, usedQuantity: 0, status: "Planejado" };
     return `<section class="atlas-materials-page">
       <header class="atlas-page-heading"><div><span class="atlas-eyebrow">OPERAÇÃO · ESTOQUE</span><h1>Materiais</h1>
-      <p>Materiais cadastrados no banco operacional, com quantidades e estado persistidos.</p></div>
+      <p>Materiais do empreendimento organizados por etapa, com o cadastro persistido no banco operacional.</p></div>
       <div class="atlas-page-actions"><button type="button" data-material-refresh>Atualizar</button><button type="button" class="primary" data-material-new>Novo material</button></div></header>
       ${error ? `<p class="atlas-material-error" role="alert">${escapeHtml(error)}</p>` : ""}
+      <nav class="atlas-stage-material-tabs" role="tablist" aria-label="Materiais por etapa">
+        ${populatedStages.map(({ stage, items }) => `<button type="button" role="tab" aria-selected="${String(stage.key) === String(activeTab)}" class="${String(stage.key) === String(activeTab) ? "active" : ""}" data-material-stage-tab="${escapeHtml(stage.key)}"><span>${escapeHtml(stage.name)}</span><small>${items.length}</small></button>`).join("")}
+        <button type="button" role="tab" aria-selected="${activeTab === "inventory"}" class="${activeTab === "inventory" ? "active" : ""}" data-material-stage-tab="inventory"><span>Estoque geral</span><small>${rows.length}</small></button>
+      </nav>
+      ${activeStage ? `<section class="atlas-material-table-card atlas-stage-material-panel" role="tabpanel" aria-label="Materiais da etapa ${escapeHtml(activeStage.stage.name)}">
+        <header><div><h2>${escapeHtml(activeStage.stage.name)}</h2><p>${activeStage.items.length} material(is) associado(s) a esta etapa</p></div></header>
+        <div class="atlas-material-table-scroll"><table><thead><tr><th>Material</th><th>Atividade</th><th>Quantidade</th><th>Unidade</th><th>Status</th><th>Escopo</th></tr></thead><tbody>
+          ${stageRowsMarkup || `<tr><td colspan="6" class="atlas-material-empty">Nenhum material associado a esta etapa.</td></tr>`}
+        </tbody></table></div>
+      </section>` : ""}
+      ${activeTab === "inventory" || !activeStage ? `<div data-material-inventory-panel>
       <section class="atlas-material-editor ${editing || this._materialsDatabaseNewV1 ? "is-open" : ""}">
         <h2>${editing ? "Editar material" : "Cadastrar material"}</h2>
         <form data-material-form data-material-id="${escapeHtml(editing?.id || "")}">
@@ -39,6 +73,7 @@ export function installMaterialsDatabasePageV1(ViewLayer) {
         <div class="atlas-material-table-scroll"><table><thead><tr><th>Material</th><th>Unidade</th><th>Previsto</th><th>Recebido</th><th>Usado</th><th>Status</th><th>Ações</th></tr></thead>
         <tbody>${rowMarkup || `<tr><td colspan="7" class="atlas-material-empty">${loading ? "Carregando materiais do banco…" : "Nenhum material cadastrado no banco operacional."}</td></tr>`}</tbody></table></div>
       </section>
+      </div>` : ""}
     </section>`;
   };
 
@@ -61,6 +96,7 @@ export function installMaterialsDatabasePageV1(ViewLayer) {
 
   const bind = (page) => {
     const setEditor = (material, isNew = false) => {
+      page._materialsStageTabV1 = "inventory";
       page._materialsDatabaseEditingV1 = material;
       page._materialsDatabaseNewV1 = isNew;
       page.render();
@@ -118,6 +154,12 @@ export function installMaterialsDatabasePageV1(ViewLayer) {
       const term = search.value.trim().toLocaleLowerCase("pt-BR");
       page.querySelectorAll("[data-material-row]").forEach((row) => { row.hidden = !row.textContent.toLocaleLowerCase("pt-BR").includes(term); });
     };
+    page.querySelectorAll("[data-material-stage-tab]").forEach((button) => {
+      button.onclick = () => {
+        page._materialsStageTabV1 = button.dataset.materialStageTab;
+        page.render();
+      };
+    });
   };
   const renderBase = ViewLayer.prototype.render;
   ViewLayer.prototype.render = function (...args) {

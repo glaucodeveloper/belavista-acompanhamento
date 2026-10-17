@@ -356,7 +356,7 @@ export const createViewLayerV1 = (dependencies = {}) => {
           state.view === "activities" ? JSON.stringify(state.dashboardStageAdminStagesV1 || []) : "",
           state.view === "activities" ? `${state.atlasActivitiesLoadedV1}:${state.atlasActivitiesErrorV1 || ""}:${state.atlasActivityStageFilterV1 || ""}` : "",
           state.view === "activities" ? `${state.atlasActivityEditorOpenV1}:${state.atlasActivityEditorIdV1 || ""}:${state.atlasActivityMutationErrorV1 || ""}` : "",
-          state.view === "agenda" ? `${state.agendaCalendarLoadedV3}:${state.agendaCalendarLoadingV3}:${state.agendaCalendarErrorV3 || ""}:${state.agendaCalendarRevisionV3 || ""}:${(state.agendaDatabaseEventsV3 || []).length}` : "",
+          state.view === "agenda" ? `${state.agendaCalendarLoadedV3}:${state.agendaCalendarLoadingV3}:${state.agendaCalendarErrorV3 || ""}:${state.agendaCalendarRevisionV3 || ""}:${(state.agendaDatabaseEventsV3 || []).length}:${state.agendaCalendarPresentationV1 || "status"}:${state.agendaCalendarWeekV8 || ""}` : "",
           state.selectedAiAction,
           state.view === "actions" ? JSON.stringify(state.aiActions || []) : "",
           state.view === "actions" ? JSON.stringify(state.aiActionPositionChanges || {}) : "",
@@ -365,6 +365,9 @@ export const createViewLayerV1 = (dependencies = {}) => {
           state.activityRecordModalOpenV1,
           state.stageRecordsContext,
           state.selectedRecord,
+          state.selectedRecordV5360,
+          state.recordsLoadError,
+          state.currentActor?.name,
           state.editingRecord,
           state.selectedRecordsStageV5377,
           state.selectedRecordsActivityV5377,
@@ -474,16 +477,15 @@ export const createViewLayerV1 = (dependencies = {}) => {
         const response = await apiFetch("/api/records");
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const payload = await response.json();
-        if (Array.isArray(payload.records) && payload.records.length)
+        if (Array.isArray(payload.records))
           appStore.set({
             records: payload.records,
+            recordsLoadError: null,
             lastAction: "Carregou registros do banco local",
           });
       } catch (error) {
-        console.warn(
-          "Persistência local indisponível; mantendo demonstração.",
-          error,
-        );
+        console.warn("Registros persistidos indisponíveis.", error);
+        appStore.set({ records: [], recordsLoadError: String(error?.message || error) });
       }
     }
     async loadPublicLeads() {
@@ -747,7 +749,7 @@ export const createViewLayerV1 = (dependencies = {}) => {
                   "Mapa, filtros e cronograma integrados para acompanhar cada frente de execução.",
                 )
           : null;
-      const pageHeader = view === "agenda" || (view === "activities" && !state.stageActivityDedicatedV9)
+      const pageHeader = view === "agenda" || view === "repasses" || (view === "activities" && !state.stageActivityDedicatedV9)
         ? ""
         : `<div class="activity-header"><div><span>${title}</span><small>${subtitle}</small></div><div class="activity-state"><i></i> Em acompanhamento <b>·</b> ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</div></div>`;
       this.innerHTML = `${pageHeader}${stagePanorama || (view === "stages" ? (state.activityDedicated ? this.activityDedicatedPage() : this.stagesCanvas()) : this[view]?.() || this.assistant())}`;

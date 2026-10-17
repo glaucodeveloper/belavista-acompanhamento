@@ -23,6 +23,7 @@ export const installCommercialApplicationCompositionV1 = ({
 } = {}) => {
   const negotiation = createCommissionNegotiationViewsV1({
     appStore,
+    apiFetch,
     commissionDeals,
     commissionProfiles,
     esc,
@@ -33,7 +34,6 @@ export const installCommercialApplicationCompositionV1 = ({
     FileReader: globalRef.FileReader,
     Date: globalRef.Date,
     FormData: globalRef.FormData,
-    apiFetch,
     operationalHeaders,
     notify,
     windowRef: globalRef.window,
@@ -62,6 +62,7 @@ export const installCommercialApplicationCompositionV1 = ({
 
   installCommercialViewsBindV1(ViewLayer, {
     appStore,
+    apiFetch,
     bindCommissionNegotiationEventsV1: negotiation.bindCommissionNegotiationEventsV1,
     REPASSE_PRICE_CATALOG: repassePriceCatalog,
     commissionProfiles,

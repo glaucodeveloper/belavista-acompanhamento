@@ -42,7 +42,7 @@
     "video:render": "cd video/product-intro && npm run render -- --quality high --output output/product-intro.mp4",
     "test:screen:ui": "playwright test --ui",
     "build:demo": "node scripts/build-demo.mjs",
-    "check:demo": "node --check worker/src/operational-loop.js && node --check worker/src/github-store.js && node --check worker/src/live-test-session.js && node --check worker/src/firebase-auth.js && node --check worker/src/routes.js",
+    "check:demo": "node --check worker/src/operational-loop.js && node --check worker/src/github-store.js && node --check worker/src/live-test-session.js && node --check worker/src/request-auth.js && node --check worker/src/github-session-store.js && node --check worker/src/routes.js",
     "test:demo:cli": "node scripts/test-demo-cli.mjs",
     "test:live": "node worker/test/live/obra-completa.live.mjs",
     "test:live:story": "bash scripts/run-live-e2e.sh .",

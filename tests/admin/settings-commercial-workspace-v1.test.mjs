@@ -1,95 +1,141 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { installSettingsCommercialWorkspaceV1 } from "../../components/commercial/settings-commercial-workspace-v1.mjs";
+import { installSettingsCommercialWorkspaceV1, stageKeyFor } from "../../components/commercial/settings-commercial-workspace-v1.mjs";
 
-const createHarness = () => {
-  let state = {
-    settingsCommissionPeriodV1: "monthly",
-    commissionRulesByPeriodV1: {},
-    stageCompensationsV1: [],
-    activityCompensationsV1: [],
-    agendaMobileNotifications: [],
-  };
-  const writes = [], notices = [],
-    appStore = {
-      get: () => state,
-      set(patch) { writes.push(patch); state = { ...state, ...patch }; },
-    },
-    rule = { id: "rule-1", label: "Infra", payment: "Por venda", sharePercent: 10, warley: 60, partner: 40, description: "Regra atual" },
-    listeners = new Map(),
-    makeControl = (dataset = {}, values = {}) => ({
-      dataset,
-      textContent: "Mensal",
-      addEventListener(type, callback) { listeners.set(`${dataset.kind || dataset.settingsPeriod || dataset.settingsCompensationForm || dataset.id || "control"}:${type}`, callback); },
-      ...values,
-    }),
-    periodButton = makeControl({ settingsPeriod: "annual" }),
-    ruleForm = makeControl({ id: "rule-form" }, { entries: Object.entries({ id: rule.id, label: "Infra atualizada", sharePercent: "12", warley: "55", partner: "45", description: "Ajustada" }) }),
-    compensationForm = makeControl({ settingsCompensationForm: "activity" }, { entries: Object.entries({ id: "", stageKey: "water", activity: "Teste de pressão", mode: "prazo", value: "2", description: "Prazo justificado" }) }),
-    settings = {
-      querySelectorAll(selector) {
-        return ({
-          "[data-settings-period]": [periodButton],
-          "[data-settings-rule-form]": [ruleForm],
-          "[data-settings-compensation-form]": [compensationForm],
-          "[data-settings-compensation-edit]": [],
-          "[data-settings-compensation-delete]": [],
-        })[selector] || [];
-      },
-      querySelector() { return makeControl({ id: "apply-rules" }); },
-    },
-    root = {
-      dataset: { view: "settings" },
-      querySelector(selector) { return selector === "[data-settings-commercial]" ? settings : null; },
-      render() { writes.push({ rendered: true }); },
-    },
-    ViewLayer = class { bind() {} };
-  const brokerReasonsV9 = () => [rule];
-  installSettingsCommercialWorkspaceV1(ViewLayer, {
-    appStore,
-    brokerReasonsV9,
-    executionModel: { stages: [{ key: "water", name: "Rede de Água" }] },
-    esc: (value) => String(value ?? ""),
-    ico: (name) => `<i>${name}</i>`,
-    notify: (...args) => notices.push(args),
-    settingsAuditTemplate: () => "<main>Auditoria</main>",
-    FormDataCtor: class { constructor(form) { return form.entries; } },
-  });
-  return { ViewLayer, appStore, root, state: () => state, writes, notices, listeners, ruleForm, compensationForm };
+const stage = { id: 9, name: "Drenagem", status: "Em andamento", progress: 42, stageKey: "drainage", aiConfig: {
+  requirements: ["Projeto aprovado"], conditions: ["Cota validada"], typicalDescription: "Executar rede pluvial.",
+  requestHints: ["Tubo dimensionado"], evidenceFocus: ["Registro fotográfico"], procurementFocus: ["Conferir estoque"],
+  executionProfile: { materialsTable: [{ name: "Tubo PEAD", description: "Rede principal", quantity: "80", unit: "m", status: "Planejado" }], expectedActivities: ["Assentar tubulação"] },
+} };
+
+const harness = ({ apiFetch = async () => ({ ok: true, json: async () => ({ stages: [stage] }) }) } = {}) => {
+  const state = { view: "settings", currentActor: { role: "owner", uid: "u-1", name: "Dono" } }, writes = [], requests = [], notices = [], listeners = new Map();
+  const appStore = { get: () => state, set(patch) { Object.assign(state, patch); writes.push(patch); } };
+  const fetcher = async (url, init) => { requests.push({ url, init }); return apiFetch(url, init); };
+  const host = { dataset: {}, ownerDocument: { createElement: () => ({}) }, innerHTML: "", querySelector() { return null; }, querySelectorAll() { return []; } };
+  const root = { dataset: { view: "settings" }, querySelector(selector) { return selector === "[data-stage-comprehension-content]" ? host : null; } };
+  class ViewLayer { bind() {} }
+  installSettingsCommercialWorkspaceV1(ViewLayer, { appStore, executionModel: { stages: [{ key: "drainage", name: "Drenagem" }] }, apiFetch: fetcher, esc: (v) => String(v ?? ""), ico: (name) => `<i>${name}</i>`, notify: (...args) => notices.push(args) });
+  return { ViewLayer, root, host, state, writes, requests, notices, listeners };
 };
 
-test("settings commercial page renders its original audit base, commission periods and compensation forms", () => {
-  const { ViewLayer, appStore } = createHarness();
-  const html = ViewLayer.prototype.settings.call({}, "argument");
-
-  assert.match(html, /^<main>Auditoria<\/main>/);
-  assert.match(html, /Regras de comissão e compensações/);
-  assert.match(html, /data-settings-period="monthly"/);
-  assert.match(html, /data-settings-period="annual"/);
-  assert.match(html, /data-settings-compensation-form="activity"/);
-  assert.match(html, /data-settings-compensation-form="stage"/);
-  assert.match(html, /Rede de Água/);
-  assert.equal(appStore.get().settingsCommissionPeriodV1, "monthly");
+test("settings page includes the desktop owner UI to manage delegated foreman keys", () => {
+  const { ViewLayer } = harness();
+  const previousNative = globalThis.BELAVISTA_CAPACITOR_NATIVE;
+  delete globalThis.BELAVISTA_CAPACITOR_NATIVE;
+  const html = ViewLayer.prototype.settings.call({});
+  if (previousNative === undefined) delete globalThis.BELAVISTA_CAPACITOR_NATIVE;
+  else globalThis.BELAVISTA_CAPACITOR_NATIVE = previousNative;
+  assert.match(html, /Chaves de encarregados/);
+  assert.match(html, /data-foreman-key-form/);
+  assert.match(html, /ai\.photos/);
+  assert.match(html, /value="agenda\.write"\s*> Criar e alterar compromissos na agenda/);
+  assert.match(html, /data-foreman-key-list/);
 });
 
-test("settings commercial handlers retain period selection, validated rule updates and compensation creation", () => {
-  const harness = createHarness();
-  harness.ViewLayer.prototype.bind.call(harness.root);
+test("foreman key administration remains desktop-only", () => {
+  const { ViewLayer } = harness();
+  const previousNative = globalThis.BELAVISTA_CAPACITOR_NATIVE;
+  globalThis.BELAVISTA_CAPACITOR_NATIVE = true;
+  const html = ViewLayer.prototype.settings.call({});
+  if (previousNative === undefined) delete globalThis.BELAVISTA_CAPACITOR_NATIVE;
+  else globalThis.BELAVISTA_CAPACITOR_NATIVE = previousNative;
+  assert.doesNotMatch(html, /Chaves de encarregados|data-foreman-key-form/);
+});
 
-  harness.listeners.get("annual:click")();
-  assert.equal(harness.state().settingsCommissionPeriodV1, "annual");
-  assert.deepEqual(harness.state().commissionRulesByPeriodV1.annual, [{ ...harness.state().commissionRulesByPeriodV1.annual[0] }]);
+test("settings page retains stage materials, expected activities and execution comprehension", () => {
+  const { ViewLayer } = harness();
+  const html = ViewLayer.prototype.settings.call({});
+  assert.match(html, /Compreensão por etapa/);
+  assert.match(html, /materiais, atividades esperadas e execução/);
+  assert.match(html, /data-stage-create/);
+  assert.match(html, /Nova etapa/);
+  assert.doesNotMatch(html, /Regras de comissão|Compensação de atividades|Compensação de etapas/);
+});
 
-  const submitRule = harness.listeners.get("rule-form:submit");
-  let prevented = false;
-  submitRule({ preventDefault() { prevented = true; } });
-  assert.equal(prevented, true);
-  assert.equal(harness.state().commissionRulesByPeriodV1.annual[0].label, "Infra atualizada");
-  assert.equal(harness.state().commissionRulesByPeriodV1.annual[0].warley, 55);
-  assert.ok(harness.notices.some(([message]) => message.includes("Regra salva")));
+test("stage names without a direct execution-model key map to the original Worker comprehension key", () => {
+  assert.equal(stageKeyFor({ id: 6, name: "Sinalização" }, { stages: [] }), "signage");
+  assert.equal(stageKeyFor({ id: 9, name: "Etapa customizada" }, { stages: [] }), "9");
+});
 
-  harness.listeners.get("activity:submit")({ preventDefault() {} });
-  assert.equal(harness.state().activityCompensationsV1.length, 1);
-  assert.equal(harness.state().activityCompensationsV1[0].activity, "Teste de pressão");
-  assert.equal(harness.state().activityCompensationsV1[0].value, 2);
+test("settings loads each stage from the persisted API and publishes the profile to application memory", async () => {
+  const workbenchState = { inputSessions: [{
+    id: "input-pipes", activityId: "pipes", title: "Assentar tubulação",
+    text: "Conferir declividade e juntas.", unit: "m", materials: [
+      { id: "mat-1", name: "Tubo PEAD", description: "Diâmetro nominal 600 mm", usage: "Assentamento da rede principal", quantity: "12", unit: "m" },
+      "Juntas",
+    ],
+    release: "Alinhamento e declividade aceitos", properties: [{ id: "p1", label: "Diâmetro", value: "600 mm" }],
+    inference: { production: { measureForm: "Medição por trecho", referenceRate: 24, rateUnit: "m/dia" }, conditions: [{ trigger: "notificar se houver vazamento" }] },
+  }] };
+  const h = harness({ apiFetch: async (url) => {
+    if (url === "/api/stages-admin") return { ok: true, json: async () => ({ stages: [{ id: 9, name: "Drenagem", status: "Em andamento", progress: 42 }] }) };
+    if (url === "/api/stages-admin/9") return { ok: true, json: async () => ({ stage }) };
+    return { ok: true, json: async () => ({ state: workbenchState }) };
+  } });
+  h.ViewLayer.prototype.bind.call(h.root);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(h.requests.length, 3);
+  assert.equal(h.requests[1].url, "/api/stages-admin/9");
+  assert.equal(h.requests[2].url, "/api/workbench/state?stage=drainage");
+  assert.match(h.host.innerHTML, /Materiais/);
+  assert.match(h.host.innerHTML, /data-stage-admin-form/);
+  assert.match(h.host.innerHTML, /name="name"/);
+  assert.match(h.host.innerHTML, /name="status"/);
+  assert.match(h.host.innerHTML, /name="progress"/);
+  assert.match(h.host.innerHTML, /name="week"/);
+  assert.match(h.host.innerHTML, /name="owner"/);
+  assert.match(h.host.innerHTML, /data-stage-delete/);
+  assert.match(h.host.innerHTML, /Atividades esperadas/);
+  assert.match(h.host.innerHTML, /Compreensão de materiais/);
+  assert.match(h.host.innerHTML, /Tubo PEAD/);
+  assert.match(h.host.innerHTML, /Assentar tubulação/);
+  assert.match(h.host.innerHTML, /Conferir declividade e juntas/);
+  assert.match(h.host.innerHTML, /Medição por trecho/);
+  assert.match(h.host.innerHTML, /600 mm/);
+  assert.match(h.host.innerHTML, /data-session-field="title"/);
+  assert.match(h.host.innerHTML, /data-session-field="text"/);
+  assert.match(h.host.innerHTML, /Materiais e equipamentos desta atividade/);
+  assert.match(h.host.innerHTML, /data-session-material-add/);
+  assert.match(h.host.innerHTML, /data-session-material-remove/);
+  assert.match(h.host.innerHTML, /data-session-material-field="name"/);
+  assert.match(h.host.innerHTML, /data-session-material-field="description"/);
+  assert.match(h.host.innerHTML, /data-session-material-field="usage"/);
+  assert.match(h.host.innerHTML, /data-session-material-field="quantity"/);
+  assert.match(h.host.innerHTML, /data-session-material-field="unit"/);
+  assert.match(h.host.innerHTML, /Diâmetro nominal 600 mm/);
+  assert.match(h.host.innerHTML, /Assentamento da rede principal/);
+  assert.match(h.host.innerHTML, /Juntas/);
+  assert.match(h.host.innerHTML, /data-session-production="measureForm"/);
+  assert.match(h.host.innerHTML, /data-session-condition="trigger"/);
+  assert.match(h.host.innerHTML, /data-session-infer/);
+  assert.deepEqual(h.state.integrationSettings.stageProfiles.drainage.expectedActivities, ["Assentar tubulação"]);
+  const activityMaterial = h.state.integrationSettings.stageProfiles.drainage.materialsTable.find((item) => item.activityName === "Assentar tubulação" && item.name === "Tubo PEAD");
+  assert.equal(activityMaterial.description, "Diâmetro nominal 600 mm");
+  assert.equal(activityMaterial.usage, "Assentamento da rede principal");
+  assert.equal(activityMaterial.quantity, "12");
+  assert.equal(activityMaterial.unit, "m");
+});
+
+test("stage loading failures are displayed instead of presented as a successful configuration", async () => {
+  const h = harness({ apiFetch: async () => ({ ok: false, status: 403, json: async () => ({ error: "Acesso negado." }) }) });
+  h.ViewLayer.prototype.bind.call(h.root);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(h.host.innerHTML, /Acesso negado/);
+  assert.equal(h.host.dataset.loaded, undefined);
+});
+
+test("settings preserves the original Worker stage comprehension when no custom workbench session is stored", async () => {
+  const h = harness({ apiFetch: async (url) => {
+    if (url === "/api/stages-admin") return { ok: true, json: async () => ({ stages: [{ id: 9, name: "Drenagem", status: "Em andamento", progress: 42 }] }) };
+    if (url === "/api/stages-admin/9") return { ok: true, json: async () => ({ stage }) };
+    return { ok: true, json: async () => ({ state: { inputSessions: [] } }) };
+  } });
+  h.ViewLayer.prototype.bind.call(h.root);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(h.host.innerHTML, /Assentamento de tubos e manilhas/);
+  assert.match(h.host.innerHTML, /Medir metros lineares de vala aberta e liberada para berço/);
+  assert.match(h.host.innerHTML, /data-session-property-add/);
+  assert.match(h.host.innerHTML, /data-session-option="generateSchedule"/);
+  assert.deepEqual(h.state.integrationSettings.stageProfiles.drainage.expectedActivities, ["Assentar tubulação"]);
 });

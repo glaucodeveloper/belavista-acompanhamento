@@ -1,66 +1,20 @@
 /** Dashboard agenda preview, agenda detail, notifications, and lifecycle wiring. */
 export const installAgendaDashboardDetailV1 = (ViewLayer, services = {}) => {
-  const { appStore, agendaCalendarReadV3, agendaCalendarOperationalEventsV3, agendaCalendarIsoV3, agendaCalendarWriteV3, agendaCalendarParseDateV3, agendaCalendarStatusToneV3, agendaCalendarAddDaysV3, executionModel, stageV9LiveFor, esc, ico, notify, stageRecordStagesV1, stageRecordDashboardActionWorkspaceMarkupV1, stageMaterialReportDialogV1, stageRecordMaterialRowsV1, capacitor, NotificationCtor, FormDataCtor, queueMicrotaskFn } = services;
+const { appStore, apiFetch, operationalHeaders, ensureAgendaCalendarLoadedV8, agendaCalendarReadV3, agendaCalendarOperationalEventsV3, agendaCalendarIsoV3, agendaCalendarWriteV3, agendaCalendarParseDateV3, agendaCalendarStatusToneV3, agendaCalendarAddDaysV3, executionModel, stageV9LiveFor, esc, ico, notify, stageRecordStagesV1, stageRecordDashboardActionWorkspaceMarkupV1, stageMaterialReportDialogV1, stageRecordMaterialRowsV1, capacitor, NotificationCtor, FormDataCtor, queueMicrotaskFn } = services;
   if (!ViewLayer?.prototype || typeof appStore?.get !== "function" || typeof appStore?.set !== "function") throw new TypeError("Agenda dashboard integration requires ViewLayer and appStore get/set.");
   for (const [name, dependency] of Object.entries({ agendaCalendarReadV3, agendaCalendarOperationalEventsV3, agendaCalendarIsoV3, agendaCalendarWriteV3, agendaCalendarParseDateV3, agendaCalendarStatusToneV3, agendaCalendarAddDaysV3, stageV9LiveFor, esc, ico, notify, stageRecordStagesV1, stageRecordDashboardActionWorkspaceMarkupV1, stageMaterialReportDialogV1, stageRecordMaterialRowsV1, queueMicrotaskFn })) if (typeof dependency !== "function") throw new TypeError(`Agenda dashboard integration requires ${name}().`);
   if (!executionModel || typeof executionModel !== "object" || typeof FormDataCtor !== "function") throw new TypeError("Agenda dashboard integration requires executionModel and FormData.");
 const agendaWorkspaceEventsV1 = (state) => {
   const stored = agendaCalendarReadV3();
   if (stored.initialized) return stored;
-  const operational = agendaCalendarOperationalEventsV3(state);
-  let events = operational;
-  if (!events.length) {
-    const today = new Date();
-    events = (executionModel.stages || []).flatMap((stage, index) => {
-      const startDate = new Date(today);
-      startDate.setDate(startDate.getDate() + index * 2 + 1);
-      const date = agendaCalendarIsoV3(startDate),
-        profile = stage.executionProfile || {},
-        materials = Array.isArray(stage.materials) ? stage.materials : [],
-        requirements = [
-          ...(profile.requestHints || []).slice(0, 1),
-          ...(profile.evidenceFocus || []).slice(0, 1),
-          ...(profile.procurementFocus || []).slice(0, 2),
-        ];
-      const planned = {
-        id: `agenda-initial-${stage.key}`,
-        title: `Iniciar ${stage.name}`,
-        stageKey: stage.key,
-        stageName: stage.name,
-        activityId: `start-${stage.key}`,
-        activityName: stage.executionProfile?.typicalDescription || `Preparar frente de ${stage.name}`,
-        owner: stageV9LiveFor(stage || {})?.owner || "A definir",
-        date,
-        start: "08:00",
-        durationHours: 2,
-        spanDays: 1,
-        status: "Planejado",
-        requirements,
-        materials,
-      };
-      const procurement = materials.length
-        ? [{
-            ...planned,
-            id: `agenda-buy-${stage.key}`,
-            title: `Compra e separação de materiais · ${stage.name}`,
-            activityId: `procurement-${stage.key}`,
-            activityName: "Compra, entrega e conferência de materiais",
-            owner: "Suprimentos",
-            start: "10:30",
-            durationHours: 1.5,
-            requirements: [...requirements, `Verificar compra e disponibilidade: ${materials.join(", ")}`],
-            notificationOffsetMinutes: 30,
-          }]
-        : [];
-      return [planned, ...procurement];
-    });
-  }
-  const next = { version: 3, initialized: true, events };
-  agendaCalendarWriteV3(next);
-  return next;
+  return { ...stored, initialized: false, events: [] };
 };
 
 const dashboardAgendaPreviewV1 = (state) => {
+  if (typeof ensureAgendaCalendarLoadedV8 === "function") ensureAgendaCalendarLoadedV8();
+  if (!state.agendaCalendarLoadedV3 || state.agendaCalendarErrorV3) {
+    return `<section class="dashboard-agenda" data-dashboard-agenda><header><div><span class="activity-kind">AGENDA DE EXECUÇÃO · PRÓXIMAS TAREFAS</span><h2>Agenda operacional</h2><p>${esc(state.agendaCalendarErrorV3 || "Carregando compromissos persistidos do banco operacional…")}</p></div></header></section>`;
+  }
   const data = agendaWorkspaceEventsV1(state),
     events = [...(data.events || [])].sort((a, b) =>
       `${a.date || ""}T${a.start || "00:00"}`.localeCompare(`${b.date || ""}T${b.start || "00:00"}`),
@@ -291,7 +245,7 @@ ViewLayer.prototype.bind = function (...args) {
         this.render();
         notify(action, "success");
       };
-      detail.querySelector("[data-activity-quick-record]")?.addEventListener("submit", (event) => {
+      detail.querySelector("[data-activity-quick-record]")?.addEventListener("submit", async (event) => {
         event.preventDefault();
         const values = Object.fromEntries(new FormDataCtor(event.currentTarget)),
           stage = stageRecordStagesV1().find((item) => String(item.key) === String(values.stageKey)),
@@ -320,13 +274,46 @@ ViewLayer.prototype.bind = function (...args) {
               { label: "ID da atividade", value: String(eventId) },
             ],
           };
-        const feedbackMessage = `Registro ${record.id} adicionado à etapa ${stage.name}.`;
-        appStore.set({
-          records: [...(Array.isArray(state.records) ? state.records : []), record],
-          agendaActivityRecordFeedbackV1: { eventId: String(eventId), message: feedbackMessage },
-          lastAction: `Adicionou registro ${record.id} na atividade ${activity}`,
-        });
-        notify(`Registro adicionado à atividade ${activity}.`, "success");
+        const button = event.currentTarget.querySelector('button[type="submit"]');
+        if (typeof apiFetch !== "function" || typeof operationalHeaders !== "function") {
+          if (feedback) feedback.textContent = "Serviço de registros indisponível; nenhum dado foi salvo.";
+          return;
+        }
+        if (button) button.disabled = true;
+        if (feedback) feedback.textContent = "Salvando registro no diário operacional…";
+        try {
+          const response = await apiFetch("/api/records", {
+              method: "POST",
+              headers: operationalHeaders({ "Content-Type": "application/json" }),
+              body: JSON.stringify({
+                obra: record.obra,
+                etapa: record.etapa,
+                stageKey: record.stageKey,
+                atividade: record.atividade,
+                data: record.data,
+                hora: record.hora,
+                responsavel: record.responsavel,
+                detalhes: record.detalhes,
+                status: record.status,
+                properties: record.properties,
+              }),
+            }),
+            payload = await response.json();
+          if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+          const saved = payload.record || payload,
+            feedbackMessage = `Registro ${saved.id} salvo na etapa ${stage.name}.`;
+          appStore.set({
+            records: [saved, ...(Array.isArray(state.records) ? state.records : []).filter((item) => String(item.id) !== String(saved.id))],
+            agendaActivityRecordFeedbackV1: { eventId: String(eventId), message: feedbackMessage },
+            lastAction: `Adicionou registro ${saved.id} na atividade ${activity}`,
+          });
+          notify(`Registro salvo na atividade ${activity}.`, "success");
+        } catch (error) {
+          if (feedback) feedback.textContent = `Registro não salvo: ${error.message || "serviço indisponível"}`;
+          notify("Registro não confirmado; revise a conexão e tente novamente.", "warning");
+        } finally {
+          if (button) button.disabled = false;
+        }
       });
       detail.querySelector("[data-agenda-detail-form]")?.addEventListener("submit", (event) => {
         event.preventDefault();

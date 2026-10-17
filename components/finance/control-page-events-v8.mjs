@@ -94,7 +94,7 @@ export const createControlPageEventsV8 = ({
             method: "POST",
             headers: operationalHeaders({ "Content-Type": "application/json" }),
             body: JSON.stringify({
-              kind: data.kind,
+              kind: "saida",
               lotKey: data.lotKey || "",
               date: data.date,
               category: data.name,

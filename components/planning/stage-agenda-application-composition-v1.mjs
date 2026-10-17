@@ -1,6 +1,6 @@
 import { installActivityInstallationSessionV1 } from "./activity-installation-session-v1.mjs?v=activity-installation-session-v1";
 import { installStageHomeCalendarV1 } from "./stage-home-calendar-v1.mjs?v=stage-home-calendar-v1";
-import { installAgendaCalendarPageV8 } from "./agenda-calendar-v8.mjs?v=agenda-calendar-route-fix-v1";
+import { installAgendaCalendarPageV8 } from "./agenda-calendar-v8.mjs?v=agenda-calendar-load-v3";
 
 /** Install the agenda calendar, activity-installation route, and stage-home snapshot in source order. */
 export const installStageAgendaApplicationCompositionV1 = ({

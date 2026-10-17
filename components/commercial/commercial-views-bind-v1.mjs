@@ -1,6 +1,7 @@
 export function installCommercialViewsBindV1(ViewLayer, options) {
   const {
     appStore,
+    apiFetch,
     bindCommissionNegotiationEventsV1,
     REPASSE_PRICE_CATALOG,
     commissionProfiles,
@@ -52,14 +53,18 @@ ViewLayer.prototype.bind = function (...args) {
     catalog.innerHTML = `<header><div><span class="activity-kind">01 · TABELA DE LOTES</span><h2>Valores por lote</h2><p>Valores de referência importados da planilha de preços do empreendimento.</p></div><small>${REPASSE_PRICE_CATALOG.length} lotes</small></header><div class="lot-catalog-toolbar"><label class="lot-catalog-filter">Localizar lote ou quadra<input type="search" data-lot-catalog-filter placeholder="Ex.: QA 12"></label><label>Quadra<select data-lot-catalog-quadra><option value="">Todas</option>${[...new Set(REPASSE_PRICE_CATALOG.map(item => item.quadra))].sort().map(quadra => `<option value="${esc(quadra)}">${esc(quadra)}</option>`).join("")}</select></label><label>Status<select data-lot-catalog-status><option value="">Todos</option><option>Disponível</option><option>Reservado</option><option>Em negociação</option><option>Vendido</option><option>Repasse programado</option><option>Quitado</option><option>Bloqueado</option></select></label><label>Pagamento<select data-lot-catalog-payment><option value="">Todos</option><option>Pendente</option><option>Parcial</option><option>Pago</option><option>Cancelado</option></select></label><label>Vendedor<select data-lot-catalog-seller><option value="">Todos</option>${commissionProfiles.map(person => `<option value="${esc(person.name)}">${esc(person.name)}</option>`).join("")}</select></label></div><div class="repasse-table-wrap"><table><thead><tr><th>Lote</th><th>Quadra</th><th>Área</th><th>Valor à vista</th><th>Status</th><th>Pagamento</th><th>Iteração</th></tr></thead><tbody>${REPASSE_PRICE_CATALOG.map(item => { const lotKey = String(item.label || `${item.quadra}-${item.lot}`), lotState = appStore.get().lotStatuses?.[lotKey] || {}, status = lotState.status || "Disponível", paymentStatus = lotState.payment?.status || "Pendente", sellerName = lotState.sellerName || ""; return `<tr data-lot-catalog-row data-lot-key="${esc(lotKey)}" data-lot-quadra="${esc(item.quadra)}" data-lot-status="${esc(status)}" data-lot-payment="${esc(paymentStatus)}" data-lot-seller="${esc(sellerName)}" data-lot-search="${esc(`${item.label} ${item.lot} ${item.quadra}`.toLocaleLowerCase())}"><td><b>${esc(item.lot)}</b></td><td>${esc(item.quadra)}</td><td>${esc(item.area)} m²</td><td><b>${formatBRL(item.price)}</b></td><td><span class="lot-status-pill" data-lot-status-cell>${esc(status)}</span></td><td><span class="lot-payment-pill" data-lot-payment-cell>${esc(paymentStatus)}</span></td><td><button type="button" class="lot-catalog-action" data-lot-select data-lot-label="${esc(item.label)}" data-lot-price="${esc(item.price)}">Usar no repasse</button></td></tr>`; }).join("")}</tbody></table></div><footer class="lot-catalog-feedback" data-lot-catalog-feedback>Selecione um lote para preencher a entrada automaticamente ou clique em uma linha para alterar status, vendedor, repasse e pagamento.</footer>`;
     const mapDrawer = documentRef.createElement("details");
     mapDrawer.className = "lot-catalog-map-drawer";
-    mapDrawer.innerHTML = `<summary><span>${ico("map")} Mapa de lotes</span><small>Abra e clique em um marcador para iniciar o controle</small></summary><div class="lot-catalog-map-window"><map-scene compact interactive data-public-static-only data-admin-public-map data-lot-catalog-map data-stage="Controle comercial" data-overlay="urbanizacao" aria-label="Mapa retrátil dos lotes para controle comercial"></map-scene></div>`;
+    mapDrawer.innerHTML = `<summary><span>${ico("map")} Mapa de lotes</span><small>Abra e clique em um marcador para iniciar o controle</small></summary><div class="lot-catalog-map-window"><map-scene compact interactive data-public-static-only="true" data-admin-public-map data-lot-catalog-map data-stage="Controle comercial" data-overlay="urbanizacao" aria-label="Mapa retrátil dos lotes para controle comercial"></map-scene></div>`;
     catalog.querySelector("header")?.after(mapDrawer);
     mapDrawer.addEventListener("toggle", () => {
       if (!mapDrawer.open) return;
-      requestAnimationFrameRef(() => {
+      requestAnimationFrameRef(async () => {
         const map = mapDrawer.querySelector("[data-lot-catalog-map]");
+        map?.bindStaticSatelliteMapGesturesV1?.();
         map?.installAdminMasterplanOverlayV1?.();
-        map?.installSatelliteLotPlanOverlayV1?.({ markers: true, outlines: false });
+        await map?.installSatelliteLotPlanOverlayV1?.({ markers: true, outlines: false });
+        requestAnimationFrameRef(() => requestAnimationFrameRef(() => {
+          map?.fitStaticSatelliteMasterplanV1?.();
+        }));
       });
     });
     const printHeader = documentRef.createElement("div");
@@ -149,10 +154,9 @@ ViewLayer.prototype.bind = function (...args) {
   });
   if (lotCatalog) {
     const lotStatusModal = documentRef.createElement("div");
-    const partners = repasseState().repassePartners || commissionProfiles.map((person) => ({ id: person.id, name: person.name }));
     lotStatusModal.className = "lot-status-modal";
     lotStatusModal.hidden = true;
-    lotStatusModal.innerHTML = `<div class="lot-status-modal-backdrop" data-lot-status-close></div><section class="lot-status-dialog" data-lot-flow-page="0" role="dialog" aria-modal="true" aria-labelledby="lot-status-title"><header><div><span class="activity-kind">CONTROLE DO LOTE</span><h2 id="lot-status-title">Status, repasse e pagamento</h2><p data-lot-status-summary></p></div><button type="button" class="lot-status-close" data-lot-status-close aria-label="Fechar">×</button></header><form data-lot-status-form><input type="hidden" name="lotKey"><section class="lot-status-form-section" data-lot-flow-panel="1"><span class="activity-kind">02 · COMERCIAL</span><label>Status do lote<select name="status"><option>Disponível</option><option>Reservado</option><option>Em negociação</option><option>Vendido</option><option>Repasse programado</option><option>Quitado</option><option>Bloqueado</option></select></label><label>Vendedor<select name="sellerId"><option value="">Selecionar vendedor</option>${commissionProfiles.map((person) => `<option value="${esc(person.id)}">${esc(person.name)}</option>`).join("")}</select></label></section><section class="lot-status-form-section" data-lot-flow-panel="2"><span class="activity-kind">03 · ENTRADA E PAGAMENTO</span><label>Repasse previsto / responsável<select name="repassePartnerId"><option value="">Selecionar sócio</option>${partners.map((person) => `<option value="${esc(person.id)}">${esc(person.name)}</option>`).join("")}</select></label><label>Status do pagamento<select name="paymentStatus"><option>Pendente</option><option>Parcial</option><option>Pago</option><option>Cancelado</option></select></label><label>Valor pago<input name="paymentAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00"></label><label>Data da entrada<input name="paymentDate" type="date"></label><label class="wide">Observação<textarea name="note" rows="3" placeholder="Ex.: aguardando documentação, entrada ou confirmação do repasse"></textarea></label></section><footer><button type="button" class="toolbar-action" data-lot-flow-back>Voltar</button><button type="button" class="toolbar-action" data-lot-flow-next>Avançar</button><button type="submit" class="toolbar-primary">Salvar controle do lote</button></footer></form></section>`;
+    lotStatusModal.innerHTML = `<div class="lot-status-modal-backdrop" data-lot-status-close></div><section class="lot-status-dialog" data-lot-flow-page="0" role="dialog" aria-modal="true" aria-labelledby="lot-status-title"><header><div><span class="activity-kind">CONTROLE DO LOTE</span><h2 id="lot-status-title">Controle comercial</h2><p data-lot-status-summary></p></div><button type="button" class="lot-status-close" data-lot-status-close aria-label="Fechar">×</button></header><form data-lot-status-form><input type="hidden" name="lotKey"><section class="lot-status-form-section" data-lot-flow-panel="1"><span class="activity-kind">02 · COMERCIAL</span><label>Status do lote<select name="status"><option>Disponível</option><option>Reservado</option><option>Em negociação</option><option>Vendido</option><option>Repasse programado</option><option>Quitado</option><option>Bloqueado</option></select></label><label>Vendedor<select name="sellerId"><option value="">Selecionar vendedor</option>${commissionProfiles.map((person) => `<option value="${esc(person.id)}">${esc(person.name)}</option>`).join("")}</select></label><label class="wide">Observação<textarea name="note" rows="3" placeholder="Observação sobre o controle comercial do lote"></textarea></label></section><section class="lot-status-form-section" data-lot-flow-panel="2"><span class="activity-kind">03 · ENTRADAS E REPASSES</span><p>Valores recebidos, plano de pagamento, juros e comissões são mantidos em um único fluxo.</p><button type="button" class="toolbar-primary" data-lot-open-repasses>${ico("wallet-cards")} Abrir Repasses para este lote</button></section><footer><button type="button" class="toolbar-action" data-lot-flow-back>Voltar</button><button type="button" class="toolbar-action" data-lot-flow-next>Avançar</button><button type="submit" class="toolbar-primary">Salvar controle comercial</button></footer></form></section>`;
     // Keep the floating layer outside scrollable/transformed page containers.
     documentRef.querySelectorAll(".lot-status-modal[data-lot-floating-control]").forEach((oldModal) => oldModal.remove());
     documentRef.body.classList.remove("lot-control-open");
@@ -216,13 +220,17 @@ ViewLayer.prototype.bind = function (...args) {
     let focusBeforeModal = null;
     const closeLotStatus = () => { lotStatusModal.hidden = true; documentRef.body.classList.remove("lot-control-open"); focusBeforeModal?.focus?.(); };
     lotStatusModal.querySelectorAll("[data-lot-status-close]").forEach((button) => button.addEventListener("click", closeLotStatus));
+    lotStatusModal.querySelector("[data-lot-open-repasses]")?.addEventListener("click", () => {
+      const lotKey = String(statusForm.elements.lotKey.value || "");
+      closeLotStatus();
+      appStore.set({ view: "repasses", repasseSelectedLotKey: lotKey, repasseSelectedSaleId: "", lastAction: `Abriu Repasses para o lote ${lotKey}` });
+    });
     lotStatusModal.addEventListener("keydown", (event) => { if (event.key === "Escape") { event.preventDefault(); closeLotStatus(); } });
     const openLotStatus = (lotKey, focusPicker = false, flowPage = focusPicker ? 0 : 1) => {
       const item = REPASSE_PRICE_CATALOG.find((candidate) => String(candidate.label) === String(lotKey));
       if (!item) return;
       const stored = repasseState().lotStatuses?.[lotKey] || {}, formValues = statusForm.elements;
-      const payment = stored.payment || {};
-      formValues.lotKey.value = lotKey; formValues.status.value = stored.status || "Disponível"; formValues.sellerId.value = stored.sellerId || ""; formValues.repassePartnerId.value = stored.repasse?.partnerId || ""; formValues.paymentStatus.value = payment.status || "Pendente"; formValues.paymentAmount.value = payment.amount ?? ""; formValues.paymentDate.value = payment.date || ""; formValues.note.value = stored.note || "";
+      formValues.lotKey.value = lotKey; formValues.status.value = stored.status || "Disponível"; formValues.sellerId.value = stored.sellerId || ""; formValues.note.value = stored.note || "";
       delete lotPicker.dataset.markerLot;
       lotPickerPage = 0;
       if (summary) summary.textContent = `${item?.label || lotKey} · ${item ? formatBRL(item.price) : "valor de referência"}`;
@@ -298,20 +306,73 @@ ViewLayer.prototype.bind = function (...args) {
     catalogToolbar?.querySelector("[data-lot-filter-clear]")?.addEventListener("click", () => { [lotCatalogFilter, lotCatalogFilterQuadra, lotCatalogFilterStatus, lotCatalogFilterPayment, lotCatalogFilterSeller].forEach((control) => { if (control) control.value = ""; }); applyLotCatalogFilters(); });
     statusForm.addEventListener("submit", (event) => {
       event.preventDefault();
-      const values = Object.fromEntries(new FormDataRef(statusForm)), current = repasseState().lotStatuses || {}, seller = commissionProfiles.find((person) => person.id === values.sellerId), partner = partners.find((person) => person.id === values.repassePartnerId), lotState = { status: values.status, sellerId: values.sellerId, sellerName: seller?.name || "", repasse: { partnerId: values.repassePartnerId, partnerName: partner?.name || "" }, payment: { status: values.paymentStatus, amount: Math.max(0, Number(values.paymentAmount) || 0), date: values.paymentDate || "" }, note: values.note, updatedAt: new DateRef().toISOString() };
+      const values = Object.fromEntries(new FormDataRef(statusForm)), current = repasseState().lotStatuses || {}, seller = commissionProfiles.find((person) => person.id === values.sellerId), lotState = { status: values.status, sellerId: values.sellerId, sellerName: seller?.name || "", note: values.note, updatedAt: new DateRef().toISOString() };
       appStore.set({ lotStatuses: { ...current, [values.lotKey]: lotState }, lastAction: `Atualizou controle do lote ${values.lotKey}` });
       const row = [...lotCatalog.querySelectorAll("[data-lot-catalog-row]")].find((candidate) => candidate.dataset.lotKey === values.lotKey), cell = row?.querySelector("[data-lot-status-cell]");
       if (cell) cell.textContent = values.status;
-      const paymentCell = row?.querySelector("[data-lot-payment-cell]"); if (paymentCell) paymentCell.textContent = values.paymentStatus;
-      if (row) { row.dataset.lotStatus = values.status; row.dataset.lotPayment = values.paymentStatus; row.dataset.lotSeller = seller?.name || ""; }
+      if (row) { row.dataset.lotStatus = values.status; row.dataset.lotSeller = seller?.name || ""; }
       const feedback = lotCatalog.querySelector("[data-lot-catalog-feedback]"); if (feedback) feedback.textContent = `${values.lotKey} atualizado para “${values.status}”.`;
       updateCrudButtons(); applyLotCatalogFilters(); closeLotStatus();
     });
   }
-  if (repassePage && !repassePage.querySelector("[data-repasse-config]")) repassePage.querySelector(".repasse-page-head")?.insertAdjacentHTML("afterend", `<section class="repasse-config" data-repasse-config><header><div><span class="activity-kind">CENTRAL OPERACIONAL · PARÂMETROS DE REPASSE</span><h2>Regras ajustáveis</h2></div><small>Aplicadas a novas entradas e parcelas</small></header><label>Abatimento / imposto (%)<input data-repasse-config-field="taxPercent" type="number" min="0" max="100" step="0.1" value="${esc(repasseState().repasseConfig?.taxPercent ?? 6)}"></label><label>Comissão (%)<input data-repasse-config-field="commissionPercent" type="number" min="0" max="100" step="0.1" value="${esc(repasseState().repasseConfig?.commissionPercent ?? 10)}"></label><label>Divisão sócio A (%)<input data-repasse-config-field="splitA" type="number" min="0" max="100" step="1" value="${esc(repasseState().repasseConfig?.splitA ?? 40)}"></label><label>Divisão sócio B (%)<input data-repasse-config-field="splitB" type="number" min="0" max="100" step="1" value="${esc(repasseState().repasseConfig?.splitB ?? 60)}"></label><label>Arredondar para múltiplo de (R$)<input data-repasse-config-field="roundTo" type="number" min="0" step="10" value="${esc(repasseState().repasseConfig?.roundTo ?? 100)}"></label><span data-repasse-config-status>Parâmetros salvos localmente.</span></section>`);
-  const repasseConfig = () => ({ taxPercent: Number(repasseState().repasseConfig?.taxPercent ?? 6), commissionPercent: Number(repasseState().repasseConfig?.commissionPercent ?? 10), splitA: Number(repasseState().repasseConfig?.splitA ?? 40), splitB: Number(repasseState().repasseConfig?.splitB ?? 60), roundTo: Number(repasseState().repasseConfig?.roundTo ?? 100) });
+  const settingsPage = this.querySelector("[data-stage-comprehension-settings]");
+  if (settingsPage && !settingsPage.querySelector("[data-repasse-config]")) {
+    const configCard = documentRef.createElement("section");
+    configCard.className = "repasse-config settings-repasse-config";
+    configCard.dataset.repasseConfig = "true";
+    configCard.innerHTML = `<header><div><span class="activity-kind">COMERCIAL · PARÂMETROS DE REPASSE</span><h2>Regras ajustáveis</h2><p>Alterações ficam disponíveis somente após confirmação.</p></div><button type="button" class="toolbar-primary" data-repasse-config-edit disabled>Carregando regras…</button></header><div class="settings-repasse-config-fields" data-repasse-config-fields aria-readonly="true"><label>Abatimento / imposto (%)<input data-repasse-config-field="taxPercent" type="number" min="0" max="100" step="0.1" disabled></label><label>Comissão (%)<input data-repasse-config-field="commissionPercent" type="number" min="0" max="100" step="0.1" disabled></label><label>Divisão sócio A (%)<input data-repasse-config-field="splitA" type="number" min="0" max="100" step="1" disabled></label><label>Divisão sócio B (%)<input data-repasse-config-field="splitB" type="number" min="0" max="100" step="1" disabled></label><label>Arredondar para múltiplo de (R$)<input data-repasse-config-field="roundTo" type="number" min="0" step="10" disabled></label></div><span data-repasse-config-status>Carregando configuração persistida…</span><dialog class="atlas-confirm-dialog" data-repasse-config-confirm><form method="dialog"><span class="activity-kind">CONFIRMAÇÃO DE ALTERAÇÃO</span><h3>Deseja alterar as regras de repasse?</h3><p>Confirme para liberar os campos e gravar a nova configuração no repositório.</p><footer><button type="submit" value="cancel" class="atlas-outline-button">Cancelar</button><button type="submit" value="confirm" class="atlas-dark-button">Sim, alterar regras</button></footer></form></dialog></section>`;
+    settingsPage.querySelector(".stage-comprehension-settings-head")?.after(configCard);
+  }
+  const configCard = settingsPage?.querySelector("[data-repasse-config]");
+  const configFields = configCard?.querySelector("[data-repasse-config-fields]");
+  const configDialog = configCard?.querySelector("[data-repasse-config-confirm]");
+  const configStatus = configCard?.querySelector("[data-repasse-config-status]");
+  let commercialConfig = null;
+  if (configCard && typeof apiFetch === "function") {
+    apiFetch("/api/admin/config/commercial", { cache: "no-store" }).then(async (response) => {
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+      commercialConfig = payload;
+      const legacyLocalValues = repasseState().repasseConfig || null;
+      const values = payload.data?.repasseConfig || legacyLocalValues || {};
+      for (const input of configCard.querySelectorAll("[data-repasse-config-field]")) {
+        const value = values[input.dataset.repasseConfigField];
+        if (value !== undefined && value !== null) input.value = String(value);
+      }
+      const editButton = configCard.querySelector("[data-repasse-config-edit]");
+      if (editButton) { editButton.disabled = false; editButton.textContent = "Alterar regras"; }
+      if (configStatus) configStatus.textContent = payload.source === "github" ? "Regras carregadas do repositório." : legacyLocalValues ? "Regras anteriores deste dispositivo carregadas; salvará a configuração canônica no repositório." : "Nenhuma regra persistida encontrada; configure os valores e salve no repositório.";
+    }).catch((error) => { const editButton = configCard.querySelector("[data-repasse-config-edit]"); if (editButton) { editButton.disabled = true; editButton.textContent = "Regras indisponíveis"; } if (configStatus) configStatus.textContent = `Falha ao carregar configuração do repositório: ${error.message}`; });
+  }
+  configDialog?.addEventListener("close", () => {
+    if (configDialog.returnValue !== "confirm") return;
+    configFields?.querySelectorAll("input").forEach((input) => { input.disabled = false; });
+    configFields?.setAttribute("aria-readonly", "false");
+    const editButton = configCard.querySelector("[data-repasse-config-edit]");
+    if (editButton) { editButton.dataset.editing = "true"; editButton.textContent = "Concluir edição"; }
+    if (configStatus) configStatus.textContent = "Edite os valores e saia do campo para salvar.";
+  });
+  configCard?.querySelector("[data-repasse-config-edit]")?.addEventListener("click", (event) => {
+    const editButton = event.currentTarget;
+    if (editButton.dataset.editing === "true") {
+      const values = Object.fromEntries([...configCard.querySelectorAll("[data-repasse-config-field]")].map((input) => [input.dataset.repasseConfigField, Number(input.value)]));
+      if (Object.entries(values).some(([key, value]) => !Number.isFinite(value) || value < 0 || (["taxPercent", "commissionPercent", "splitA", "splitB"].includes(key) && value > 100)) || values.splitA + values.splitB !== 100) {
+        if (configStatus) configStatus.textContent = "Percentuais devem estar entre 0–100 e a divisão dos sócios deve totalizar 100%.";
+        return;
+      }
+      editButton.disabled = true;
+      if (configStatus) configStatus.textContent = "Salvando configuração no repositório…";
+      const baseConfig = commercialConfig?.source === "github" ? commercialConfig.data : { sales: [], commissions: [], brokers: [], commissionRules: [] };
+      apiFetch("/api/admin/config/commercial", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sha: commercialConfig?.sha || "", data: { ...baseConfig, repasseConfig: values } }) })
+        .then(async (response) => { const payload = await response.json().catch(() => ({})); if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`); commercialConfig = payload; configFields?.querySelectorAll("input").forEach((input) => { input.disabled = true; }); configFields?.setAttribute("aria-readonly", "true"); editButton.dataset.editing = "false"; editButton.textContent = "Alterar regras"; if (configStatus) configStatus.textContent = "Regras salvas no repositório."; notify("Regras de repasse salvas no repositório.", "success"); })
+        .catch((error) => { if (configStatus) configStatus.textContent = `Falha ao salvar no repositório: ${error.message}`; notify(`Falha ao salvar regras: ${error.message}`, "error"); })
+        .finally(() => { editButton.disabled = false; });
+      return;
+    }
+    configDialog?.showModal?.();
+  });
+  const repasseConfig = () => ({ taxPercent: 6, commissionPercent: 10, splitA: 40, splitB: 60, roundTo: 100, ...(commercialConfig?.data?.repasseConfig || {}) });
   const calculateRepasse = (gross) => { const config = repasseConfig(); const tax = gross * config.taxPercent / 100; const afterTax = gross - tax; const commission = afterTax * config.commissionPercent / 100; const base = afterTax - commission; const rounded = config.roundTo > 0 ? Math.floor(base / config.roundTo) * config.roundTo : base; return { ...config, gross, tax, afterTax, commission, net: Math.max(0, rounded), rounding: base - rounded }; };
-  repassePage?.querySelectorAll("[data-repasse-config-field]").forEach((input) => input.addEventListener("change", () => { const current = repasseConfig(); current[input.dataset.repasseConfigField] = Number(input.value) || 0; appStore.set({ repasseConfig: current, lastAction: "Atualizou parâmetros do repasse" }); const status = repassePage.querySelector("[data-repasse-config-status]"); if (status) status.textContent = "Parâmetros salvos na Central Operacional."; repasseEntryForm?.querySelector('[name="gross"]')?.dispatchEvent(new EventRef("input")); }));
   const refreshRepasse = (lastAction) => appStore.set({ lastAction });
   repasseEntryForm?.querySelector('[name="gross"]')?.addEventListener("input", (event) => {
     const gross = Math.max(0, Number(event.target.value) || 0);

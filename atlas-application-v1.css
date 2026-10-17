@@ -31,6 +31,30 @@
 .atlas-reason-list b{font-size:11px;color:#363844}
 .atlas-reason-list small,.atlas-reason-list em{color:#91949e;font-size:10px;font-style:normal}
 .atlas-reason-list strong{font-size:12px;color:#282a3b}
+.atlas-repasse-entry form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:18px 20px}
+.atlas-repasse-entry label,.atlas-repasse-config-grid label{display:grid;gap:6px;color:#727582;font-size:10px;font-weight:650}
+.atlas-repasse-entry input,.atlas-repasse-entry select,.atlas-repasse-config-grid input{width:100%;min-width:0;box-sizing:border-box;min-height:39px;padding:9px 11px;border:1px solid #e0e2e8;border-radius:10px;background:#fff;color:#292b3b;font-family:inherit;font-size:12px}
+.atlas-repasse-entry input[readonly]{background:#f5f6f8;color:#767985}
+.atlas-repasse-wide{grid-column:1/-1}
+.atlas-repasse-entry footer{grid-column:1/-1;display:flex;justify-content:flex-end}
+.atlas-repasse-sale-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin:16px 18px;background:#e8e9ed;border:1px solid #e8e9ed;border-radius:12px;overflow:hidden}
+.atlas-repasse-sale-summary>span{display:grid;gap:6px;padding:13px;background:#fafbfc;color:#858894;font-size:10px}
+.atlas-repasse-sale-summary b{color:#292b3b;font-size:14px}
+.atlas-repasse-sale-summary small{color:#9295a0;font-size:9px}
+.atlas-repasse-config-grid{display:grid;grid-template-columns: minmax(230px,.75fr) minmax(0,1.7fr);gap:14px;padding:0 18px 16px}
+.atlas-repasse-config-grid form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:10px;padding:15px;border:1px solid #e8e9ed;border-radius:14px;background:#fafbfc}
+.atlas-repasse-config-grid h3,.atlas-repasse-report h3{grid-column:1/-1;margin:0 0 3px;color:#343643;font-size:12px}
+.atlas-repasse-config-grid p{grid-column:1/-1;margin:0;color:#9295a0;font-size:9px;line-height:1.5}
+.atlas-repasse-config-grid button{grid-column:1/-1;justify-self:start}
+.atlas-repasse-report{margin:0 18px 14px;overflow:hidden;border:1px solid #e8e9ed;border-radius:13px}
+.atlas-repasse-report h3{padding:13px 15px;margin:0;border-bottom:1px solid #eff0f2}
+.atlas-repasse-report .atlas-table-scroll th,.atlas-repasse-report .atlas-table-scroll td{padding:9px 11px}
+.atlas-repasse-report td b{color:#282a3b}
+.atlas-repasse-report form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:12px;background:#fafbfc}
+.atlas-repasse-report form label{display:grid;gap:5px;color:#727582;font-size:10px}
+.atlas-repasse-report form input,.atlas-repasse-report form select{min-height:34px;min-width:0;padding:7px 9px;border:1px solid #e0e2e8;border-radius:9px;background:#fff;color:#292b3b;font-family:inherit;font-size:11px}
+.atlas-repasse-report form footer{grid-column:1/-1;display:flex;justify-content:flex-end;gap:7px}
+.atlas-repasse-sale>header p{margin:0;color:#8d909b;font-size:11px}
 .atlas-empty-state{display:grid;justify-items:center;gap:7px;padding:30px 20px;text-align:center;color:#9295a0}
 .atlas-empty-state>.ico{width:21px;height:21px;color:#9a9da7}
 .atlas-empty-state h2,.atlas-empty-state h3{margin:2px 0;color:#41434e;font-size:13px}
@@ -38,7 +62,8 @@
 .atlas-inline-loading{padding:20px;color:#858893}
 .atlas-source-note{padding:7px 2px;color:#999ca5;font-size:10px}
 @media(max-width:850px){.atlas-repasse-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-repasse-lower{grid-template-columns:1fr}.atlas-page-heading{align-items:flex-start;flex-direction:column}.atlas-page-actions{flex-wrap:wrap}}
-@media(max-width:560px){.atlas-repasse-page{padding:22px 12px 32px}.atlas-repasse-metrics{gap:8px}.atlas-repasse-metrics article{padding:12px;min-height:100px}.atlas-repasse-metrics strong{font-size:19px}.atlas-data-card>header{padding:15px}.atlas-outline-button,.atlas-dark-button{min-height:36px;padding:0 10px;font-size:10px}}
+@media(max-width:850px){.atlas-repasse-config-grid{grid-template-columns:1fr}.atlas-repasse-sale-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.atlas-repasse-page{padding:22px 12px 32px}.atlas-repasse-metrics{gap:8px}.atlas-repasse-metrics article{padding:12px;min-height:100px}.atlas-repasse-metrics strong{font-size:19px}.atlas-data-card>header{padding:15px}.atlas-outline-button,.atlas-dark-button{min-height:36px;padding:0 10px;font-size:10px}.atlas-repasse-entry form,.atlas-repasse-config-grid form,.atlas-repasse-report form{grid-template-columns:1fr;padding:14px}.atlas-repasse-wide,.atlas-repasse-entry footer,.atlas-repasse-config-grid h3,.atlas-repasse-config-grid p,.atlas-repasse-config-grid button,.atlas-repasse-report form footer{grid-column:1}.atlas-repasse-sale-summary{margin:12px;grid-template-columns:1fr 1fr}.atlas-repasse-report{margin:0 12px 12px}}
 
 .atlas-materials-page{width:100%;max-width:100%;box-sizing:border-box;min-height:calc(100dvh - 170px);margin:0;padding:32px clamp(18px,3vw,48px) 48px;color:#292b3b;background:#fff}
 .atlas-page-actions button,.atlas-material-form-actions button,.atlas-material-actions button{min-height:37px;padding:0 13px;border:1px solid #e0e1e6;border-radius:10px;background:#fff;color:#343643;font-family:inherit;font-size:11px;font-weight:650;cursor:pointer}
@@ -66,8 +91,19 @@
 .atlas-material-actions{display:flex;gap:6px}
 .atlas-material-actions button{min-height:30px;padding:0 9px;font-size:10px}
 .atlas-material-empty{text-align:center;color:#9295a0!important;padding:32px!important}
+.atlas-stage-material-tabs{display:flex;gap:7px;max-width:100%;margin:0 0 14px;padding:0 0 5px;overflow-x:auto;border-bottom:1px solid #e8e9ed;scrollbar-width:thin}
+.atlas-stage-material-tabs button{display:flex;flex:0 0 auto;align-items:center;gap:12px;min-height:40px;padding:0 13px;border:1px solid #e3e4e9;border-radius:10px;background:#fff;color:#5c5f6b;font:inherit;font-size:11px;cursor:pointer}
+.atlas-stage-material-tabs button.active{border-color:#252633;background:#252633;color:#fff}
+.atlas-stage-material-tabs button small{display:grid;min-width:20px;height:20px;place-items:center;border-radius:999px;background:#f0f1f4;color:#676a75;font-size:9px;font-weight:750}
+.atlas-stage-material-tabs button.active small{background:#424455;color:#fff}
+.atlas-stage-material-panel{margin-bottom:16px}
+.atlas-stage-material-panel>header{padding:18px 20px;border-bottom:1px solid #eff0f2}
+.atlas-stage-material-panel>header h2{margin:0;color:#292b3b;font-size:16px}
+.atlas-stage-material-panel>header p{margin:5px 0 0;color:#8d909b;font-size:11px}
+@media(max-width:560px){.atlas-stage-material-tabs{margin-right:-12px;padding-right:12px}.atlas-stage-material-tabs button{min-height:38px;padding:0 10px;font-size:10px}.atlas-stage-material-panel>header{padding:14px}}
 .scene:has(>view-layer[data-view="materials"]),.scene:has(>view-layer[data-view="repasses"]){display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important;overflow:auto!important}
 .app-main:has(>.scene>view-layer[data-view="materials"]),.app-main:has(>.scene>view-layer[data-view="repasses"]){display:grid!important;grid-template-columns:minmax(0,1fr)!important;width:100%!important;min-width:0!important;max-width:100%!important;overflow-x:hidden!important}
 .scene:has(>view-layer[data-view="materials"])>view-layer[data-view="materials"],.scene:has(>view-layer[data-view="repasses"])>view-layer[data-view="repasses"]{position:relative!important;inset:auto!important;top:auto!important;display:block!important;width:100%!important;height:auto!important;min-height:calc(100dvh - 82px)!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important;overflow-x:hidden!important;overflow-y:visible!important}
 @media(max-width:720px){.atlas-material-editor form{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-material-list-heading{align-items:stretch;flex-direction:column}.atlas-material-list-heading input{width:100%}}
 @media(max-width:460px){.atlas-material-editor form{grid-template-columns:1fr}.atlas-material-form-actions{justify-content:stretch}.atlas-material-form-actions button{flex:1}}
+.stage-comprehension-settings .atlas-foreman-access-keys-v1{display:none!important}

@@ -195,6 +195,7 @@ function resolveExecutionStages(stageProfiles={}){
               id:text(item?.id||`material-${index+1}`,80),
               name:text(item?.name,180),
               description:text(item?.description,280),
+              usage:text(item?.usage||item?.use,280),
               quantity:item?.quantity==null?'':text(item.quantity,80),
               unit:text(item?.unit||'un',40),
               status:text(item?.status||'Planejado',80)
@@ -231,6 +232,7 @@ function buildStagePlanningContext(stage, live, readiness, computed){
       id:text(item?.id,80),
       name:text(item?.name,180),
       description:text(item?.description,280),
+      usage:text(item?.usage||item?.use,280),
       quantity:text(item?.quantity,80),
       unit:text(item?.unit,40),
       status:text(item?.status,80)
@@ -904,7 +906,19 @@ export function recalculateOperationalState(reason='manual'){
 
 export function latestOperationalState(){const row=db.prepare(`SELECT id,reason,cash_balance_cents AS cashBalanceCents,allocatable_cents AS allocatableCents,calibration_version AS calibrationVersion,stages_json AS stagesJson,created_at AS generatedAt FROM stage_readiness_snapshots ORDER BY created_at DESC LIMIT 1`).get();if(!row)return recalculateOperationalState('bootstrap');const totals=cashSummary(),reserveCents=Number(getCalibration().config.reserveCents)||0;return {...row,cash:{...totals,balanceCents:Number(row.cashBalanceCents)||0,reserveCents,allocatableCents:Number(row.allocatableCents)||0,unallocatedCents:0},stages:json(row.stagesJson)};}
 export function listNotifications(role='owner',limit=80){const safeLimit=Math.max(1,Math.min(250,Number(limit)||80));if(text(role)==='developer')return db.prepare(`SELECT id,recipient_role AS recipientRole,type,severity,title,message,action_url AS actionUrl,entity,entity_id AS entityId,status,created_at AS createdAt,delivered_at AS deliveredAt,read_at AS readAt,acknowledged_at AS acknowledgedAt FROM operational_notifications WHERE recipient_role IN ('owner','admin','foreman','supplies','sales','utility') ORDER BY created_at DESC LIMIT ?`).all(safeLimit);return db.prepare(`SELECT id,recipient_role AS recipientRole,type,severity,title,message,action_url AS actionUrl,entity,entity_id AS entityId,status,created_at AS createdAt,delivered_at AS deliveredAt,read_at AS readAt,acknowledged_at AS acknowledgedAt FROM operational_notifications WHERE recipient_role=? ORDER BY created_at DESC LIMIT ?`).all(text(role),safeLimit);}
-export function acknowledgeNotification(id,actor={},status='read'){const field=status==='acknowledged'?'acknowledged_at':'read_at',timestamp=now();db.prepare(`UPDATE operational_notifications SET ${field}=?,status=? WHERE id=?`).run(timestamp,status,id);db.prepare(`INSERT INTO audit_events(entity,entity_id,action,payload_json,created_at) VALUES(?,?,?,?,?)`).run('operational_notifications',id,status,JSON.stringify(actor),timestamp);return db.prepare(`SELECT * FROM operational_notifications WHERE id=?`).get(id);}
+export function acknowledgeNotification(id,actor={},status='read'){
+  const safeId=text(id),role=text(actor.role||'owner'),
+    nextStatus=status==='acknowledged'?'acknowledged':'read',
+    row=db.prepare(`SELECT id,recipient_role AS recipientRole,read_at AS readAt,acknowledged_at AS acknowledgedAt FROM operational_notifications WHERE id=?`).get(safeId);
+  if(!row||(role!=='developer'&&row.recipientRole!==role))return null;
+  if(!row.acknowledgedAt&&!row.readAt){
+    const field=nextStatus==='acknowledged'?'acknowledged_at':'read_at',timestamp=now();
+    db.prepare(`UPDATE operational_notifications SET ${field}=?,status=? WHERE id=? AND recipient_role=? AND read_at IS NULL AND acknowledged_at IS NULL`).run(timestamp,nextStatus,safeId,row.recipientRole);
+    const changed=db.prepare(`SELECT read_at AS readAt,acknowledged_at AS acknowledgedAt FROM operational_notifications WHERE id=?`).get(safeId);
+    if(changed?.readAt||changed?.acknowledgedAt)db.prepare(`INSERT INTO audit_events(entity,entity_id,action,payload_json,created_at) VALUES(?,?,?,?,?)`).run('operational_notifications',safeId,nextStatus,JSON.stringify(actor),timestamp);
+  }
+  return listNotifications(role).find(item=>item.id===safeId)||null;
+}
 export function pendingOutbox(limit=50){return db.prepare(`SELECT o.id AS outboxId,o.attempts,n.* FROM notification_outbox o JOIN operational_notifications n ON n.id=o.notification_id WHERE o.status IN ('pending','retry','waiting_recipient') AND o.next_attempt_at<=? ORDER BY o.created_at LIMIT ?`).all(now(),Math.max(1,Math.min(200,Number(limit)||50)));}
 export function completeOutbox(outboxId,delivered,error=''){const timestamp=now();db.prepare(`UPDATE notification_outbox SET status=?,attempts=attempts+1,last_error=?,next_attempt_at=?,delivered_at=? WHERE id=?`).run(delivered?'delivered':'retry',text(error).slice(0,800),new Date(Date.now()+(delivered?0:300000)).toISOString(),delivered?timestamp:null,outboxId);if(delivered)db.prepare(`UPDATE operational_notifications SET status='delivered',delivered_at=? WHERE id=(SELECT notification_id FROM notification_outbox WHERE id=?)`).run(timestamp,outboxId);}
 export function registerDevice(input={},actor={}){const installationId=text(input.installationId),fcmToken=text(input.fcmToken);if(!installationId)throw Object.assign(new Error('Identificador da instalação obrigatório.'),{statusCode:400});const id=`DEV-${actor.uid}-${installationId}`.replace(/[^a-zA-Z0-9_-]/g,'').slice(0,180),timestamp=now();db.prepare(`INSERT INTO device_registrations(id,uid,role,installation_id,fcm_token,platform,enabled,updated_at) VALUES(?,?,?,?,?,?,1,?) ON CONFLICT(uid,installation_id) DO UPDATE SET role=excluded.role,fcm_token=excluded.fcm_token,platform=excluded.platform,enabled=1,updated_at=excluded.updated_at`).run(id,actor.uid,actor.role,installationId,fcmToken,text(input.platform||'web'),timestamp);return {id,uid:actor.uid,role:actor.role,installationId,platform:text(input.platform||'web'),updatedAt:timestamp};}

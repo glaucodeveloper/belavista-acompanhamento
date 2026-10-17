@@ -4,11 +4,12 @@ import path from "node:path";
 import { test } from "node:test";
 
 const root = path.resolve(import.meta.dirname, "../..");
-const components = fs.readFileSync(path.join(root, "components.js"), "utf8");
+const components = fs.readFileSync(path.join(root, "components/index.mjs"), "utf8");
 const commercialApplication = fs.readFileSync(path.join(root, "components/commercial/commercial-application-composition-v1.mjs"), "utf8");
 const legacyLots = fs.readFileSync(path.join(root, "components/commercial/legacy-brokers-board-v1.mjs"), "utf8");
+const lotDetails = fs.readFileSync(path.join(root, "components/lots/lot-detail-page-v1.mjs"), "utf8");
 const commercialBindings = fs.readFileSync(path.join(root, "components/commercial/commercial-views-bind-v1.mjs"), "utf8");
-const lotFeatures = components + commercialApplication + legacyLots + commercialBindings;
+const lotFeatures = components + commercialApplication + legacyLots + commercialBindings + lotDetails;
 const commissionViews = fs.readFileSync(path.join(root, "components/commercial/commission-negotiation-views-v1.mjs"), "utf8");
 const brokerProfiles = fs.readFileSync(path.join(root, "components/commercial/brokers-page.mjs"), "utf8");
 const brokerProfileRegistration = fs.readFileSync(path.join(root, "components/commercial/broker-profile-registration-v1.mjs"), "utf8");
@@ -71,7 +72,9 @@ test("página de lotes tem rota, catálogo de preços e controle próprios", () 
   assert.match(lotFeatures, /REPASSE_PRICE_CATALOG/);
   assert.match(lotFeatures, /Valores por lote/);
   assert.match(lotFeatures, /LOTEAMENTO · VISUALIZAÇÃO E CONTROLE/);
-  assert.match(lotFeatures, /data-repasse-config-field/);
+  assert.match(commercialBindings, /settingsPage\.querySelector\("\.stage-comprehension-settings-head"\)\?\.after\(configCard\)/);
+  assert.match(commercialBindings, /data-repasse-config-confirm/);
+  assert.doesNotMatch(commercialBindings, /repassePage\.querySelector\("\.repasse-page-head"\)\?\.insertAdjacentHTML\("afterend", `.*Regras ajustáveis/);
   assert.match(lotFeatures, /data-lot-catalog-filter/);
   assert.match(lotFeatures, /data-lot-catalog-quadra/);
   assert.match(lotFeatures, /data-lot-catalog-status/);
@@ -91,7 +94,7 @@ test("página de lotes tem rota, catálogo de preços e controle próprios", () 
   assert.match(lotFeatures, /lotStatuses/);
   assert.match(lotFeatures, /sellerId/);
   assert.match(lotFeatures, /paymentStatus/);
-  assert.match(lotFeatures, /paymentAmount/);
+  assert.match(lotFeatures, /paymentStatus/);
   assert.match(lotFeatures, /repassePartnerId/);
   assert.match(styles, /\.brokers-board-page/);
   assert.match(styles, /\.lot-price-catalog-card/);

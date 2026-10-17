@@ -584,6 +584,7 @@ export const installAgendaCalendarPageV8 = (ViewLayer, dependencies = {}) => {
         days: days.map((date) => ({ date, iso: agendaCalendarIsoV3(date) })),
         events: weekEvents,
         todayIso,
+        presentation: state.agendaCalendarPresentationV1 || "status",
         esc,
       } }).next().value,
       pickerDate =
@@ -712,8 +713,8 @@ export const installAgendaCalendarPageV8 = (ViewLayer, dependencies = {}) => {
     ${agendaCalendarFormMarkupV3(stage, data, weekKey)}
   </div>
 
-  ${atlasTimeline}
-  <div class="agenda-week-viewport-v8" data-agenda-horizontal-v4 data-agenda-week-scroll-v8 hidden>
+  ${state.agendaCalendarLoadedV3 && !state.agendaCalendarErrorV3 ? atlasTimeline : ""}
+  ${state.agendaCalendarLoadedV3 && !state.agendaCalendarErrorV3 ? `<div class="agenda-week-viewport-v8" data-agenda-horizontal-v4 data-agenda-week-scroll-v8 hidden>
     <div class="agenda-week-canvas-v8">
       <aside class="agenda-shift-gutter-v8" aria-label="Turnos">
         <div class="agenda-shift-gutter-title-v8">TURNO</div>
@@ -752,11 +753,35 @@ export const installAgendaCalendarPageV8 = (ViewLayer, dependencies = {}) => {
   <footer class="stage-agenda-month-foot-v3">
     <span>${ico("move")} Abra o calendário para ajustar dia e horário por arraste.</span>
     <b>${weekEvents.length} compromisso(s) na semana · Fuso America/Bahia</b>
-  </footer>
+  </footer>` : ""}
   </section>`;
   };
 
+  const ensureAgendaCalendarLoadedV8 = () => {
+    const state = appStore.get();
+    if (state.agendaCalendarLoadedV3 || state.agendaCalendarLoadingV3) return;
+    appStore.set({ agendaCalendarLoadingV3: true });
+    Promise.resolve().then(async () => {
+      if (typeof apiFetch !== "function") throw new Error("Cliente da API da agenda indisponível.");
+      const response = await Promise.race([
+        apiFetch("/api/agenda-events", { cache: "no-store" }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Tempo limite da conexão com o servidor (12 s).")), 12000)),
+      ]);
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !Array.isArray(payload.events)) throw new Error(payload.error || `HTTP ${response.status}`);
+      appStore.set({ agendaCalendarLoadedV3: true, agendaCalendarLoadingV3: false, agendaCalendarErrorV3: "", agendaDatabaseEventsV3: payload.events });
+    }).catch((error) => {
+      const detail = String(error?.message || error);
+      const authUnavailable = /default credentials|OAuth2 access token|Project Id|Autentica|HTTP 401/i.test(detail);
+      appStore.set({ agendaCalendarLoadedV3: true, agendaCalendarLoadingV3: false,
+        agendaCalendarErrorV3: authUnavailable
+          ? "A agenda está indisponível porque o servidor não tem credenciais de autenticação configuradas."
+          : `Não foi possível carregar a agenda: ${detail}`, agendaDatabaseEventsV3: [] });
+    });
+  };
+
   ViewLayer.prototype.agenda = function () {
+    Promise.resolve().then(ensureAgendaCalendarLoadedV8);
     return agendaCalendarMarkupV3(extensionStage());
   };
 
@@ -769,23 +794,7 @@ export const installAgendaCalendarPageV8 = (ViewLayer, dependencies = {}) => {
           ".stage-agenda-month-page-v3",
         );
         if (agendaCalendarRootV5) {
-          if(!state.agendaCalendarLoadedV3 && !state.agendaCalendarLoadingV3){
-            appStore.set({agendaCalendarLoadingV3:true});
-            Promise.resolve().then(async()=>{
-              if(typeof apiFetch!=="function")throw new Error("Cliente da API da agenda indisponível.");
-              const response=await apiFetch("/api/agenda-events",{cache:"no-store"});
-              const payload=await response.json().catch(()=>({}));
-              if(!response.ok||!Array.isArray(payload.events))throw new Error(payload.error||`HTTP ${response.status}`);
-              appStore.set({agendaCalendarLoadedV3:true,agendaCalendarLoadingV3:false,agendaCalendarErrorV3:"",agendaDatabaseEventsV3:payload.events});
-            }).catch(error=>{
-              const detail=String(error?.message||error);
-              const authUnavailable=/default credentials|OAuth2 access token|Project Id|Autentica|HTTP 401/i.test(detail);
-              appStore.set({agendaCalendarLoadedV3:true,agendaCalendarLoadingV3:false,
-                agendaCalendarErrorV3:authUnavailable
-                  ? "A agenda está indisponível porque o servidor não tem credenciais de autenticação configuradas."
-                  : `Não foi possível carregar a agenda: ${detail}`,agendaDatabaseEventsV3:[]});
-            });
-          }
+          if(!state.agendaCalendarLoadedV3 && !state.agendaCalendarLoadingV3) ensureAgendaCalendarLoadedV8();
           let agendaLinkSourceV1 = "";
           const calendarRoot = agendaCalendarRootV5,
             editor = calendarRoot?.querySelector("[data-agenda-editor-v3]"),
@@ -1677,6 +1686,15 @@ export const installAgendaCalendarPageV8 = (ViewLayer, dependencies = {}) => {
     }
     if(button.matches('[data-agenda-week-shift-v8]')){
       event.stopImmediatePropagation();appStore.set({agendaCalendarWeekV8:agendaCalendarShiftWeekV8(root.dataset.agendaWeekV8,Number(button.dataset.agendaWeekShiftV8))});
+      return;
+    }
+    if(button.matches('[data-agenda-presentation]')){
+      event.stopImmediatePropagation();
+      const presentation=button.dataset.agendaPresentation;
+      if(presentation==='status'||presentation==='timeline')appStore.set({
+        agendaCalendarPresentationV1:presentation,
+        lastAction:presentation==='status'?'Organizou a agenda por estado':'Organizou a agenda por horário',
+      });
     }
   },true);
   document.addEventListener('change',event=>{
@@ -1730,6 +1748,7 @@ export const installAgendaCalendarPageV8 = (ViewLayer, dependencies = {}) => {
     agendaCalendarStatusToneV3,
     agendaCalendarEventMarkupV3,
     agendaCalendarFormMarkupV3,
-    agendaCalendarMarkupV3
+    agendaCalendarMarkupV3,
+    ensureAgendaCalendarLoadedV8,
   });
 };

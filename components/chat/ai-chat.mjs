@@ -1190,7 +1190,12 @@ export const createAiChat = ({ browser, ports }) => {
           console.warn("Não foi possível persistir o anexo da leitura visual:", error);
         }
       }
-      const sourceFileUrl = String(storedAttachment?.fileUrl || storedAttachment?.url || "").trim();
+      const sourceFileUrl = String(storedAttachment?.fileUrl || storedAttachment?.url || storedAttachment?.reference || "").trim();
+      if (sourceAttachment && !sourceFileUrl) {
+        const message = "O registro não foi criado: a foto não pôde ser persistida. Tente novamente com conexão ativa.";
+        this.addToolFeedback(message, "warning");
+        return message;
+      }
       const now = new Date();
       const activityName = String(args.activityName || "").trim().slice(0, 160);
       const materialName = String(args.materialName || "").trim().slice(0, 160);
@@ -1227,7 +1232,7 @@ export const createAiChat = ({ browser, ports }) => {
         stageName: stage.name,
         atividade: target === "material" ? `Material: ${title}` : title,
         activityId: String(args.activityId || "").trim(),
-        responsavel: "Assistente operacional",
+        responsavel: String(appStore.get().currentActor?.name || appStore.get().currentActor?.displayName || "").trim(),
         data: now.toISOString().slice(0, 10),
         hora: now.toTimeString().slice(0, 5),
         detalhes: [details, pointer ? `Indicação visual: ${pointer}` : "", `Anexo analisado: ${sourceName}`].filter(Boolean).join("\n"),
@@ -1250,43 +1255,11 @@ export const createAiChat = ({ browser, ports }) => {
         evidenceUri: "",
       };
       let saved = null;
-      try {
-        saved = await createRecord(payload);
-      } catch (error) {
-        const localRecord = {
-          ...payload,
-          id: localId,
-          attachments: payload.attachments,
-          pendingPersistence: true,
-        };
-        const pendingMaterialAddition = target === "material"
-          ? {
-              id: `AI-MATERIAL-${localId}`,
-              name: materialName || title,
-              scope: details,
-              quantity,
-              unit,
-              status: "Pendente",
-              stageKey: stage.key,
-              stageName: stage.name,
-              activityName: activityName || "Leitura visual do chat",
-              source: "chat-visual",
-              sourceRecordId: localId,
-              properties,
-              attachments: localRecord.attachments,
-              updatedAt: now.toISOString(),
-            }
-          : null;
-        appStore.update((current) => ({
-          ...current,
-          records: [localRecord, ...(current.records || [])],
-          materialCatalogAdditions: pendingMaterialAddition
-            ? [pendingMaterialAddition, ...(current.materialCatalogAdditions || []).filter((item) => item.id !== pendingMaterialAddition.id)]
-            : current.materialCatalogAdditions || [],
-          lastAction: `Preparou alocação visual pendente em ${stage.name}`,
-        }));
-        this.addToolFeedback(`Leitura visual preparada em ${target === "material" ? "Materiais" : "Serviços"}, mas a persistência está pendente (${error.message}).`, "warning");
-        return `Preparou alocação visual pendente em ${stage.name}; persistência aguardando conexão.`;
+      try { saved = await createRecord(payload); }
+      catch (error) {
+        const message = `O registro não foi criado no banco: ${error.message}`;
+        this.addToolFeedback(message, "warning");
+        return message;
       }
       const record = {
         ...saved,

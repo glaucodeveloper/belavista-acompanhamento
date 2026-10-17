@@ -36,6 +36,25 @@ body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-cap
   border-bottom: 1px solid var(--atlas-carbon-line) !important;
   background: var(--atlas-carbon-surface) !important;
 }
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > header > div {
+  min-width: 0;
+}
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > header > button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 9px 13px;
+  border: 1px solid var(--atlas-carbon-line);
+  border-radius: 8px;
+  background: #fff !important;
+  color: var(--atlas-carbon-ink) !important;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > header > button:hover {
+  border-color: #b8cdf2;
+  background: #f5f8ff !important;
+}
 body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture :is(h2, form > header b),
 body.admin-shell-page view-layer[data-view="control"] .dashboard-agenda :is(h2, h3, strong) {
   color: var(--atlas-carbon-ink) !important;
@@ -47,6 +66,110 @@ body.admin-shell-page view-layer[data-view="control"] .dashboard-agenda :is(p, s
 body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-grid {
   gap: 0 !important;
   background: #fff !important;
+}
+/* The dashboard's quick-entry form is rendered directly under the card (not
+   inside .stage-dashboard-quick-grid), so scope the form layout to its real DOM. */
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > form[data-dashboard-quick-record] {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-items: start;
+  gap: 16px !important;
+  min-width: 0;
+  padding: 20px !important;
+  background: #fff !important;
+}
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > form[data-dashboard-quick-record] > header,
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > form[data-dashboard-quick-record] > label:last-of-type,
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > form[data-dashboard-quick-record] > button {
+  grid-column: 1 / -1;
+}
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > form[data-dashboard-quick-record] > header {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  margin: 0;
+  padding: 0 0 14px;
+  border-bottom: 1px solid var(--atlas-carbon-line);
+}
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > form[data-dashboard-quick-record] > header > span {
+  display: grid;
+  place-items: center;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #c6d9ff !important;
+  border-radius: 9px;
+  background: #edf4ff !important;
+  color: var(--atlas-carbon-blue) !important;
+}
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > form[data-dashboard-quick-record] > header > span svg {
+  width: 17px;
+  height: 17px;
+}
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > form[data-dashboard-quick-record] > header b,
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > form[data-dashboard-quick-record] > header small {
+  display: block;
+}
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > form[data-dashboard-quick-record] > header b {
+  color: var(--atlas-carbon-ink);
+  font-size: 14px;
+}
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > form[data-dashboard-quick-record] > header small {
+  margin-top: 3px;
+  color: var(--atlas-carbon-muted);
+  font-size: 11px;
+}
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > form[data-dashboard-quick-record] > label,
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture .stage-dashboard-quick-pair > label {
+  display: grid !important;
+  gap: 7px !important;
+  min-width: 0;
+  color: var(--atlas-carbon-muted) !important;
+  font-size: 12px !important;
+  line-height: 1.4;
+}
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture .stage-dashboard-quick-pair {
+  display: grid !important;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+  min-width: 0;
+}
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > form[data-dashboard-quick-record] :is(input, select) {
+  display: block;
+  width: 100% !important;
+  min-width: 0;
+  min-height: 42px !important;
+  box-sizing: border-box;
+  padding: 9px 12px !important;
+  border: 1px solid #cbd3dd !important;
+  border-radius: 8px !important;
+  background: #fff !important;
+  color: var(--atlas-carbon-ink) !important;
+  font-family: inherit;
+  font-size: 13px !important;
+  line-height: 1.4;
+}
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > form[data-dashboard-quick-record] :is(input, select)::placeholder {
+  color: #9299a6;
+  opacity: 1;
+}
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > form[data-dashboard-quick-record] > button.primary {
+  justify-self: end;
+  min-width: 190px;
+  min-height: 42px !important;
+  padding: 9px 16px;
+  border: 1px solid var(--atlas-carbon-blue);
+  border-radius: 8px;
+  background: var(--atlas-carbon-blue) !important;
+  color: #fff;
+  font-size: 13px !important;
+  font-weight: 600;
+  cursor: pointer;
+}
+body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > form[data-dashboard-quick-record] > button.primary:hover {
+  background: #0043ce !important;
 }
 body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-grid form {
   gap: 14px !important;
@@ -78,6 +201,29 @@ body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-fee
   border-top: 1px solid var(--atlas-carbon-line) !important;
   background: var(--atlas-carbon-surface) !important;
   color: var(--atlas-carbon-muted) !important;
+}
+@media (max-width: 680px) {
+  body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > header {
+    display: grid;
+    align-items: stretch;
+    gap: 12px;
+  }
+  body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > header > button {
+    justify-self: start;
+  }
+  body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > form[data-dashboard-quick-record] {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 14px !important;
+    padding: 16px !important;
+  }
+  body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture .stage-dashboard-quick-pair {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 14px !important;
+  }
+  body.admin-shell-page view-layer[data-view="control"] .stage-dashboard-quick-capture > form[data-dashboard-quick-record] > button.primary {
+    justify-self: stretch;
+    width: 100%;
+  }
 }
 body.admin-shell-page view-layer[data-view="control"] .dashboard-agenda > header {
   border-bottom: 1px solid var(--atlas-carbon-line) !important;
@@ -560,4 +706,143 @@ body.admin-shell-page view-layer[data-view="settings"] [data-ai-agenda-settings-
   body.admin-shell-page view-layer[data-view="settings"] [data-ai-agenda-settings-form] { padding: 18px; }
   body.admin-shell-page view-layer[data-view="settings"] .ai-agenda-settings-policy { align-items: flex-start; flex-direction: column; }
   body.admin-shell-page view-layer[data-view="settings"] [data-ai-agenda-settings-form] footer { flex-wrap: wrap; }
+}
+
+/* The panel is a sibling of the header inside <app-topbar>, so position it
+   against the custom-element host to keep it out of the page layout stack. */
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar {
+  position: relative !important;
+  z-index: 300 !important;
+  overflow: visible !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-panel {
+  position: absolute !important;
+  inset: calc(100% + 8px) 12px auto auto !important;
+  z-index: 10000 !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  width: min(400px, calc(100vw - 32px)) !important;
+  max-height: min(560px, calc(100dvh - 108px)) !important;
+  overflow: hidden !important;
+  border: 1px solid #dfe4eb !important;
+  border-radius: 14px !important;
+  background: #fff !important;
+  color: #262b36 !important;
+  box-shadow: 0 18px 48px rgba(32, 43, 64, .2) !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-panel[hidden] {
+  display: none !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-panel > header,
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-panel > footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  padding: 14px 16px !important;
+  border-color: #e5e9ef !important;
+  background: #f7f9fc !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-panel > header h2 {
+  margin: 5px 0 0 !important;
+  color: #262b36 !important;
+  font-size: 16px !important;
+  font-weight: 650 !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-panel > header .activity-kind {
+  color: #0f62fe !important;
+  font: 600 9px/1.3 "IBM Plex Mono", monospace !important;
+  letter-spacing: .06em !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-panel > header > button,
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-panel > footer button {
+  min-height: 34px !important;
+  padding: 7px 10px !important;
+  border: 1px solid #dfe4eb !important;
+  border-radius: 8px !important;
+  background: #fff !important;
+  color: #303746 !important;
+  font: 600 11px/1.2 Inter, sans-serif !important;
+  cursor: pointer;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-panel > header > button {
+  width: 32px !important;
+  padding: 0 !important;
+  font-size: 20px !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-panel > footer button:not(:disabled):hover,
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-panel > header > button:hover {
+  border-color: #b8cdf2 !important;
+  background: #f5f8ff !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-panel > footer button:disabled {
+  opacity: .55;
+  cursor: default;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] .topbar-notification-list {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-item {
+  grid-template-columns: 3px minmax(0, 1fr) !important;
+  gap: 12px !important;
+  padding: 13px 16px !important;
+  border-bottom: 1px solid #edf0f4 !important;
+  background: #fff !important;
+  color: #262b36 !important;
+  font: inherit !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-item:hover,
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-item:focus-visible {
+  background: #f5f8ff !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-item.unread {
+  background: #f7f9ff !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-item > i {
+  width: 3px !important;
+  border-radius: 3px;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-item span {
+  min-width: 0;
+  gap: 5px !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-item b {
+  color: #262b36 !important;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-item small {
+  color: #586273 !important;
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-item em {
+  color: #7a8391 !important;
+  font: 10px/1.3 "IBM Plex Mono", monospace !important;
+  font-style: normal !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-item strong {
+  margin-top: 3px;
+  color: #0f62fe !important;
+  font-size: 11px !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-empty {
+  margin: 0;
+  padding: 24px 16px !important;
+  color: #586273 !important;
+  font-size: 12px !important;
+}
+body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-panel > footer small {
+  color: #586273 !important;
+  font-size: 10px !important;
+}
+@media (max-width: 760px) {
+  body.admin-shell-page .app[data-layout="atlas-zip"] app-topbar .topbar-notification-panel {
+    position: fixed !important;
+    inset: calc(var(--topbar, 60px) + 8px) 10px auto auto !important;
+    width: min(400px, calc(100vw - 20px)) !important;
+    max-height: calc(100dvh - var(--topbar, 60px) - 24px) !important;
+  }
 }

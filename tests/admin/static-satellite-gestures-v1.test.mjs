@@ -40,7 +40,7 @@ test("static satellite map preserves centered initial fit, wheel zoom and marker
   const { scene, listeners, style, marker } = createScene();
   scene.bindStaticSatelliteMapGesturesV1();
 
-  assert.equal(scene.dataset.staticMapGestures, "drag-pan + wheel + shift-drag-zoom");
+  assert.equal(scene.dataset.staticMapGestures, "drag-pan + wheel + shift-drag-zoom + pinch-zoom");
   assert.equal(scene.fitStaticSatelliteMasterplanV1(), true);
   assert.equal(scene.dataset.staticMapInitialFit, "masterplan-centered-with-margin");
   assert.equal(scene.dataset.staticMapFitMargin, "12%");
@@ -75,6 +75,7 @@ test("static satellite map keeps pointer pan, modified-drag zoom and gesture cle
   scene.fitStaticSatelliteMasterplanV1();
 
   const dispatch = (type, values) => listeners.get(type).handler({
+    type,
     button: 0,
     pointerId: 9,
     target: { closest: () => null },
@@ -101,8 +102,81 @@ test("static satellite map keeps pointer pan, modified-drag zoom and gesture cle
   assert.equal(scene.dataset.mapGesture, undefined);
 });
 
+test("static satellite map pinches into lot labels without starting a drag", () => {
+  const { scene, listeners } = createScene();
+  scene.isAdminPublicMapV1 = () => true;
+  scene.bindStaticSatelliteMapGesturesV1();
+  scene.fitStaticSatelliteMasterplanV1();
+  const initialZoom = Number(scene.dataset.staticMapZoom.replace("%", ""));
+  const touch = (type, pointerId, clientX, clientY) => listeners.get(type).handler({
+    type, button: 0, pointerType: "touch", pointerId, clientX, clientY,
+    target: { closest: () => null }, preventDefault() {},
+  });
+  touch("pointerdown", 1, 200, 200);
+  touch("pointerdown", 2, 300, 200);
+  touch("pointermove", 2, 400, 200);
+  assert.ok(Number(scene.dataset.staticMapZoom.replace("%", "")) > initialZoom);
+  touch("pointerup", 2, 400, 200);
+  const priorPan = scene.dataset.staticMapPan;
+  touch("pointermove", 1, 225, 215);
+  assert.notEqual(scene.dataset.staticMapPan, priorPan);
+  touch("pointerup", 1, 200, 200);
+  assert.equal(scene.dataset.mapGesture, undefined);
+});
+
+test("touch drag begun on a lot moves the map while a tap still selects it", () => {
+  const { scene, listeners, classes } = createScene();
+  scene.isAdminPublicMapV1 = () => true;
+  scene.bindStaticSatelliteMapGesturesV1();
+  scene.fitStaticSatelliteMasterplanV1();
+  const lot = { closest: selector => selector.includes("satellite-lot") || selector.includes("button") ? lot : null };
+  const touch = (type, x, y) => listeners.get(type).handler({
+    type, button: 0, pointerType: "touch", pointerId: 11, clientX: x, clientY: y,
+    target: lot, preventDefault() {},
+  });
+  const click = (x, y) => {
+    let prevented = false;
+    listeners.get("click").handler({ detail: 1, clientX: x, clientY: y,
+      preventDefault() { prevented = true; }, stopImmediatePropagation() {} });
+    return prevented;
+  };
+
+  touch("pointerdown", 200, 200);
+  touch("pointerup", 200, 200);
+  assert.equal(click(200, 200), false);
+  touch("pointerdown", 200, 200);
+  touch("pointermove", 203, 203);
+  assert.equal(scene.dataset.mapGesture, undefined);
+  const initialPan = scene.dataset.staticMapPan;
+  touch("pointermove", 245, 220);
+  assert.equal(scene.dataset.mapGesture, "pan");
+  assert.ok(classes.has("is-static-map-panning"));
+  assert.notEqual(scene.dataset.staticMapPan, initialPan);
+  touch("pointerup", 245, 220);
+  assert.equal(click(245, 220), true);
+  assert.equal(scene.dataset.mapGesture, undefined);
+});
+
+test("lot-marker adjustment keeps ownership of touch drag in edit mode", () => {
+  const { scene, listeners, classes } = createScene();
+  scene.bindStaticSatelliteMapGesturesV1();
+  scene.fitStaticSatelliteMasterplanV1();
+  classes.add("is-admin-masterplan-editing");
+  const marker = { closest: () => marker };
+  const gesture = (type, x) => listeners.get(type).handler({
+    type, button: 0, pointerType: "touch", pointerId: 12,
+    clientX: x, clientY: 180, target: marker, preventDefault() {},
+  });
+  const priorPan = scene.dataset.staticMapPan;
+  gesture("pointerdown", 200);
+  gesture("pointermove", 260);
+  gesture("pointerup", 260);
+  assert.equal(scene.dataset.staticMapPan, priorPan);
+  assert.equal(scene.dataset.mapGesture, undefined);
+});
+
 test("static satellite gesture module is installed by the application composition root", async () => {
-  const source = await readFile(new URL("../../components.js", import.meta.url), "utf8");
+  const source = await readFile(new URL("../../components/map/map-scene-composition-v1.mjs", import.meta.url), "utf8");
   assert.match(source, /static-satellite-gestures-v1\.mjs\?v=static-satellite-gestures-v1/);
   assert.match(source, /installStaticSatelliteGesturesV1\(MapScene, \{\s*ADMIN_MASTERPLAN_SATELLITE_FRAME_V1,\s*\}\)/);
 });

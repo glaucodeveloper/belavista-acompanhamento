@@ -10,13 +10,16 @@ export const installStaticSatelliteGesturesV1 = (
       return;
     this._staticSatelliteGesturesBoundV1 = true;
     this.classList.remove("static-lot-markers-visible");
-    this.dataset.staticMapGestures = "drag-pan + wheel + shift-drag-zoom";
+    this.dataset.staticMapGestures = "drag-pan + wheel + shift-drag-zoom + pinch-zoom";
     let zoom = 1,
       panX = 0,
       panY = 0,
       drag = null;
+    const activeTouches = new Map();
+    let pinch = null;
+    let suppressDraggedClick = null;
     const minZoom = 0.92,
-      maxZoom = 4;
+      maxZoom = this.isAdminPublicMapV1?.() ? 12 : 4;
     const publishStaticView = () => {
       this.style.setProperty("--static-map-zoom", String(zoom));
       this.style.setProperty("--static-map-pan-x", String(panX) + "px");
@@ -99,7 +102,7 @@ export const installStaticSatelliteGesturesV1 = (
       "wheel",
       (event) => {
         // No /leads a roda conduz a narrativa e o zoom progressivo do mapa.
-        if (document.body.classList.contains("public-leads-page")) return;
+        if (globalThis.document?.body?.classList.contains("public-leads-page")) return;
         if (event.defaultPrevented) return;
         const rect = this.getBoundingClientRect();
         if (
@@ -130,26 +133,73 @@ export const installStaticSatelliteGesturesV1 = (
       { capture: true, passive: false },
     );
     this.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "touch") {
+        activeTouches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (activeTouches.size === 2) {
+          const [first, second] = [...activeTouches.values()];
+          pinch = { distance: Math.hypot(second.x - first.x, second.y - first.y), zoom };
+          drag = null;
+          this.classList.remove("is-static-map-panning");
+          this.dataset.mapGesture = "pinch-zoom";
+          this.setPointerCapture?.(event.pointerId);
+          event.preventDefault();
+          return;
+        }
+      }
+      const lotTarget = event.pointerType === "touch" &&
+        !this.classList.contains("is-admin-masterplan-editing") &&
+        event.target?.closest?.(".satellite-lot-plan-marker,.satellite-lot-hit-area,.satellite-common-area-hit-area");
       if (
         event.button !== 0 ||
-        event.target?.closest?.("button,a,input,select,textarea,[role=\"button\"],[contenteditable=\"true\"]")
+        (!lotTarget && event.target?.closest?.("button,a,input,select,textarea,[role=\"button\"],[contenteditable=\"true\"]"))
       )
         return;
-      event.preventDefault();
+      if (!lotTarget) event.preventDefault();
       drag = {
+        pointerId: event.pointerId,
+        pointerType: event.pointerType,
+        originX: event.clientX,
+        originY: event.clientY,
         x: event.clientX,
         y: event.clientY,
         mode: event.shiftKey || event.ctrlKey ? "zoom" : "pan",
+        pending: Boolean(lotTarget),
+        moved: false,
       };
-      this.dataset.mapGesture =
-        drag.mode === "zoom" ? "shift-drag-zoom" : "pan";
-      this.classList.toggle("is-static-map-panning", drag.mode === "pan");
-      this.setPointerCapture?.(event.pointerId);
+      if (!drag.pending) {
+        this.dataset.mapGesture = drag.mode === "zoom" ? "shift-drag-zoom" : "pan";
+        this.classList.toggle("is-static-map-panning", drag.mode === "pan");
+        this.setPointerCapture?.(event.pointerId);
+      }
     });
     this.addEventListener("pointermove", (event) => {
-      if (!drag) return;
+      if (activeTouches.has(event.pointerId)) {
+        activeTouches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (pinch && activeTouches.size >= 2) {
+          const [first, second] = [...activeTouches.values()];
+          const distance = Math.hypot(second.x - first.x, second.y - first.y);
+          if (pinch.distance > 0) applyView(
+            pinch.zoom * distance / pinch.distance,
+            (first.x + second.x) / 2,
+            (first.y + second.y) / 2,
+          );
+          event.preventDefault();
+          return;
+        }
+      }
+      if (!drag || drag.pointerId !== event.pointerId) return;
       const dx = event.clientX - drag.x;
       const dy = event.clientY - drag.y;
+      if (Math.hypot(event.clientX - drag.originX, event.clientY - drag.originY) >= 7)
+        drag.moved = true;
+      if (drag.pending) {
+        if (!drag.moved) return;
+        drag.pending = false;
+        this.dataset.mapGesture = "pan";
+        this.classList.add("is-static-map-panning");
+        this.setPointerCapture?.(event.pointerId);
+      }
+      if (event.pointerType === "touch") event.preventDefault();
       if (drag.mode === "zoom" && Math.abs(dy) > 0) {
         applyView(zoom - dy * 0.008, event.clientX, event.clientY);
       } else if (drag.mode === "pan" && (Math.abs(dx) > 0 || Math.abs(dy) > 0)) {
@@ -165,13 +215,38 @@ export const installStaticSatelliteGesturesV1 = (
       drag.x = event.clientX;
       drag.y = event.clientY;
     });
+    this.addEventListener("click", (event) => {
+      if (!suppressDraggedClick || Date.now() > suppressDraggedClick.until) return;
+      if (event.detail === 0 || Math.hypot(
+        event.clientX - suppressDraggedClick.x,
+        event.clientY - suppressDraggedClick.y,
+      ) > 24) return;
+      suppressDraggedClick = null;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }, true);
     const endDrag = (event) => {
-      if (!drag) return;
-      drag = null;
+      activeTouches.delete(event.pointerId);
+      if (drag?.pointerId === event.pointerId) {
+        if (event.type === "pointerup" && drag.pointerType === "touch" && drag.moved)
+          suppressDraggedClick = { x: event.clientX, y: event.clientY, until: Date.now() + 400 };
+        drag = null;
+      }
       if (this.hasPointerCapture?.(event.pointerId))
         this.releasePointerCapture?.(event.pointerId);
-      this.classList.remove("is-static-map-panning");
-      delete this.dataset.mapGesture;
+      if (pinch && activeTouches.size === 1) {
+        pinch = null;
+        const [pointerId, position] = activeTouches.entries().next().value;
+        drag = { pointerId, pointerType: "touch", originX: position.x, originY: position.y,
+          x: position.x, y: position.y, mode: "pan", pending: false, moved: false };
+        this.dataset.mapGesture = "pan";
+        this.classList.add("is-static-map-panning");
+        this.setPointerCapture?.(pointerId);
+      } else if (activeTouches.size < 2 && !drag) {
+        pinch = null;
+        this.classList.remove("is-static-map-panning");
+        delete this.dataset.mapGesture;
+      }
     };
     this.addEventListener("pointerup", endDrag);
     this.addEventListener("pointercancel", endDrag);

@@ -3,7 +3,7 @@
 // v5.3.51 deferred after shell: import './admin-lots-canvas-v1.js?v=admin-lots-canvas-v1';
 import './components.js?road-integral-asphalt-slices-v13';
 import {appStore, persistUiState, restoreUiState, viewThemes} from './state.js?v=system-metrics-v1-20260919';
-import {apiFetch} from './api-client.mjs?v=instagram-api-live-v1';
+import {apiFetch} from './api-client.mjs?v=github-pat-gateway-v1';
 import {normalizeOperationalRole, roleCanOpenView} from './admin-role-policy.mjs?v=admin-role-policy-v1';
 
 document.addEventListener('click',event=>{

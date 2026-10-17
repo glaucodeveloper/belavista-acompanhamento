@@ -1,5 +1,5 @@
 import { createAppSidebar } from "./app-sidebar.mjs?v=atlas-zip-sidebar-v3";
-import { createAppTopbar } from "./app-topbar.mjs?v=atlas-zip-topbar-v2";
+import { createAppTopbar } from "./app-topbar.mjs?v=atlas-notification-inbox-v3";
 
 // The administrative surface stays in tracking mode across navigation and map filters.
 export const dashboardModeKeyV1 = () => "tracking";

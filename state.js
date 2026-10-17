@@ -274,7 +274,7 @@ export const appStore = globalThis.__belavistaAppStore || createStore({
   productionOverrides:{}, stageMaterialOverrides:{}, controlMaterialOverrides:{}, controlChangeLog:[], controlRealtime:null, cashFlowLocal:[], cashSummary:{entriesCents:0,exitsCents:0,balanceCents:0}, operationalState:null, operationalNotifications:[], operationalAgenda:[], operationalGuidance:null, systemCalibration:null, publicReservations:[], dashboardStagePage:0, integrationSettings:{}, commissionReasons:structuredClone(commissionReasonDefaults), selectedPlanningStage:'earthwork',
   personnelTeams:structuredClone(personnelModel.teams), personnelAssignments:structuredClone(personnelModel.assignments), personnelDocumentName:'Nenhum documento de estimativas carregado', personnelInferenceOverrides:{}, selectedPersonnelStage:'earthwork', selectedPersonnelTeam:'earthwork', personnelInferenceStatus:'Prévia assistida pelas regras atuais do catálogo',
   activityInstallation:structuredClone(activityInstallationDefaults), documentCatalog:[], reportDocumentLinks:{}, developmentProfiles:[], selectedDevelopmentProfileId:null, developmentProfileQuery:'',
-  records:[{id:'REG-001',obra:'Aliança Park',atividade:'Drenagem Pluvial',data:'2024-06-06',hora:'08:30',responsavel:'Carlos Mendes',detalhes:'Medição da rede principal',status:'Pendente'}],
+  records:[],
   ...restoredUiState,
   dashboardMode:'tracking',
   documentCatalog:[...projectDocumentSeeds.filter(seed=>!(restoredUiState.documentCatalog||[]).some(item=>item.id===seed.id)),...(restoredUiState.documentCatalog||[])],

@@ -1,4 +1,6 @@
 /** Map 3D loading surface and progressive static-base lifecycle. */
+import { mapStaticCaptureSourceV1 } from "./map-asset-profile-v1.mjs";
+
 export const installMapLoadingScreenV1 = (MapScene, dependencies = {}) => {
   if (typeof MapScene !== "function" || !MapScene.prototype)
     throw new TypeError("Map loading screen requires the existing MapScene constructor.");
@@ -54,8 +56,10 @@ export const installMapLoadingScreenV1 = (MapScene, dependencies = {}) => {
       staticBackground.removeAttribute("data-three-texture-active");
       staticBackground.dataset.publicFallback = "local-capture";
     }
-    const source =
-      this.getAttribute("data-public-static-capture") || GENERATED_AERIAL_ASSET;
+    const source = mapStaticCaptureSourceV1(this, {
+      generatedAsset: GENERATED_AERIAL_ASSET,
+      browser,
+    });
     const adminStaticHost = this.isAdminPublicMapV1()
       ? this.querySelector(".map-host")
       : null;
@@ -83,8 +87,10 @@ export const installMapLoadingScreenV1 = (MapScene, dependencies = {}) => {
     if (!this.isPublicCustomerExperience?.()) return Promise.resolve(false);
     if (this._publicStaticBasePromiseV1) return this._publicStaticBasePromiseV1;
 
-    const source =
-      this.getAttribute("data-public-static-capture") || GENERATED_AERIAL_ASSET;
+    const source = mapStaticCaptureSourceV1(this, {
+      generatedAsset: GENERATED_AERIAL_ASSET,
+      browser,
+    });
     this._publicStaticBasePromiseV1 = new Promise((resolve) => {
       const image = new Image();
       let settled = false;

@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mergeNvidiaStatePatch,runStrictNvidiaStateTransition} from '../src/strict-nvidia-state.js';
+import {mergeNvidiaStatePatch,runStrictNvidiaStateTransition,strictNvidiaRuntime} from '../src/strict-nvidia-state.js';
+
+test('strict state defaults to the fast structured JSON model and batches activity analysis',()=>{
+  const runtime=strictNvidiaRuntime({});
+  assert.equal(runtime.model,'openai/gpt-oss-20b');
+  assert.equal(runtime.analysisBatchSize,10);
+});
 
 const state=()=>({
   version:'state-1',

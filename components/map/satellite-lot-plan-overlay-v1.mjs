@@ -68,7 +68,7 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
       // Uma inicialização anterior pode ter desenhado somente as linhas. Ao
       // abrir um mapa retrátil, recriamos essa camada para materializar os
       // hit-areas que acionam o controle comercial do lote.
-      if (wantsMarkers && !layer.querySelector(".satellite-lot-plan-marker")) {
+      if (wantsMarkers && !layer.querySelector(".satellite-lot-plan-marker, .satellite-lot-hit-area")) {
         layer.remove();
         layer = null;
         this._satelliteLotPlanOverlayV1 = null;
@@ -148,6 +148,7 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
       lotWidget.className = "satellite-lot-context-widget";
       lotWidget.hidden = true;
       lotWidget.setAttribute("aria-live", "polite");
+      lotWidget.setAttribute("role", "region");
       fit.append(lotWidget);
       const commonAreaWidget = document.createElement("aside");
       commonAreaWidget.className = "satellite-lot-context-widget satellite-common-area-context-widget";
@@ -165,27 +166,44 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
         const catalogMatches = REPASSE_PRICE_CATALOG.filter((item) => Number(item.lot) === Number(lotNumber));
         const match = catalogMatches.length === 1 ? catalogMatches[0] : null;
         const status = match ? appStore.get().lotStatuses?.[match.label] : null;
-        const price = match
-          ? formatBRL(match.price)
-          : catalogMatches.length
-          ? `${formatBRL(Math.min(...catalogMatches.map((item) => Number(item.price) || 0)))}–${formatBRL(Math.max(...catalogMatches.map((item) => Number(item.price) || 0)))}`
-          : "Consultar tabela";
+        const surveyedArea = Number(records.get(lotId)?.[5]);
+        const areaM2 = Number.isFinite(surveyedArea) && surveyedArea > 0
+          ? `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(surveyedArea)} m²`
+          : null;
+        const price = match ? formatBRL(match.price) : "Sem vínculo comercial inequívoco";
         lotWidget.dataset.lot = lotId;
         lotWidget.dataset.pinned = pinnedLotWidgetId === lotId ? "true" : "false";
+        lotWidget.setAttribute("aria-label", `Controles de ${match?.label || `Lote ${lotNumber}`}`);
         lotWidget.style.left = marker?.style.left || "50%";
         lotWidget.style.top = marker?.style.top || "50%";
         lotWidget.style.setProperty("--map-context-widget-left", lotWidget.style.left);
         lotWidget.style.setProperty("--map-context-widget-top", lotWidget.style.top);
         lotWidget.hidden = false;
-        lotWidget.innerHTML = `<header><span class="activity-kind">LOTE ${esc(lotNumber)}</span><button type="button" data-lot-widget-close aria-label="Fechar widget do lote">×</button></header><strong>${esc(match?.label || `Lote ${lotNumber}`)}</strong><dl><div><dt>Status</dt><dd>${esc(status?.status || "Disponível")}</dd></div><div><dt>Valor</dt><dd>${esc(price)}</dd></div>${match ? `<div><dt>Quadra</dt><dd>${esc(match.quadra)} · ${esc(match.area)} m²</dd></div>` : ""}</dl><footer><button type="button" data-lot-widget-assistant>${ico("message-circle")} Perguntar à IA</button>${match ? `<button type="button" data-lot-widget-open class="primary">Abrir ficha</button>` : `<button type="button" data-lot-widget-open class="primary">Abrir controle</button>`}</footer>`;
-        lotWidget.querySelector("[data-lot-widget-close]")?.addEventListener("click", () => {
+        lotWidget.innerHTML = `<header><span class="activity-kind">LOTE ${esc(lotNumber)}</span><div class="satellite-lot-widget-controls"><button type="button" data-lot-widget-pin aria-pressed="${pinnedLotWidgetId === lotId}" aria-label="${pinnedLotWidgetId === lotId ? "Desafixar" : "Fixar"} widget do lote" title="${pinnedLotWidgetId === lotId ? "Desafixar" : "Fixar"}">${ico("pin")}<span>${pinnedLotWidgetId === lotId ? "Fixado" : "Fixar"}</span></button><button type="button" data-lot-widget-close aria-label="Fechar widget do lote" title="Fechar">×</button></div></header><strong>${esc(match?.label || `Lote ${lotNumber}`)}</strong><dl><div><dt>Área</dt><dd>${esc(areaM2 || "Não informada")}</dd></div><div><dt>Status</dt><dd>${esc(status?.status || "Não informado")}</dd></div><div><dt>Valor</dt><dd>${esc(price)}</dd></div>${match ? `<div><dt>Quadra</dt><dd>${esc(match.quadra)}</dd></div>` : ""}</dl><footer><button type="button" data-lot-widget-assistant>${ico("message-circle")} Perguntar à IA</button>${match ? `<button type="button" data-lot-widget-open class="primary">Abrir ficha</button>` : `<button type="button" data-lot-widget-open class="primary">Abrir controle</button>`}</footer>`;
+        lotWidget.querySelector("[data-lot-widget-pin]")?.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          pinnedLotWidgetId = pinnedLotWidgetId === lotId ? "" : lotId;
+          lotWidget.dataset.pinned = pinnedLotWidgetId === lotId ? "true" : "false";
+          const pin = lotWidget.querySelector("[data-lot-widget-pin]");
+          const pinned = pinnedLotWidgetId === lotId;
+          pin?.setAttribute("aria-pressed", String(pinned));
+          pin?.setAttribute("aria-label", `${pinned ? "Desafixar" : "Fixar"} widget do lote`);
+          pin?.setAttribute("title", pinned ? "Desafixar" : "Fixar");
+          const pinLabel = pin?.querySelector("span");
+          if (pinLabel) pinLabel.textContent = pinned ? "Fixado" : "Fixar";
+        });
+        lotWidget.querySelector("[data-lot-widget-close]")?.addEventListener("click", (event) => {
+          event.stopPropagation();
           pinnedLotWidgetId = "";
           lotWidget.hidden = true;
         });
         lotWidget.querySelector("[data-lot-widget-assistant]")?.addEventListener("click", () => {
+          event.stopPropagation();
           prepareAssistantLotStatusPromptV1(`Lote ${lotNumber}`);
         });
         lotWidget.querySelector("[data-lot-widget-open]")?.addEventListener("click", () => {
+          event.stopPropagation();
           if (match) {
             appStore.set({ view: "lot-detail", selectedLotDetailKey: match.label, lastAction: `Abriu a ficha do lote ${match.label} pelo mapa` });
             return;
@@ -240,6 +258,13 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
         ]),
       );
       const masterplanOverlay = surface.querySelector("[data-admin-masterplan-overlay]");
+      if (masterplanOverlay && this.hasAttribute("data-public-static-only") && globalThis.innerWidth <= 700) {
+        // Keep mobile detail cards outside the zoomed layer, but inside the
+        // map viewport. A fixed card inside a transformed fit inherits its
+        // oversized coordinate space and clips its area/actions on Android.
+        surface.append(lotWidget, commonAreaWidget);
+      }
+      const renderDomMarkers = !masterplanOverlay && Boolean(markers || this._satelliteLotPlanRequestedMarkersV1);
       let markerOverrides = {};
       try {
         const stored = JSON.parse(localStorage.getItem("belavista.map.lot-marker-overrides.v1") || "{}");
@@ -280,6 +305,17 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
           return { ...ADMIN_MASTERPLAN_SATELLITE_FRAME_V1 };
         }
       })();
+      if (masterplanOverlay && usesGreenLotMapping) {
+        this.paintMasterplanLotLabelsV1?.([...greenMappingByLot.entries()].map(([lotId, mapping]) => {
+          const area = Number(records.get(lotId)?.[5]);
+          return {
+            number: String(mapping.number || lotNumberFor(lotId)).padStart(3, "0"),
+            u: Number(mapping.u),
+            v: Number(mapping.v),
+            areaM2: Number.isFinite(area) && area > 0 ? area : null,
+          };
+        }));
+      }
       layer.dataset.pdfLotEnumerationV1 = usesCanonicalTraceMarkers
         ? String(canonicalTraceMarkerByLot.size)
         : usesGreenLotMapping
@@ -381,8 +417,14 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
             this.dataset.selectedLotSource = "pdf-uv-hit-area";
             this.selectedLotIds = new Set([lotId]);
             surface.dataset.selectedLot = lotId;
-            showLotWidget(lotId, markerLayer.querySelector(`[data-lot="${lotId}"]`), { pinned: true });
-            prepareAssistantLotStatusPromptV1(label);
+            const anchor = greenMapping || officialMarkerByLot.get(lotId);
+            const position = anchor
+              ? masterplanMarkerPosition(anchor.u, anchor.v, masterplanFrame)
+              : { u: projected[0].u, v: projected[0].v };
+            showLotWidget(lotId, { style: {
+              left: `${(position.u * 100).toFixed(4)}%`,
+              top: `${(position.v * 100).toFixed(4)}%`,
+            } }, { pinned: true });
             path.dispatchEvent(new CustomEvent("belavista:lot-marker-selected", { bubbles: true, composed: true, detail: { lotId, label } }));
             appStore.set({ lastAction: `${label} selecionado no mapa` });
           });
@@ -395,7 +437,7 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
         }
         polygonGroup.append(path);
 
-        if (markers || this._satelliteLotPlanRequestedMarkersV1) {
+        if (renderDomMarkers) {
           // O centróide ponderado pela área fica dentro da geometria desenhada
           // na prancha PDF. A média simples dos vértices deslocava os números
           // em lotes de esquina e nos polígonos irregulares.
@@ -529,7 +571,7 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
       // Todos os números conferidos no PDF permanecem visíveis. Quando a
       // segmentação não cobre um lote, sua âncora vem do círculo original,
       // sem associar a ele o polígono de outro lote.
-      if ((markers || this._satelliteLotPlanRequestedMarkersV1) && (usesGreenLotMapping || usesCanonicalTraceMarkers)) {
+      if (renderDomMarkers && (usesGreenLotMapping || usesCanonicalTraceMarkers)) {
         const renderedLotIds = new Set(projectedLots.map(({ lotId }) => lotId));
         const fallbackEntries = usesGreenLotMapping
           ? [...greenMappingByLot.entries()]
@@ -608,6 +650,8 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
         const side = Math.max(rect.width, rect.height);
         fit.style.width = `${side}px`;
         fit.style.height = `${side}px`;
+        fit.style.maxWidth = "none";
+        fit.style.maxHeight = "none";
         fit.style.left = `${(rect.width - side) / 2}px`;
         fit.style.top = `${(rect.height - side) / 2}px`;
         syncContextWidgetScale();
@@ -696,6 +740,7 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
       };
       this.syncAdminMasterplanLotMarkersV1();
       svg.addEventListener("click", (event) => {
+        if (masterplanOverlay) return;
         if (event.defaultPrevented || this.classList.contains("is-admin-masterplan-editing")) return;
         if (event.target.closest(".satellite-lot-hit-area,.satellite-common-area-hit-area")) return;
         const rect = fit.getBoundingClientRect();
@@ -713,7 +758,7 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
       this.dataset.satelliteLotPlan = usesNativeMasterplanPolygons
         ? `${count} polígonos UV do masterplan · alinhados à arte v2`
         : `${count} polígonos PDF · ${PDF_LOT_TRACE_SATELLITE_ALIGNMENT_V1}`;
-      this.dataset.satelliteLotMarkers = (markers || this._satelliteLotPlanRequestedMarkersV1) ? String(count) : "delegados à camada pública";
+      this.dataset.satelliteLotMarkers = renderDomMarkers ? String(markerLayer.querySelectorAll(".satellite-lot-plan-marker").length) : "0 · rótulos no canvas";
       this._satelliteLotPlanInstallingV1 = false;
       this._satelliteLotPlanRequestedMarkersV1 = false;
       return count > 0;

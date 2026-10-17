@@ -1,7 +1,7 @@
 import { createBrokerWorkspaceStatsV1, createCommercialDealsForWorkspaceV1 } from "./commercial-scope-v1.mjs?v=commercial-scope-v2";
 import { createSalesHistoryPageV1, installCommercialHistoryPageEventsV1 } from "./sales-history-page-v1.mjs?v=sales-history-page-v1";
 import { createBrokerDetailPageV1 } from "./broker-detail-page-v1.mjs?v=broker-detail-page-v1";
-import { installSettingsCommercialWorkspaceV1 } from "./settings-commercial-workspace-v1.mjs?v=settings-commercial-workspace-v2";
+import { installSettingsCommercialWorkspaceV1 } from "./settings-commercial-workspace-v1.mjs?v=dynamic-access-roles-v1";
 
 /** Register the broker detail, sales history, and commercial settings views. */
 export const installCommercialHistoryRegistrationV1 = ({
@@ -16,6 +16,7 @@ export const installCommercialHistoryRegistrationV1 = ({
   contractStatusClassV1,
   brokerReasonsV9,
   executionModel,
+  apiFetch,
   brlToNumber,
   formatBRL,
   esc,
@@ -55,8 +56,8 @@ export const installCommercialHistoryRegistrationV1 = ({
   installCommercialHistoryPageEventsV1(ViewLayer, { appStore, windowRef });
   installSettingsCommercialWorkspaceV1(ViewLayer, {
     appStore,
-    brokerReasonsV9,
     executionModel,
+    apiFetch,
     esc,
     ico,
     notify,

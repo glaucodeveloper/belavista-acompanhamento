@@ -7,14 +7,25 @@ const makeStyle = () => ({
 });
 
 const makeLayer = () => {
-  const image = { style: {} };
-  const transform = { querySelector: () => image };
+  const drawnText = [];
+  const image = { style: {}, naturalWidth: 2048, naturalHeight: 2581, complete: true, addEventListener() {} };
+  const canvas = {
+    style: {}, dataset: {}, width: 0, height: 0,
+    getContext: () => ({
+      clearRect() {}, drawImage() {},
+      strokeText(text) { drawnText.push(text); },
+      fillText() {},
+    }),
+  };
+  const transform = { querySelector: (selector) => selector === '[data-masterplan-original-pdf]' ? image : canvas };
   const fit = { style: makeStyle() };
   return {
     className: "",
     dataset: {},
     attributes: {},
     image,
+    canvas,
+    drawnText,
     transform,
     fit,
     setAttribute(name, value) { this.attributes[name] = value; },
@@ -35,7 +46,7 @@ test("MapScene masterplan overlay preserves calibrated original artwork and resi
     createdObservers = [],
     imageRects = [],
     devToolsCalls = [],
-    document = { createElement: (tag) => { assert.equal(tag, "div"); return layer; } },
+    document = { body: { classList: { contains: () => false } }, createElement: (tag) => { assert.equal(tag, "div"); return layer; } },
     ResizeObserver = class {
       constructor(callback) { this.callback = callback; createdObservers.push(this); }
       observe(target) { observed.push(target); }
@@ -50,6 +61,7 @@ test("MapScene masterplan overlay preserves calibrated original artwork and resi
     }
     isAdminStandalone3DV5370() { return true; }
     isAdminPublicMapV1() { return false; }
+    hasAttribute() { return false; }
     querySelector(selector) { return selector === "[data-admin-masterplan-overlay]" ? this.overlay : null; }
     append(node) { this.overlay = node; this.appended.push(node); }
     getBoundingClientRect() { return this.dimensions; }
@@ -58,7 +70,7 @@ test("MapScene masterplan overlay preserves calibrated original artwork and resi
   }
 
   installAdminMasterplanOverlayV1(MapScene, {
-    artwork: { url: "/assets/masterplan-original.webp" },
+    artwork: { url: "/assets/masterplan-original.webp", legacyWidth: 2886, legacyHeight: 3468 },
     defaultFrame,
     masterplanPdfImageRect: (width, height) => {
       imageRects.push([width, height]);
@@ -79,10 +91,15 @@ test("MapScene masterplan overlay preserves calibrated original artwork and resi
   assert.equal(layer.fit.style.height, "640px");
   assert.equal(layer.fit.style.left, "0px");
   assert.equal(layer.fit.style.top, "-140px");
+  assert.equal(layer.fit.style.maxWidth, "none");
   assert.equal(layer.fit.style["--masterplan-left"], "25%");
   assert.equal(layer.fit.style["--masterplan-rotation"], "4deg");
-  assert.deepEqual(layer.image.style, { inset: "auto", objectFit: "fill", left: "-2px", top: "3px", width: "448px", height: "384px" });
-  assert.deepEqual(imageRects[0], [448, 384]);
+  assert.deepEqual(layer.canvas.style, { inset: "auto", left: "-2px", top: "3px", width: "448px", height: "384px" });
+  assert.equal(layer.canvas.dataset.masterplanCanvasReady, "true");
+  assert.equal(scene.paintMasterplanLotLabelsV1([{ number: "018", u: 0.5, v: 0.5, areaM2: 250 }]), true);
+  assert.deepEqual(layer.drawnText.slice(-2), ["018", "250 m²"]);
+  assert.equal(layer.canvas.dataset.masterplanLotLabels, "1");
+  assert.ok(imageRects.some(([width, height]) => width === 448 && height === 384));
   assert.equal(scene.dataset.adminMasterplanOverlay, "true");
   assert.match(scene.dataset.adminMasterplanAsset, /original PDF pixels/);
   assert.equal(observed[0], scene);

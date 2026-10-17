@@ -30,7 +30,7 @@ const nvidiaReasoningVisionModel = process.env.NVIDIA_REASONING_VISION_MODEL || 
 const nvidiaReasoningApiUrl = process.env.NVIDIA_REASONING_API_URL || nvidiaApiUrl;
 const nvidiaReasoningBudget = Math.max(256,Math.min(16384,Number(process.env.NVIDIA_REASONING_BUDGET)||2048));
 const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.glb':'model/gltf-binary','.pdf':'application/pdf','.xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'};
-const {health,entitySummary,listRecords,createRecord,createMaterialTransition,createFieldConfirmation,updateRecord,deleteRecord,listMaterials,createMaterial,updateMaterial,deleteMaterial,listAgendaEvents,saveAgendaSnapshot,createActivityAdmin,updateActivityAdmin,deleteActivityAdmin,listServiceRequests,getServiceRequest,createServiceRequest,updateServiceRequest,addServiceRequestFiles,getServiceRequestFile,listPurchaseReceipts,purchaseReceiptSummary,createPurchaseReceipt,getPurchaseReceiptFile,deletePurchaseReceipt,listCommercialSales,createCommercialSale,updateCommercialSale,getCommercialSaleFile,deleteCommercialSale,listCashFlowEntries,createCashFlowEntry,addCashFlowAttachment,getCashFlowAttachment,cashFlowSummary,listCommissionReasons,updateCommissionReason,listOutsourcingReceipts,createOutsourcingReceipt,getOutsourcingReceiptFile,listLeadMessages,createLeadMessage,getDesktopSetup,saveDesktopSetup,ingestInstagramDirect,listInstagramLeadReports,getInstagramLeadReport,listStagesAdmin,getStageAdmin,createStageAdmin,updateStageAdmin,saveStageActivitiesAdmin,saveStageAiConfig,getStageReport,getStageWorkbenchState,saveStageWorkbenchState,listWorkbenchActivityLocations,listWorkbenchDiary,createWorkbenchDiary,listWorkbenchAttachments,createWorkbenchAttachment,getWorkbenchAttachmentFile,deleteWorkbenchAttachment,initializeDevelopmentSeed}=await import('./persistence.mjs');
+const {health,entitySummary,listRecords,createRecord,createMaterialTransition,createFieldConfirmation,updateRecord,deleteRecord,listMaterials,createMaterial,updateMaterial,deleteMaterial,listAgendaEvents,saveAgendaSnapshot,createActivityAdmin,updateActivityAdmin,deleteActivityAdmin,listServiceRequests,getServiceRequest,createServiceRequest,updateServiceRequest,addServiceRequestFiles,getServiceRequestFile,listPurchaseReceipts,purchaseReceiptSummary,createPurchaseReceipt,getPurchaseReceiptFile,deletePurchaseReceipt,listCommercialSales,createCommercialSale,updateCommercialSale,getCommercialSaleFile,deleteCommercialSale,listCashFlowEntries,createCashFlowEntry,updateRepasseEntryV1,deleteRepasseEntryV1,addCashFlowAttachment,getCashFlowAttachment,cashFlowSummary,listCommissionReasons,updateCommissionReason,listRepasseOperationsV1,saveRepasseBrokerRuleV1,deleteRepasseBrokerRuleV1,saveRepasseSalePlanV1,deleteRepasseSalePlanV1,listOutsourcingReceipts,createOutsourcingReceipt,getOutsourcingReceiptFile,listLeadMessages,createLeadMessage,getDesktopSetup,saveDesktopSetup,getAtlasLeadContactSettings,saveAtlasLeadContactSettings,ingestInstagramDirect,listInstagramLeadReports,getInstagramLeadReport,listStagesAdmin,getStageAdmin,createStageAdmin,updateStageAdmin,deleteStageAdmin,saveStageActivitiesAdmin,saveStageAiConfig,getStageReport,getStageWorkbenchState,saveStageWorkbenchState,listWorkbenchActivityLocations,listWorkbenchDiary,createWorkbenchDiary,listWorkbenchAttachments,createWorkbenchAttachment,getWorkbenchAttachmentFile,deleteWorkbenchAttachment,initializeDevelopmentSeed}=await import('./persistence.mjs');
 const {ServerInitializationProgramV1,driveServerInitializationProgramV1}=await import('./bootstrap/server-initialization-program-v1.mjs');
 await driveServerInitializationProgramV1(ServerInitializationProgramV1.program(),{
   'initialize-clean-development-database':()=>initializeDevelopmentSeed(),
@@ -38,6 +38,8 @@ await driveServerInitializationProgramV1(ServerInitializationProgramV1.program()
 });
 const {agentTree,evaluateAgentTree}=await import('./agent-tree.js');
 const {requestActor,requireRoles,authStatus}=await import('./auth-service.mjs');
+const {openGithubSession,actorFromGithubSession,revokeGithubSession,
+  listForemanAccessKeys,createForemanAccessKey,revokeForemanAccessKey}=await import('./github-session-store.mjs');
 const {limitedActorCanAccessApi}=await import('./api-access-policy.mjs');
 const {getCalibration,updateCalibration,recordAgentEvent,recalculateOperationalState,latestOperationalState,listNotifications,acknowledgeNotification,registerDevice,buildAutomationPanorama,runAutomationPlanner,runOperationalLoop,buildWorkerMonitor,markEventProcessed}=await import('./operational-engine.mjs');
 const {getProductionBaseline,getProductionPlan}=await import('./production-planning.mjs');
@@ -174,12 +176,45 @@ function inferredToolCalls(message){
 async function body(req,maxBytes=16_000_000){ let data='',size=0; for await (const chunk of req){size+=chunk.length;if(size>maxBytes){const error=new Error('Corpo da requisição excede o limite permitido.');error.statusCode=413;throw error;}data+=chunk;} return JSON.parse(data||'{}'); }
 async function rawBody(req,maxBytes=16_000_000){ const chunks=[]; let size=0; for await (const chunk of req){size+=chunk.length;if(size>maxBytes){const error=new Error('Corpo da requisição excede o limite permitido.');error.statusCode=413;throw error;}chunks.push(chunk);} return Buffer.concat(chunks); }
 const recordRoles=['owner','admin','foreman','sales','commercial','broker','corretor'];
-const limitedApiPublicPaths=new Set(['/api/health','/api/runtime','/api/ai/status','/api/inference/status','/api/ai/tools','/api/public/catalog']);
+const limitedApiPublicPaths=new Set(['/api/health','/api/runtime','/api/ai/status','/api/inference/status','/api/ai/tools','/api/public/catalog','/api/auth/session']);
 async function authorizeApiSurface(req,pathname){
   if(!pathname.startsWith('/api/')||limitedApiPublicPaths.has(pathname)||pathname.startsWith('/api/public/'))return;
   const actor=await requestActor(req);
   const url=new URL(req.url,'http://localhost');
   if(!limitedActorCanAccessApi(actor,pathname,req.method,url.search))throw Object.assign(new Error('Este perfil só pode acessar registros e a linha do tempo do cronograma.'),{statusCode:403});
+}
+async function githubAuthApi(req,res,pathname){
+  if(authStatus().mode!=='github-pat')return send(res,503,{error:'Autenticação por PAT não está ativa.'});
+  const token=String(req.headers.authorization||'').match(/^Bearer\s+(.+)$/i)?.[1];
+  if(pathname==='/api/auth/session'){
+    if(req.method==='POST'){
+      const payload=await body(req,2048);
+      return send(res,201,await openGithubSession(payload.pat),{'Cache-Control':'no-store'});
+    }
+    if(req.method==='GET')return send(res,200,{actor:await actorFromGithubSession(token)},{'Cache-Control':'no-store'});
+    if(req.method==='DELETE'){
+      await actorFromGithubSession(token);
+      await revokeGithubSession(token);
+      return send(res,200,{ok:true},{'Cache-Control':'no-store'});
+    }
+    return send(res,405,{error:'Método não permitido.'});
+  }
+  return send(res,404,{error:'Recurso de autenticação não encontrado.'});
+}
+async function foremanAccessKeysApi(req,res,pathname){
+  const actor=await requestActor(req);
+  if(actor.role!=='owner'||actor.userType==='foreman')return send(res,403,{error:'Somente a chave PTA administradora pode gerenciar chaves delegadas.'});
+  if(pathname==='/api/access-keys'&&req.method==='GET')return send(res,200,{keys:listForemanAccessKeys(actor.githubId)},{'Cache-Control':'no-store'});
+  if(pathname==='/api/access-keys'&&req.method==='POST'){
+    const payload=await body(req,2048),key=await createForemanAccessKey({githubId:actor.githubId,label:payload.label,permissions:payload.permissions,createdBy:actor.githubLogin});
+    return send(res,201,{key},{'Cache-Control':'no-store'});
+  }
+  const match=pathname.match(/^\/api\/access-keys\/([^/]+)$/);
+  if(match&&req.method==='DELETE'){
+    const id=decodeURIComponent(match[1]);
+    return revokeForemanAccessKey(actor.githubId,id)?send(res,200,{ok:true,id}):send(res,404,{error:'Chave não encontrada ou já revogada.'});
+  }
+  return send(res,405,{error:'Método não permitido.'});
 }
 function inferenceTokens(value){return String(value||'').toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').split(/[^a-z0-9]+/).filter(token=>token.length>2);}
 const productionBasisLabels={volume:'Volume executado',area:'Área executada',comprimento:'Comprimento executado',contagem:'Itens ou unidades executados',registro:'Registro confirmado'};
@@ -190,20 +225,21 @@ function stageInputProduction(payload={},activity={}){
   const durationFormula=`duração (dias úteis) = teto(quantidade total ÷ ritmo ajustado de ${rateUnit})`;
   return {basis,basisLabel:productionBasisLabels[basis]||productionBasisLabels.registro,unit,measureForm:String(operationalProduction.method||`Registrar produção em ${unitLabel}, por frente/local e por data, com confirmação do responsável.`),quantityFormula:String(operationalProduction.formula||quantityFormula),durationFormula,referenceRate,rateUnit,referenceDescription:String(operationalProduction.rate||`${referenceRate||'—'} ${rateUnit}`),totalQuantity:Number(plan.totalQuantity)||0,source:'DWG + plano de produção local',captureFields:['quantidade executada',`unidade (${unitLabel})`,'data do registro','frente/local','responsável','evidência'],validation:Array.isArray(operational.acceptance)&&operational.acceptance.length?operational.acceptance.join(' · '):'Somente registros confirmados entram na soma; a IA sugere e o perfil autorizado confirma.'};
 }
+const activityMaterialLabel=item=>typeof item==='string'?item:[item?.name||item?.title,item?.description||item?.scope,item?.usage||item?.use].map(value=>String(value||'').trim()).filter(Boolean).join(' — ');
 function stageInputConditions(payload={},activity={},production=stageInputProduction(payload,activity)){
-  const operational=activity.operational&&typeof activity.operational==='object'?activity.operational:payload.operational&&typeof payload.operational==='object'?payload.operational:{},source=`${activity.title||payload.title||''} ${payload.text||''} ${activity.release||payload.release||''} ${(activity.materials||payload.materials||[]).join(' ')} ${(operational.entryConditions||[]).join(' ')} ${(operational.conditions||[]).join(' ')}`.toLocaleLowerCase('pt-BR'),release=String(activity.release||payload.release||'').trim(),materials=Array.isArray(activity.materials)?activity.materials.map(String).filter(Boolean):Array.isArray(payload.materials)?payload.materials.map(String).filter(Boolean):[];
+  const operational=activity.operational&&typeof activity.operational==='object'?activity.operational:payload.operational&&typeof payload.operational==='object'?payload.operational:{},materials=Array.isArray(activity.materials)?activity.materials:Array.isArray(payload.materials)?payload.materials:[],materialLabels=materials.map(activityMaterialLabel).filter(Boolean),source=`${activity.title||payload.title||''} ${payload.text||''} ${activity.release||payload.release||''} ${materialLabels.join(' ')} ${(operational.entryConditions||[]).join(' ')} ${(operational.conditions||[]).join(' ')}`.toLocaleLowerCase('pt-BR'),release=String(activity.release||payload.release||'').trim();
   const conditions=[{id:'yield-below-reference',kind:'rendimento',label:'Rendimento abaixo do ritmo',trigger:`disparar quando um registro confirmado ficar abaixo de ${production.referenceDescription||`${production.referenceRate||'—'} ${production.rateUnit||''}`} ou vier bloqueado`,notifyWhen:'production-below-reference',metric:{operator:'lt',value:production.referenceRate,unit:production.rateUnit},notifyRoles:['owner'],severity:'warning',message:'O rendimento confirmado ficou abaixo do ritmo de referência; revisar caixa, equipe, máquina e frente.'}];
   const soilTerms=['solo','greide','cota','fundo','chuva','lama','umidade','terraplanagem'];
   conditions.push({id:'soil-or-field',kind:'solo',label:'Condição de solo e campo',trigger:source.match(/solo|greide|cota|fundo|chuva|lama|umidade/)?'disparar quando o registro indicar solo, greide, cota ou condição de campo impedindo a execução':'confirmar solo, greide e cotas antes de liberar a produção',watchTerms:soilTerms,negativeTerms:['bloqueado','impedido','inadequado','atraso','chuva','lama','umidade','não','nao','pendente'],notifyWhen:'negative-match',notifyRoles:['owner','foreman'],severity:'warning',message:'Condição de solo/campo requer decisão antes de manter a atividade no cronograma.'});
   if(release)conditions.push({id:'task-dependency',kind:'dependencia',label:'Dependência de outra atividade',trigger:`disparar se o requisito “${release}” estiver pendente, recusado ou bloqueando`,watchTerms:inferenceTokens(release),negativeTerms:['bloqueado','impedido','pendente','aguardando','recusado','não','nao','atraso'],notifyWhen:'negative-match',notifyRoles:['owner','foreman'],severity:'info',message:`A atividade depende do requisito de saída: ${release}.`});
-  if(materials.length)conditions.push({id:'material-readiness',kind:'material',label:'Material necessário',trigger:`disparar se faltar ou atrasar: ${materials.join(', ')}`,watchTerms:materials.flatMap(inferenceTokens),negativeTerms:['falta','faltando','sem','atrasado','atraso','indisponivel','indisponível','pendente'],notifyWhen:'negative-match',notifyRoles:['owner','foreman'],severity:'warning',message:`Material necessário para a atividade: ${materials.join(', ')}.`});
+  if(materialLabels.length)conditions.push({id:'material-readiness',kind:'material',label:'Material necessário',trigger:`disparar se faltar ou atrasar: ${materialLabels.join(', ')}`,watchTerms:materialLabels.flatMap(inferenceTokens),negativeTerms:['falta','faltando','sem','atrasado','atraso','indisponivel','indisponível','pendente'],notifyWhen:'negative-match',notifyRoles:['owner','foreman'],severity:'warning',message:`Material necessário para a atividade: ${materialLabels.join(', ')}.`});
   const configured=Array.isArray(operational.conditions)?operational.conditions.map((condition,index)=>({id:`operational-${index+1}`,kind:'operacional',label:'Condição operacional',trigger:String(condition),notifyWhen:'operational-match',notifyRoles:['owner','foreman'],severity:'info',message:String(condition)})):[];
   return [...conditions,...configured].slice(0,8);
 }
 function stageInputStructured(payload={},activity={}){
   const production=stageInputProduction(payload,activity),conditions=stageInputConditions(payload,activity,production);
   const operational=activity.operational&&typeof activity.operational==='object'?activity.operational:payload.operational&&typeof payload.operational==='object'?payload.operational:{};
-  return {production,conditions,operational:{responsibility:operational.responsibility||{},entryConditions:operational.entryConditions||[],procedure:operational.procedure||[],evidence:operational.evidence||[],acceptance:operational.acceptance||[],outputs:operational.outputs||[]},notificationPolicy:{enabled:payload.automation?.notifyWorker!==false,mode:'pseudo-listener',trigger:'structured-condition-match',primaryRecipient:'owner',deduplicateBy:'stage/activity/condition/event',externalMessaging:'disabled'}};
+  return {production,conditions,operational:{responsibility:operational.responsibility||{},entryConditions:operational.entryConditions||[],procedure:operational.procedure||[],materials,evidence:operational.evidence||[],acceptance:operational.acceptance||[],outputs:operational.outputs||[]},notificationPolicy:{enabled:payload.automation?.notifyWorker!==false,mode:'pseudo-listener',trigger:'structured-condition-match',primaryRecipient:'owner',deduplicateBy:'stage/activity/condition/event',externalMessaging:'disabled'}};
 }
 function inferStageInput(payload={}){
   if(Array.isArray(payload.properties)&&payload.properties.length){
@@ -211,8 +247,8 @@ function inferStageInput(payload={}){
     payload.text=`${String(payload.text||payload.message||'').trim()}\nPropriedades dinâmicas: ${propertyContext}`;
   }
   const source=String(payload.text||payload.message||'').trim(),currentId=String(payload.activityId||''),currentTitle=String(payload.title||'Atividade em análise').trim()||'Atividade em análise';
-  const activities=Array.isArray(payload.activities)?payload.activities.slice(0,40).map(item=>({id:String(item?.id||''),title:String(item?.title||''),unit:String(item?.unit||''),release:String(item?.release||''),materials:Array.isArray(item?.materials)?item.materials.map(String):[],operational:item?.operational&&typeof item.operational==='object'?item.operational:null})).filter(item=>item.id&&item.title):[];
-  const currentActivity=activities.find(item=>item.id===currentId)||{id:currentId,title:currentTitle,unit:String(payload.unit||''),release:String(payload.release||''),materials:Array.isArray(payload.materials)?payload.materials.map(String):[],operational:payload.operational&&typeof payload.operational==='object'?payload.operational:null};
+  const activities=Array.isArray(payload.activities)?payload.activities.slice(0,40).map(item=>({id:String(item?.activityId||item?.id||''),title:String(item?.title||''),unit:String(item?.unit||''),release:String(item?.release||''),materials:Array.isArray(item?.materials)?item.materials.map(activityMaterialLabel).filter(Boolean):[],operational:item?.operational&&typeof item.operational==='object'?item.operational:null})).filter(item=>item.id&&item.title):[];
+  const currentActivity=activities.find(item=>item.id===currentId)||{id:currentId,title:currentTitle,unit:String(payload.unit||''),release:String(payload.release||''),materials:Array.isArray(payload.materials)?payload.materials.map(activityMaterialLabel).filter(Boolean):[],operational:payload.operational&&typeof payload.operational==='object'?payload.operational:null};
   const structured=stageInputStructured(payload,currentActivity);
   const textTokens=new Set(inferenceTokens(`${currentTitle} ${source}`));
   const explicit=activities.find(item=>item.id!==currentId&&source.toLocaleLowerCase('pt-BR').includes(item.title.toLocaleLowerCase('pt-BR')));
@@ -249,7 +285,7 @@ async function workbenchInferenceApi(req,res){
       model=await runOperationalAssistant(modelEnv,{view:'stage-input-inference',message:`Classifique esta entrada de atividade de obra. Preserve a relação determinística fornecida e, se houver evidência textual mais forte, proponha relatedActivityId e relationLabel. Responda em JSON curto com text, relatedActivityId, relationLabel e confidence. Não remova nem invente production, conditions, operational ou notificationPolicy: esses blocos são estruturados pelo motor local. Entrada: ${base.sourceText}. Atividade atual: ${payload.title||payload.activityId}. Atividades candidatas: ${JSON.stringify(payload.activities||[])}. Relação determinística: ${JSON.stringify(base.relation||null)}. Produção estruturada: ${JSON.stringify(base.production)}. Operação, responsabilidades e aceite: ${JSON.stringify(base.operational)}. Condições estruturadas: ${JSON.stringify(base.conditions)}`,context:{stage:payload.stage||'',currentActivityId:payload.activityId||'',deterministic:base}});
     }catch(error){model={error:error.message};}
   }
-  const allowed=new Set((payload.activities||[]).map(item=>String(item?.id||'')));
+  const allowed=new Set((payload.activities||[]).map(item=>String(item?.activityId||item?.id||'')));
   const modelRelationId=allowed.has(String(model?.relatedActivityId||''))?String(model.relatedActivityId):base.relatedActivityId;
   const modelLabel=String(model?.relationLabel||'').trim();
   const result={...base,modelText:String(model?.text||'').trim()||null,provider:model?.provider==='nvidia-api'?'nvidia-api':base.provider};
@@ -265,15 +301,15 @@ function operationalPrompt(message,view,mapContext,context={},instruction='',req
 FONTE OPERACIONAL OBRIGATÓRIA — siga o documento abaixo como protocolo de execução, produção, equipe, materiais, cronograma e propagação. O documento é a fonte única da ordem das atividades; se um dado do estado entrar em conflito com ele, sinalize a divergência e peça validação humana.\n${aiConstructionDocument.slice(0,30000)}
 
 BASE DWG CALCULADA PELO MOTOR (JSON): ${dwgSnapshot.slice(0,9000)}
-Estado resumido da sessão: ${JSON.stringify(context).slice(0,5000)}. Contexto específico do disparo: ${JSON.stringify(requestContext||{}).slice(0,3000)}. ${interpretationPolicy} Dados gerais disponíveis: 2 etapas atrasadas, 3 compras críticas, completude de 63%, 28 colaboradores, inventário de R$ 1.842.560,45. Não invente dados fora desse contexto. INSTRUÇÃO OPERACIONAL PERMANENTE: ${OPERATIONAL_CHAT_EXECUTION_POLICY_V1} INSTRUÇÃO ENVIADA NESTA REQUISIÇÃO: ${String(instruction||OPERATIONAL_CHAT_EXECUTION_POLICY_V1).slice(0,5000)}. Quando a pessoa pedir uma ação disponível, responda SOMENTE com JSON válido no formato {"reply":"texto curto","toolCalls":[{"name":"ferramenta","arguments":{}}]}. Ferramentas permitidas: ${available}. Nunca sugira ferramenta inexistente. ui.print apenas deve ser solicitado, nunca confirmado como já impresso. Para pergunta somente informativa, use {"reply":"...","toolCalls":[]}. Se o fato for completamente externo ao sistema, não invente ação: peça o documento/evidência e use toolCalls vazio. Pergunta: ${message}`;
+Estado resumido da sessão: ${JSON.stringify(context).slice(0,5000)}. Contexto específico do disparo: ${JSON.stringify(requestContext||{}).slice(0,3000)}. ${interpretationPolicy} Não invente métricas ou dados que não constem das fontes operacionais recebidas nesta requisição. INSTRUÇÃO OPERACIONAL PERMANENTE: ${OPERATIONAL_CHAT_EXECUTION_POLICY_V1} INSTRUÇÃO ENVIADA NESTA REQUISIÇÃO: ${String(instruction||OPERATIONAL_CHAT_EXECUTION_POLICY_V1).slice(0,5000)}. Quando a pessoa pedir uma ação disponível, responda SOMENTE com JSON válido no formato {"reply":"texto curto","toolCalls":[{"name":"ferramenta","arguments":{}}]}. Ferramentas permitidas: ${available}. Nunca sugira ferramenta inexistente. ui.print apenas deve ser solicitado, nunca confirmado como já impresso. Para pergunta somente informativa, use {"reply":"...","toolCalls":[]}. Se o fato for completamente externo ao sistema, não invente ação: peça o documento/evidência e use toolCalls vazio. Pergunta: ${message}`;
 }
-async function gemini(req,res){
+async function gemini(req,res,payloadOverride=null,delegated=false){
   if(!process.env.GEMINI_API_KEY) return send(res,503,{error:'GEMINI_API_KEY não configurada no servidor.'});
-  const {message,view='assistant',mapContext=false,attachment=null,context={},instruction='',requestContext=null,jevDecision=null,systemModel=null}=await body(req);
+  const {message,view='assistant',mapContext=false,attachment=null,context={},instruction='',requestContext=null,jevDecision=null,systemModel=null}=payloadOverride||await body(req);
   if(typeof message!=='string'||!message.trim()) return send(res,400,{error:'Mensagem inválida.'});
   const image=attachment?normalizeNvidiaImageAttachment(attachment):null;
   if(attachment&&!image)return send(res,400,{error:'Imagem inválida. Use PNG, JPEG ou WEBP de até 6 MB.'});
-  const recordOcr=image?await extractInstantRecordOcr(process.env,{attachment:{...attachment,mimeType:image.mimeType,dataUrl:image.dataUrl},context:{userDescription:message,stages:context?.stages||[],selectedStageKey:context?.selectedStageKey||'',selectedStageName:context?.selectedStageName||''}}).catch(error=>({error:String(error?.message||error),reviewRequired:true})):null;
+  const recordOcr=image?await extractRecordOcr({attachment:{...attachment,mimeType:image.mimeType,dataUrl:image.dataUrl},context:{userDescription:message,stages:context?.stages||[],selectedStageKey:context?.selectedStageKey||'',selectedStageName:context?.selectedStageName||''}}).catch(error=>({error:String(error?.message||error),reviewRequired:true})):null;
   const recordInterpretation=image?buildRecordInterpretationV1({message,stages:context?.stages,selectedStageKey:context?.selectedStageKey,recordOcr}):context?.recordInterpretation||null;
   const modelContext=recordInterpretation?{...context,recordInterpretation}:context;
   const modelRequestContext=recordInterpretation?{...(requestContext||{}),recordInterpretation}:requestContext;
@@ -285,7 +321,7 @@ async function gemini(req,res){
   const json=await upstream.json();
   if(!upstream.ok) return send(res,502,{error:json?.error?.message||'Gemini recusou a solicitação.'});
   const result=parseToolEnvelope(json?.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'Gemini não retornou texto.');
-  result.toolCalls=mergeToolCalls(result.toolCalls,inferredToolCalls(message));
+  result.toolCalls=delegated?[]:mergeToolCalls(result.toolCalls,inferredToolCalls(message));
   return send(res,200,{...result,provider:'gemini',model:geminiModel,vision:Boolean(image),recordOcr,attachment:image?{name:String(attachment?.name||'imagem'),mimeType:image.mimeType,stored:false,storage:'local-ephemeral'}:null,inference:{protocol:'belavista-operational-inference/v1',endpoint:new URL(req.url||'','http://localhost').pathname,systemModel,systemRuntime:'open-jev',jev:jevDecision}});
 }
 function normalizeNvidiaImageAttachment(attachment){
@@ -296,6 +332,20 @@ function normalizeNvidiaImageAttachment(attachment){
   const base64=match[2].replace(/\s+/g,'');
   if(!base64||base64.length>8_400_000)return null;
   return {mimeType,dataUrl:`data:${mimeType};base64,${base64}`};
+}
+async function extractRecordOcr(input){
+  if(!process.env.NVIDIA_API_KEY)return extractLocalRecordOcr(input);
+  try{return await extractInstantRecordOcr(process.env,input);}
+  catch(error){
+    if(Number(error?.statusCode||0)<500)throw error;
+    try{
+      const local=await extractLocalRecordOcr(input);
+      return {...local,fallbackFrom:'nvidia-unavailable'};
+    }catch(localError){
+      error.message=`${error.message} OCR local também falhou: ${localError.message}`;
+      throw error;
+    }
+  }
 }
 function receiptMaterialAllocationCalls(recordOcr,recordInterpretation){
   const documentType=String(recordOcr?.documentType||'');
@@ -320,9 +370,9 @@ function receiptMaterialAllocationCalls(recordOcr,recordInterpretation){
     .filter(Boolean)
     .slice(0,4);
 }
-async function nvidia(req,res){
+async function nvidia(req,res,payloadOverride=null,delegated=false){
   if(!process.env.NVIDIA_API_KEY) return send(res,503,{error:'NVIDIA_API_KEY não configurada no servidor.'});
-  const {message,view='assistant',mapContext=false,attachment=null,context={},instruction='',requestContext=null,jevDecision=null,systemModel=null}=await body(req);
+  const {message,view='assistant',mapContext=false,attachment=null,context={},instruction='',requestContext=null,jevDecision=null,systemModel=null}=payloadOverride||await body(req);
   const requestPath=new URL(req.url||'','http://localhost').pathname;
   const reasoningVision=requestPath==='/api/ai/vision-reasoning'||(requestPath==='/api/inference'&&Boolean(attachment));
   if(reasoningVision&&!attachment)return send(res,400,{error:'A rota de reasoning exige uma imagem.'});
@@ -330,7 +380,7 @@ async function nvidia(req,res){
   const image=attachment?normalizeNvidiaImageAttachment(attachment):null;
   if(attachment&&!image)return send(res,400,{error:'Imagem inválida. Use PNG, JPEG ou WEBP de até 6 MB.'});
   const requestMessage=typeof message==='string'&&message.trim()?message:'Analise a imagem anexada e descreva os fatos visíveis e seus impactos operacionais.';
-  const recordOcr=image?await extractInstantRecordOcr(process.env,{attachment:{...attachment,mimeType:image.mimeType,dataUrl:image.dataUrl},context:{userDescription:requestMessage,stages:context?.stages||[],selectedStageKey:context?.selectedStageKey||'',selectedStageName:context?.selectedStageName||''}}).catch(error=>({error:String(error?.message||error),reviewRequired:true})):null;
+  const recordOcr=image?await extractRecordOcr({attachment:{...attachment,mimeType:image.mimeType,dataUrl:image.dataUrl},context:{userDescription:requestMessage,stages:context?.stages||[],selectedStageKey:context?.selectedStageKey||'',selectedStageName:context?.selectedStageName||''}}).catch(error=>({error:String(error?.message||error),reviewRequired:true})):null;
   const recordInterpretation=image?buildRecordInterpretationV1({message:requestMessage,stages:context?.stages,selectedStageKey:context?.selectedStageKey,recordOcr}):context?.recordInterpretation||null;
   const receiptAllocations=receiptMaterialAllocationCalls(recordOcr,recordInterpretation);
   const attachmentRef=image?{id:`IMG-LOCAL-${Date.now().toString(36).toUpperCase()}`,name:String(attachment?.name||'imagem'),mimeType:image.mimeType,sizeBytes:Math.floor(image.dataUrl.split(',')[1].length*3/4),stored:false,storage:'local-ephemeral',reference:'local://ai-attachment',warning:'O servidor local aguarda a tela persistir o original junto ao registro.'}:null;
@@ -339,7 +389,7 @@ async function nvidia(req,res){
   // a pessoa com uma segunda chamada ao modelo que apenas repetiria esses dados.
   if(reasoningVision&&receiptAllocations.length)return send(res,200,{
     text:`OCR concluído: ${receiptAllocations.length} material(is) proposto(s) para ${recordInterpretation.explicitStage.name}, pendente(s) de revisão humana.`,
-    toolCalls:receiptAllocations,provider:'nvidia',model:recordOcr?.model||nvidiaVisionModel,vision:true,reasoning:false,
+    toolCalls:delegated?[]:receiptAllocations,provider:recordOcr?.provider||'nvidia',model:recordOcr?.model||nvidiaVisionModel,vision:true,reasoning:false,
     recordOcr,ocrAllocation:'deterministic-from-vision-ocr',visionPipeline:{ocrModel:recordOcr?.model||null,ocrImageSent:true,assistantImageSent:false,assistantModel:null},
     attachmentAccepted:Boolean(image),attachment:attachmentRef,attachmentStorage:'local-ephemeral',inference:{protocol:'belavista-operational-inference/v1',endpoint:requestPath,systemModel,systemRuntime:'open-jev',jev:jevDecision}
   });
@@ -384,7 +434,7 @@ async function nvidia(req,res){
   const json=await upstream.json();
   if(!upstream.ok) return send(res,502,{error:json?.detail||json?.message||json?.error?.message||'NVIDIA NIM recusou a solicitação.'});
   const result=parseToolEnvelope(json?.choices?.[0]?.message?.content||'NVIDIA NIM não retornou texto.');
-  result.toolCalls=mergeToolCalls(result.toolCalls,inferredToolCalls(requestMessage));
+  result.toolCalls=delegated?[]:mergeToolCalls(result.toolCalls,inferredToolCalls(requestMessage));
   return send(res,200,{...result,provider:'nvidia',model,endpoint,vision:Boolean(image),reasoning:Boolean(image&&reasoningVision),recordOcr,visionPipeline:image?{ocrModel:recordOcr?.model||null,ocrImageSent:true,assistantImageSent:assistantReceivesImage,assistantModel:model}:null,attachmentAccepted:Boolean(image),attachment:attachmentRef,attachmentStorage:'local-ephemeral',inference:{protocol:'belavista-operational-inference/v1',endpoint:requestPath,systemModel,systemRuntime:'open-jev',jev:jevDecision}});
 }
 function minicpmOperationalPrompt(message,view,context){
@@ -392,30 +442,39 @@ function minicpmOperationalPrompt(message,view,context){
   try{compactContext=JSON.stringify(context||{}).slice(0,2200);}catch{}
   return `Você é o assistente operacional do empreendimento Aliança Park. Responda em português do Brasil. Não invente fatos nem confirme ações executadas. Para perguntas informativas, retorne JSON válido {"reply":"resposta","toolCalls":[]}. Contexto da tela: ${String(view||'assistant').slice(0,80)}. Estado disponível (resumido): ${compactContext}. Pedido: ${String(message||'').trim().slice(0,1200)}`;
 }
-async function minicpm(req,res){
-  const {message,view='assistant',attachment=null,context={}}=await body(req);
+async function minicpm(req,res,payloadOverride=null,delegated=false){
+  const {message,view='assistant',attachment=null,context={}}=payloadOverride||await body(req);
   if(typeof message!=='string'||!message.trim())return send(res,400,{error:'Mensagem inválida.'});
   if(attachment?.dataUrl){
     const image=normalizeNvidiaImageAttachment(attachment);
     if(!image)return send(res,400,{error:'Imagem inválida. Use PNG, JPEG ou WEBP de até 6 MB.'});
     const input={attachment:{...attachment,...image},context:{userDescription:message,stages:context?.stages||[],selectedStageKey:context?.selectedStageKey||'',selectedStageName:context?.selectedStageName||''}};
-    const recordOcr=process.env.NVIDIA_API_KEY?await extractInstantRecordOcr(process.env,input):await extractLocalRecordOcr(input);
+    const recordOcr=await extractRecordOcr(input);
     const interpretation=buildRecordInterpretationV1({message,stages:context?.stages,selectedStageKey:context?.selectedStageKey,recordOcr});
     const toolCalls=receiptMaterialAllocationCalls(recordOcr,interpretation);
     const reply=toolCalls.length?`OCR concluído: ${toolCalls.length} material(is) proposto(s) para ${interpretation.explicitStage.name}, pendente(s) de revisão humana.`:'OCR concluído. Revise os dados da nota e indique a etapa de destino antes de alocar o material.';
-    return send(res,200,{reply,text:reply,toolCalls,provider:recordOcr.provider,model:recordOcr.model,vision:true,reasoning:false,recordOcr,attachmentAccepted:true,ocrAllocation:toolCalls.length?'deterministic-from-image-ocr':'awaiting-explicit-stage'});
+    return send(res,200,{reply,text:reply,toolCalls:delegated?[]:toolCalls,provider:recordOcr.provider,model:recordOcr.model,vision:true,reasoning:false,recordOcr,attachmentAccepted:true,ocrAllocation:toolCalls.length?'deterministic-from-image-ocr':'awaiting-explicit-stage'});
   }
   const upstream=await fetch(minicpmApiUrl,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({model:minicpmModel,messages:[{role:'system',content:'Responda apenas com JSON válido contendo reply e toolCalls. Não exponha raciocínio interno.'},{role:'user',content:minicpmOperationalPrompt(message,view,context)}],temperature:.15,max_tokens:500,stream:false}),signal:AbortSignal.timeout(120000)});
   const json=await upstream.json();
   if(!upstream.ok)return send(res,502,{error:json?.detail||json?.message||json?.error?.message||'MiniCPM local recusou a solicitação.'});
   const result=parseToolEnvelope(json?.choices?.[0]?.message?.content||'MiniCPM não retornou texto.');
-  result.toolCalls=mergeToolCalls(result.toolCalls,inferredToolCalls(message));
+  result.toolCalls=delegated?[]:mergeToolCalls(result.toolCalls,inferredToolCalls(message));
   return send(res,200,{...result,provider:'minicpm',model:minicpmModel,vision:false});
 }
 async function ai(req,res){
-  if(aiProvider==='minicpm') return minicpm(req,res);
-  if(aiProvider==='nvidia') return nvidia(req,res);
-  if(aiProvider==='gemini') return gemini(req,res);
+  const actor=await requestActor(req),delegated=actor.mode==='delegated-foreman-key';
+  const payload=await body(req);
+  if(delegated){
+    const permissions=new Set(actor.permissions||[]),hasPhoto=Boolean(payload.attachment);
+    if(!['records','stages'].includes(String(payload.view||'')))return send(res,403,{error:'A chave de encarregado só pode usar a IA em registros ou cronograma.'});
+    if(hasPhoto&&!permissions.has('ai.photos'))return send(res,403,{error:'Esta chave não tem permissão para enviar fotos à IA.'});
+    if(!hasPhoto&&!permissions.has('ai.notes'))return send(res,403,{error:'Esta chave não tem permissão para enviar notas à IA.'});
+    if(String(payload.requestContext?.intent||'')==='explain-current-work-state-and-next-step')return send(res,403,{error:'Esta ação de IA não está disponível para chaves de campo.'});
+  }
+  if(aiProvider==='minicpm') return minicpm(req,res,payload,delegated);
+  if(aiProvider==='nvidia') return nvidia(req,res,payload,delegated);
+  if(aiProvider==='gemini') return gemini(req,res,payload,delegated);
   return send(res,500,{error:`AI_PROVIDER inválido: ${aiProvider}. Use minicpm, nvidia ou gemini.`});
 }
 function aiStatus(){
@@ -447,7 +506,7 @@ function pageForPath(pathname){
   return pathname==='/'?'index.html':pathname;
 }
 function send(res,status,data,headers={}){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto',...headers});res.end(JSON.stringify(data));}
-const proxiedApiPrefixes=['/api/records','/api/field-confirmations','/api/purchase-receipts','/api/budget-lines','/api/agenda-items','/api/notifications','/api/stages','/api/stage-correlations','/api/communications','/api/lot-documents'];
+const proxiedApiPrefixes=['/api/auth/session','/api/access-keys','/api/access-roles','/api/admin/config','/api/records','/api/field-confirmations','/api/purchase-receipts','/api/budget-lines','/api/agenda-items','/api/notifications','/api/stages','/api/stage-correlations','/api/communications','/api/lot-documents','/api/settings/public-lead-contact'];
 function shouldProxyApi(pathname){
   // A instalação local sem BELAVISTA_API_TOKEN precisa gravar os registros na
   // base SQLite local. Sem esta exceção, o HTML de campo era encaminhado ao
@@ -557,15 +616,21 @@ async function recordsApi(req,res,pathname){
     const image=normalizeNvidiaImageAttachment(payload.attachment);
     if(!image)return send(res,400,{error:'Imagem OCR inválida. Use PNG, JPEG ou WEBP de até 6 MB.'});
     const input={attachment:{name:String(payload.attachment?.name||'imagem'),...image},context:payload.context||null};
-    const result=process.env.NVIDIA_API_KEY?await extractInstantRecordOcr(process.env,input):await extractLocalRecordOcr(input);
+    const result=await extractRecordOcr(input);
     return send(res,200,result);
   }
   if(req.method==='GET'&&pathname==='/api/records'){await requireRoles(req,recordRoles);return send(res,200,{records:listRecords(),entities:entitySummary()});}
-  if(req.method==='POST'&&pathname==='/api/records'){const actor=await requireRoles(req,recordRoles),record=createRecord(await body(req));bridgeAgentEvent({type:'record.created',entity:'records',entityId:record.id,actor,payload:record});return send(res,201,{...record,...refreshPlanningAfter('record.created',actor.role)});}
+  if(req.method==='POST'&&pathname==='/api/records'){
+    const actor=await requireRoles(req,recordRoles),payload=await body(req);
+    if(actor.mode==='delegated-foreman-key'&&payload.evidence?.imageBase64&&!new Set(actor.permissions||[]).has('ai.photos'))return send(res,403,{error:'Esta chave não pode anexar fotos ao registro.'});
+    const record=createRecord(payload);bridgeAgentEvent({type:'record.created',entity:'records',entityId:record.id,actor,payload:record});return send(res,201,{...record,...refreshPlanningAfter('record.created',actor.role)});
+  }
   const match=pathname.match(/^\/api\/records\/([^/]+)$/); if(!match)return send(res,404,{error:'Registro não encontrado.'});
   const id=decodeURIComponent(match[1]);
   if(req.method==='PUT'){
-    const actor=await requireRoles(req,recordRoles),record=updateRecord(id,await body(req));if(record){bridgeAgentEvent({type:'record.updated',entity:'records',entityId:id,actor,payload:record});}return record?send(res,200,{...record,...refreshPlanningAfter('record.updated',actor.role)}):send(res,404,{error:'Registro não encontrado.'});
+    const actor=await requireRoles(req,recordRoles),payload=await body(req);
+    if(actor.mode==='delegated-foreman-key'&&payload.evidence?.imageBase64&&!new Set(actor.permissions||[]).has('ai.photos'))return send(res,403,{error:'Esta chave não pode anexar fotos ao registro.'});
+    const record=updateRecord(id,payload);if(record){bridgeAgentEvent({type:'record.updated',entity:'records',entityId:id,actor,payload:record});}return record?send(res,200,{...record,...refreshPlanningAfter('record.updated',actor.role)}):send(res,404,{error:'Registro não encontrado.'});
   }
   if(req.method==='DELETE'){const actor=await requireRoles(req,['owner','admin']);if(!deleteRecord(id))return send(res,404,{error:'Registro não encontrado.'});bridgeAgentEvent({type:'record.deleted',entity:'records',entityId:id,actor,payload:{id}});return send(res,200,{ok:true,id,...refreshPlanningAfter('record.deleted',actor.role)});}
   return send(res,405,{error:'Método não permitido.'});
@@ -580,6 +645,14 @@ async function stagesAdminApi(req,res,pathname){
       return send(res,201,{stage});
     }
     return send(res,405,{error:'Método não permitido.'});
+  }
+  const deleteMatch=pathname.match(/^\/api\/stages-admin\/(\d+)$/);
+  if(deleteMatch&&req.method==='DELETE'){
+    const actor=await requireRoles(req,['owner','admin']),stageId=Number(deleteMatch[1]);
+    if(!deleteStageAdmin(stageId))return send(res,404,{error:'Etapa não encontrada.'});
+    bridgeAgentEvent({type:'stage.deleted',entity:'stages',entityId:String(stageId),actor,payload:{stageId}});
+    recalculateOperationalState('stage.deleted');
+    return send(res,200,{ok:true,id:stageId});
   }
   const match=pathname.match(/^\/api\/stages-admin\/(\d+)(?:\/(ai|report|activities))?$/);
   if(!match)return send(res,404,{error:'Etapa não encontrada.'});
@@ -678,6 +751,51 @@ async function purchaseReceiptsApi(req,res,pathname){
 }
 
 
+async function repassesApi(req,res,pathname){
+  if(req.method==='GET'&&pathname==='/api/repasses'){
+    await requireRoles(req,['owner','admin']);
+    return send(res,200,listRepasseOperationsV1());
+  }
+  if(req.method==='POST'&&pathname==='/api/repasses/entries'){
+    const actor=await requireRoles(req,['owner','admin']),entry=createCashFlowEntry({...await body(req),kind:'entrada',category:'Repasse'});
+    bridgeAgentEvent({type:'cash.changed',entity:'cash_flow_entries',entityId:entry.id,actor,payload:entry});
+    return send(res,201,{entry,summary:cashFlowSummary(),operational:recalculateOperationalState('cash.changed')});
+  }
+  const entryMatch=pathname.match(/^\/api\/repasses\/entries\/([^/]+)$/);
+  if(entryMatch&&req.method==='PUT'){
+    const actor=await requireRoles(req,['owner','admin']),id=decodeURIComponent(entryMatch[1]),entry=updateRepasseEntryV1(id,await body(req));
+    bridgeAgentEvent({type:'cash.changed',entity:'cash_flow_entries',entityId:id,actor,payload:entry});
+    return send(res,200,{entry,summary:cashFlowSummary(),operational:recalculateOperationalState('cash.changed')});
+  }
+  if(entryMatch&&req.method==='DELETE'){
+    const actor=await requireRoles(req,['owner','admin']),id=decodeURIComponent(entryMatch[1]);
+    if(!deleteRepasseEntryV1(id))return send(res,404,{error:'Entrada de repasse não encontrada.'});
+    bridgeAgentEvent({type:'cash.changed',entity:'cash_flow_entries',entityId:id,actor,payload:{deleted:true}});
+    return send(res,200,{ok:true,id,summary:cashFlowSummary(),operational:recalculateOperationalState('cash.changed')});
+  }
+  if(req.method==='PUT'&&pathname==='/api/repasses/broker-rule'){
+    const actor=await requireRoles(req,['owner','admin']),rule=saveRepasseBrokerRuleV1(await body(req));
+    bridgeAgentEvent({type:'commission.rule.changed',entity:'repasse_broker_rules',entityId:`${rule.brokerName}:${rule.lotKey}`,actor,payload:rule});
+    return send(res,200,{rule});
+  }
+  if(req.method==='DELETE'&&pathname==='/api/repasses/broker-rule'){
+    await requireRoles(req,['owner','admin']);
+    const url=new URL(req.url,'http://localhost'),brokerName=url.searchParams.get('brokerName')||'',lotKey=url.searchParams.get('lotKey')||'';
+    return deleteRepasseBrokerRuleV1(brokerName,lotKey)?send(res,200,{ok:true,brokerName,lotKey}):send(res,404,{error:'Regra de comissão não encontrada.'});
+  }
+  const planMatch=pathname.match(/^\/api\/repasses\/sales\/([^/]+)\/plan$/);
+  if(req.method==='PUT'&&planMatch){
+    const actor=await requireRoles(req,['owner','admin']),saleId=decodeURIComponent(planMatch[1]),plan=saveRepasseSalePlanV1(saleId,await body(req));
+    bridgeAgentEvent({type:'payment.plan.changed',entity:'repasse_sale_plans',entityId:saleId,actor,payload:plan});
+    return send(res,200,{plan});
+  }
+  if(req.method==='DELETE'&&planMatch){
+    await requireRoles(req,['owner','admin']);
+    const saleId=decodeURIComponent(planMatch[1]);
+    return deleteRepasseSalePlanV1(saleId)?send(res,200,{ok:true,saleId}):send(res,404,{error:'Plano de pagamento não encontrado.'});
+  }
+  return send(res,405,{error:'Método não permitido.'});
+}
 async function cashFlowApi(req,res,pathname){
   if(req.method==='GET'&&pathname==='/api/cash-flow')return send(res,200,{entries:listCashFlowEntries(),summary:cashFlowSummary()});
   const fileMatch=pathname.match(/^\/api\/cash-flow\/([^/]+)(?:\/attachments\/([^/]+))?\/file$/);
@@ -1069,7 +1187,7 @@ async function operationalApi(req,res,pathname){
   if(pathname==='/api/devices'&&req.method==='POST'){const actor=await requireRoles(req,recordRoles);return send(res,201,{device:registerDevice(await body(req),actor)});}
   if(pathname==='/api/notifications'&&req.method==='GET'){const actor=await requireRoles(req,recordRoles);return send(res,200,{role:actor.role,notifications:listNotifications(actor.role)});}
   const notification=pathname.match(/^\/api\/notifications\/([^/]+)$/);
-  if(notification&&req.method==='PUT'){const actor=await requireRoles(req,recordRoles),input=await body(req);return send(res,200,{notification:acknowledgeNotification(decodeURIComponent(notification[1]),actor,input.status==='acknowledged'?'acknowledged':'read')});}
+  if(notification&&req.method==='PUT'){const actor=await requireRoles(req,recordRoles),input=await body(req),updated=acknowledgeNotification(decodeURIComponent(notification[1]),actor,input.status==='acknowledged'?'acknowledged':'read');return updated?send(res,200,{notification:updated}):send(res,404,{error:'Notificação não encontrada para este perfil.'});}
   return send(res,405,{error:'Método não permitido.'});
 }
 
@@ -1087,6 +1205,14 @@ async function brokerReportsApi(req,res){
 }
 
 createServer(async (req,res)=>{
+  if(new URL(req.url,'http://localhost').pathname.startsWith('/api/auth/')){
+    const pathname=new URL(req.url,'http://localhost').pathname;
+    try{
+      if(shouldProxyApi(pathname))return await proxyApi(req,res,pathname);
+      return await githubAuthApi(req,res,pathname);
+    }
+    catch(error){return send(res,error?.statusCode||500,{error:error?.message||'Falha na autenticação GitHub.'});}
+  }
   if(new URL(req.url,'http://localhost').pathname.startsWith('/api/activities')){
     try{const pathname=new URL(req.url,'http://localhost').pathname;await authorizeApiSurface(req,pathname);return await activitiesApi(req,res,pathname);}
     catch(error){return send(res,error?.statusCode||500,{error:error?.message||'Falha nas atividades.'});}
@@ -1099,5 +1225,5 @@ createServer(async (req,res)=>{
     try{await authorizeApiSurface(req,new URL(req.url,'http://localhost').pathname);return await serviceRequestsApi(req,res,new URL(req.url,'http://localhost').pathname);}
     catch(error){return send(res,error?.statusCode||500,{error:error?.message||'Falha na solicitação de serviço.'});}
   }
-  try { const pathname=new URL(req.url,'http://localhost').pathname; await authorizeApiSurface(req,pathname); if(shouldProxyApi(pathname))return await proxyApi(req,res,pathname); if(publicCatalogApi(req,res,pathname))return; if(pathname==='/api/health'&&req.method==='GET')return send(res,200,{...health(),ai:aiStatus(),inference:inferenceStatus(),auth:authStatus(),origin:requestOrigin(req),forwarded:Boolean(req.headers['x-forwarded-host']),belavistaApiBase}); if(pathname==='/api/runtime'&&req.method==='GET')return send(res,200,{origin:requestOrigin(req),host,port,forwardedHost:req.headers['x-forwarded-host']||null,forwardedProto:req.headers['x-forwarded-proto']||null,firebaseMessagingVapidKey:process.env.FIREBASE_MESSAGING_VAPID_KEY||'',belavistaApiBase}); if(pathname==='/api/ai/status'&&req.method==='GET')return send(res,200,aiStatus()); if(pathname==='/api/inference/status'&&req.method==='GET')return send(res,200,inferenceStatus()); if(pathname==='/api/ai/tools'&&req.method==='GET')return send(res,200,{protocol:'belavista-client-tools/v1',tools:clientTools}); if(pathname==='/api/agent/tree'||pathname==='/api/agent/evaluate')return await agentTreeApi(req,res,pathname); if(pathname==='/api/operational-loop'||pathname==='/api/operational-state'||pathname==='/api/calibrations'||pathname==='/api/automation/panorama'||pathname==='/api/automation/run'||pathname==='/api/devices'||pathname==='/api/notifications'||pathname.startsWith('/api/notifications/'))return await operationalApi(req,res,pathname); if(pathname==='/api/stages-admin'||pathname.startsWith('/api/stages-admin/'))return await stagesAdminApi(req,res,pathname); if(pathname==='/api/workbench/infer'&&req.method==='POST')return await workbenchInferenceApi(req,res); if(pathname.startsWith('/api/communications'))return await communicationsApi(req,res,pathname); if(pathname==='/api/workbench/state'||pathname==='/api/workbench/diary')return await workbenchApi(req,res,pathname); if(pathname==='/api/desktop/setup'||pathname.startsWith('/api/instagram/'))return await instagramDesktopApi(req,res,pathname); if(pathname.startsWith('/api/leads/'))return await leadMessagesApi(req,res,pathname); if(pathname==='/api/entities'&&req.method==='GET')return send(res,200,{entities:entitySummary()}); if(pathname==='/api/broker-reports')return await brokerReportsApi(req,res); if(pathname==='/api/field-confirmations')return await fieldConfirmationsApi(req,res); if(pathname==='/api/records'||pathname.startsWith('/api/records/'))return await recordsApi(req,res,pathname); if(pathname==='/api/materials'||pathname.startsWith('/api/materials/'))return await materialsApi(req,res,pathname); if(pathname==='/api/cash-flow'||pathname.startsWith('/api/cash-flow/'))return await cashFlowApi(req,res,pathname); if(pathname==='/api/commission-reasons'||pathname.startsWith('/api/commission-reasons/'))return await commissionReasonsApi(req,res,pathname); if(pathname==='/api/outsourcing-receipts'||pathname.startsWith('/api/outsourcing-receipts/'))return await outsourcingReceiptsApi(req,res,pathname); if(pathname==='/api/purchase-receipts'||pathname.startsWith('/api/purchase-receipts/'))return await purchaseReceiptsApi(req,res,pathname); if(pathname==='/api/commercial-sales'||pathname.startsWith('/api/commercial-sales/'))return await commercialSalesApi(req,res,pathname); if(req.method==='POST'&&(pathname==='/api/gemini'||pathname==='/api/ai'||pathname==='/api/ai/vision-reasoning'||pathname==='/api/inference')) return await ai(req,res); if(req.method!=='GET') return send(res,405,{error:'Método não permitido.'}); const requested=normalize(pageForPath(pathname)).replace(/^[/\\]+/,''); const file=join(root,requested); if(!file.startsWith(root)) return send(res,403,{error:'Acesso negado.'}); const data=await readFile(file); res.writeHead(200,{'Content-Type':types[extname(file)]||'application/octet-stream','Content-Length':data.length,'Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto'}); res.end(data); } catch (error) { if(String(req.url||'').startsWith('/api/')) return send(res,error?.statusCode||500,{error:error?.message||'Falha no serviço local.'}); const data=await readFile(join(root,'index.html')); res.writeHead(200,{'Content-Type':types['.html'],'Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto'}); res.end(data); }
+  try { const pathname=new URL(req.url,'http://localhost').pathname; await authorizeApiSurface(req,pathname); if(shouldProxyApi(pathname))return await proxyApi(req,res,pathname); if(pathname==='/api/access-keys'||pathname.startsWith('/api/access-keys/'))return await foremanAccessKeysApi(req,res,pathname); if(publicCatalogApi(req,res,pathname))return; if(pathname==='/api/health'&&req.method==='GET')return send(res,200,{...health(),ai:aiStatus(),inference:inferenceStatus(),auth:authStatus(),origin:requestOrigin(req),forwarded:Boolean(req.headers['x-forwarded-host']),belavistaApiBase}); if(pathname==='/api/runtime'&&req.method==='GET')return send(res,200,{origin:requestOrigin(req),host,port,forwardedHost:req.headers['x-forwarded-host']||null,forwardedProto:req.headers['x-forwarded-proto']||null,firebaseMessagingVapidKey:process.env.FIREBASE_MESSAGING_VAPID_KEY||'',belavistaApiBase}); if(pathname==='/api/ai/status'&&req.method==='GET')return send(res,200,aiStatus()); if(pathname==='/api/inference/status'&&req.method==='GET')return send(res,200,inferenceStatus()); if(pathname==='/api/ai/tools'&&req.method==='GET')return send(res,200,{protocol:'belavista-client-tools/v1',tools:clientTools}); if(pathname==='/api/agent/tree'||pathname==='/api/agent/evaluate')return await agentTreeApi(req,res,pathname); if(pathname==='/api/operational-loop'||pathname==='/api/operational-state'||pathname==='/api/calibrations'||pathname==='/api/automation/panorama'||pathname==='/api/automation/run'||pathname==='/api/devices'||pathname==='/api/notifications'||pathname.startsWith('/api/notifications/'))return await operationalApi(req,res,pathname); if(pathname==='/api/stages-admin'||pathname.startsWith('/api/stages-admin/'))return await stagesAdminApi(req,res,pathname); if(pathname==='/api/workbench/infer'&&req.method==='POST')return await workbenchInferenceApi(req,res); if(pathname.startsWith('/api/communications'))return await communicationsApi(req,res,pathname); if(pathname==='/api/workbench/state'||pathname==='/api/workbench/diary')return await workbenchApi(req,res,pathname); if(pathname==='/api/desktop/setup'||pathname.startsWith('/api/instagram/'))return await instagramDesktopApi(req,res,pathname); if(pathname.startsWith('/api/leads/'))return await leadMessagesApi(req,res,pathname); if(pathname==='/api/entities'&&req.method==='GET')return send(res,200,{entities:entitySummary()}); if(pathname==='/api/broker-reports')return await brokerReportsApi(req,res); if(pathname==='/api/field-confirmations')return await fieldConfirmationsApi(req,res); if(pathname==='/api/records'||pathname.startsWith('/api/records/'))return await recordsApi(req,res,pathname); if(pathname==='/api/materials'||pathname.startsWith('/api/materials/'))return await materialsApi(req,res,pathname); if(pathname==='/api/repasses'||pathname.startsWith('/api/repasses/'))return await repassesApi(req,res,pathname); if(pathname==='/api/cash-flow'||pathname.startsWith('/api/cash-flow/'))return await cashFlowApi(req,res,pathname); if(pathname==='/api/commission-reasons'||pathname.startsWith('/api/commission-reasons/'))return await commissionReasonsApi(req,res,pathname); if(pathname==='/api/outsourcing-receipts'||pathname.startsWith('/api/outsourcing-receipts/'))return await outsourcingReceiptsApi(req,res,pathname); if(pathname==='/api/purchase-receipts'||pathname.startsWith('/api/purchase-receipts/'))return await purchaseReceiptsApi(req,res,pathname); if(pathname==='/api/commercial-sales'||pathname.startsWith('/api/commercial-sales/'))return await commercialSalesApi(req,res,pathname); if(req.method==='POST'&&(pathname==='/api/gemini'||pathname==='/api/ai'||pathname==='/api/ai/vision-reasoning'||pathname==='/api/inference')) return await ai(req,res); if(req.method!=='GET') return send(res,405,{error:'Método não permitido.'}); const requested=normalize(pageForPath(pathname)).replace(/^[/\\]+/,''); const file=join(root,requested); if(!file.startsWith(root)) return send(res,403,{error:'Acesso negado.'}); const data=await readFile(file); res.writeHead(200,{'Content-Type':types[extname(file)]||'application/octet-stream','Content-Length':data.length,'Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto'}); res.end(data); } catch (error) { if(String(req.url||'').startsWith('/api/')) return send(res,error?.statusCode||500,{error:error?.message||'Falha no serviço local.'}); const data=await readFile(join(root,'index.html')); res.writeHead(200,{'Content-Type':types['.html'],'Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto'}); res.end(data); }
  }).listen(port,host,()=>console.log(`Aliança Park local: http://localhost:${port} · rede: http://10.75.216.173:${port} · bind: ${host}`));

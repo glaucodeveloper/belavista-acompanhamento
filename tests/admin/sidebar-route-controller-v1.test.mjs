@@ -4,7 +4,7 @@ import { createSidebarRouteControllerV1 } from "../../components/shared/sidebar-
 
 const fixture = (initial = {}) => {
   const state = { ...initial }, listeners = new Map(), notices = [],
-    calls = { closeMobile: 0, refreshCashFlow: 0, messageLaunch: 0, routeRender: 0, chatCollapsed: [] },
+    calls = { closeMobile: 0, refreshCashFlow: 0, messageOpen: 0, routeRender: 0, chatCollapsed: [] },
     window = {
       location: { href: "http://localhost:8080/admin?view=map&key=session-key" },
       history: {
@@ -37,9 +37,11 @@ const fixture = (initial = {}) => {
     document = {
       querySelector: (selector) => selector === "view-layer"
         ? viewLayer
-        : selector === "[data-admin-message-open]"
-          ? { click: () => calls.messageLaunch++ }
-          : null,
+        : null,
+      dispatchEvent: (event) => {
+        if (event.type === "belavista:open-communications") calls.messageOpen++;
+        return true;
+      },
     },
     controller = createSidebarRouteControllerV1({
       appStore,
@@ -114,13 +116,13 @@ test("route controller retains finance refresh and disposes delegated listeners"
   assert.equal(listeners.size, 0);
 });
 
-test("message navigation invokes the existing launcher", () => {
+test("message navigation opens the communications panel without a floating launcher", () => {
   const { calls, controller, listeners } = fixture();
   const target = { dataset: {}, textContent: "Mensagens" };
   // The delegated event adapter resolves the selector from the target's closest().
   target.closest = (selector) => selector === '[data-sidebar-action="messages"]' ? target : null;
   listeners.get("click")({ target });
-  assert.equal(calls.messageLaunch, 1);
+  assert.equal(calls.messageOpen, 1);
   assert.equal(calls.closeMobile, 1);
   controller.disconnect();
 });

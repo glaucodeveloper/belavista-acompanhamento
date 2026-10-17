@@ -1,3 +1,5 @@
+import { isLimitedOperationalActor } from "../../admin-role-policy.mjs";
+
 export const createFinalOperationalRecordsPageV5360 = ({
   appStore,
   demoData,
@@ -8,7 +10,11 @@ export const createFinalOperationalRecordsPageV5360 = ({
 }) =>
   function finalOperationalRecordsPageV5360() {
     const state = appStore.get();
-    const allRecords = Array.isArray(state.records) ? state.records : [];
+    const actor = state.currentActor || {};
+    const profileName = String(actor.name || actor.displayName || "").trim();
+    const allRecords = (Array.isArray(state.records) ? state.records : []).filter((record) =>
+      !isLimitedOperationalActor(actor) || Boolean(profileName && String(record.responsavel || "").trim().localeCompare(profileName, "pt-BR", { sensitivity: "base" }) === 0),
+    );
     const selectedStage = (demoData.activities || []).find(
       (item) =>
         String(item.id) === String(state.selectedStage || "") ||
@@ -76,25 +82,29 @@ export const createFinalOperationalRecordsPageV5360 = ({
       </tr>`,
       )
       .join("");
+    const mobileCards = records.slice().reverse().map((record) => `<article class="atlas-profile-record" data-v5360-record-card="${esc(record.id || "")}"><div class="atlas-profile-record-top"><span>${esc(record.data || "Sem data")} · ${esc(record.hora || "")}</span><span class="record-tone-v5360 ${tone(record.status)}">${esc(record.status || "Pendente")}</span></div><h2>${esc(record.atividade || "Registro operacional")}</h2><p>${esc(record.detalhes || "Sem apontamento informado")}</p><footer><span>${esc(recordStage(record))} · ${esc(record.responsavel || "A definir")}</span><button type="button" data-v5360-record="${esc(record.id || "")}">Abrir registro</button></footer></article>`).join("");
 
-    return `<section class="records-table-page-v5360">
+    return `<section class="records-table-page-v5360 atlas-profile-records">
+      ${state.recordsLoadError ? `<p class="atlas-profile-record-error" role="alert">Não foi possível carregar os registros persistidos: ${esc(state.recordsLoadError)}</p>` : ""}
       <header class="workspace-head-v5360">
-        <div><span>DIÁRIO · ${selectedStage ? "ETAPA SELECIONADA" : "ATIVIDADES NAS ETAPAS"}</span><h1>Registros operacionais${selectedStage ? ` · ${esc(selectedStage.name)}` : ""}</h1><p>${selectedStage ? `Exibindo os registros vinculados à etapa ${esc(selectedStage.name)}.` : "Tabela dos fatos, medições e evidências vinculados às etapas."}</p></div>
+        <div><span>DIÁRIO · ${selectedStage ? "ETAPA SELECIONADA" : isLimitedOperationalActor(actor) ? "MEU PERFIL" : "ATIVIDADES NAS ETAPAS"}</span><h1>Registros operacionais${selectedStage ? ` · ${esc(selectedStage.name)}` : ""}</h1><p>${selectedStage ? `Exibindo os registros vinculados à etapa ${esc(selectedStage.name)}.` : isLimitedOperationalActor(actor) ? `Registros atribuídos a ${esc(profileName || "este perfil")}.` : "Tabela dos fatos, medições e evidências vinculados às etapas."}</p></div>
         <button type="button" data-view="stages">Calendário de atividades</button>
       </header>
 
-      <div class="records-kpis-v5360">
+      ${state.recordsLoadError ? '' : `<div class="records-kpis-v5360">
         <article><small>Registros</small><b>${records.length}</b></article>
         <article><small>Concluídos</small><b>${completed}</b></article>
         <article><small>Pendentes</small><b>${pending}</b></article>
         <article><small>Etapas</small><b>${stages.size}</b></article>
-      </div>
+      </div>`}
 
-      <div class="records-table-v5360">
+      ${state.recordsLoadError ? '' : `<div class="atlas-profile-record-list" aria-label="Registros do perfil">${mobileCards || '<p class="atlas-profile-record-empty">Nenhum registro encontrado para este perfil.</p>'}</div>`}
+
+      ${state.recordsLoadError ? '' : `<div class="records-table-v5360">
         <table>
           <thead><tr><th>Registro / data</th><th>Etapa / atividade</th><th>Responsável</th><th>Apontamento</th><th>Status</th><th>Página</th></tr></thead>
           <tbody>${rows || '<tr><td colspan="6" class="dashboard-empty-v5360">Nenhum registro cadastrado.</td></tr>'}</tbody>
         </table>
-      </div>
+      </div>`}
     </section>`;
   };

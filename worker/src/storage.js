@@ -202,6 +202,97 @@ export async function insertStageAgendaItem(env,input={}){
   return first(env,`SELECT id,stage_name AS stage,title,date,time,owner,relation,status,created_at AS createdAt FROM stage_agenda_items WHERE id=?`,id);
 }
 
+const agendaSelect=`SELECT id,source_type AS sourceType,source_id AS sourceId,title,
+  stage_key AS stageKey,stage_name AS stageName,activity_id AS activityId,
+  activity_name AS activityName,owner,event_date AS date,start_time AS start,
+  duration_hours AS durationHours,span_days AS spanDays,status,
+  related_from AS relatedFrom,notes,material_ids_json AS materialIdsJson,
+  user_edited AS userEdited,hidden,updated_at AS updatedAt FROM agenda_events`;
+
+function agendaEvent(row){
+  let materialIds=[];
+  try{materialIds=JSON.parse(row.materialIdsJson||'[]');}catch{}
+  const {materialIdsJson,hidden,userEdited,...rest}=row;
+  return {...rest,materialIds:Array.isArray(materialIds)?materialIds:[],userEdited:Boolean(userEdited)};
+}
+
+export async function listAgendaEvents(env){
+  return (await all(env,`${agendaSelect} WHERE hidden=0 ORDER BY event_date,start_time,id`)).map(agendaEvent);
+}
+
+function normalizeAgendaEvent(input){
+  const id=text(input?.id).slice(0,160);
+  const title=text(input?.title).slice(0,240);
+  const date=text(input?.date);
+  const start=text(input?.start,'08:00');
+  const durationHours=Number(input?.durationHours??1);
+  const spanDays=Number(input?.spanDays??1);
+  const validDate=/^\d{4}-\d{2}-\d{2}$/.test(date)
+    &&!Number.isNaN(Date.parse(`${date}T00:00:00Z`))
+    &&new Date(`${date}T00:00:00Z`).toISOString().slice(0,10)===date;
+  if(!/^[a-zA-Z0-9_-]+$/.test(id)||!title||!validDate
+      ||!/^([01]\d|2[0-3]):[0-5]\d$/.test(start)
+      ||!Number.isFinite(durationHours)||durationHours<0.5||durationHours>24
+      ||!Number.isInteger(spanDays)||spanDays<1||spanDays>366){
+    throw Object.assign(new Error('Compromisso inválido: título, data, horário e duração são obrigatórios.'),{statusCode:400});
+  }
+  return {
+    id,title,stageKey:text(input.stageKey).slice(0,160),stageName:text(input.stageName).slice(0,160),
+    activityId:text(input.activityId).slice(0,160),activityName:text(input.activityName).slice(0,240),
+    owner:text(input.owner).slice(0,160),date,start,durationHours,spanDays,
+    status:text(input.status,'Planejado').slice(0,80),relatedFrom:text(input.relatedFrom).slice(0,160),
+    notes:text(input.notes).slice(0,2000),
+    materialIdsJson:JSON.stringify(Array.isArray(input.materialIds)
+      ?input.materialIds.map(value=>text(value).slice(0,160)).slice(0,100):[])
+  };
+}
+
+export async function saveAgendaSnapshot(env,events){
+  if(!Array.isArray(events)||events.length>10000){
+    throw Object.assign(new Error('Lista da agenda inválida.'),{statusCode:400});
+  }
+  const normalized=events.map(normalizeAgendaEvent);
+  if(new Set(normalized.map(item=>item.id)).size!==normalized.length){
+    throw Object.assign(new Error('IDs duplicados na agenda.'),{statusCode:400});
+  }
+  const db=required(env.BELAVISTA_DB,'BELAVISTA_DB');
+  const current=await all(env,agendaSelect);
+  const byId=new Map(current.map(row=>[row.id,row]));
+  const selected=new Set(normalized.map(item=>item.id));
+  const statements=[];
+  for(const item of normalized){
+    const previous=byId.get(item.id);
+    if(previous){
+      if(!previous.hidden&&Object.entries(item).every(([key,value])=>previous[key]===value))continue;
+      statements.push(db.prepare(`UPDATE agenda_events SET title=?,stage_key=?,stage_name=?,
+        activity_id=?,activity_name=?,owner=?,event_date=?,start_time=?,duration_hours=?,
+        span_days=?,status=?,related_from=?,notes=?,material_ids_json=?,user_edited=1,
+        hidden=0,updated_at=? WHERE id=?`).bind(
+        item.title,item.stageKey,item.stageName,item.activityId,item.activityName,item.owner,
+        item.date,item.start,item.durationHours,item.spanDays,item.status,item.relatedFrom,
+        item.notes,item.materialIdsJson,now(),item.id));
+    }else{
+      statements.push(db.prepare(`INSERT INTO agenda_events(id,source_type,title,stage_key,stage_name,
+        activity_id,activity_name,owner,event_date,start_time,duration_hours,span_days,status,
+        related_from,notes,material_ids_json,user_edited,updated_at)
+        VALUES(?,'manual',?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?)`).bind(
+        item.id,item.title,item.stageKey,item.stageName,item.activityId,item.activityName,
+        item.owner,item.date,item.start,item.durationHours,item.spanDays,item.status,
+        item.relatedFrom,item.notes,item.materialIdsJson,now()));
+    }
+  }
+  for(const previous of current){
+    if(previous.hidden||selected.has(previous.id))continue;
+    if(previous.sourceType==='manual'){
+      statements.push(db.prepare('DELETE FROM agenda_events WHERE id=?').bind(previous.id));
+    }else{
+      statements.push(db.prepare(`UPDATE agenda_events SET hidden=1,user_edited=1,updated_at=? WHERE id=?`).bind(now(),previous.id));
+    }
+  }
+  if(statements.length)await db.batch(statements);
+  return listAgendaEvents(env);
+}
+
 export async function listNotifications(env){
   const rows=await all(env,`SELECT id,category,severity,title,message,entity_type AS entityType,entity_id AS entityId,metadata_json AS metadata,created_at AS createdAt FROM notifications ORDER BY created_at DESC LIMIT 50`);
   return rows.map(row=>{
@@ -231,7 +322,7 @@ export async function getOperationalSnapshot(env){
     listRecords(env),
     listCashFlowEntries(env),
     listBudgetLines(env),
-    listStageAgendaItems(env),
+    listAgendaEvents(env),
     listNotifications(env)
   ]);
   return {

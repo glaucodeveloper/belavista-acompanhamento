@@ -13,10 +13,10 @@ export const ADMIN_LOGIN_ROLES = Object.freeze([
   "corretor",
 ]);
 
-export const FOREMAN_NAV_VIEWS = Object.freeze(["records", "stages"]);
+export const FOREMAN_NAV_VIEWS = Object.freeze(["map", "agenda", "records", "stages"]);
 // Encarregados e corretores usam somente registros e a linha do tempo.
 export const FOREMAN_EXTENSION_VIEWS = Object.freeze([]);
-export const LIMITED_OPERATIONAL_VIEWS = Object.freeze(["records", "stages"]);
+export const LIMITED_OPERATIONAL_VIEWS = Object.freeze(["map", "agenda", "records", "stages"]);
 
 export const REMOVED_ADMIN_VIEWS = Object.freeze([
   "documents",
@@ -88,6 +88,8 @@ export const roleCanOpenView = (role, view) => {
 };
 
 export const actorCanOpenView = (actor = {}, view) => {
+  if (actor.mode === "delegated-foreman-key" && actor.delegatedRoleId && Array.isArray(actor.delegatedViews))
+    return actor.delegatedViews.includes(String(view || ""));
   if (isLimitedOperationalActor(actor)) return LIMITED_OPERATIONAL_VIEWS.includes(String(view || ""));
   if (REMOVED_ADMIN_VIEW_SET.has(String(view || ""))) return false;
   return roleCanOpenView(accessLevelForActor(actor), view);
@@ -119,8 +121,13 @@ export const navigationItemsForRole = (role, items = []) => {
 };
 
 export const navigationItemsForActor = (actor = {}, items = []) => {
+  if (actor.mode === "delegated-foreman-key" && actor.delegatedRoleId && Array.isArray(actor.delegatedViews)) {
+    const labels = new Map([["map", ["map", "house", "Mapa"]], ["agenda", ["agenda", "calendar-range", "Agenda"]], ["records", ["records", "clipboard-list", "Registros"]], ["stages", ["stages", "calendar-range", "Linha do tempo do cronograma"]]]);
+    return actor.delegatedViews.map((view) => labels.get(view)).filter(Boolean);
+  }
   if (isLimitedOperationalActor(actor)) {
     return [
+      ["map", "house", "Mapa"],
       ["records", "clipboard-list", "Registros"],
       ["stages", "calendar-range", "Linha do tempo do cronograma"],
     ];

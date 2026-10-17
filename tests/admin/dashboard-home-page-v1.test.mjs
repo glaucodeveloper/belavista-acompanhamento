@@ -52,6 +52,17 @@ const setup = (overrides = {}) => {
     },
     lucide = { createIcons() { listeners.set("icons:created", true); } },
     routes = [],
+    downloads = [],
+    reportButtons = [
+      { dataset: { dashboardQuickReport: "records" }, textContent: "Gerar CSV", addEventListener(type, handler) { listeners.set(`report:${type}`, handler); } },
+      { dataset: { dashboardQuickReport: "agenda" }, textContent: "Gerar CSV", addEventListener(type, handler) { listeners.set(`report-agenda:${type}`, handler); } },
+    ],
+    feedback = { textContent: "" },
+    reportSection = {
+      dataset: {},
+      querySelector: () => feedback,
+      querySelectorAll: () => reportButtons,
+    },
     page = createDashboardHomePageV1({
       appStore,
       demoData,
@@ -61,11 +72,15 @@ const setup = (overrides = {}) => {
       ico: (name) => `[${name}]`,
       stageV9DirectiveText: () => "Diretriz de execução",
       stageV9ProfileFor: () => ({}),
-      window: { lucide, location: { assign: (url) => routes.push(url) } },
+      apiFetch: overrides.apiFetch || (async () => ({ ok: true, json: async () => ({ records: [] }) })),
+      Blob: class Blob { constructor(parts, options) { this.parts = parts; this.options = options; downloads.push(this); } },
+      URL: { createObjectURL: () => "blob:quick-report", revokeObjectURL() {} },
+      document: { body: { append() {} }, createElement: () => ({ click() {}, remove() {} }) },
+      window: { lucide, location: { assign: (url) => routes.push(url) }, setTimeout: (callback) => callback() },
       workbenchActivityRouteV1: (activity, key) => `/worker?activity=${activity}&stage=${key}`,
     }),
-    host = { querySelector: (selector) => selector === ".dashboard-stage-timeline" ? timeline : null };
-  return { state, writes, listeners, page, host, card, routes, demoData, executionModel, appStore, lucide };
+    host = { querySelector: (selector) => selector === ".dashboard-stage-timeline" ? timeline : selector === ".dashboard-quick-reports" ? reportSection : null };
+  return { state, writes, listeners, page, host, card, routes, demoData, executionModel, appStore, lucide, feedback, downloads };
 };
 
 test("dashboard page keeps the live KPI, map, timeline, focus tabs, and navigation", () => {
@@ -110,8 +125,43 @@ test("dashboard event installer composes into ViewLayer bind without replacing i
   assert.deepEqual(calls, ["base", "dashboard"]);
 });
 
+test("quick reports download only rows returned by the persisted application APIs", async () => {
+  const ctx = setup({ apiFetch: async (path) => ({ ok: true, json: async () => path === "/api/records"
+    ? { records: [{ id: "REG-7", data: "2026-10-16", detalhes: "=SUM(A1:A2)" }] }
+    : { events: [] } }) });
+  const html = ctx.page.render();
+  assert.ok(html.includes('data-dashboard-quick-report="records"'));
+  assert.ok(html.includes('data-dashboard-quick-report="agenda"'));
+  ctx.page.bind(ctx.host);
+  await ctx.listeners.get("report:click")();
+  assert.equal(ctx.downloads.length, 1);
+  const csv = ctx.downloads[0].parts[0];
+  assert.match(csv, /REG-7/);
+  assert.match(csv, /'=SUM\(A1:A2\)/);
+  assert.match(ctx.feedback.textContent, /1 registro/);
+});
+
+test("agenda quick report orders real events by their current state, then date and time", async () => {
+  const ctx = setup({ apiFetch: async () => ({ ok: true, json: async () => ({ events: [
+    { id: "A-DONE", status: "Concluído", date: "2026-10-14", start: "08:00" },
+    { id: "A-LATE", status: "Pendente", date: "2026-10-16", start: "11:00" },
+    { id: "A-EARLY", status: "Pendente", date: "2026-10-15", start: "09:00" },
+  ] }) }) });
+  ctx.page.bind(ctx.host);
+  await ctx.listeners.get("report-agenda:click")();
+  const csv = ctx.downloads[0].parts[0];
+  assert.ok(csv.indexOf("A-EARLY") < csv.indexOf("A-LATE"));
+  assert.ok(csv.indexOf("A-LATE") < csv.indexOf("A-DONE"));
+  assert.match(ctx.feedback.textContent, /3 registro/);
+});
+
 test("components.js delegates Dashboard rendering and its focus interactions", async () => {
-  const source = await readFile(new URL("../../components.js", import.meta.url), "utf8");
+  const source = (await Promise.all([
+    readFile(new URL("../../components.js", import.meta.url), "utf8"),
+    readFile(new URL("../../components/index.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../../components/planning/stage-operational-pages-composition-v1.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../../components/planning/stage-pages-application-composition-v1.mjs", import.meta.url), "utf8"),
+  ])).join("\n");
   assert.match(source, /createDashboardHomePageV1\(\{/);
   assert.match(source, /ViewLayer\.prototype\.assistant = dashboardHomePageV1\.render/);
   assert.match(source, /installDashboardHomeEventsV1\(ViewLayer, dashboardHomePageV1\.bind\)/);

@@ -1,6 +1,6 @@
 import { installOperationalIntelligenceEventsV1 } from "../planning/operational-intelligence-events-v1.mjs?v=operational-intelligence-events-v1";
 import { installCommercialWorkspaceEventsV7 } from "../commercial/workspace-events-v7.mjs?v=workspace-events-v7";
-import { installOperationalSettingsWorkspaceV1 } from "../commercial/operational-settings-workspace-v1.mjs?v=operational-settings-workspace-v1";
+import { installOperationalSettingsWorkspaceV1 } from "../commercial/operational-settings-workspace-v1.mjs?v=dynamic-access-roles-v1";
 import { installLeadsOperationalCrmV1 } from "../commercial/leads-page-composition-v1.mjs?v=leads-operational-crm-v1";
 import { installFinancePageV8 } from "../finance/finance-workspace-v8.mjs?v=finance-workspace-v8";
 

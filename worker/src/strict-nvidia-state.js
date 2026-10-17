@@ -5,7 +5,7 @@
 // mutate materials/cash from event types, or synthesize a deterministic fallback.
 
 const DEFAULT_API_URL='https://integrate.api.nvidia.com/v1/chat/completions';
-const DEFAULT_MODEL='google/diffusiongemma-26b-a4b-it';
+const DEFAULT_MODEL='openai/gpt-oss-20b';
 const REQUIRED_STATE_KEYS=[
   'project','clock','localities','personnel','stages','activities','materials','cash',
   'purchases','evidence','agenda','notifications','resourceRequests','cashRequests',
@@ -28,11 +28,11 @@ function settings(env){
   return {
     apiKey:env.NVIDIA_API_KEY||env.NVIDIA_NIM_API_KEY||'',
     apiUrl:env.NVIDIA_API_URL||env.NVIDIA_NIM_API_URL||DEFAULT_API_URL,
-    model:env.NVIDIA_STATE_MODEL||env.NVIDIA_REASONING_MODEL||env.NVIDIA_REASONING_VISION_MODEL||env.NVIDIA_MODEL||env.NVIDIA_NIM_MODEL||DEFAULT_MODEL,
+    model:env.NVIDIA_STATE_MODEL||env.NVIDIA_REASONING_MODEL||DEFAULT_MODEL,
     maxTokens:numberEnv(env.NVIDIA_STATE_MAX_TOKENS,16000,4096,32768),
     patchMaxTokens:numberEnv(env.NVIDIA_STATE_PATCH_MAX_TOKENS,4096,512,8192),
     analysisMaxTokens:numberEnv(env.NVIDIA_STATE_ANALYSIS_MAX_TOKENS,8192,2048,16000),
-    analysisBatchSize:numberEnv(env.NVIDIA_STATE_ANALYSIS_BATCH_SIZE,3,1,10),
+    analysisBatchSize:numberEnv(env.NVIDIA_STATE_ANALYSIS_BATCH_SIZE,10,1,10),
     reconcileMaxTokens:numberEnv(env.NVIDIA_STATE_RECONCILE_MAX_TOKENS,4096,512,8192),
     criticMaxTokens:numberEnv(env.NVIDIA_STATE_CRITIC_MAX_TOKENS,2400,512,8192),
     reasoningBudget:numberEnv(env.NVIDIA_STATE_REASONING_BUDGET,512,256,8192),

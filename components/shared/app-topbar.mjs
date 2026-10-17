@@ -1,11 +1,11 @@
 import { createServiceEventAdmin } from "../events/service-event-admin.mjs?v=service-event-admin-v4";
-import { apiFetch } from "../../api-client.mjs?v=instagram-api-live-v1";
+import { apiFetch } from "../../api-client.mjs?v=github-pat-gateway-v1";
 import {
   countUnreadTopbarNotificationsV1,
-  readTopbarNotificationIdsV1,
   renderTopbarNotificationPanelV1,
-  writeTopbarNotificationIdsV1,
-} from "./topbar-notifications-v1.mjs?v=topbar-notifications-v1";
+  topbarNotificationIdV1,
+  topbarNotificationIsReadV1,
+} from "./topbar-notifications-v1.mjs?v=topbar-notifications-v2";
 
 const syncDashboardModeV1 = () => {
   const next = "tracking";
@@ -24,12 +24,18 @@ const syncDashboardModeV1 = () => {
   return next;
 };
 
+const notificationSignatureV1 = (items = []) =>
+  (Array.isArray(items) ? items : [])
+    .map((item) => `${topbarNotificationIdV1(item)}:${item.status || ""}:${item.readAt || item.read_at || ""}:${item.acknowledgedAt || item.acknowledged_at || ""}:${item.title || ""}:${item.message || ""}:${item.actionUrl || item.action_url || ""}`)
+    .join("|");
+
 export const createAppTopbar = ({
   appStore,
   spreadsheetSchema,
   normalizeOperationalRole,
   actorCanOpenView = () => true,
   isLimitedOperationalActor = () => false,
+  apiFetch: apiFetchFn = apiFetch,
   ico,
   esc,
   notify,
@@ -49,7 +55,7 @@ export const createAppTopbar = ({
               target.classList.add("spinning");
               target.disabled = true;
               try {
-                const response = await apiFetch("/api/agenda-events", { cache: "no-store" });
+                const response = await apiFetchFn("/api/agenda-events", { cache: "no-store" });
                 const payload = await response.json();
                 if (!response.ok || !Array.isArray(payload.events)) throw new Error(payload.error || `HTTP ${response.status}`);
                 appStore.set({ agendaDatabaseEventsV3: payload.events, agendaCalendarLoadedV3: true,
@@ -72,7 +78,10 @@ export const createAppTopbar = ({
               const panel = this.querySelector(
                 "[data-topbar-notification-panel]",
               );
-              if (panel) panel.hidden = !panel.hidden;
+              if (panel) {
+                panel.hidden = !panel.hidden;
+                if (!panel.hidden) this.refreshNotifications();
+              }
             },
           },
           {
@@ -90,37 +99,59 @@ export const createAppTopbar = ({
             eventType: "click",
             selector: "[data-notification-item]",
             action: "mark-notification-read",
-            handler: ({ target }) => {
-              const ids = new Set(
-                readTopbarNotificationIdsV1(),
-              );
-              ids.add(target.dataset.notificationItem);
-              writeTopbarNotificationIdsV1(ids);
-              target.classList.remove("unread");
-              target.classList.add("read");
-              target.querySelector("i")?.classList.add("read");
+            handler: async ({ target }) => {
+              const id = target.dataset.notificationItem,
+                item = (appStore.get().operationalNotifications || []).find(
+                  (notification) => topbarNotificationIdV1(notification) === id,
+                );
+              if (!id || !item || target.disabled) return;
+              target.disabled = true;
+              try {
+                if (!topbarNotificationIsReadV1(item)) {
+                  const response = await apiFetchFn(`/api/notifications/${encodeURIComponent(id)}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: "read" }),
+                  });
+                  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                }
+                await this.refreshNotifications();
+                this.openNotificationAction(item);
+              } catch (error) {
+                notify(`Não foi possível atualizar a notificação: ${error.message}`, "error");
+              } finally {
+                target.disabled = false;
+              }
             },
           },
           {
             eventType: "click",
             selector: "[data-notification-mark-all]",
             action: "mark-all-notifications-read",
-            handler: () => {
-              const state = appStore.get(),
-                ids = (Array.isArray(state.operationalNotifications)
-                  ? state.operationalNotifications
-                  : []
-                ).map((item) =>
-                  String(
-                    item.id || item.notificationId || item.updatedAt || item.title,
-                  ),
-                );
-              writeTopbarNotificationIdsV1(ids);
-              this.querySelectorAll("[data-notification-item]").forEach((item) =>
-                item.classList.remove("unread"),
+            handler: async ({ target }) => {
+              const unread = (appStore.get().operationalNotifications || []).filter(
+                (item) => topbarNotificationIdV1(item) && !topbarNotificationIsReadV1(item),
               );
-              const badge = this.querySelector(".badge");
-              if (badge) badge.textContent = "0";
+              if (!unread.length || target.disabled) return;
+              target.disabled = true;
+              try {
+                const results = await Promise.all(unread.map((item) =>
+                  apiFetchFn(`/api/notifications/${encodeURIComponent(topbarNotificationIdV1(item))}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: "read" }),
+                  }),
+                ));
+                const failed = results.find((response) => !response.ok);
+                if (failed) throw new Error(`HTTP ${failed.status}`);
+                await this.refreshNotifications();
+                notify("Notificações marcadas como lidas.", "success");
+              } catch (error) {
+                await this.refreshNotifications();
+                notify(`Não foi possível marcar todas como lidas: ${error.message}`, "error");
+              } finally {
+                target.disabled = false;
+              }
             },
           },
           {
@@ -146,19 +177,12 @@ export const createAppTopbar = ({
       this.render();
       syncDashboardModeV1();
       this._notificationSignature = "";
+      this.refreshNotifications();
+      this._notificationRefreshTimer = setInterval(() => this.refreshNotifications(), 60_000);
       this._topbarStoreUnsubscribe = appStore.subscribe((s) => {
         this.updateThemeButton(s.theme);
         this.updateAtlasNavigation(s);
-        const signature = (s.operationalNotifications || [])
-          .map(
-            (item) =>
-              item.id ||
-              item.notificationId ||
-              item.updatedAt ||
-              item.title ||
-              item.message,
-          )
-          .join("|");
+        const signature = notificationSignatureV1(s.operationalNotifications);
         if (signature !== this._notificationSignature) {
           this._notificationSignature = signature;
           this.render();
@@ -168,8 +192,59 @@ export const createAppTopbar = ({
     disconnectedCallback() {
       this._topbarStoreUnsubscribe?.();
       this._topbarStoreUnsubscribe = null;
+      clearInterval(this._notificationRefreshTimer);
+      this._notificationRefreshTimer = null;
       this._topbarEventAdmin?.dispose();
       this._topbarEventAdmin = null;
+    }
+    async refreshNotifications() {
+      if (this._notificationRefreshPromise) return this._notificationRefreshPromise;
+      this._notificationRefreshPromise = (async () => {
+        try {
+          const response = await apiFetchFn("/api/notifications", { cache: "no-store" });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const payload = await response.json();
+          if (!Array.isArray(payload.notifications)) throw new Error("Resposta de notificações inválida.");
+          const nextSignature = notificationSignatureV1(payload.notifications);
+          if (nextSignature !== this._notificationSignature) {
+            this._notificationSignature = nextSignature;
+            appStore.set({ operationalNotifications: payload.notifications });
+          }
+          return payload.notifications;
+        } catch (error) {
+          console.info("Central de notificações persistidas indisponível.", error);
+          return appStore.get().operationalNotifications || [];
+        } finally {
+          this._notificationRefreshPromise = null;
+        }
+      })();
+      return this._notificationRefreshPromise;
+    }
+    openNotificationAction(item) {
+      const target = item.actionUrl || item.action_url;
+      if (!target) return;
+      let url;
+      try {
+        url = new URL(target, window.location.href);
+      } catch {
+        return;
+      }
+      if (url.origin !== window.location.origin) return;
+      const view = url.searchParams.get("view");
+      if (view) {
+        const patch = { view, lastAction: `Abriu a notificação: ${item.title || "Atualização operacional"}` },
+          stage = url.searchParams.get("stage"),
+          activity = url.searchParams.get("activity");
+        if (stage) {
+          patch.selectedStageV9 = stage;
+          patch.selectedStage = stage;
+          patch.stageSelected = true;
+        }
+        if (activity) patch.selectedActivityId = activity;
+        appStore.set(patch);
+      } else {
+        window.location.assign(`${url.pathname}${url.search}${url.hash}`);
+      }
     }
     async runAccountCommand(button) {
       const label = button.textContent.trim();
@@ -217,6 +292,9 @@ export const createAppTopbar = ({
       });
     }
     render() {
+      const notificationPanelWasOpen = Boolean(
+        this.querySelector("[data-topbar-notification-panel]:not([hidden])"),
+      );
       const s = appStore.get(),
         actor = s.currentActor || { name: "Warley", label: "Dono" },
         normalizedRole = normalizeOperationalRole(actor.role || "owner");
@@ -239,13 +317,13 @@ export const createAppTopbar = ({
             ? s.operationalNotifications
             : [],
           unreadCount = countUnreadTopbarNotificationsV1(s);
-        notificationButton.querySelector(".badge").textContent = String(
-          unreadCount || notifications.length || 0,
-        );
+        notificationButton.querySelector(".badge").textContent = String(unreadCount);
         this.insertAdjacentHTML(
           "beforeend",
           renderTopbarNotificationPanelV1(s, { esc }),
         );
+        if (notificationPanelWasOpen)
+          this.querySelector("[data-topbar-notification-panel]")?.removeAttribute("hidden");
       }
       if (isLimitedOperationalActor(actor)) {
         this.querySelector(".atlas-session")?.remove();

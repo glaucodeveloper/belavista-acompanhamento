@@ -6,8 +6,8 @@ import "./shared/brand-normalizer.mjs?v=brand-normalizer-v1";
 import { runtimeRouteV1 } from "./shared/routing.mjs";
 import { installFloatingWidgetLayoutV1 } from "./shared/floating-widget-layout-v1.mjs?v=floating-widget-layout-v1";
 import { installCashRecordFiscalControlsV1 } from "./finance/cash-record-fiscal-controls-v1.mjs?v=cash-record-fiscal-controls-v1";
-import { installRepassePageV1 } from "./finance/repasse-page-v1.mjs?v=repasse-page-v2";
-import { installAgendaDashboardDetailV1 } from "./planning/agenda-dashboard-detail-v1.mjs?v=agenda-dashboard-detail-v1";
+import { installRepassePageV1 } from "./finance/repasse-page-v1.mjs?v=repasse-finance-v1";
+import { installAgendaDashboardDetailV1 } from "./planning/agenda-dashboard-detail-v1.mjs?v=agenda-dashboard-detail-v2";
 import { installStageSurfaceRegistrationV1 } from "./planning/stage-surface-registration-v1.mjs?v=stage-surface-registration-v1";
 import { installStageApplicationCompositionV1 } from "./planning/stage-application-composition-v1.mjs?v=stage-application-composition-v1";
 import { installPlanningPagesApplicationV1 } from "./planning/planning-pages-application-v1.mjs?v=planning-pages-application-v2";
@@ -17,11 +17,11 @@ import { createPlanningRuntimeContextV1 } from "./planning/planning-runtime-cont
 import {
   CHAT_OPERATIONAL_EXECUTION_INSTRUCTION_V1,
 } from "./chat/policies.mjs";
-import { registerApplicationElementsV1 } from "./shared/application-elements-registration-v1.mjs?v=application-elements-registration-v4&pdf-marker-anchors-v1&pdf-yellow-circles-v3";
-import { installApplicationEventCompositionV1 } from "./shared/application-event-composition-v1.mjs?v=application-event-composition-v1";
+import { registerApplicationElementsV1 } from "./shared/application-elements-registration-v1.mjs?v=mobile-focus-v1";
+import { installApplicationEventCompositionV1 } from "./shared/application-event-composition-v1.mjs?v=dynamic-access-roles-v1";
 import { INTEGRATION_SETTINGS_KEY } from "./shared/integration-settings-reader-v1.mjs?v=integration-settings-reader-v1";
 import { createCsvDownloaderV1 } from "./shared/csv-download-v1.mjs?v=csv-download-v1";
-import { registerBelavistaAdminAiChatV1 } from "./chat/admin-ai-chat-registration-v1.mjs?v=admin-ai-chat-registration-v1";
+import { registerBelavistaAdminAiChatV1 } from "./chat/admin-ai-chat-registration-v1.mjs?v=mobile-focus-v1";
 import { contractStatusClassV1 } from "./commercial/contracts-page-v1.mjs?v=contracts-page-v1";
 import { installCommercialDocumentRenderersV1 } from "./commercial/commercial-document-renderers-v1.mjs?v=commercial-document-renderers-v1";
 import { bindCommissionWorkspaceEventsV1 } from "./commercial/commission-workspace-events-v1.mjs?v=commission-workspace-events-v1";
@@ -31,15 +31,14 @@ import { installBrokerProfileRegistrationV1 } from "./commercial/broker-profile-
 import { installBrokerSettingsRendererV1, installCommissionPageRenderersV1 } from "./commercial/commission-page-renderers-v1.mjs?v=commission-page-renderers-v1";
 import { brokerReasonsV9 } from "./commercial/broker-control-page-v1.mjs?v=broker-control-page-v1";
 import { commissionProfiles, commissionDeals } from "./commercial/commission-catalog-v1.mjs?v=commission-catalog-v1";
-import { installCommercialHistoryRegistrationV1 } from "./commercial/commercial-history-registration-v1.mjs?v=commercial-history-registration-v1";
+import { installCommercialHistoryRegistrationV1 } from "./commercial/commercial-history-registration-v1.mjs?v=dynamic-access-roles-v1";
 import { installCommercialDirectoryContractsRegistrationV1 } from "./commercial/commercial-directory-contracts-registration-v1.mjs?v=commercial-directory-contracts-registration-v1";
-import { installAiAgendaSettingsV1 } from "./shared/ai-agenda-settings-v1.mjs?v=2";
 import { installCommercialApplicationCompositionV1 } from "./commercial/commercial-application-composition-v1.mjs?v=commercial-application-composition-v1";
 import { installLeadsPageCompositionV1 } from "./commercial/leads-page-composition-v1.mjs?v=leads-operational-crm-v1";
 import { installFinanceApplicationCompositionV1 } from "./finance/finance-application-composition-v1.mjs?v=finance-application-composition-v1";
-import { installRecordApplicationCompositionV1 } from "./records/record-application-composition-v1.mjs?v=record-application-composition-v1";
+import { installRecordApplicationCompositionV1 } from "./records/record-application-composition-v1.mjs?v=record-application-composition-v2";
 import { installStageNavigationSurfacesRegistrationV1 } from "./planning/stage-navigation-surfaces-registration-v1.mjs?v=stage-navigation-surfaces-registration-v1";
-import { installRecordsWorkspaceRegistrationV1 } from "./records/records-workspace-registration-v1.mjs?v=records-workspace-registration-v1";
+import { installRecordsWorkspaceRegistrationV1 } from "./records/records-workspace-registration-v1.mjs?v=materials-stage-tabs-v1";
 import { installRecordComposerV1 } from "./records/record-composer-v1.mjs?v=record-composer-v1";
 import { installDataTableControlsV1 } from "./shared/data-table-controls-v1.mjs?v=data-table-controls-v1";
 import { installLotDevelopmentRenderGuardV1 } from "./lots/lot-development-page-v1.mjs?v=lot-development-page-v2";
@@ -66,14 +65,14 @@ import {
   isLimitedOperationalActor,
   navigationItemsForActor,
   normalizeOperationalRole,
-} from "../admin-role-policy.mjs?v=admin-role-policy-v3";
+} from "../admin-role-policy.mjs?v=admin-role-policy-v4";
 import {
   PROPOSAL_VISION_PROMPT,
   parseProposalVisionPayload,
   readProposalImageAsDataUrl,
 } from "../proposal-vision.mjs?v=proposal-vision-v1";
 // BELAVISTA_MAP_DRAG_INVERTED_V49
-import { apiFetch, apiUrl } from "../api-client.mjs?v=instagram-api-live-v1";
+import { apiFetch, apiUrl } from "../api-client.mjs?v=github-pat-gateway-v1";
 import {
   subscribePublicLeads,
   registerOperationalDevice,
@@ -493,6 +492,7 @@ const {
   agendaCalendarEventMarkupV3,
   agendaCalendarFormMarkupV3,
   agendaCalendarMarkupV3,
+  ensureAgendaCalendarLoadedV8,
   stageHomeSnapshotV1,
 } = planningPagesApplicationV1;
 
@@ -623,6 +623,7 @@ const commercialHistoryRegistrationV1 = installCommercialHistoryRegistrationV1({
   contractStatusClassV1,
   brokerReasonsV9,
   executionModel,
+  apiFetch,
   brlToNumber,
   formatBRL,
   esc,
@@ -634,7 +635,7 @@ const commercialHistoryRegistrationV1 = installCommercialHistoryRegistrationV1({
 });
 const { commercialDealsForWorkspaceV1, brokerWorkspaceStatsV1 } = commercialHistoryRegistrationV1;
 installAgendaDashboardDetailV1(ViewLayer, {
-  appStore, agendaCalendarReadV3, agendaCalendarOperationalEventsV3, agendaCalendarIsoV3, agendaCalendarWriteV3, agendaCalendarParseDateV3, agendaCalendarStatusToneV3, agendaCalendarAddDaysV3, executionModel, stageV9LiveFor, esc, ico, notify, stageRecordStagesV1, stageRecordDashboardActionWorkspaceMarkupV1, stageMaterialReportDialogV1, stageRecordMaterialRowsV1, capacitor: globalThis.Capacitor, NotificationCtor: globalThis.Notification, FormDataCtor: globalThis.FormData, queueMicrotaskFn: globalThis.queueMicrotask.bind(globalThis),
+  appStore, apiFetch, operationalHeaders, ensureAgendaCalendarLoadedV8, agendaCalendarReadV3, agendaCalendarOperationalEventsV3, agendaCalendarIsoV3, agendaCalendarWriteV3, agendaCalendarParseDateV3, agendaCalendarStatusToneV3, agendaCalendarAddDaysV3, executionModel, stageV9LiveFor, esc, ico, notify, stageRecordStagesV1, stageRecordDashboardActionWorkspaceMarkupV1, stageMaterialReportDialogV1, stageRecordMaterialRowsV1, capacitor: globalThis.Capacitor, NotificationCtor: globalThis.Notification, FormDataCtor: globalThis.FormData, queueMicrotaskFn: globalThis.queueMicrotask.bind(globalThis),
 });
 installStageHomeRecordResourcesApplicationV1({
   ViewLayer,
@@ -672,7 +673,6 @@ installCommercialDirectoryContractsRegistrationV1({
   saveOperationalProposal,
   host: globalThis,
 });
-installAiAgendaSettingsV1(ViewLayer, { appStore, esc, notify });
 const AiChat = registerBelavistaAdminAiChatV1({
   host: globalThis,
   appStore,

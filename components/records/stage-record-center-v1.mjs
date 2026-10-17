@@ -227,6 +227,7 @@ const stageRecordEstimateFormatV1 = (value) => {
 /** Stage record center, material reports, and their control-view integration. */
 export const installStageRecordCenterV1 = (ViewLayer, {
   REPASSE_PRICE_CATALOG,
+  apiFetch,
   appStore,
   defaultStageMaterialRows,
   demoData,
@@ -234,6 +235,8 @@ export const installStageRecordCenterV1 = (ViewLayer, {
   formatBRL,
   ico,
   isAssistantVisualAdditionV1,
+  operationalHeaders,
+  notify = () => {},
   renderStageHomePageV1,
   stageContextV1,
   stageHomeSnapshotV1,
@@ -761,9 +764,9 @@ export const installStageRecordCenterV1 = (ViewLayer, {
       "",
     );
   
-  const stageRecordQuickCaptureMarkupV1 = (stages) => {
+  const stageRecordQuickCaptureMarkupV1 = (stages, state = appStore.get()) => {
     const today = new Date().toISOString().slice(0, 10);
-    return `<section class="stage-dashboard-quick-capture" data-stage-dashboard-quick-capture><header><div><span class="activity-kind">AÇÕES RÁPIDAS</span><h2>Adicionar entrada ou registro</h2><p>Inclua o apontamento essencial sem sair do Dashboard. Os detalhes permanecem disponíveis em Lotes e Registros.</p></div><span class="stage-record-section-note">salvamento local</span></header><div class="stage-dashboard-quick-grid"><form data-dashboard-quick-entry><header><span>${ico("wallet-cards")}</span><div><b>Nova entrada</b><small>Vincula valor e data ao lote</small></div></header><label>Lote<input name="lot" list="dashboard-quick-lots" required placeholder="Ex.: QA-12"></label><datalist id="dashboard-quick-lots">${REPASSE_PRICE_CATALOG.filter((item) => Number(item.lot) > 0).map((item) => `<option value="${esc(item.label)}">${esc(item.quadra)} · ${formatBRL(item.price)}</option>`).join("")}</datalist><div class="stage-dashboard-quick-pair"><label>Valor recebido<input name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" required placeholder="0,00"></label><label>Data<input name="date" type="date" required value="${today}"></label></div><label>Descrição<input name="description" placeholder="Ex.: sinal de reserva"></label><button type="submit" class="primary">Adicionar entrada ${ico("arrow-up-right")}</button></form><form data-dashboard-quick-record><header><span>${ico("clipboard-pen-line")}</span><div><b>Novo registro</b><small>Cria apontamento para uma etapa</small></div></header><label>Etapa<select name="stageKey" required>${stages.map((stage) => `<option value="${esc(stage.key)}">${esc(stage.name)}</option>`).join("")}</select></label><label>Atividade<input name="activity" required placeholder="Ex.: conferência de execução"></label><div class="stage-dashboard-quick-pair"><label>Data<input name="date" type="date" required value="${today}"></label><label>Responsável<input name="responsible" placeholder="A definir"></label></div><label>Resumo<input name="detail" placeholder="Medição, ocorrência ou evidência"></label><button type="submit" class="primary">Adicionar registro ${ico("arrow-up-right")}</button></form></div><p class="stage-dashboard-quick-feedback" data-dashboard-quick-feedback aria-live="polite">Pronto para registrar.</p></section>`;
+    return `<section class="stage-dashboard-quick-capture" data-stage-dashboard-quick-capture><header><div><span class="activity-kind">AÇÕES RÁPIDAS</span><h2>Adicionar registro</h2><p>Os recebimentos de lotes são registrados exclusivamente em Repasses; os apontamentos operacionais permanecem nesta área.</p></div><button type="button" class="toolbar-action" data-view="repasses">${ico("wallet-cards")} Abrir Repasses</button></header><form data-dashboard-quick-record><header><span>${ico("clipboard-pen-line")}</span><div><b>Novo registro</b><small>Cria apontamento para uma etapa</small></div></header><label>Etapa<select name="stageKey" required>${stages.map((stage) => `<option value="${esc(stage.key)}">${esc(stage.name)}</option>`).join("")}</select></label><label>Atividade<input name="activity" required placeholder="Ex.: conferência de execução"></label><div class="stage-dashboard-quick-pair"><label>Data<input name="date" type="date" required value="${today}"></label><label>Responsável<input name="responsible" placeholder="A definir"></label></div><label>Resumo<input name="detail" placeholder="Medição, ocorrência ou evidência"></label><button type="submit" class="primary">Adicionar registro ${ico("arrow-up-right")}</button></form><p class="stage-dashboard-quick-feedback" data-dashboard-quick-feedback aria-live="polite">${esc(state.dashboardQuickRecordFeedbackV1 || "Pronto para registrar.")}</p></section>`;
   };
   
   const stageRecordRecordsPanelV1 = (stages, groups) => {
@@ -891,7 +894,7 @@ export const installStageRecordCenterV1 = (ViewLayer, {
       pendingCount = records.filter((record) => !/conclu/i.test(stageRecordStatusLabelV1(record))).length,
       selectedRecord = records.find((record) => String(record.id) === String(state.controlStageRecordModalId)),
       selectedStage = selectedRecord ? stageRecordStageForV1(selectedRecord, stages) : null;
-    return `<section class="stage-record-center-page" data-stage-record-center>${stageRecordQuickCaptureMarkupV1(stages)}<section class="stage-record-center-kpis"><article><small>MATERIAIS OCR</small><b>${materialRows.length}</b><span>itens identificados nas notas</span></article><article><small>REGISTROS OCR</small><b>${records.length}</b><span>apontamentos adicionados</span></article><article><small>ANEXOS</small><b>${attachmentCount}</b><span>arquivos vinculados</span></article><article><small>PENDÊNCIAS</small><b>${pendingCount}</b><span>registros para revisão</span></article></section>${stageRecordDashboardLotAnalysisV1(state)}${stageRecordModalMarkupV1(state, selectedRecord, selectedStage)}</section>`;
+    return `<section class="stage-record-center-page" data-stage-record-center>${stageRecordQuickCaptureMarkupV1(stages, state)}<section class="stage-record-center-kpis"><article><small>MATERIAIS OCR</small><b>${materialRows.length}</b><span>itens identificados nas notas</span></article><article><small>REGISTROS OCR</small><b>${records.length}</b><span>apontamentos adicionados</span></article><article><small>ANEXOS</small><b>${attachmentCount}</b><span>arquivos vinculados</span></article><article><small>PENDÊNCIAS</small><b>${pendingCount}</b><span>registros para revisão</span></article></section>${stageRecordDashboardLotAnalysisV1(state)}${stageRecordModalMarkupV1(state, selectedRecord, selectedStage)}</section>`;
   };
   
   const stageHomeRecordResourcesMarkupV1 = (state = appStore.get()) => {
@@ -940,11 +943,7 @@ export const installStageRecordCenterV1 = (ViewLayer, {
   globalThis.installStageRecordCenterV1();
   
   const stageRecordDashboardQuickEntryMarkupV1 = () => {
-    const today = new Date().toISOString().slice(0, 10),
-      lots = REPASSE_PRICE_CATALOG.filter((item) => Number(item.lot) > 0)
-        .map((item) => '<option value="' + esc(item.label) + '">' + esc(item.quadra) + ' · ' + formatBRL(item.price) + '</option>')
-        .join("");
-    return '<section class="stage-dashboard-quick-capture" data-stage-dashboard-quick-capture><header><div><span class="activity-kind">AÇÕES RÁPIDAS</span><h2>Adicionar entrada</h2><p>Registre o recebimento do lote sem sair do Dashboard. Os detalhes permanecem disponíveis em Lotes.</p></div><span class="stage-record-section-note">salvamento local</span></header><div class="stage-dashboard-quick-grid stage-dashboard-quick-grid-single"><form data-dashboard-quick-entry><header><span>' + ico("wallet-cards") + '</span><div><b>Nova entrada</b><small>Vincula valor e data ao lote</small></div></header><label>Lote<input name="lot" list="dashboard-quick-lots" required placeholder="Ex.: QA-12"></label><datalist id="dashboard-quick-lots">' + lots + '</datalist><div class="stage-dashboard-quick-pair"><label>Valor recebido<input name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" required placeholder="0,00"></label><label>Data<input name="date" type="date" required value="' + today + '"></label></div><label>Descrição<input name="description" placeholder="Ex.: sinal de reserva"></label><button type="submit" class="primary">Adicionar entrada ' + ico("arrow-up-right") + '</button></form></div><p class="stage-dashboard-quick-feedback" data-dashboard-quick-feedback aria-live="polite">Pronto para registrar.</p></section>';
+    return stageRecordQuickCaptureMarkupV1(stageRecordStagesV1(), appStore.get());
   };
   
   const stageRecordDashboardActionWorkspaceMarkupV1 = () => {
@@ -964,6 +963,64 @@ export const installStageRecordCenterV1 = (ViewLayer, {
     );
   };
   
+  // The control view may be replaced by later render/bind decorators. Delegate
+  // the submit at document level so a new form never falls through to a GET.
+  documentRef?.addEventListener("submit", async (event) => {
+      const form = event.target;
+      if (!form?.matches?.("[data-dashboard-quick-record]")) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const view = form.closest("view-layer");
+      if (!view || typeof apiFetch !== "function" || typeof operationalHeaders !== "function") return;
+        const values = Object.fromEntries(new FormData(form)),
+          stage = stageRecordStagesV1().find((item) => String(item.key) === String(values.stageKey)),
+          activity = String(values.activity || "").trim(),
+          feedback = view.querySelector("[data-dashboard-quick-feedback]"),
+          button = form.querySelector('button[type="submit"]');
+        if (!stage || !activity) {
+          if (feedback) feedback.textContent = "Selecione uma etapa e informe a atividade.";
+          return;
+        }
+        button.disabled = true;
+        if (feedback) feedback.textContent = "Salvando registro no diário operacional…";
+        try {
+          const response = await apiFetch("/api/records", {
+              method: "POST",
+              headers: operationalHeaders({ "Content-Type": "application/json" }),
+              body: JSON.stringify({
+                obra: "Aliança Park",
+                etapa: stage.name,
+                stageKey: stage.key,
+                atividade: activity,
+                data: String(values.date || ""),
+                hora: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+                responsavel: String(values.responsible || "A definir").trim() || "A definir",
+                detalhes: String(values.detail || `Registro operacional: ${activity}`).trim(),
+                status: "Pendente",
+                properties: [{ label: "Origem", value: "Registro rápido do Dashboard" }],
+              }),
+            }),
+            payload = await response.json();
+          if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+          const record = payload.record || payload;
+          appStore.update((state) => ({
+            ...state,
+            records: [record, ...(state.records || []).filter((item) => String(item.id) !== String(record.id))],
+            lastAction: `Criou registro de ${activity} na etapa ${stage.name}`,
+            dashboardQuickRecordFeedbackV1: `Registro ${record.id} salvo e vinculado a ${stage.name}.`,
+          }));
+          form.reset();
+          form.elements.date.value = new Date().toISOString().slice(0, 10);
+          notify(`Registro salvo em ${stage.name}.`, "success");
+          try { await view.runOperationalLoop?.("record.created"); } catch (error) { console.warn("Replanejamento após registro não concluído.", error); }
+        } catch (error) {
+          const message = `Registro não salvo: ${error.message || "serviço indisponível"}`;
+          appStore.set({ dashboardQuickRecordFeedbackV1: message });
+          notify("Registro não confirmado; revise a conexão e tente novamente.", "warning");
+        } finally {
+          button.disabled = false;
+        }
+  }, true);
   const stageRecordCenterBindBaseV1 = ViewLayer.prototype.bind;
   ViewLayer.prototype.bind = function (...args) {
     const result = stageRecordCenterBindBaseV1.apply(this, args),
@@ -995,47 +1052,6 @@ export const installStageRecordCenterV1 = (ViewLayer, {
       });
     });
   
-    const quickFeedback = root.querySelector("[data-dashboard-quick-feedback]");
-    root.querySelector("[data-dashboard-quick-entry]")?.addEventListener("submit", (event) => {
-      event.preventDefault();
-      const values = Object.fromEntries(new FormData(event.currentTarget)),
-        lot = String(values.lot || "").trim().toUpperCase(),
-        catalogLot = REPASSE_PRICE_CATALOG.find((item) => String(item.label).toUpperCase() === lot),
-        amount = Math.max(0, Number(values.amount) || 0);
-      if (!catalogLot || !amount) {
-        if (quickFeedback) quickFeedback.textContent = "Informe um lote da tabela e um valor recebido maior que zero.";
-        return;
-      }
-      const state = appStore.get(), currentEntries = Array.isArray(state.repasseEntries) ? state.repasseEntries : [], currentStatuses = state.lotStatuses || {}, existing = currentStatuses[lot] || {};
-      const entry = {
-        id: `ENT-${Date.now().toString().slice(-8)}`,
-        lot,
-        client: "",
-        description: String(values.description || "Entrada registrada no Dashboard").trim(),
-        gross: amount,
-        net: amount,
-        tax: 0,
-        commission: 0,
-        rounding: 0,
-        updatedAt: new Date().toISOString(),
-        date: String(values.date || ""),
-      };
-      appStore.set({
-        repasseEntries: [...currentEntries, entry],
-        lotStatuses: {
-          ...currentStatuses,
-          [lot]: {
-            ...existing,
-            status: existing.status && existing.status !== "Disponível" ? existing.status : "Em negociação",
-            payment: { status: "Parcial", amount, date: String(values.date || "") },
-            note: entry.description,
-            updatedAt: new Date().toISOString(),
-          },
-        },
-        lastAction: `Adicionou entrada de ${formatBRL(amount)} no lote ${lot}`,
-      });
-      notify?.(`Entrada de ${formatBRL(amount)} adicionada ao lote ${lot}.`, "success");
-    });
     const openRecord = (element) => {
       const recordId = element.dataset.stageRecordOpen;
       if (!recordId) return;

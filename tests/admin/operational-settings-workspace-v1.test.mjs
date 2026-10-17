@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { installOperationalSettingsWorkspaceV1 } from "../../components/commercial/operational-settings-workspace-v1.mjs";
 
-const setup = ({ failDevice = false, failCalibration = false } = {}) => {
+const setup = ({ failDevice = false, failCalibration = false, actor = { role: "admin", label: "Administradora" } } = {}) => {
   const state = {
-      currentActor: { role: "admin", label: "Administradora" },
+      currentActor: actor,
       systemCalibration: {
         version: 4,
         updatedBy: "Warley",
@@ -95,11 +95,13 @@ const setup = ({ failDevice = false, failCalibration = false } = {}) => {
 };
 
 test("operational settings render the existing role, calibration, and integration sections", () => {
-  const ctx = setup(), html = ctx.workspace.render.call({}, "kept");
+  const ctx = setup({ actor: { role: "owner", label: "Dono" } }), html = ctx.workspace.render.call({}, "kept");
   for (const expected of [
     "Governança do agente", "CALIBRAÇÃO OPERACIONAL · VERSÃO 4", "Rede de água",
     "Integrações operacionais", "https://worker.example", "owner-from-state",
-    "GITHUB_PAT · configurado no Worker", "<footer class=\"settings-tools\">",
+    "GITHUB_PAT · configurado no Worker", "Papéis e chaves", "data-access-role-form",
+    "data-access-role-list", "value=\"agenda.write\"",
+    "<footer class=\"settings-tools\">",
   ]) assert.ok(html.includes(expected), `missing operational settings contract: ${expected}`);
 });
 

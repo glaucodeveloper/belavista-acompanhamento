@@ -1,4 +1,4 @@
-const AUTH_MODE=String(process.env.BELAVISTA_AUTH_MODE||'firebase').trim().toLowerCase();
+const AUTH_MODE=String(process.env.BELAVISTA_AUTH_MODE||'github-pat').trim().toLowerCase();
 const ROLE_ALIASES=new Map([
   ['owner','owner'],['dono','owner'],['proprietario','owner'],['proprietário','owner'],
   ['admin','admin'],['administrador','admin'],
@@ -31,6 +31,29 @@ const normalizedRole=value=>ROLE_ALIASES.get(String(value||'').trim().toLocaleLo
 const normalizedUserType=value=>['encarregado','foreman'].includes(String(value||'').trim().toLocaleLowerCase('pt-BR'))?'foreman':'';
 
 export async function requestActor(req){
+  if(AUTH_MODE==='github-pat'){
+    const token=String(req.headers.authorization||'').match(/^Bearer\s+(.+)$/i)?.[1];
+    const apiBase=String(process.env.BELAVISTA_API_BASE||'').trim().replace(/\/$/,'');
+    if(apiBase){
+      if(!token)throw Object.assign(new Error('Sessão obrigatória.'),{statusCode:401});
+      let response;
+      try{
+        response=await fetch(`${apiBase}/api/auth/session`,{
+          method:'GET',cache:'no-store',headers:{authorization:`Bearer ${token}`},
+          signal:AbortSignal.timeout(12000),
+        });
+      }catch(error){
+        throw Object.assign(new Error(`Não foi possível validar a sessão no serviço remoto: ${error?.message||'falha de conexão'}`),{statusCode:503});
+      }
+      const payload=await response.json().catch(()=>({}));
+      if(!response.ok)throw Object.assign(new Error(payload.error||`Sessão recusada pelo serviço remoto (HTTP ${response.status}).`),{statusCode:response.status});
+      const actor=payload.actor;
+      if(!actor?.uid||!actor?.role)throw Object.assign(new Error('O serviço remoto não retornou um perfil válido.'),{statusCode:502});
+      return {...actor,mode:actor.mode||'github-pat'};
+    }
+    const {actorFromGithubSession}=await import('./github-session-store.mjs');
+    return actorFromGithubSession(token);
+  }
   if(AUTH_MODE==='firebase'){
     const token=String(req.headers.authorization||'').match(/^Bearer\s+(.+)$/i)?.[1];
     if(!token)throw Object.assign(new Error('Autenticação obrigatória.'),{statusCode:401});
@@ -58,4 +81,4 @@ export async function requireRoles(req,allowed=[]){
   return actor;
 }
 
-export const authStatus=()=>({mode:AUTH_MODE,productionReady:AUTH_MODE==='firebase',roles:['owner','admin','foreman','sales','commercial','broker','corretor','developer'],localDeveloperScope:'localhost only'});
+export const authStatus=()=>({mode:AUTH_MODE,productionReady:['github-pat','firebase'].includes(AUTH_MODE),roles:['owner','admin','foreman','sales','commercial','broker','corretor','developer'],localDeveloperScope:'localhost only'});

@@ -5,7 +5,11 @@ import {fileURLToPath} from 'node:url';
 import developmentSeedData from './data/development-seed.json' with {type:'json'};
 import {REPASSE_PRICE_CATALOG} from './repasse-price-catalog.mjs';
 
+const normalizedLotKey=value=>{const raw=String(value||'').trim().toLocaleUpperCase('pt-BR').replace(/\s+/g,'');const match=raw.match(/^([A-Z]+)-?(\d+)$/);return match?`${match[1]}-${Number(match[2])}`:raw;};
+const priceCatalogLot=value=>REPASSE_PRICE_CATALOG.find(item=>normalizedLotKey(item.label)===normalizedLotKey(value))||null;
+
 const appRoot=fileURLToPath(new URL('.',import.meta.url));
+const applicationProjectId=developmentSeedData.project.id;
 const dataRoot=process.env.BELAVISTA_DATA_ROOT||join(appRoot,'data');
 const dbPath=process.env.BELAVISTA_DB||join(dataRoot,'belavista.sqlite');
 const receiptsRoot=process.env.BELAVISTA_RECEIPTS_ROOT||join(dataRoot,'receipts');
@@ -132,6 +136,9 @@ db.exec(`
     stage TEXT NOT NULL DEFAULT '',
     description TEXT NOT NULL DEFAULT '',
     amount_cents INTEGER NOT NULL DEFAULT 0,
+    sale_id TEXT NOT NULL DEFAULT '',
+    broker_name TEXT NOT NULL DEFAULT '',
+    repasse_reason_id TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS cash_flow_attachments (
@@ -148,6 +155,25 @@ db.exec(`
     description TEXT NOT NULL DEFAULT '',
     share_percent REAL NOT NULL DEFAULT 0,
     active INTEGER NOT NULL DEFAULT 1,
+    updated_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS repasse_broker_rules (
+    broker_name TEXT NOT NULL COLLATE NOCASE,
+    lot_key TEXT NOT NULL,
+    commission_percent REAL,
+    active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY(broker_name,lot_key)
+  );
+  CREATE TABLE IF NOT EXISTS repasse_sale_plans (
+    sale_id TEXT PRIMARY KEY REFERENCES commercial_sales(id) ON DELETE CASCADE,
+    contract_price_cents INTEGER NOT NULL CHECK(contract_price_cents > 0),
+    annual_interest_percent REAL,
+    monthly_installments INTEGER NOT NULL DEFAULT 0 CHECK(monthly_installments >= 0),
+    semiannual_installments INTEGER NOT NULL DEFAULT 0 CHECK(semiannual_installments >= 0),
+    semiannual_principal_percent REAL NOT NULL DEFAULT 0 CHECK(semiannual_principal_percent BETWEEN 0 AND 100),
+    monthly_first_due_date TEXT,
+    semiannual_first_due_date TEXT,
     updated_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS outsourcing_receipts (
@@ -438,6 +464,14 @@ db.exec(`
     WHERE a.planned_start IS NOT NULL AND a.planned_start<>'';
 `);
 
+const cashFlowColumns = new Set(db.prepare(`PRAGMA table_info(cash_flow_entries)`).all().map((column) => column.name));
+for (const [name, definition] of [
+  ["sale_id", "TEXT NOT NULL DEFAULT ''"],
+  ["broker_name", "TEXT NOT NULL DEFAULT ''"],
+  ["repasse_reason_id", "TEXT NOT NULL DEFAULT ''"],
+]) if (!cashFlowColumns.has(name)) db.exec(`ALTER TABLE cash_flow_entries ADD COLUMN ${name} ${definition}`);
+db.exec(`CREATE INDEX IF NOT EXISTS cash_flow_repasse_sale_idx ON cash_flow_entries(sale_id,entry_date,created_at)`);
+db.prepare(`INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES(4,?)`).run(new Date().toISOString());
 db.prepare(`INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES(3,?)`).run(new Date().toISOString());
 const now=()=>new Date().toISOString();
 const hasOperationalRows=()=>db.prepare(`
@@ -503,22 +537,6 @@ const resolveIds=db.prepare(`SELECT p.id AS projectId,s.id AS stageId,a.id AS ac
   FROM projects p LEFT JOIN stages s ON s.project_id=p.id AND lower(s.name)=lower(?)
   LEFT JOIN activities a ON a.stage_id=s.id AND lower(a.name)=lower(?)
   LEFT JOIN collaborators c ON lower(c.name)=lower(?) WHERE lower(p.name)=lower(?) LIMIT 1`);
-const fallbackActivityByStage=db.prepare(`SELECT a.id AS activityId
-  FROM activities a
-  WHERE a.stage_id=? AND (
-    lower(a.category) LIKE '%execu%' OR
-    lower(a.name) LIKE 'executar %' OR
-    lower(a.name) LIKE '%implantar %'
-  )
-  ORDER BY
-    CASE
-      WHEN lower(a.category) LIKE '%execu%' THEN 0
-      WHEN lower(a.name) LIKE 'executar %' THEN 1
-      ELSE 2
-    END,
-    a.progress DESC,
-    a.name
-  LIMIT 1`);
 const audit=db.prepare(`INSERT INTO audit_events(entity,entity_id,action,payload_json,created_at) VALUES(?,?,?,?,?)`);
 const asText=(value,fallback='')=>String(value??fallback).trim();
 const serializeMapArea=(value,fallback='')=>{
@@ -534,7 +552,7 @@ const serializeRecordProperties=(value,fallback='[]')=>{
   const clean=parsed.slice(0,40).map((item,index)=>({id:asText(item?.id,`property-${index+1}`).slice(0,80),label:asText(item?.label,'Propriedade sem nome').slice(0,120),type:['text','number','date','select','boolean','map_area'].includes(item?.type)?item.type:'text',value:item?.type==='map_area'&&item?.value&&typeof item.value==='object'?item.value:asText(item?.value).slice(0,2000),options:Array.isArray(item?.options)?item.options.map(option=>asText(option).slice(0,120)).filter(Boolean).slice(0,30):[]}));
   return JSON.stringify(clean);
 };
-const parseRecordRow=row=>{if(!row)return row;let properties=[];try{properties=JSON.parse(row.propertiesJson||'[]');}catch{}const materialName=properties.find(item=>item.id==='material_name')?.value;return {...row,atividade:materialName?`Atualização de material: ${materialName}`:row.atividade,properties};};
+const parseRecordRow=row=>{if(!row)return row;let properties=[];try{properties=JSON.parse(row.propertiesJson||'[]');}catch{}const materialName=properties.find(item=>item.id==='material_name')?.value,recordedActivity=properties.find(item=>item.id==='recorded_activity')?.value;return {...row,atividade:recordedActivity|| (materialName?`Atualização de material: ${materialName}`:row.atividade),properties};};
 const slug=(value,fallback='item')=>String(value??fallback).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80)||fallback;
 const numeric=(value,fallback=0)=>{const normalized=String(value??'').replace(/\./g,'').replace(',','.').replace(/[^\d.-]/g,'');const amount=Number(normalized);return Number.isFinite(amount)?amount:fallback;};
 const toRecordInput=(input,existing={})=>{
@@ -543,7 +561,13 @@ const toRecordInput=(input,existing={})=>{
   const atividade=asText(input.atividade,existing.atividade||'Drenagem Pluvial');
   const responsavel=asText(input.responsavel,existing.responsavel||'A definir');
   const ids=resolveIds.get(etapa,atividade,responsavel,obra)||{};
-  const fallbackActivityId=ids.stageId&&!ids.activityId?fallbackActivityByStage.get(ids.stageId)?.activityId||null:null;
+  const activityProvided=Object.hasOwn(input,'atividade');
+  const activityId=ids.activityId||(activityProvided?null:existing.activityId||null);
+  const sourceProperties=input.properties??existing.propertiesJson??existing.properties??[];
+  let properties=[];
+  try{properties=Array.isArray(sourceProperties)?sourceProperties:JSON.parse(sourceProperties||'[]');}catch{}
+  properties=properties.filter(item=>item?.id!=='recorded_activity');
+  if(atividade&&!activityId)properties.unshift({id:'recorded_activity',label:'Atividade informada',type:'text',value:atividade});
   const partIds=(Array.isArray(input.partIds)?input.partIds:String(input.partIds||'').split(',')).map(value=>asText(value)).filter(Boolean).slice(0,500);
   const mapAreaInput=input.mapArea|| (partIds.length?{partIds}:existing.mapArea||'');
   const mapArea=serializeMapArea(mapAreaInput,existing.mapArea||'');
@@ -551,7 +575,7 @@ const toRecordInput=(input,existing={})=>{
   // vazias. Registros gerais continuam válidos: a relação activity_id fica
   // nula até que a atividade seja criada, em vez de apontar para um ID órfão.
   const generalEvent=asText(input.etapa).toLocaleLowerCase('pt-BR')==='geral';
-  return {projectId:ids.projectId||projectId,stageId:generalEvent?null:ids.stageId||existing.stageId||2,activityId:generalEvent?null:ids.activityId||fallbackActivityId||existing.activityId||null,responsibleId:ids.responsibleId||existing.responsibleId||null,obra,etapa,atividade,responsavel,data:asText(input.data,existing.data||new Date().toISOString().slice(0,10)),hora:asText(input.hora,existing.hora||'08:30'),detalhes:asText(input.detalhes,existing.detalhes||''),status:asText(input.status,existing.status||'Pendente'),evidenceUri:asText(input.evidenceUri,existing.evidenceUri||'')||null,mapArea,propertiesJson:serializeRecordProperties(input.properties,existing.propertiesJson||existing.properties||'[]')};
+  return {projectId:ids.projectId||projectId,stageId:generalEvent?null:ids.stageId||existing.stageId||2,activityId:generalEvent?null:activityId,responsibleId:ids.responsibleId||existing.responsibleId||null,obra,etapa,atividade,responsavel,data:asText(input.data,existing.data||new Date().toISOString().slice(0,10)),hora:asText(input.hora,existing.hora||'08:30'),detalhes:asText(input.detalhes,existing.detalhes||''),status:asText(input.status,existing.status||'Pendente'),evidenceUri:asText(input.evidenceUri,existing.evidenceUri||'')||null,mapArea,propertiesJson:serializeRecordProperties(properties)};
 };
 
 
@@ -821,7 +845,7 @@ const parseCashAttachment=(input={})=>{
   return {bytes,mimeType:match[1],fileName:safeCashAttachmentName(attachment.fileName||'anexo-caixa'),ext:cashAttachmentMimeExt[match[1]]||''};
 };
 export function listCashFlowEntries(){
-  const rows=db.prepare(`SELECT id,entry_date AS date,kind,lot_key AS lotKey,category,stage,description,amount_cents AS amountCents,fiscal_document_type AS fiscalDocumentType,fiscal_document_number AS fiscalDocumentNumber,fiscal_issuer AS fiscalIssuer,fiscal_issue_date AS fiscalIssueDate,fiscal_status AS fiscalStatus,created_at AS createdAt FROM cash_flow_entries ORDER BY entry_date DESC,created_at DESC`).all();
+  const rows=db.prepare(`SELECT id,entry_date AS date,kind,lot_key AS lotKey,category,stage,description,amount_cents AS amountCents,sale_id AS saleId,broker_name AS brokerName,repasse_reason_id AS repasseReasonId,fiscal_document_type AS fiscalDocumentType,fiscal_document_number AS fiscalDocumentNumber,fiscal_issuer AS fiscalIssuer,fiscal_issue_date AS fiscalIssueDate,fiscal_status AS fiscalStatus,created_at AS createdAt FROM cash_flow_entries ORDER BY entry_date DESC,created_at DESC`).all();
   return rows.map(row=>{
     const attachments=db.prepare(`SELECT id,file_name AS fileName,mime_type AS mimeType,created_at AS createdAt FROM cash_flow_attachments WHERE cash_flow_id=? ORDER BY created_at DESC`).all(row.id)
       .map(file=>({...file,fileUrl:'/api/cash-flow/'+encodeURIComponent(row.id)+'/attachments/'+encodeURIComponent(file.id)+'/file'}));
@@ -890,8 +914,22 @@ export function listInstagramLeadReports(limit=50){
 export function createCashFlowEntry(input={}){
   const id=asText(input.id)||`CX-${Date.now().toString(36).toUpperCase()}`,timestamp=now(),kind=asText(input.kind,'saida')==='entrada'?'entrada':'saida';
   const amountCents=Math.max(0,Math.round(Number(input.amountCents)||0));
-  const lotKey=asText(input.lotKey).trim();
-  if(lotKey&&(!REPASSE_PRICE_CATALOG.some(lot=>lot.label===lotKey)||kind!=='entrada'))throw Object.assign(new Error('A entrada deve estar vinculada a um lote válido da tabela de preços.'),{statusCode:400});
+  let lotKey=asText(input.lotKey).trim();
+  const saleId=asText(input.saleId).trim(),brokerName=asText(input.brokerName).trim(),repasseReasonId=asText(input.repasseReasonId).trim();
+  const catalogLot=priceCatalogLot(lotKey);
+  if(lotKey&&(!catalogLot||kind!=='entrada'))throw Object.assign(new Error('A entrada deve estar vinculada a um lote válido da tabela de preços.'),{statusCode:400});
+  if(catalogLot)lotKey=catalogLot.label;
+  if(saleId){
+    const sale=db.prepare(`SELECT id,lot,broker FROM commercial_sales WHERE id=?`).get(saleId);
+    if(kind!=='entrada'||!sale)throw Object.assign(new Error('O repasse exige uma venda persistida e uma entrada de caixa.'),{statusCode:400});
+    if(normalizedLotKey(sale.lot)!==normalizedLotKey(lotKey))throw Object.assign(new Error('O lote da entrada não corresponde ao lote da venda selecionada.'),{statusCode:400});
+    if(!brokerName)throw Object.assign(new Error('Selecione o corretor responsável pelo repasse.'),{statusCode:400});
+    if(String(sale.broker||'').trim()&&String(sale.broker).trim().toLocaleLowerCase('pt-BR')!==brokerName.toLocaleLowerCase('pt-BR'))throw Object.assign(new Error('O corretor da entrada difere do corretor registrado na venda.'),{statusCode:400});
+    const rule=db.prepare(`SELECT active FROM repasse_broker_rules WHERE broker_name=? COLLATE NOCASE AND lot_key=? COLLATE NOCASE`).get(brokerName,lotKey);
+    if(!rule||!rule.active)throw Object.assign(new Error('Configure uma regra ativa de comissão para o corretor antes de registrar o repasse.'),{statusCode:400});
+    const reason=db.prepare(`SELECT active FROM commission_reasons WHERE id=?`).get(repasseReasonId);
+    if(!reason||!reason.active)throw Object.assign(new Error('Selecione uma razão de repasse ativa.'),{statusCode:400});
+  }
   if(!Number.isSafeInteger(amountCents)||amountCents<=0)throw Object.assign(new Error('Informe um valor de caixa maior que zero.'),{statusCode:400});
   const attachment=parseCashAttachment(input);
   const fiscalStatus=['pendente','em_conferencia','conferido','nao_aplicavel'].includes(input.fiscalStatus)?input.fiscalStatus:'pendente';
@@ -900,7 +938,7 @@ export function createCashFlowEntry(input={}){
   const fiscalIssuer=asText(input.fiscalIssuer);
   const fiscalIssueDate=asText(input.fiscalIssueDate);
   if(fiscalStatus==='conferido'&&(!fiscalDocumentType||!fiscalDocumentNumber||!fiscalIssuer||!fiscalIssueDate||!attachment))throw Object.assign(new Error('Conferência fiscal exige tipo, número, emitente, data e documento anexado.'),{statusCode:400});
-  db.prepare(`INSERT INTO cash_flow_entries(id,entry_date,kind,lot_key,category,stage,description,amount_cents,fiscal_document_type,fiscal_document_number,fiscal_issuer,fiscal_issue_date,fiscal_status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,asText(input.date,new Date().toISOString().slice(0,10)),kind,lotKey,asText(input.category),asText(input.stage),asText(input.description),amountCents,fiscalDocumentType,fiscalDocumentNumber,fiscalIssuer,fiscalIssueDate,fiscalStatus,timestamp);
+  db.prepare(`INSERT INTO cash_flow_entries(id,entry_date,kind,lot_key,category,stage,description,amount_cents,sale_id,broker_name,repasse_reason_id,fiscal_document_type,fiscal_document_number,fiscal_issuer,fiscal_issue_date,fiscal_status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,asText(input.date,new Date().toISOString().slice(0,10)),kind,lotKey,asText(input.category),asText(input.stage),asText(input.description),amountCents,saleId,brokerName,repasseReasonId,fiscalDocumentType,fiscalDocumentNumber,fiscalIssuer,fiscalIssueDate,fiscalStatus,timestamp);
   if(attachment){
     const ext=attachment.ext,base=attachment.fileName.toLowerCase().endsWith(ext)?attachment.fileName:`${attachment.fileName}${ext}`,storagePath=join(cashFlowAttachmentsRoot,`${id}-${base}`),attachmentId=`CXA-${Date.now().toString(36).toUpperCase()}`;
     try{
@@ -914,6 +952,34 @@ export function createCashFlowEntry(input={}){
   }
   audit.run('cash_flow_entries',id,'created',JSON.stringify({kind,lotKey,amountCents,stage:asText(input.stage),fiscalStatus,fiscalDocumentType,fiscalDocumentNumber}),timestamp);
   return listCashFlowEntries().find(row=>row.id===id);
+}
+export function updateRepasseEntryV1(id,input={}){
+  const entryId=asText(id),current=db.prepare(`SELECT id,sale_id AS saleId FROM cash_flow_entries WHERE id=? AND sale_id<>''`).get(entryId);
+  if(!current)throw Object.assign(new Error('Entrada de repasse não encontrada.'),{statusCode:404});
+  const sale=db.prepare(`SELECT id,lot,broker FROM commercial_sales WHERE id=?`).get(current.saleId);
+  const lot=priceCatalogLot(input.lotKey),brokerName=asText(input.brokerName).trim(),reasonId=asText(input.repasseReasonId).trim(),amountCents=Math.round(Number(input.amountCents)||0),date=asText(input.date);
+  if(!sale||!lot||normalizedLotKey(lot.label)!==normalizedLotKey(sale.lot)||normalizedLotKey(input.lotKey)!==normalizedLotKey(sale.lot))throw Object.assign(new Error('O lote não corresponde à venda selecionada.'),{statusCode:400});
+  if(!brokerName||String(sale.broker||'').trim().toLocaleLowerCase('pt-BR')!==brokerName.toLocaleLowerCase('pt-BR'))throw Object.assign(new Error('O corretor não corresponde ao registrado na venda.'),{statusCode:400});
+  const rule=db.prepare(`SELECT active FROM repasse_broker_rules WHERE broker_name=? COLLATE NOCASE AND lot_key=? COLLATE NOCASE`).get(brokerName,lot.label);
+  const reason=db.prepare(`SELECT active FROM commission_reasons WHERE id=?`).get(reasonId);
+  if(!rule?.active)throw Object.assign(new Error('Configure uma regra ativa de comissão para este corretor e lote.'),{statusCode:400});
+  if(!reason?.active)throw Object.assign(new Error('Selecione uma razão de repasse ativa.'),{statusCode:400});
+  if(!Number.isSafeInteger(amountCents)||amountCents<=0)throw Object.assign(new Error('Informe um valor recebido maior que zero.'),{statusCode:400});
+  const parsedDate=/^\d{4}-\d{2}-\d{2}$/.test(date)?new Date(`${date}T12:00:00Z`):null;
+  if(!parsedDate||Number.isNaN(parsedDate.valueOf())||parsedDate.toISOString().slice(0,10)!==date)throw Object.assign(new Error('Informe uma data de recebimento válida.'),{statusCode:400});
+  const timestamp=now();
+  db.prepare(`UPDATE cash_flow_entries SET entry_date=?,lot_key=?,category='Repasse',description=?,amount_cents=?,broker_name=?,repasse_reason_id=? WHERE id=?`).run(date,lot.label,asText(input.description),amountCents,brokerName,reasonId,entryId);
+  audit.run('cash_flow_entries',entryId,'repasse-updated',JSON.stringify({saleId:sale.id,lotKey:lot.label,brokerName,repasseReasonId:reasonId,amountCents}),timestamp);
+  return listCashFlowEntries().find(row=>row.id===entryId);
+}
+export function deleteRepasseEntryV1(id){
+  const entryId=asText(id),files=db.prepare(`SELECT storage_path AS storagePath FROM cash_flow_attachments WHERE cash_flow_id=?`).all(entryId),row=db.prepare(`SELECT id FROM cash_flow_entries WHERE id=? AND sale_id<>''`).get(entryId);
+  if(!row)return false;
+  db.prepare(`DELETE FROM cash_flow_attachments WHERE cash_flow_id=?`).run(entryId);
+  db.prepare(`DELETE FROM cash_flow_entries WHERE id=?`).run(entryId);
+  for(const file of files)try{if(existsSync(file.storagePath))unlinkSync(file.storagePath);}catch{}
+  audit.run('cash_flow_entries',entryId,'repasse-deleted','{}',now());
+  return true;
 }
 export function addCashFlowAttachment(id,input={}){
   const cashFlowId=asText(id);
@@ -947,6 +1013,53 @@ export function updateCommissionReason(id,input={}){
   db.prepare(`UPDATE commission_reasons SET label=?,description=?,share_percent=?,active=?,updated_at=? WHERE id=?`).run(label,description,share,active,timestamp,id);
   audit.run('commission_reasons',id,'updated',JSON.stringify({label,share,active:Boolean(active)}),timestamp);
   return listCommissionReasons().find(row=>row.id===id);
+}
+const repassePlanSelect=`SELECT sale_id AS saleId,contract_price_cents AS contractPriceCents,annual_interest_percent AS annualInterestPercent,monthly_installments AS monthlyInstallments,semiannual_installments AS semiannualInstallments,semiannual_principal_percent AS semiannualPrincipalPercent,monthly_first_due_date AS monthlyFirstDueDate,semiannual_first_due_date AS semiannualFirstDueDate,updated_at AS updatedAt FROM repasse_sale_plans`;
+export function listRepasseOperationsV1(){
+  const entries=listCashFlowEntries(),sales=listCommercialSales(),brokerRules=db.prepare(`SELECT broker_name AS brokerName,lot_key AS lotKey,commission_percent AS commissionPercent,active,updated_at AS updatedAt FROM repasse_broker_rules ORDER BY broker_name COLLATE NOCASE,lot_key COLLATE NOCASE`).all().map(row=>({...row,active:Boolean(row.active)})),plans=db.prepare(`${repassePlanSelect} ORDER BY sale_id`).all();
+  return {sales:sales.map(sale=>({...sale,tablePrice:priceCatalogLot(sale.lot),plan:plans.find(plan=>plan.saleId===sale.id)||null,brokerRule:brokerRules.find(rule=>rule.brokerName.toLocaleLowerCase('pt-BR')===String(sale.broker||'').toLocaleLowerCase('pt-BR')&&normalizedLotKey(rule.lotKey)===normalizedLotKey(sale.lot))||null,receipts:entries.filter(entry=>entry.saleId===sale.id&&entry.kind==='entrada')})),entries:entries.filter(entry=>entry.saleId),brokerRules,reasons:listCommissionReasons()};
+}
+export function saveRepasseBrokerRuleV1(input={}){
+  const brokerName=asText(input.brokerName).trim(),lotKey=asText(input.lotKey).trim(),commissionPercent=Number(input.commissionPercent);
+  if(!brokerName||brokerName.length>160)throw Object.assign(new Error('Selecione um corretor cadastrado nas vendas.'),{statusCode:400});
+  const catalogLot=priceCatalogLot(lotKey);
+  if(!lotKey||!catalogLot)throw Object.assign(new Error('Selecione um lote válido da tabela de preços.'),{statusCode:400});
+  if(!Number.isFinite(commissionPercent)||commissionPercent<0||commissionPercent>100)throw Object.assign(new Error('A comissão do corretor deve estar entre 0 e 100%.'),{statusCode:400});
+  if(!listCommercialSales().some(sale=>String(sale.broker||'').toLocaleLowerCase('pt-BR')===brokerName.toLocaleLowerCase('pt-BR')&&normalizedLotKey(sale.lot)===normalizedLotKey(catalogLot.label)))throw Object.assign(new Error('O vínculo entre corretor e lote não existe em uma venda persistida.'),{statusCode:404});
+  const timestamp=now();
+  db.prepare(`INSERT INTO repasse_broker_rules(broker_name,lot_key,commission_percent,active,updated_at) VALUES(?,?,?,1,?) ON CONFLICT(broker_name,lot_key) DO UPDATE SET commission_percent=excluded.commission_percent,active=1,updated_at=excluded.updated_at`).run(brokerName,catalogLot.label,commissionPercent,timestamp);
+  audit.run('repasse_broker_rules',`${brokerName}:${catalogLot.label}`,'upserted',JSON.stringify({commissionPercent}),timestamp);
+  return db.prepare(`SELECT broker_name AS brokerName,lot_key AS lotKey,commission_percent AS commissionPercent,active,updated_at AS updatedAt FROM repasse_broker_rules WHERE broker_name=? COLLATE NOCASE AND lot_key=? COLLATE NOCASE`).get(brokerName,catalogLot.label);
+}
+export function deleteRepasseBrokerRuleV1(brokerName,lotKey){
+  const broker=asText(brokerName).trim(),lot=priceCatalogLot(lotKey);
+  if(!lot)return false;
+  const result=db.prepare(`DELETE FROM repasse_broker_rules WHERE broker_name=? COLLATE NOCASE AND lot_key=? COLLATE NOCASE`).run(broker,lot.label);
+  if(result.changes)audit.run('repasse_broker_rules',`${broker}:${lot.label}`,'deleted','{}',now());
+  return result.changes>0;
+}
+export function saveRepasseSalePlanV1(saleId,input={}){
+  const sale=db.prepare(`SELECT id,lot,value_cents AS valueCents FROM commercial_sales WHERE id=?`).get(asText(saleId));
+  if(!sale)throw Object.assign(new Error('Venda persistida não encontrada.'),{statusCode:404});
+  const tableLot=priceCatalogLot(sale.lot);
+  const contractPriceCents=Math.round(Number(input.contractPriceCents)||0),annualInterestPercent=Number(input.annualInterestPercent),monthlyInstallments=Math.floor(Number(input.monthlyInstallments)||0),semiannualInstallments=Math.floor(Number(input.semiannualInstallments)||0),semiannualPrincipalPercent=Number(input.semiannualPrincipalPercent)||0,monthlyFirstDueDate=asText(input.monthlyFirstDueDate),semiannualFirstDueDate=asText(input.semiannualFirstDueDate);
+  if(!tableLot)throw Object.assign(new Error('A venda não corresponde a um lote do quadro de preços.'),{statusCode:400});
+  if(!Number.isSafeInteger(contractPriceCents)||contractPriceCents<=0)throw Object.assign(new Error('Informe o valor contratual em centavos.'),{statusCode:400});
+  if(!Number.isFinite(annualInterestPercent)||annualInterestPercent<0||annualInterestPercent>100)throw Object.assign(new Error('Informe uma taxa anual de juros entre 0 e 100%.'),{statusCode:400});
+  if(monthlyInstallments<0||monthlyInstallments>600||semiannualInstallments<0||semiannualInstallments>100||monthlyInstallments+semiannualInstallments===0)throw Object.assign(new Error('Configure ao menos uma parcela mensal ou semestral.'),{statusCode:400});
+  if(semiannualPrincipalPercent<0||semiannualPrincipalPercent>100||(semiannualInstallments===0&&semiannualPrincipalPercent!==0)||(semiannualInstallments>0&&semiannualPrincipalPercent===0)||(monthlyInstallments===0&&semiannualPrincipalPercent!==100)||(monthlyInstallments>0&&semiannualInstallments>0&&(semiannualPrincipalPercent===100||semiannualPrincipalPercent===0)))throw Object.assign(new Error('A divisão do principal entre parcelas mensais e semestrais não é válida.'),{statusCode:400});
+  const validPlanDate=value=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;const parsed=new Date(`${value}T12:00:00Z`);return !Number.isNaN(parsed.valueOf())&&parsed.toISOString().slice(0,10)===value&&value>=new Date().toISOString().slice(0,10);};
+  if(monthlyInstallments>0&&!validPlanDate(monthlyFirstDueDate))throw Object.assign(new Error('Informe o primeiro vencimento mensal atual ou futuro.'),{statusCode:400});
+  if(semiannualInstallments>0&&!validPlanDate(semiannualFirstDueDate))throw Object.assign(new Error('Informe o primeiro vencimento semestral atual ou futuro.'),{statusCode:400});
+  const timestamp=now();
+  db.prepare(`INSERT INTO repasse_sale_plans(sale_id,contract_price_cents,annual_interest_percent,monthly_installments,semiannual_installments,semiannual_principal_percent,monthly_first_due_date,semiannual_first_due_date,updated_at) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(sale_id) DO UPDATE SET contract_price_cents=excluded.contract_price_cents,annual_interest_percent=excluded.annual_interest_percent,monthly_installments=excluded.monthly_installments,semiannual_installments=excluded.semiannual_installments,semiannual_principal_percent=excluded.semiannual_principal_percent,monthly_first_due_date=excluded.monthly_first_due_date,semiannual_first_due_date=excluded.semiannual_first_due_date,updated_at=excluded.updated_at`).run(sale.id,contractPriceCents,annualInterestPercent,monthlyInstallments,semiannualInstallments,semiannualPrincipalPercent,monthlyFirstDueDate||null,semiannualFirstDueDate||null,timestamp);
+  audit.run('repasse_sale_plans',sale.id,'upserted',JSON.stringify({contractPriceCents,annualInterestPercent,monthlyInstallments,semiannualInstallments,semiannualPrincipalPercent}),timestamp);
+  return db.prepare(`${repassePlanSelect} WHERE sale_id=?`).get(sale.id);
+}
+export function deleteRepasseSalePlanV1(saleId){
+  const id=asText(saleId),result=db.prepare(`DELETE FROM repasse_sale_plans WHERE sale_id=?`).run(id);
+  if(result.changes)audit.run('repasse_sale_plans',id,'deleted','{}',now());
+  return result.changes>0;
 }
 const safeOutsourcingName=(name='comprovante')=>String(name||'comprovante').normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,120)||'comprovante';
 export function listOutsourcingReceipts(){return db.prepare(`SELECT id,contractor,stage,service,amount_cents AS amountCents,issue_date AS issueDate,document_number AS documentNumber,file_name AS fileName,mime_type AS mimeType,notes,created_at AS createdAt FROM outsourcing_receipts ORDER BY COALESCE(issue_date,created_at) DESC`).all().map(row=>({...row,fileUrl:`/api/outsourcing-receipts/${encodeURIComponent(row.id)}/file`}));}
@@ -1179,6 +1292,7 @@ export function deleteWorkbenchAttachment(id){
 /* ── Stage Administration ──────────────────────────────────────── */
 
 const safeJson=(text,fallback)=>{try{return JSON.parse(text||JSON.stringify(fallback));}catch{return fallback;}};
+const stageInputError=message=>{const error=new Error(message);error.statusCode=400;return error;};
 
 export function listStagesAdmin(){
   const stages=db.prepare(`SELECT s.id,s.project_id AS projectId,s.name,s.status,s.progress,s.week,s.owner FROM stages s ORDER BY s.id`).all();
@@ -1225,8 +1339,13 @@ export function getStageAdmin(stageId){
 
 export function updateStageAdmin(stageId,input={}){
   const current=db.prepare(`SELECT * FROM stages WHERE id=?`).get(stageId);if(!current)return null;
-  const name=String(input.name||current.name).trim(),owner=String(input.owner||current.owner||'').trim();
-  const status=String(input.status||current.status).trim(),progress=Math.max(0,Math.min(100,Number(input.progress??current.progress)||0));
+  const name=String(input.name??current.name).trim(),owner=String(input.owner??current.owner??'').trim();
+  if(!name)throw stageInputError('Informe o nome da etapa.');
+  const duplicate=db.prepare(`SELECT id FROM stages WHERE project_id=? AND lower(name)=lower(?) AND id<>?`).get(current.project_id,name,stageId);
+  if(duplicate)throw stageInputError('Já existe uma etapa com este nome.');
+  const status=String(input.status??current.status).trim();if(!status)throw stageInputError('Informe o estado da etapa.');
+  const rawProgress=Number(input.progress??current.progress);if(!Number.isFinite(rawProgress)||rawProgress<0||rawProgress>100)throw stageInputError('O avanço deve estar entre 0 e 100%.');
+  const progress=Math.round(rawProgress);
   const week=String(input.week??current.week??'').trim();
   db.prepare(`UPDATE stages SET name=?,owner=?,status=?,progress=?,week=? WHERE id=?`).run(name,owner,status,progress,week,stageId);
   audit.run('stages',String(stageId),'updated',JSON.stringify({name,owner,status,progress,week}),now());
@@ -1235,15 +1354,44 @@ export function updateStageAdmin(stageId,input={}){
 
 export function createStageAdmin(input={}){
   const name=String(input.name||'').trim();
-  if(!name)throw new Error('Informe o nome da etapa.');
+  if(!name)throw stageInputError('Informe o nome da etapa.');
   const owner=String(input.owner||'').trim(),status=String(input.status||'planejado').trim()||'planejado';
-  const progress=Math.max(0,Math.min(100,Number(input.progress)||0)),week=String(input.week||'').trim();
-  const existing=db.prepare(`SELECT id FROM stages WHERE project_id=? AND lower(name)=lower(?)`).get(projectId,name);
-  if(existing)throw new Error('Já existe uma etapa com este nome.');
+  const rawProgress=Number(input.progress??0);if(!Number.isFinite(rawProgress)||rawProgress<0||rawProgress>100)throw stageInputError('O avanço deve estar entre 0 e 100%.');
+  const progress=Math.round(rawProgress),week=String(input.week||'').trim();
+  const existing=db.prepare(`SELECT id FROM stages WHERE project_id=? AND lower(name)=lower(?)`).get(applicationProjectId,name);
+  if(existing)throw stageInputError('Já existe uma etapa com este nome.');
   const nextId=Number(db.prepare(`SELECT COALESCE(MAX(id),0)+1 AS id FROM stages`).get()?.id||1);
-  db.prepare(`INSERT INTO stages(id,project_id,name,status,progress,week,owner) VALUES(?,?,?,?,?,?,?)`).run(nextId,projectId,name,status,progress,week,owner);
+  db.prepare(`INSERT INTO stages(id,project_id,name,status,progress,week,owner) VALUES(?,?,?,?,?,?,?)`).run(nextId,applicationProjectId,name,status,progress,week,owner);
   audit.run('stages',String(nextId),'created',JSON.stringify({name,owner,status,progress,week}),now());
   return getStageAdmin(nextId);
+}
+
+export function deleteStageAdmin(stageId){
+  const stage=db.prepare(`SELECT id,name FROM stages WHERE id=?`).get(stageId);if(!stage)return false;
+  const stageKeys=[String(stage.name||'').trim().toLocaleLowerCase('pt-BR'),String(stage.id)].filter(Boolean);
+  const keyPlaceholders=stageKeys.map(()=>'?').join(',');
+  const materialAuditRows=db.prepare(`SELECT entity_id AS entityId,payload_json AS payloadJson FROM audit_events WHERE entity='materials'`).all();
+  const materialIds=new Set(materialAuditRows.filter(row=>String(safeJson(row.payloadJson,{}).stage||'').trim().toLocaleLowerCase('pt-BR')===String(stage.name||'').trim().toLocaleLowerCase('pt-BR')).map(row=>String(row.entityId)));
+  const currentMaterialIds=new Set(db.prepare(`SELECT id FROM materials`).all().map(row=>String(row.id)));
+  const linked={
+    activities:Number(db.prepare(`SELECT COUNT(*) AS total FROM activities WHERE stage_id=?`).get(stageId)?.total||0),
+    records:Number(db.prepare(`SELECT COUNT(*) AS total FROM records WHERE stage_id=?`).get(stageId)?.total||0),
+    purchases:Number(db.prepare(`SELECT COUNT(*) AS total FROM purchases WHERE stage_id=?`).get(stageId)?.total||0),
+    materials:[...materialIds].filter(id=>currentMaterialIds.has(id)).length,
+    agendaEvents:Number(db.prepare(`SELECT COUNT(*) AS total FROM agenda_events WHERE lower(stage_name)=lower(?)`).get(stage.name)?.total||0),
+    workbenchDiary:Number(db.prepare(`SELECT COUNT(*) AS total FROM workbench_diary WHERE lower(stage_key) IN (${keyPlaceholders})`).get(...stageKeys)?.total||0),
+    workbenchAttachments:Number(db.prepare(`SELECT COUNT(*) AS total FROM workbench_attachments WHERE lower(stage_key) IN (${keyPlaceholders})`).get(...stageKeys)?.total||0),
+    workbenchState:Number(db.prepare(`SELECT COUNT(*) AS total FROM stage_workbench_state WHERE lower(stage_key) IN (${keyPlaceholders})`).get(...stageKeys)?.total||0),
+    serviceRequests:Number(db.prepare(`SELECT COUNT(*) AS total FROM service_requests WHERE lower(stage_key) IN (${keyPlaceholders})`).get(...stageKeys)?.total||0),
+    cashEntries:Number(db.prepare(`SELECT COUNT(*) AS total FROM cash_flow_entries WHERE lower(stage)=lower(?)`).get(stage.name)?.total||0),
+    receipts:Number(db.prepare(`SELECT COUNT(*) AS total FROM purchase_receipts WHERE lower(stage)=lower(?)`).get(stage.name)?.total||0),
+    outsourcing:Number(db.prepare(`SELECT COUNT(*) AS total FROM outsourcing_receipts WHERE lower(stage)=lower(?)`).get(stage.name)?.total||0),
+  };
+  const dependencies=Object.entries(linked).filter(([,count])=>count>0).map(([key,count])=>`${key}: ${count}`);
+  if(dependencies.length){const error=new Error(`A etapa não pode ser removida enquanto houver dados vinculados (${dependencies.join(', ')}).`);error.statusCode=409;throw error;}
+  db.prepare(`DELETE FROM stages WHERE id=?`).run(stageId);
+  audit.run('stages',String(stageId),'deleted',JSON.stringify({name:stage.name}),now());
+  return true;
 }
 
 export function saveStageActivitiesAdmin(stageId,items=[]){

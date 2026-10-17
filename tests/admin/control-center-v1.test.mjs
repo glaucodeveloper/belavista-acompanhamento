@@ -50,7 +50,9 @@ test('dashboard expõe o atalho da Central e o layout é responsivo',()=>{
   assert.match(components,/stageRecordLotAnalysisV1/);
   assert.match(components,/stageRecordDashboardLotAnalysisV1/);
   assert.match(components,/data-stage-dashboard-quick-capture/);
-  assert.match(components,/data-dashboard-quick-entry/);
+  assert.doesNotMatch(components,/data-dashboard-quick-entry/);
+  assert.match(components,/data-view="repasses"/);
+  assert.match(components,/data-dashboard-quick-record/);
   assert.match(components,/stageRecordDashboardQuickEntryMarkupV1/);
   assert.match(components,/data-activity-quick-record/);
   assert.match(components,/data-agenda-activity-record-panel/);

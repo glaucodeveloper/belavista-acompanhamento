@@ -9,7 +9,7 @@ const source=workerFiles.map(f=>`\n/* ${f} */\n${read(f)}`).join('\n');
 const strictSource=read('worker/src/strict-nvidia-state.js');
 
 test('strict state selects reasoning model and bounds reasoning budget',()=>{
-  assert.match(strictSource,/NVIDIA_STATE_MODEL\|\|env\.NVIDIA_REASONING_MODEL\|\|env\.NVIDIA_REASONING_VISION_MODEL/);
+  assert.match(strictSource,/NVIDIA_STATE_MODEL\|\|env\.NVIDIA_REASONING_MODEL\|\|DEFAULT_MODEL/);
   assert.match(strictSource,/NVIDIA_STATE_REASONING_BUDGET/);
   assert.match(strictSource,/requestBody\.reasoning_budget/);
   assert.match(strictSource,/requestBody\.reasoning_effort/);

@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
-import {randomUUID} from 'node:crypto';
 import * as persistence from '../../persistence.mjs';
-import {routeRequest} from '../../worker/src/routes.js';
+import {runOperationalLoop} from '../../worker/src/operational-loop.js';
 import {assertEventApplied,assertFullState,assertStrictNvidia} from './helpers.mjs';
 import {validateEventEffect} from './fixtures/effect-validators.mjs';
 import {applicationStateFingerprint,buildApplicationInferenceCases,readApplicationOperationalState} from './fixtures/application-state.mjs';
@@ -38,9 +37,8 @@ try{
     }
     try{
       const previousState=scenario.createState();
-      const serviceToken=`qa-${randomUUID()}`;
       const env={
-        BELAVISTA_API_TOKEN:serviceToken,NVIDIA_API_KEY:apiKey,
+        NVIDIA_API_KEY:apiKey,
         NVIDIA_API_URL:process.env.NVIDIA_API_URL||process.env.NVIDIA_NIM_API_URL,
         NVIDIA_STATE_MODEL:process.env.BELAVISTA_TEST_NVIDIA_STATE_MODEL||process.env.NVIDIA_STATE_MODEL,
         NVIDIA_REASONING_MODEL:process.env.NVIDIA_REASONING_MODEL,
@@ -60,16 +58,8 @@ try{
         NVIDIA_STATE_RETRIES:process.env.NVIDIA_STATE_RETRIES||'1'
       };
       console.log(`RUN ${scenario.event.type} — ${scenario.name}`);
-      const request=new Request('https://worker.local/api/operational-loop',{
-        method:'POST',headers:{'content-type':'application/json','x-belavista-token':serviceToken},
-        body:JSON.stringify({mode:'strict-ai-state-transition',persist:false,dryRun:true,previousState,event:scenario.event,
-          inference:{provider:'nvidia',strict:true,requireFullState:true,requireMetaTrace:true,noDeterministicFallback:true}})
-      });
-      const response=await routeRequest(request,env);
-      const text=await response.text();
-      let payload;
-      try{payload=JSON.parse(text);}catch{throw new Error(`Worker respondeu HTTP ${response.status} sem JSON válido.`);}
-      assert.equal(response.status,200,safeMessage(payload?.error?.message||payload?.message||`Worker respondeu HTTP ${response.status}.`));
+      const payload=await runOperationalLoop(env,{mode:'strict-ai-state-transition',persist:false,dryRun:true,previousState,event:scenario.event,
+        inference:{provider:'nvidia',strict:true,requireFullState:true,requireMetaTrace:true,noDeterministicFallback:true}});
       assertStrictNvidia(payload);
       const nextState=assertFullState(payload,{previousState});
       assertEventApplied(payload,scenario.event);

@@ -1,35 +1,39 @@
-/** Notification-panel presentation and read-state helpers for the shared topbar. */
-export const TOPBAR_NOTIFICATION_READ_KEY_V1 = "belavista.notifications.read.v1";
+/** Notification inbox presentation and persisted-state selectors for the shared topbar. */
+export const topbarNotificationIdV1 = (item = {}) =>
+  String(item.id || item.notificationId || "");
 
-export const readTopbarNotificationIdsV1 = (storage = globalThis.localStorage) => {
-  try {
-    const value = JSON.parse(storage?.getItem(TOPBAR_NOTIFICATION_READ_KEY_V1) || "[]");
-    return new Set(Array.isArray(value) ? value.map(String) : []);
-  } catch {
-    return new Set();
-  }
-};
+export const topbarNotificationIsReadV1 = (item = {}) =>
+  Boolean(
+    item.readAt ||
+      item.read_at ||
+      item.acknowledgedAt ||
+      item.acknowledged_at ||
+      ["read", "acknowledged"].includes(String(item.status || "").toLowerCase()),
+  );
 
-export const writeTopbarNotificationIdsV1 = (ids, storage = globalThis.localStorage) =>
-  storage?.setItem(TOPBAR_NOTIFICATION_READ_KEY_V1, JSON.stringify([...new Set(Array.from(ids || [], String))]));
-
-export const renderTopbarNotificationPanelV1 = (state = {}, { esc = (value) => String(value ?? ""), storage = globalThis.localStorage } = {}) => {
-  const items = Array.isArray(state.operationalNotifications)
-      ? state.operationalNotifications.slice(0, 12)
+export const renderTopbarNotificationPanelV1 = (
+  state = {},
+  { esc = (value) => String(value ?? "") } = {},
+) => {
+  const allItems = Array.isArray(state.operationalNotifications)
+      ? state.operationalNotifications.filter((item) => topbarNotificationIdV1(item))
       : [],
-    read = readTopbarNotificationIdsV1(storage);
+    items = allItems.slice(0, 12),
+    unreadCount = allItems.filter((item) => !topbarNotificationIsReadV1(item)).length;
   const rows = items.length
-    ? items.map((item) => {
-        const id = String(item.id || item.notificationId || item.updatedAt || item.title || Math.random()),
-          tone = String(item.severity || "info").toLowerCase().replace(/[^a-z]/g, "");
-        return `<button type="button" class="topbar-notification-item ${read.has(id) ? "read" : "unread"}" data-notification-item="${esc(id)}"><i class="${tone}"></i><span><b>${esc(item.title || "Atualização operacional")}</b><small>${esc(item.message || "")}</small><em>${esc(item.createdAt || item.updatedAt || "agora")}</em></span></button>`;
-      }).join("")
+    ? items
+        .map((item) => {
+          const id = topbarNotificationIdV1(item),
+            tone = String(item.severity || "info").toLowerCase().replace(/[^a-z]/g, ""),
+            read = topbarNotificationIsReadV1(item);
+          return `<button type="button" class="topbar-notification-item ${read ? "read" : "unread"}" data-notification-item="${esc(id)}" aria-pressed="${read}"><i class="${esc(tone)}"></i><span><b>${esc(item.title || "Atualização operacional")}</b><small>${esc(item.message || "")}</small><em>${esc(item.createdAt || item.created_at || item.updatedAt || "agora")}</em>${item.actionUrl || item.action_url ? `<strong>${esc(item.actionLabel || "Abrir contexto")}</strong>` : ""}</span></button>`;
+        })
+        .join("")
     : '<p class="topbar-notification-empty">Nenhuma notificação operacional recebida.</p>';
-  return `<aside class="topbar-notification-panel" data-topbar-notification-panel hidden><header><div><span class="activity-kind">CENTRAL DE AVISOS</span><h2>Notificações</h2></div><button type="button" data-notification-close aria-label="Fechar notificações">×</button></header><div class="topbar-notification-list">${rows}</div><footer><small>${items.length} evento(s) carregado(s) do canal operacional.</small><button type="button" data-notification-mark-all>Marcar como lidas</button></footer></aside>`;
+  return `<aside class="topbar-notification-panel" data-topbar-notification-panel hidden><header><div><span class="activity-kind">CENTRAL DE AVISOS</span><h2>Notificações</h2></div><button type="button" data-notification-close aria-label="Fechar notificações">×</button></header><div class="topbar-notification-list">${rows}</div><footer><small>${unreadCount} não lida(s) · exibindo ${items.length} de ${allItems.length}</small><button type="button" data-notification-mark-all ${unreadCount ? "" : "disabled"}>Marcar como lidas</button></footer></aside>`;
 };
 
-export const countUnreadTopbarNotificationsV1 = (state = {}, storage = globalThis.localStorage) => {
-  const items = Array.isArray(state.operationalNotifications) ? state.operationalNotifications : [],
-    read = readTopbarNotificationIdsV1(storage);
-  return items.filter((item) => !read.has(String(item.id || item.notificationId || item.updatedAt || item.title))).length;
-};
+export const countUnreadTopbarNotificationsV1 = (state = {}) =>
+  (Array.isArray(state.operationalNotifications) ? state.operationalNotifications : [])
+    .filter((item) => !topbarNotificationIsReadV1(item))
+    .length;

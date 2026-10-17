@@ -29,7 +29,9 @@ import {
   listProjects,
   listPurchaseRequests,
   listRecords,
+  listAgendaEvents,
   listStageAgendaItems,
+  saveAgendaSnapshot,
   updatePurchaseRequestStatus,
   updateRecord
 } from './storage.js';
@@ -47,8 +49,11 @@ import {buildRecordInterpretationV1} from '../../record-stage-interpretation-v1.
 import {runPlanningCycle} from './planning-service.js';
 import {runOperationalLoop} from './operational-loop.js';
 import {runPublicLeadConversation} from './public-lead-ai.js';
-import {getGitHubRuntime,readOperationalConfig,writeOperationalConfig,loadOperationalConfiguration} from './github-store.js';
-import {requireAdminRequest} from './firebase-auth.js';
+import {getGitHubRuntime,readOperationalConfig,writeOperationalConfig,loadOperationalConfiguration,readRepositoryJson,writeRepositoryJson} from './github-store.js';
+import {requireAdminRequest,bearerToken} from './request-auth.js';
+import {actorFromGithubSession,openGithubSession,revokeGithubSession,
+  listForemanAccessKeys,createForemanAccessKey,revokeForemanAccessKey,
+  listForemanAccessRoles,saveForemanAccessRole,deleteForemanAccessRole} from './github-session-store.js';
 import {readPublicCatalog} from './public-commercial-store.js';
 import {createLiveTestSession,readLiveTestSession,saveLiveTestSession,deleteLiveTestSession,applyLiveTestEvent} from './live-test-session.js';
 
@@ -95,8 +100,71 @@ export async function routeRequest(request,env,ctx){
   const url=new URL(request.url);
   const pathname=url.pathname.replace(/\/+$/,'')||'/';
 
+  if(pathname==='/api/auth/session'){
+    if(request.method==='POST')return json(await openGithubSession(env,(await body(request)).pat),201,{'cache-control':'no-store'});
+    if(request.method==='GET')return json({actor:await requireAdminRequest(request,env)},200,{'cache-control':'no-store'});
+    if(request.method==='DELETE'){
+      await requireAdminRequest(request,env);
+      await revokeGithubSession(env,bearerToken(request));
+      return json({ok:true},200,{'cache-control':'no-store'});
+    }
+    return methodNotAllowed();
+  }
+  if(pathname==='/api/access-roles'){
+    const actor=await requireAdminRequest(request,env);
+    if(actor.role!=='owner'||actor.userType==='foreman')return json({error:'Somente a chave PTA administradora pode gerenciar papéis delegados.'},403);
+    if(request.method==='GET')return json({roles:await listForemanAccessRoles(env,actor.githubId)},200,{'cache-control':'no-store'});
+    if(request.method==='POST'||request.method==='PUT'){
+      const payload=await body(request),id=request.method==='PUT'?String(payload.id||''):'';
+      return json({role:await saveForemanAccessRole(env,{githubId:actor.githubId,id,name:payload.name,permissions:payload.permissions})},request.method==='POST'?201:200,{'cache-control':'no-store'});
+    }
+    return methodNotAllowed();
+  }
+  const accessRoleMatch=pathname.match(/^\/api\/access-roles\/([^/]+)$/);
+  if(accessRoleMatch&&request.method==='DELETE'){
+    const actor=await requireAdminRequest(request,env);
+    if(actor.role!=='owner'||actor.userType==='foreman')return json({error:'Somente a chave PTA administradora pode excluir papéis delegados.'},403);
+    const id=decodeURIComponent(accessRoleMatch[1]);
+    return await deleteForemanAccessRole(env,actor.githubId,id)?json({ok:true,id}):notFound('Papel não encontrado.');
+  }
+  if(pathname==='/api/access-keys'){
+    const actor=await requireAdminRequest(request,env);
+    if(actor.role!=='owner'||actor.userType==='foreman')return json({error:'Somente a chave PTA administradora pode gerenciar chaves delegadas.'},403);
+    if(request.method==='GET')return json({keys:await listForemanAccessKeys(env,actor.githubId)},200,{'cache-control':'no-store'});
+    if(request.method==='POST'){
+      const payload=await body(request),key=await createForemanAccessKey(env,{githubId:actor.githubId,label:payload.label,permissions:payload.permissions,roleId:payload.roleId,createdBy:actor.githubLogin});
+      return json({key},201,{'cache-control':'no-store'});
+    }
+    return methodNotAllowed();
+  }
+  const delegatedKeyMatch=pathname.match(/^\/api\/access-keys\/([^/]+)$/);
+  if(delegatedKeyMatch&&request.method==='DELETE'){
+    const actor=await requireAdminRequest(request,env);
+    if(actor.role!=='owner'||actor.userType==='foreman')return json({error:'Somente a chave PTA administradora pode revogar chaves delegadas.'},403);
+    const id=decodeURIComponent(delegatedKeyMatch[1]);
+    return await revokeForemanAccessKey(env,actor.githubId,id)?json({ok:true,id}):json({error:'Chave não encontrada ou já revogada.'},404);
+  }
+  if(pathname==='/api/settings/public-lead-contact'){
+    const actor=await requireAdminRequest(request,env);
+    if(!['owner','admin','developer'].includes(actor.role))return json({error:'Seu perfil não pode alterar as configurações do atendimento comercial.'},403);
+    if(request.method==='GET'){
+      const settings=await readRepositoryJson(env,'data/operational/public-lead-contact.json');
+      return json(settings.data,200,{'cache-control':'no-store'});
+    }
+    if(request.method==='PUT'){
+      const payload=await body(request);
+      const whatsappNumber=String(payload.whatsappNumber||'').replace(/\D/g,'').slice(0,15);
+      if(whatsappNumber.length<10)return json({error:'Informe um número WhatsApp válido com DDD.'},400);
+      const path='data/operational/public-lead-contact.json';
+      const current=await readRepositoryJson(env,path);
+      const settings={...current.data,whatsappNumber,updatedAt:new Date().toISOString(),updatedBy:actor.login||actor.name||String(actor.id||actor.role)};
+      const saved=await writeRepositoryJson(env,path,settings,{sha:current.sha,message:'chore(commercial): atualizar contato público do WhatsApp'});
+      return json(saved.data,200,{'cache-control':'no-store'});
+    }
+    return methodNotAllowed();
+  }
   if(pathname==='/api/health'&&request.method==='GET'){
-    const snapshot=await getOperationalSnapshot(env).catch(()=>null);
+    const snapshot=await getOperationalSnapshot(env);
     return json({
       ok:true,
       service:'belavista-cloudflare-worker',
@@ -378,11 +446,18 @@ export async function routeRequest(request,env,ctx){
   }
 
   if((pathname==='/api/ai'||pathname==='/api/ai/vision-reasoning'||pathname==='/api/gemini')&&request.method==='POST'){
-    await requireAdminRequest(request,env);
+    const actor=await requireAdminRequest(request,env);
     const payload=await body(request);
     const reasoningVision=pathname==='/api/ai/vision-reasoning';
+    const delegated=actor.mode==='delegated-foreman-key',permissions=new Set(actor.permissions||[]);
+    if(delegated){
+      if(pathname==='/api/gemini')return json({error:'Esta rota não está disponível para chaves de encarregado.'},403);
+      if(!['records','stages'].includes(String(payload.view||'')))return json({error:'A chave de encarregado só pode enviar notas e imagens no contexto de registros ou cronograma.'},403);
+      if((reasoningVision||payload.attachment)&&!permissions.has('ai.photos'))return json({error:'Esta chave não tem permissão para enviar fotos à IA.'},403);
+      if(!reasoningVision&&!payload.attachment&&!permissions.has('ai.notes'))return json({error:'Esta chave não tem permissão para enviar notas à IA.'},403);
+    }
     if(reasoningVision&&!payload.attachment)return json({error:'A rota de reasoning exige uma imagem.'},400);
-    const snapshot=await getOperationalSnapshot(env).catch(()=>null);
+    const snapshot=delegated?null:await getOperationalSnapshot(env).catch(()=>null);
     const image=payload.attachment?normalizeImageAttachment(payload.attachment):null;
     if(payload.attachment&&!image)return json({error:'Imagem inválida. Use PNG, JPEG ou WEBP de até 6 MB.'},400);
     const serializedImage=image?{id:image.id,name:image.name,mimeType:image.mimeType,sizeBytes:image.sizeBytes,dataUrl:image.dataUrl,stored:false,storage:'request-ephemeral',transport:'inline-data-url'}:null;
@@ -397,11 +472,11 @@ export async function routeRequest(request,env,ctx){
         instruction:payload.instruction||'',
         requestContext:modelRequestContextV21||null
       });
-      return json({...result,recordOcr:recordOcrV21});
+      return json(delegated?{...result,toolCalls:[],recordOcr:recordOcrV21}:{...result,recordOcr:recordOcrV21});
     }
     const result=await runOperationalAssistant(env,{message:payload.message,view:payload.view,context:modelContextV21,instruction:payload.instruction,requestContext:modelRequestContextV21,explain:url.searchParams.get('explain')==='1',reasoning:reasoningVision,attachment:serializedImage});
     const heldAttachmentV21=image?await holdImageInWorker(env,payload.attachment,{channel:'admin-chat',purpose:'record-ocr'}).catch(()=>null):null;
-    return json({...result,endpoint:result.endpoint||env.NVIDIA_REASONING_API_URL||env.NVIDIA_API_URL||'https://integrate.api.nvidia.com/v1/chat/completions',reasoning:Boolean(reasoningVision&&image),recordOcr:recordOcrV21,attachment:heldAttachmentV21?{...heldAttachmentV21,dataUrl:undefined}:serializedImage?{...serializedImage,dataUrl:undefined}:null,attachmentStorage:heldAttachmentV21?.storage||(image?'request-ephemeral':null)});
+    return json({...result,...(delegated?{toolCalls:[]}:{}),endpoint:result.endpoint||env.NVIDIA_REASONING_API_URL||env.NVIDIA_API_URL||'https://integrate.api.nvidia.com/v1/chat/completions',reasoning:Boolean(reasoningVision&&image),recordOcr:recordOcrV21,attachment:heldAttachmentV21?{...heldAttachmentV21,dataUrl:undefined}:serializedImage?{...serializedImage,dataUrl:undefined}:null,attachmentStorage:heldAttachmentV21?.storage||(image?'request-ephemeral':null)});
   }
 
 
@@ -416,15 +491,21 @@ export async function routeRequest(request,env,ctx){
   }
 
   if(pathname==='/api/records'){
+    const actor=await requireAdminRequest(request,env);
     if(request.method==='GET')return json({records:await listRecords(env)});
     if(request.method==='POST'){
       const payload=await body(request);
+      if(actor.mode==='delegated-foreman-key'&&payload.evidence?.imageBase64&&!new Set(actor.permissions||[]).has('ai.photos'))return json({error:'Esta chave não pode anexar fotos ao registro.'},403);
       let recordAttachmentV21=null;
       if(payload.evidence?.imageBase64){
         const mimeType=String(payload.evidence.mimeType||'image/jpeg');
         const dataUrl='data:'+mimeType+';base64,'+String(payload.evidence.imageBase64||'');
-        recordAttachmentV21=await holdImageInWorker(env,{name:payload.evidence.fileName||'registro.png',mimeType,dataUrl},{channel:'records',purpose:'record-evidence'}).catch(()=>null);
-        if(recordAttachmentV21?.stored&&recordAttachmentV21.reference)payload.evidenceUri=recordAttachmentV21.reference;
+        recordAttachmentV21=await holdImageInWorker(env,{name:payload.evidence.fileName||'registro.png',mimeType,dataUrl},{channel:'records',purpose:'record-evidence'});
+        if(!recordAttachmentV21) return json({error:'Imagem do registro inválida.'},400);
+        if(!recordAttachmentV21.stored||!recordAttachmentV21.reference){
+          return json({error:'Armazenamento de evidências não configurado. O registro não foi criado.'},503);
+        }
+        payload.evidenceUri=recordAttachmentV21.reference;
       }
       const record=await insertRecord(env,payload);
       if(payload.evidence?.imageBase64||payload.evidenceUri)ctx.waitUntil(env.BELAVISTA_QUEUE?.send?.({kind:'record.digest',recordId:record.id,payload}));
@@ -460,8 +541,16 @@ export async function routeRequest(request,env,ctx){
 
   const recordId=pathId(pathname,'/api/records/');
   if(recordId){
+    await requireAdminRequest(request,env);
     if(request.method==='PUT')return json(await updateRecord(env,recordId,await body(request)));
     if(request.method==='DELETE')return await deleteRecord(env,recordId)?json({ok:true,id:recordId}):notFound('Registro não encontrado.');
+    return methodNotAllowed();
+  }
+
+  if(pathname==='/api/agenda-events'){
+    await requireAdminRequest(request,env);
+    if(request.method==='GET')return json({events:await listAgendaEvents(env)});
+    if(request.method==='PUT')return json({events:await saveAgendaSnapshot(env,(await body(request)).events)});
     return methodNotAllowed();
   }
 

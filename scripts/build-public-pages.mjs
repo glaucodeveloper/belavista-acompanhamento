@@ -34,7 +34,7 @@ const requiredFiles=[
 const supplementalEntries=[
   'admin-communications.css','control-record-accordion-v1.css','material-transition-v1.css',
   'record-ocr-dynamic-v21.css','atlas-application-v1.css','atlas-zip-shell-v2.css',
-  'atlas-operational-design-v1.css','atlas-carbon-integration-v1.css',
+  'atlas-operational-design-v1.css','atlas-carbon-integration-v1.css','atlas-mobile-focus-v1.css','github-access-settings-v1.css',
   'map-drag-calibration-v1.mjs','admin-communications.mjs','record-ocr-dynamic-v21.mjs',
   'glauco-shell-bridge-v58.mjs',
   'public-runtime-polish-v5332.mjs','public-model-quality-v5337.mjs',

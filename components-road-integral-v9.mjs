@@ -30,7 +30,7 @@ import {
   readProposalImageAsDataUrl,
 } from "./proposal-vision.mjs?v=proposal-vision-v1";
 // BELAVISTA_MAP_DRAG_INVERTED_V49
-import { apiFetch, apiUrl } from "./api-client.mjs?v=instagram-api-live-v1";
+import { apiFetch, apiUrl } from "./api-client.mjs?v=github-pat-gateway-v1";
 import {
   subscribePublicLeads,
   registerOperationalDevice,

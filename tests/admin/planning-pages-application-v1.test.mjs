@@ -4,7 +4,10 @@ import { readFile } from "node:fs/promises";
 import { installPlanningPagesApplicationV1 } from "../../components/planning/planning-pages-application-v1.mjs";
 
 test("planning page family preserves install order and forwards its public outputs", async () => {
-  const root = await readFile(new URL("../../components.js", import.meta.url), "utf8");
+  const root = (await Promise.all([
+    readFile(new URL("../../components.js", import.meta.url), "utf8"),
+    readFile(new URL("../../components/index.mjs", import.meta.url), "utf8"),
+  ])).join("\n");
   const application = await readFile(new URL("../../components/planning/planning-pages-application-v1.mjs", import.meta.url), "utf8");
   const installers = [
     "installPlanningPageRegistrationsV1({",

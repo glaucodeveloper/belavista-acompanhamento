@@ -139,7 +139,7 @@ test("stage record center installs its existing control and bind extensions thro
 
 test("record application composition installs the center and returns its shared page ports", async () => {
   const [components, composition] = await Promise.all([
-    readFile(new URL("../../components.js", import.meta.url), "utf8"),
+    readFile(new URL("../../components/index.mjs", import.meta.url), "utf8"),
     readFile(new URL("../../components/records/record-application-composition-v1.mjs", import.meta.url), "utf8"),
   ]);
 

@@ -1,4 +1,4 @@
-import { createAiChat } from "./ai-chat.mjs?v=chat-service-contract-v9";
+import { createAiChat } from "./ai-chat.mjs?v=mobile-focus-v1";
 import { createAiChatBrowserAdapter } from "./ai-chat-browser-adapter.mjs?v=chat-browser-adapter-v4";
 import { createAiChatDependenciesV1 } from "./ai-chat-dependencies-v1.mjs?v=ai-chat-dependencies-v6";
 import {

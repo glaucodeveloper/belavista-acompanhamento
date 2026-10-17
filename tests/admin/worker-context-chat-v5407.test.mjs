@@ -30,8 +30,7 @@ test('monitor de workers carrega o chat fora do shell reconstruído',()=>{
 });
 
 test('chat móvel inicia recolhido sem remover acesso ao assistente',()=>{
-  assert.match(chat,/mobileDefaultCollapsed = globalThis\.matchMedia\?\.\('\(max-width: 760px\)'\)\.matches === true \|\|/);
-  assert.match(chat,/new URLSearchParams\(location\.search\)\.get\('view'\) === 'lot-development'/);
+  assert.match(chat,/const mobileDefaultCollapsed = true/);
   assert.match(chat,/worker-context-assistant\$\{mobileDefaultCollapsed \? ' is-collapsed' : ''\}/);
   assert.match(chat,/data-worker-context-assistant/);
   assert.match(chat,/setCollapsed\(collapsed\)/);
@@ -57,12 +56,13 @@ test('chat dos workers cobre texto, imagem multimodal, conversa de trabalho e in
   assert.match(chat,/data-worker-chat-action="tests"/);
 });
 
-test('chat administrativo flutua centralizado e mantém resposta e compositor sem deslocar a página',()=>{
+test('chat administrativo fica encaixado no bottom desktop e mantém resposta e compositor',()=>{
+  const mobileFocus=read('atlas-mobile-focus-v1.css');
   assert.match(chatCss,/WORKER_CHAT_CODEX_FLOATING_V2/);
-  assert.match(chatCss,/top:50%!important;left:50%!important;right:auto!important;bottom:auto!important/);
-  assert.match(chatCss,/transform:translate\(-50%,-50%\)!important/);
-  assert.match(chatCss,/worker-context-chat-log\{flex:1 1 auto;min-height:0;max-height:none!important;overflow:auto/);
-  assert.doesNotMatch(chatCss,/\.app-main\{[^}]*padding-right:calc\(var\(--worker-chat-sidebar-width\)/);
+  assert.match(mobileFocus,/bottom:\s*16px\s*!important;\s*width:\s*min\(820px,\s*calc\(100vw - 48px\)\)\s*!important;\s*height:\s*min\(420px,\s*48dvh\)\s*!important/);
+  assert.match(mobileFocus,/transform:\s*translateX\(-50%\)\s*!important/);
+  assert.match(mobileFocus,/worker-context-chat-log\s*\{\s*flex:\s*1 1 auto\s*!important;\s*min-height:\s*0\s*!important;\s*max-height:\s*none\s*!important;\s*overflow:\s*auto\s*!important/);
+  assert.doesNotMatch(read('styles.css'),/\.dashboard-agenda\s*\{width:min\(100%,calc\(100vw - 730px\)\)\}/);
   assert.match(chat,/this\.messages\.at\(-1\)/);
 });
 
@@ -79,9 +79,14 @@ test('chat observa navegação, workers, ciclo, caixa, registros e eventos de te
 });
 
 test('monitor não reentra ao atualizar o próprio texto',()=>{
-  assert.match(index,/worker-context-chat\.mjs\?v=codex-floating-v2/);
+  assert.match(index,/worker-context-chat\.mjs\?v=worker-chat-auth-api-v3/);
   assert.match(chat,/const next = `Observando/);
   assert.match(chat,/monitor\.textContent !== next/);
+});
+
+test('chat rejeita verbos de ação negados antes de classificar uma solicitação de serviço',()=>{
+  assert.match(chat,/const actionableText=value\.replace\(\/\\b\(\?:n\[aã\]o\|nao\)\\b\[\^.!\?;\\n\]\*\/gi," "\)/);
+  assert.match(chat,/confirme\|confirma/);
 });
 
 test('chat administrativo e atendimento público possuem áudio opt-in',()=>{

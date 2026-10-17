@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createAppTopbar } from "../../components/shared/app-topbar.mjs";
 
-test("topbar encaminha sincronização e menu pelo próprio programa de eventos", () => {
+test("topbar encaminha sincronização e menu pelo próprio programa de eventos", async () => {
   const original = {
       HTMLElement: globalThis.HTMLElement,
       document: globalThis.document,
@@ -86,6 +86,7 @@ test("topbar encaminha sincronização e menu pelo próprio programa de eventos"
     setItem() {},
   };
 
+  let topbar;
   try {
     const appStore = {
         get: () => ({ ...state }),
@@ -99,20 +100,25 @@ test("topbar encaminha sincronização e menu pelo próprio programa de eventos"
         appStore,
         spreadsheetSchema: { sheets: [] },
         normalizeOperationalRole: (role) => role,
+        apiFetch: async (path) => path === "/api/agenda-events"
+          ? { ok: true, json: async () => ({ events: [{ id: "agenda-1" }, { id: "agenda-2" }] }) }
+          : { ok: true, json: async () => ({ notifications: [] }) },
         ico: () => "",
         esc: (value) => String(value),
         notify: (...args) => notices.push(args),
-      }),
-      topbar = new Topbar();
+      });
+    topbar = new Topbar();
 
     topbar.connectedCallback();
     assert.equal(subscribers.size, 1);
     assert.deepEqual([...nativeListeners.keys()], ["click"]);
 
-    nativeListeners.get("click")({ target: syncButton });
-    assert.equal(state.lastAction, "Sincronizou dados");
-    assert.deepEqual(notices, [["Dados sincronizados localmente.", "success"]]);
-    assert.equal(syncClasses.has("spinning"), true);
+    await nativeListeners.get("click")({ target: syncButton });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(state.lastAction, "Agenda sincronizada com o banco de dados");
+    assert.deepEqual(state.agendaDatabaseEventsV3, [{ id: "agenda-1" }, { id: "agenda-2" }]);
+    assert.deepEqual(notices, [["2 compromisso(s) sincronizado(s).", "success"]]);
+    assert.equal(syncClasses.has("spinning"), false);
 
     const profile = {
       closest: (selector) =>
@@ -127,6 +133,7 @@ test("topbar encaminha sincronização e menu pelo próprio programa de eventos"
     assert.equal(subscribers.size, 0);
     assert.equal(nativeListeners.size, 0);
   } finally {
+    topbar?.disconnectedCallback();
     for (const [key, value] of Object.entries(original)) {
       if (value === undefined) delete globalThis[key];
       else globalThis[key] = value;

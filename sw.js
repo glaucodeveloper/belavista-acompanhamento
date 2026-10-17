@@ -1,15 +1,15 @@
-// v12: inclui a navegação da agenda e o chat mobile compacto no shell atualizado.
-const SHELL = 'belavista-shell-admin-twa-v83-agenda-atlas';
-const RUNTIME = 'belavista-runtime-admin-twa-v34-agenda-atlas';
+// v13: unifica a sessão PAT da aplicação local e do Worker autenticado.
+const SHELL = 'belavista-shell-admin-twa-v87-mobile-navigation-tabs';
+const RUNTIME = 'belavista-runtime-admin-twa-v38-mobile-navigation-tabs';
 const APP_SHELL = [
-  './masterplan-pdf-artwork-v3.mjs', './app.js?v=mobile-agenda-v1', './components.js?v=mobile-agenda-v1',
-  './mobile-operational-v1.css?v=mobile-agenda-v2', './worker-context-chat.mjs?v=mobile-compact-v1',
+  './masterplan-pdf-artwork-v3.mjs', './app.js?v=dashboard-mobile-tabs-v2', './components.js?v=mobile-agenda-v1',
+  './atlas-mobile-focus-v1.css?v=5-map-agenda-chat-tabs', './worker-context-chat.mjs?v=worker-chat-auth-api-v4-mobile-tab',
   './public-runtime-polish-v5332.mjs?v=5.3.32',
   './admin-lots-canvas-v1.css',
   './admin-lots-canvas-v1.js?v=admin-lots-canvas-v1',
    './', './index.html', './styles.css?v=pdf-original-perimeter-v3', './map-page-widgets-v5.css?v=operations-v19', './app.js?v=pdf-reviewed-lot-areas-v1',
    './components.js?v=pdf-reviewed-lot-areas-v1', './worker-context-chat.mjs?v=worker-chat-lot-development-v1', './map-drag-calibration-v1.mjs?v=13', './runtime-url-v1.mjs?v=ngrok-route-v1', './public-leads-map-v50.mjs?v=admin-public-map-parity-v1&route=ngrok-route-v1', './admin-public-map-surface-v5352.mjs?v=5.3.53', './admin-brand-style-v1.css?v=alianza-brand-v10-transparent-v552-20260915', './state.js?v=system-metrics-v1-20260919', './map-page-widgets-v5.js?v=operations-v19', './assets/data/dwg-georeference.json?v=dwg-georef-v1', './assets/data/pdf-lot-labels-v1.json?v=1', './assets/data/pdf-lot-green-mapping-v1.json?v=1', './assets/model/alianca_park_masterplan_preview.glb?v=gpu-staged-5367', './assets/model/vegetation/tree-cc0.glb?v=generated-relief-v5391', './reservation-flow.mjs?v=7', './firebase.mjs?v=operations-v19',
-  './execution-planning-v8.css?v=8', './execution-planning-v8.js?v=navigation-state-v22', './admin-auth.mjs?v=admin-auth-v3', './admin-twa-runtime.mjs?v=admin-twa-runtime-v1', './admin-twa-manifest.webmanifest',
+  './execution-planning-v8.css?v=8', './execution-planning-v8.js?v=navigation-state-v22', './admin-auth.mjs?v=github-pat-key-only-v2', './api-client.mjs?v=github-pat-gateway-v1', './github-pat-vault-v1.mjs', './admin-twa-runtime.mjs?v=admin-twa-runtime-v1', './admin-twa-manifest.webmanifest',
   './stage-admin-v10.js?v=stage-admin-v10-primary',
   './dashboard-map-tabs-v3.css?v=map-tabs-v3', './dashboard-map-tabs-v3.js?v=map-tabs-v3', './admin-runtime-v11.js?v=admin-runtime-v11', './admin-runtime-v11.css?v=admin-runtime-v11', './manifest.webmanifest'
 ];

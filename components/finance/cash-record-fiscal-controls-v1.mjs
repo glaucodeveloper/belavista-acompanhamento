@@ -31,11 +31,10 @@ export const installCashRecordFiscalControlsV1 = (
         button.type = "button";
         button.className = "record-quick-cash-v1";
         button.dataset.quickCashEntry = stageName;
-        button.textContent = "＋ Nova entrada de caixa";
+        button.textContent = "＋ Registrar entrada em Repasses";
         button.addEventListener("click", () => appStore.set({
-          view: "cash-record", cashRecordReturnView: "control",
-          cashRecordDraft: { kind: "entrada", stage: stageName },
-          lastAction: "Abriu entrada de caixa com controle fiscal",
+          view: "repasses", repasseSelectedLotKey: "", repasseSelectedSaleId: "",
+          lastAction: "Abriu Repasses para registrar entrada e calcular comissão",
         }));
         header.append(button);
       });
@@ -43,7 +42,6 @@ export const installCashRecordFiscalControlsV1 = (
     const cashForm = this.querySelector("[data-cash-record-form]");
     if (cashForm) {
       const draft = appStore.get().cashRecordDraft || {};
-      if (draft.kind) cashForm.elements.kind.value = draft.kind;
       if (draft.stage) cashForm.elements.stage.value = draft.stage;
       mountRecordDropinV1(cashForm, cashForm.elements.attachment, "cash");
     }

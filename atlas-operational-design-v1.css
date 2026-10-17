@@ -8,6 +8,46 @@ body.admin-shell-page {
   color: var(--atlas-ink);
 }
 
+/* Stage-comprehension settings use the same light Atlas catalogue/form surface. */
+body.admin-shell-page .stage-comprehension-settings{color:#292b3b;background:#fff}
+body.admin-shell-page .stage-comprehension-settings-head,body.admin-shell-page .stage-comprehension-form{border-color:#e7e8ed;border-radius:16px;background:#fff;color:#292b3b;box-shadow:0 2px 8px rgba(28,34,48,.045)}
+body.admin-shell-page .stage-comprehension-settings-head h1,body.admin-shell-page .stage-comprehension-panel h2{color:#292b3b}
+body.admin-shell-page .stage-comprehension-settings-head p,body.admin-shell-page .stage-comprehension-panel header p{color:#858995}
+body.admin-shell-page .atlas-lead-contact-settings{padding:18px 20px;border:1px solid #e7e8ed;border-radius:16px;background:#f7f8fa;color:#292b3b}
+body.admin-shell-page .atlas-lead-contact-settings form{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,340px);align-items:end;gap:14px 24px}
+body.admin-shell-page .atlas-lead-contact-settings h2{margin:5px 0;color:#292b3b;font-size:18px}
+body.admin-shell-page .atlas-lead-contact-settings p{margin:0;color:#687081}
+body.admin-shell-page .atlas-lead-contact-settings label{display:grid;gap:6px;color:#687081}
+body.admin-shell-page .atlas-lead-contact-settings input{min-width:0;padding:10px 12px;border:1px solid #d9dce4;border-radius:8px;background:#fff;color:#292b3b;font:inherit}
+body.admin-shell-page .atlas-lead-contact-settings footer{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:10px;border-top:1px solid #e2e4e9}
+body.admin-shell-page .atlas-lead-contact-settings footer small{color:#687081}
+@media(max-width:700px){body.admin-shell-page .atlas-lead-contact-settings form{grid-template-columns:1fr}body.admin-shell-page .atlas-lead-contact-settings footer{grid-column:1;align-items:stretch;flex-direction:column}}
+body.admin-shell-page .stage-comprehension-stage-list{border-color:#e7e8ed;border-radius:14px;background:#f7f8fa}
+body.admin-shell-page .stage-comprehension-stage-list button{color:#414450}
+body.admin-shell-page .stage-comprehension-stage-list button.active{border-color:#8eb6ff;background:#f0f5ff;color:#29314c}
+body.admin-shell-page .stage-comprehension-stage-list button small{color:#858995}
+body.admin-shell-page .stage-comprehension-tabs{border-color:#e7e8ed}
+body.admin-shell-page .stage-comprehension-tabs button{color:#666a76}
+body.admin-shell-page .stage-comprehension-tabs button.active{background:#252633;color:#fff}
+body.admin-shell-page .stage-comprehension-tabs button span{background:#eceef2;color:#535663}
+body.admin-shell-page .stage-comprehension-panel>header,body.admin-shell-page .stage-comprehension-form>footer{border-color:#e7e8ed}
+body.admin-shell-page .stage-comprehension-wide,body.admin-shell-page .stage-comprehension-two label{color:#5f626d}
+body.admin-shell-page .stage-comprehension-form textarea,body.admin-shell-page .stage-comprehension-material-row input{border-color:#dedfe5;border-radius:9px;background:#fff;color:#292b3b}
+body.admin-shell-page .stage-comprehension-materials{border-color:#e7e8ed}
+body.admin-shell-page .stage-comprehension-materials[hidden]{display:none !important}
+body.admin-shell-page .stage-comprehension-empty-materials{padding:14px;border:1px dashed #d9dce4;border-radius:10px;background:#fafbfc;color:#777d8b;line-height:1.5}
+body.admin-shell-page .stage-comprehension-material-head{background:#f7f8fa;color:#777b86}
+body.admin-shell-page .stage-comprehension-material-row+.stage-comprehension-material-row{border-color:#eff0f2}
+body.admin-shell-page .stage-comprehension-material-row button{border-color:#dedfe5;border-radius:8px;background:#fff;color:#555966}
+body.admin-shell-page .stage-comprehension-form>footer{color:#858995}
+body.admin-shell-page .stage-comprehension-loading,body.admin-shell-page .stage-comprehension-empty,body.admin-shell-page .stage-comprehension-error{border-color:#e7e8ed;border-radius:12px;background:#f7f8fa;color:#565965}
+body.admin-shell-page .stage-comprehension-registered-activities,body.admin-shell-page .stage-comprehension-production{border-color:#e7e8ed;border-radius:12px;background:#f7f8fa;color:#414450}
+body.admin-shell-page .stage-comprehension-registered-activities li{border-color:#e7e8ed;border-radius:8px;background:#fff}
+body.admin-shell-page .stage-comprehension-registered-activities li small,body.admin-shell-page .stage-comprehension-registered-activities p,body.admin-shell-page .stage-comprehension-production>header p{color:#858995}
+body.admin-shell-page .stage-comprehension-production h3{color:#292b3b}
+body.admin-shell-page .stage-comprehension-production label,body.admin-shell-page .stage-comprehension-notifications label{color:#5f626d}
+body.admin-shell-page .stage-comprehension-production input,body.admin-shell-page .stage-comprehension-notifications input{border-color:#dedfe5;border-radius:9px;background:#fff;color:#292b3b}
+
 body.admin-shell-page .atlas-workspace,
 body.admin-shell-page .atlas-workspace > .scene,
 body.admin-shell-page .atlas-workspace > .scene > view-layer[data-view]:not([data-view="map"]) {
@@ -261,7 +301,13 @@ body.admin-shell-page .atlas-workspace view-layer[data-view]:not([data-view="map
   box-shadow: 0 2px 8px rgba(28, 34, 48, .045);
 }
 
-/* Codex-like assistant: a bounded conversation, padded answer and outlined composer. */
+/* Atlas assistant: the same light cards, ink and accent as the workspace. */
+body.admin-shell-page .worker-context-assistant.is-collapsed {
+  border: 1px solid #dfe1e7 !important;
+  background: #fff !important;
+  color: var(--atlas-ink) !important;
+  box-shadow: 0 10px 32px rgba(24, 30, 44, .14) !important;
+}
 body.admin-shell-page .worker-context-assistant:not(.is-collapsed) {
   border: 1px solid #dfe1e7 !important;
   border-radius: 20px !important;
@@ -290,6 +336,12 @@ body.admin-shell-page .worker-context-chat-head-actions button {
   border-radius: 9px !important;
   color: #555966 !important;
 }
+body.admin-shell-page .worker-context-chat-head-actions button:hover,
+body.admin-shell-page .worker-context-chat-head-actions button:focus-visible {
+  background: #f0f5ff !important;
+  border-color: #a8bfe9 !important;
+  color: var(--atlas-accent) !important;
+}
 body.admin-shell-page .worker-context-chat-intro {
   padding: 14px 18px 6px !important;
   background: #fff !important;
@@ -317,7 +369,10 @@ body.admin-shell-page .worker-context-chat-log {
   gap: 12px !important;
   padding: 16px 18px !important;
   background: #fff !important;
+  color: var(--atlas-ink) !important;
 }
+body.admin-shell-page .worker-context-chat-body { background: #fff !important; }
+body.admin-shell-page .worker-chat-empty { color: #7d8390 !important; }
 body.admin-shell-page .worker-context-fade:not([hidden]) {
   gap: 7px !important;
   margin: 4px 18px 8px !important;
@@ -367,6 +422,87 @@ body.admin-shell-page .worker-context-chat-message p {
 }
 body.admin-shell-page .worker-chat-message-meta,
 body.admin-shell-page .worker-chat-audit { color: #858995 !important; }
+body.admin-shell-page .worker-chat-message-meta button,
+body.admin-shell-page .worker-chat-image-badge { color: #2069d9 !important; }
+body.admin-shell-page .worker-chat-service,
+body.admin-shell-page .worker-chat-pending {
+  border: 1px solid #dce6f7 !important;
+  border-radius: 14px !important;
+  background: #f5f8ff !important;
+  color: var(--atlas-ink) !important;
+}
+body.admin-shell-page .worker-chat-service b,
+body.admin-shell-page .worker-chat-pending strong { color: var(--atlas-ink) !important; }
+body.admin-shell-page .worker-chat-service p,
+body.admin-shell-page .worker-chat-service li { color: #4b5362 !important; }
+body.admin-shell-page .worker-chat-service small,
+body.admin-shell-page .worker-chat-pending small,
+body.admin-shell-page .worker-chat-service-select { color: #727b8a !important; }
+body.admin-shell-page .worker-chat-service a { color: #2069d9 !important; }
+body.admin-shell-page .worker-chat-service > div span {
+  border-color: #b8dfc8 !important;
+  background: #ebf8f0 !important;
+  color: #237746 !important;
+}
+body.admin-shell-page .worker-chat-service button,
+body.admin-shell-page .worker-chat-service-select select {
+  border-color: #dce1e9 !important;
+  background: #fff !important;
+  color: var(--atlas-ink) !important;
+}
+body.admin-shell-page .worker-context-chat-attachment {
+  border-color: #dce6f7 !important;
+  background: #f5f8ff !important;
+}
+body.admin-shell-page .worker-context-chat-attachment b { color: var(--atlas-ink) !important; }
+body.admin-shell-page .worker-context-chat-attachment small { color: #727b8a !important; }
+body.admin-shell-page .worker-context-chat-attachment > button {
+  border-color: #dce1e9 !important;
+  color: #5b6472 !important;
+}
+body.admin-shell-page .worker-chat-record-verification {
+  border-color: #e3e7ef !important;
+  background: #f8faff !important;
+  color: var(--atlas-ink) !important;
+}
+body.admin-shell-page .worker-chat-record-verification header span,
+body.admin-shell-page .worker-chat-record-extracted b { color: #4167a6 !important; }
+body.admin-shell-page .worker-chat-record-verification header strong {
+  border-color: #d6e3f7 !important;
+  background: #edf3ff !important;
+  color: #315f9f !important;
+}
+body.admin-shell-page .worker-chat-record-check-row,
+body.admin-shell-page .worker-chat-allocation-section { border-color: #e3e7ef !important; }
+body.admin-shell-page .worker-chat-record-check-row dt,
+body.admin-shell-page .worker-chat-allocation dt,
+body.admin-shell-page .worker-chat-allocation-section > small { color: #727b8a !important; }
+body.admin-shell-page .worker-chat-record-check-row dd,
+body.admin-shell-page .worker-chat-record-extracted span,
+body.admin-shell-page .worker-chat-record-empty,
+body.admin-shell-page .worker-chat-allocation dd { color: #414a59 !important; }
+body.admin-shell-page .worker-chat-record-extracted,
+body.admin-shell-page .worker-chat-allocation {
+  border-color: #e3e7ef !important;
+  background: #fff !important;
+}
+body.admin-shell-page .worker-chat-record-verification footer button {
+  border-color: #dce1e9 !important;
+  background: #fff !important;
+  color: var(--atlas-ink) !important;
+}
+body.admin-shell-page .worker-chat-record-verification footer button:last-child {
+  border-color: var(--atlas-accent) !important;
+  background: var(--atlas-accent) !important;
+  color: #fff !important;
+}
+body.admin-shell-page .worker-chat-record-dialog {
+  border-color: var(--atlas-line) !important;
+  background: #fff !important;
+  color: var(--atlas-ink) !important;
+  box-shadow: 0 24px 70px rgba(24, 30, 44, .22) !important;
+}
+body.admin-shell-page .worker-chat-record-dialog::backdrop { background: rgba(18, 24, 37, .42) !important; }
 body.admin-shell-page .worker-context-chat-form {
   padding: 8px 16px 16px !important;
   border-top: 1px solid var(--atlas-line) !important;
@@ -386,7 +522,7 @@ body.admin-shell-page .worker-context-chat-form .worker-context-chat-input-shell
 }
 body.admin-shell-page .worker-context-chat-form .worker-context-chat-input-shell textarea {
   min-height: 84px !important;
-  padding: 13px 14px 13px 48px !important;
+  padding: 13px 14px !important;
   border: 0 !important;
   border-radius: 15px !important;
   background: transparent !important;
@@ -428,6 +564,126 @@ body.admin-shell-page .worker-context-chat-form [data-worker-chat-submit]:hover 
   }
   body.admin-shell-page .worker-context-chat-message { padding: 13px !important; }
   body.admin-shell-page .worker-context-chat-form { padding: 8px 12px calc(14px + env(safe-area-inset-bottom)) !important; }
+}
+
+/* Original Worker comprehension content, presented with Atlas catalogue/form tokens. */
+body.admin-shell-page .stage-comprehension-source {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--atlas-line);
+  border-radius: 14px;
+  background: var(--atlas-soft);
+  color: var(--atlas-ink);
+}
+body.admin-shell-page .stage-comprehension-source > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+body.admin-shell-page .stage-comprehension-source h3 { margin: 5px 0; color: var(--atlas-ink); font-size: 16px; }
+body.admin-shell-page .stage-comprehension-source header p,
+body.admin-shell-page .stage-comprehension-source > p { margin: 0; color: var(--atlas-muted); line-height: 1.5; }
+body.admin-shell-page .stage-comprehension-source > header > span {
+  flex: none;
+  padding: 5px 9px;
+  border: 1px solid var(--atlas-line);
+  border-radius: 999px;
+  background: #fff;
+  color: #596174;
+  font-size: 12px;
+}
+body.admin-shell-page .stage-comprehension-source-list,
+body.admin-shell-page .stage-comprehension-execution-list { display: grid; gap: 9px; min-width: 0; }
+body.admin-shell-page .stage-comprehension-source-list article,
+body.admin-shell-page .stage-comprehension-execution-list > article {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--atlas-line);
+  border-radius: 11px;
+  background: #fff;
+}
+body.admin-shell-page .stage-comprehension-source-list article { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 4px 14px; }
+body.admin-shell-page .stage-comprehension-source-list article b,
+body.admin-shell-page .stage-comprehension-execution-list article b { color: var(--atlas-ink); }
+body.admin-shell-page .stage-comprehension-source-list article span { color: #596174; text-align: right; }
+body.admin-shell-page .stage-comprehension-source-list article small { grid-column: 1 / -1; color: var(--atlas-muted); }
+body.admin-shell-page .stage-comprehension-execution-list > article > header { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--atlas-line); }
+body.admin-shell-page .stage-comprehension-execution-list > article > header span { color: var(--atlas-muted); }
+body.admin-shell-page .stage-comprehension-execution-list dl { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin: 12px 0; }
+body.admin-shell-page .stage-comprehension-execution-list dl div { min-width: 0; }
+body.admin-shell-page .stage-comprehension-execution-list dt,
+body.admin-shell-page .stage-comprehension-condition-list > b,
+body.admin-shell-page .stage-comprehension-properties > b { color: #73798a; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+body.admin-shell-page .stage-comprehension-execution-list dd { margin: 5px 0 0; color: #454a59; line-height: 1.45; overflow-wrap: anywhere; }
+body.admin-shell-page .stage-comprehension-condition-list,
+body.admin-shell-page .stage-comprehension-properties { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--atlas-line); }
+body.admin-shell-page .stage-comprehension-condition-list ul,
+body.admin-shell-page .stage-comprehension-properties ul { display: grid; gap: 6px; margin: 8px 0 0; padding-left: 18px; color: #454a59; }
+body.admin-shell-page .stage-comprehension-properties ul { padding: 0; list-style: none; }
+body.admin-shell-page .stage-comprehension-properties li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid #eff0f2; }
+body.admin-shell-page .stage-comprehension-properties li span { color: var(--atlas-muted); }
+body.admin-shell-page .stage-comprehension-properties li strong { color: var(--atlas-ink); text-align: right; }
+body.admin-shell-page .stage-comprehension-properties p,
+body.admin-shell-page .stage-comprehension-condition-list p { margin: 8px 0 0; color: var(--atlas-muted); }
+body.admin-shell-page .stage-comprehension-registered-activities > header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+body.admin-shell-page .stage-comprehension-registered-activities > header > div { display: grid; gap: 4px; }
+body.admin-shell-page .stage-comprehension-registered-activities > header small { color: var(--atlas-muted); }
+body.admin-shell-page .stage-comprehension-registered-activities li { align-items: flex-start; }
+body.admin-shell-page .stage-comprehension-registered-activities li > span { display: grid; gap: 5px; min-width: 0; }
+body.admin-shell-page .stage-comprehension-registered-activities li > span small { overflow-wrap: anywhere; }
+body.admin-shell-page .stage-comprehension-session { margin-top: 9px; border: 1px solid #e7e8ed; border-radius: 10px; background: #fff; }
+body.admin-shell-page .stage-comprehension-session > summary { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 15px; color: var(--atlas-ink); cursor: pointer; list-style-position: inside; }
+body.admin-shell-page .stage-comprehension-session > summary > span:first-of-type { display: grid; gap: 4px; min-width: 0; }
+body.admin-shell-page .stage-comprehension-session > summary small,
+body.admin-shell-page .stage-comprehension-session > summary > span:last-child { color: var(--atlas-muted); font-size: 12px; }
+body.admin-shell-page .stage-comprehension-session-body { display: grid; gap: 14px; padding: 15px; border-top: 1px solid #e7e8ed; }
+body.admin-shell-page .stage-comprehension-session-body label { display: grid; gap: 6px; min-width: 0; color: #5f626d; }
+body.admin-shell-page .stage-comprehension-session-body input:not([type="checkbox"]),
+body.admin-shell-page .stage-comprehension-session-body textarea,
+body.admin-shell-page .stage-comprehension-session-body select { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid #dedfe5; border-radius: 8px; padding: 9px 10px; background: #fff; color: #292b3b; font: inherit; }
+body.admin-shell-page .stage-comprehension-session-properties,
+body.admin-shell-page .stage-comprehension-session-options,
+body.admin-shell-page .stage-comprehension-session-production { display: grid; gap: 11px; padding: 13px; border: 1px solid #e7e8ed; border-radius: 10px; background: #fafbfc; }
+body.admin-shell-page .stage-comprehension-session-materials { display: grid; gap: 11px; padding: 13px; border: 1px solid #e7e8ed; border-radius: 10px; background: #fafbfc; }
+body.admin-shell-page .stage-comprehension-session-materials > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+body.admin-shell-page .stage-comprehension-session-materials > header > div { display: grid; gap: 4px; }
+body.admin-shell-page .stage-comprehension-session-materials small { color: var(--atlas-muted); }
+body.admin-shell-page .stage-comprehension-session-materials button { justify-self: start; border: 1px solid #dfe2e8; border-radius: 8px; padding: 8px 11px; background: #fff; color: #29314c; cursor: pointer; }
+body.admin-shell-page .stage-comprehension-session-material { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; padding: 12px; border: 1px solid #e7e8ed; border-radius: 9px; background: #fff; }
+body.admin-shell-page .stage-comprehension-session-material > label:first-child,
+body.admin-shell-page .stage-comprehension-session-material > label:nth-child(2),
+body.admin-shell-page .stage-comprehension-session-material > label:nth-child(3) { grid-column: 1 / -1; }
+body.admin-shell-page .stage-comprehension-session-material > button { grid-column: 1 / -1; color: #8e3030; }
+body.admin-shell-page .stage-comprehension-session-properties > header,
+body.admin-shell-page .stage-comprehension-session-conditions > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+body.admin-shell-page .stage-comprehension-session-properties > header > div { display: grid; gap: 4px; }
+body.admin-shell-page .stage-comprehension-session-properties small { color: var(--atlas-muted); }
+body.admin-shell-page .stage-comprehension-session-property { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) auto; gap: 8px; }
+body.admin-shell-page .stage-comprehension-session-check { display: flex !important; align-items: flex-start; gap: 8px !important; }
+body.admin-shell-page .stage-comprehension-session-check input { margin-top: 4px; }
+body.admin-shell-page .stage-comprehension-session-conditions { display: grid; gap: 10px; }
+body.admin-shell-page .stage-comprehension-session-condition { display: grid; grid-template-columns: minmax(0,1fr) minmax(120px,.5fr); gap: 10px; padding: 12px; border: 1px solid #e7e8ed; border-radius: 9px; background: #fff; }
+body.admin-shell-page .stage-comprehension-session-condition > label.stage-comprehension-wide { grid-column: 1 / -1; }
+body.admin-shell-page .stage-comprehension-session-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+body.admin-shell-page .stage-comprehension-session-actions > span { color: var(--atlas-muted); font-size: 12px; }
+body.admin-shell-page .stage-comprehension-session-actions > button,
+body.admin-shell-page .stage-comprehension-session-properties button,
+body.admin-shell-page .stage-comprehension-session-conditions button { border: 1px solid #dfe2e8; border-radius: 8px; padding: 8px 11px; background: #fff; color: #29314c; cursor: pointer; }
+@media (max-width: 700px) {
+  body.admin-shell-page .stage-comprehension-session > summary { align-items: flex-start; }
+  body.admin-shell-page .stage-comprehension-session-condition { grid-template-columns: 1fr; }
+  body.admin-shell-page .stage-comprehension-session-property { grid-template-columns: 1fr; }
+  body.admin-shell-page .stage-comprehension-session-materials > header { align-items: flex-start; flex-direction: column; }
+  body.admin-shell-page .stage-comprehension-session-material { grid-template-columns: 1fr; }
+  body.admin-shell-page .stage-comprehension-session-material > label { grid-column: 1 / -1; }
+}
+@media (max-width: 760px) {
+  body.admin-shell-page .stage-comprehension-source { padding: 13px; }
+  body.admin-shell-page .stage-comprehension-source-list article { grid-template-columns: 1fr; }
+  body.admin-shell-page .stage-comprehension-source-list article span { text-align: left; }
+  body.admin-shell-page .stage-comprehension-execution-list dl { grid-template-columns: 1fr; }
 }
 
 /* Atlas visual language for shared stage chrome, AI actions and lot catalogues.
@@ -790,10 +1046,42 @@ body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-kpis b,
 body.admin-shell-page view-layer[data-view="brokers-board"] .lot-price-catalog-card td:last-child b { color: #2878ff !important; }
 body.admin-shell-page view-layer[data-view="brokers-board"] .lot-price-catalog-card { padding: 20px !important; }
 body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-toolbar {
-  grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(140px, .8fr)) auto !important;
-  align-items: end !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  align-items: stretch !important;
   gap: 12px !important;
   padding: 16px !important;
+}
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-toolbar-main {
+  display: grid !important;
+  grid-template-columns: minmax(220px, 1fr) auto !important;
+  align-items: end !important;
+  gap: 12px !important;
+  min-width: 0 !important;
+}
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-toolbar-filters {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(120px, 1fr)) auto !important;
+  align-items: end !important;
+  gap: 12px !important;
+  min-width: 0 !important;
+  padding-top: 12px !important;
+  border-top: 1px solid #eff0f2 !important;
+}
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-filter {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+}
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-crud {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+}
+body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-toolbar-filters > button {
+  min-height: 40px !important;
+  white-space: nowrap !important;
 }
 body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-toolbar label {
   display: grid !important;
@@ -835,7 +1123,10 @@ body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-action 
   body.admin-shell-page view-layer[data-view="actions"] .ai-actions-page .action-workspace { grid-template-columns: minmax(0, 1fr) !important; }
   body.admin-shell-page view-layer[data-view="activities"] .activities-dynamic-summary { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-config { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-  body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-toolbar-main { grid-template-columns: minmax(0, 1fr) !important; }
+  body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-crud { justify-content: flex-start !important; }
+  body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-toolbar-filters { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-toolbar-filters > button { grid-column: 1 / -1 !important; justify-self: start !important; }
 }
 @media (max-width: 560px) {
   body.admin-shell-page view-layer[data-view="activities"] .activities-dynamic-summary { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
@@ -843,7 +1134,10 @@ body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-action 
   body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-config { grid-template-columns: 1fr 1fr !important; padding: 14px !important; }
   body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-config header,
   body.admin-shell-page view-layer[data-view="brokers-board"] .repasse-config-status { grid-column: 1 / -1 !important; }
-  body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-toolbar { grid-template-columns: 1fr !important; }
+  body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-toolbar-main,
+  body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-toolbar-filters { grid-template-columns: minmax(0, 1fr) !important; }
+  body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-toolbar-filters > button { grid-column: auto !important; justify-self: stretch !important; }
+  body.admin-shell-page view-layer[data-view="brokers-board"] .lot-catalog-crud > button { flex: 1 1 auto !important; }
   body.admin-shell-page view-layer[data-view="brokers-board"] .lot-price-catalog-card { padding: 14px !important; }
 }
 
@@ -1677,6 +1971,12 @@ body.admin-shell-page .atlas-workspace > .scene > view-layer[data-view]:not([dat
   margin: 18px 0 16px !important;
   color: #303344 !important;
 }
+body.admin-shell-page .atlas-workspace view-layer[data-view="materials"] > .activity-header > div:first-child {
+  display: none !important;
+}
+body.admin-shell-page .atlas-workspace view-layer[data-view="materials"] > .activity-header {
+  justify-content: flex-end !important;
+}
 body.admin-shell-page .atlas-workspace view-layer[data-view]:not([data-view="map"]) > .activity-header > div:first-child > span {
   color: #292b3b !important;
   font-size: clamp(20px, 2vw, 26px) !important;
@@ -1976,6 +2276,147 @@ body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-events {
   overflow-x: auto;
   padding: 4px 2px 18px;
   scroll-snap-type: x proximity;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-presentation {
+  display: flex;
+  gap: 6px;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-presentation button {
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid #e1e3e9;
+  border-radius: 9px;
+  background: #fff;
+  color: #596174;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-presentation button[aria-pressed="true"] {
+  border-color: #292b3a;
+  background: #292b3a;
+  color: #fff;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-status-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  align-items: start;
+  gap: 12px;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-status-groups[hidden],
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-rail[hidden],
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-events[hidden] { display: none !important; }
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-state-group {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #e7e8ee;
+  border-radius: 13px;
+  background: #f8f9fc;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-state-group > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid #e5e7ed;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-state-group h3 {
+  margin: 0;
+  color: #292c3d;
+  font-size: 13px;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-state-group > header span {
+  display: grid;
+  place-items: center;
+  min-width: 25px;
+  height: 25px;
+  border-radius: 999px;
+  background: #e9effa;
+  color: #344b73;
+  font-size: 11px;
+  font-weight: 700;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-state-group > div {
+  display: grid;
+  gap: 8px;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-state-event {
+  display: grid;
+  gap: 7px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e5e7ed;
+  border-radius: 10px;
+  background: #fff;
+  color: #292d3d;
+  text-align: left;
+  cursor: pointer;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-state-event:hover,
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-state-event:focus-visible { border-color: #2878ff; outline: none; }
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-state-event > span,
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-state-event footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #66738d;
+  font-size: 10px;
+}
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-state-event em { color: #66738d; font-style: normal; }
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-state-event strong { color: #292d3d; font-size: 13px; }
+body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-state-event small { color: #727989; font-size: 10px; }
+body.admin-shell-page view-layer[data-view="assistant"] .dashboard-quick-reports {
+  display: grid;
+  gap: 14px;
+  margin: 18px 0;
+  padding: 18px;
+  border: 1px solid #e7e8ee;
+  border-radius: 14px;
+  background: #fff;
+  color: #292d3d;
+}
+body.admin-shell-page view-layer[data-view="assistant"] .dashboard-quick-reports > header h2 { margin: 5px 0; font-size: 18px; }
+body.admin-shell-page view-layer[data-view="assistant"] .dashboard-quick-reports > header p,
+body.admin-shell-page view-layer[data-view="assistant"] .dashboard-quick-report-actions p { margin: 0; color: #727989; font-size: 12px; }
+body.admin-shell-page view-layer[data-view="assistant"] .dashboard-quick-report-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+body.admin-shell-page view-layer[data-view="assistant"] .dashboard-quick-report-actions article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid #e7e8ee;
+  border-radius: 11px;
+  background: #fafbfe;
+}
+body.admin-shell-page view-layer[data-view="assistant"] .dashboard-quick-report-actions strong { font-size: 13px; }
+body.admin-shell-page view-layer[data-view="assistant"] .dashboard-quick-report-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #292b3a;
+  border-radius: 8px;
+  background: #292b3a;
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+body.admin-shell-page view-layer[data-view="assistant"] .dashboard-quick-report-actions button:disabled { opacity: .6; cursor: progress; }
+body.admin-shell-page view-layer[data-view="assistant"] .dashboard-quick-report-feedback { min-height: 1em; margin: 0; color: #596174; font-size: 11px; }
+@media (max-width: 760px) {
+  body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-status-groups,
+  body.admin-shell-page view-layer[data-view="assistant"] .dashboard-quick-report-actions { grid-template-columns: minmax(0, 1fr); }
+  body.admin-shell-page view-layer[data-view="assistant"] .dashboard-quick-report-actions article { align-items: flex-start; flex-direction: column; }
+  body.admin-shell-page view-layer[data-view="assistant"] .dashboard-quick-report-actions button { width: 100%; }
 }
 body.admin-shell-page view-layer[data-view="agenda"] .agenda-atlas-event {
   display: flex;

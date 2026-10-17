@@ -1,0 +1,74 @@
+/* Mobile work surface: map, agenda, profile diary and the camera-assisted chat. */
+@media (max-width: 980px) {
+  body.admin-shell-page .atlas-mobile-bottom { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  body.admin-shell-page .atlas-mobile-bottom button[hidden] { display: none !important; }
+  body.admin-shell-page .atlas-mobile-bottom > button:not([data-mobile-view="map"]):not([data-mobile-view="agenda"]):not([data-mobile-view="records"]):not([data-mobile-chat-tab]) { display: none !important; }
+  body.admin-shell-page .atlas-mobile-bottom [data-mobile-view="map"] { order: 1; }
+  body.admin-shell-page .atlas-mobile-bottom [data-mobile-view="agenda"] { order: 2; }
+  body.admin-shell-page .atlas-mobile-bottom [data-mobile-view="records"] { order: 3; }
+  body.admin-shell-page .atlas-mobile-bottom [data-mobile-chat-tab] { order: 4; }
+  body.admin-shell-page.mobile-chat-tab-active .worker-context-assistant:not(.is-collapsed) { inset: 8px 8px calc(64px + env(safe-area-inset-bottom)) !important; width: auto !important; height: auto !important; max-height: none !important; transform: none !important; border-radius: 16px !important; }
+  body.admin-shell-page.mobile-chat-tab-active .worker-context-chat-body { flex: 1 1 auto !important; min-height: 0 !important; }
+  body.admin-shell-page.mobile-chat-tab-active .worker-context-chat-log { flex: 1 1 auto !important; max-height: none !important; }
+}
+
+body.admin-shell-page .worker-chat-tabs { display: flex; gap: 4px; padding: 9px 14px; border-bottom: 1px solid #e5e7eb; background: #fff; }
+body.admin-shell-page .worker-chat-tabs button { flex: 1; min-height: 36px; border: 0; border-radius: 9px; background: transparent; color: #6c7280; font: 600 12px "IBM Plex Sans", Arial, sans-serif; cursor: pointer; }
+body.admin-shell-page .worker-chat-tabs button[aria-selected="true"] { background: #edf3ff; color: #2057a4; }
+body.admin-shell-page .worker-chat-register-panel[hidden] { display: none !important; }
+body.admin-shell-page .worker-chat-register-panel { display: grid; gap: 10px; margin: 12px 16px; padding: 16px; border: 1px solid #e2e6ec; border-radius: 15px; background: #f8faff; color: #252b3a; }
+body.admin-shell-page .worker-chat-register-panel strong { font-size: 14px; }
+body.admin-shell-page .worker-chat-register-panel p { margin: 0; color: #647083; font-size: 12px; line-height: 1.5; }
+body.admin-shell-page .worker-chat-register-panel button { width: max-content; min-height: 38px; padding: 0 16px; border: 0; border-radius: 9px; background: #256ce0; color: #fff; font-weight: 700; }
+body.admin-shell-page .atlas-profile-record-error { padding: 13px 16px; border: 1px solid #e9bcba; border-radius: 10px; background: #fff4f2; color: #932f2d; font-size: 12px; }
+body.admin-shell-page .worker-context-assistant[data-chat-tab="register"] .worker-context-chat-quick { display: none !important; }
+
+/* Desktop chat stays docked in the bottom area; it does not become a center modal. */
+@media (min-width: 761px) {
+  body.admin-shell-page .worker-context-assistant:not(.is-collapsed) { top: auto !important; left: 50% !important; right: auto !important; bottom: 16px !important; width: min(820px, calc(100vw - 48px)) !important; height: min(420px, 48dvh) !important; max-height: min(420px, 48dvh) !important; transform: translateX(-50%) !important; border-radius: 18px !important; }
+  body.admin-shell-page .worker-context-assistant.is-collapsed { top: auto !important; left: 50% !important; right: auto !important; bottom: 16px !important; width: 220px !important; height: 52px !important; min-height: 52px !important; max-height: 52px !important; transform: translateX(-50%) !important; border-radius: 14px !important; }
+  body.admin-shell-page .worker-context-assistant:not(.is-collapsed) .worker-context-chat-body { flex: 1 1 auto !important; min-height: 0 !important; overflow: hidden !important; }
+  body.admin-shell-page .worker-context-assistant:not(.is-collapsed) .worker-context-chat-log { flex: 1 1 auto !important; min-height: 0 !important; max-height: none !important; overflow: auto !important; }
+  body.admin-shell-page .worker-context-assistant:not(.is-collapsed) .worker-context-chat-form { flex: 0 0 auto !important; }
+}
+
+@media (max-width: 760px) {
+  body.admin-shell-page view-layer:has(> .atlas-profile-records) > .stage-context-chrome-v1,
+  body.admin-shell-page view-layer:has(> .atlas-profile-records) > .activity-header { display: none !important; }
+  body.admin-shell-page .atlas-profile-records { background: #fff !important; box-shadow: none !important; }
+  body.admin-shell-page .worker-context-assistant:not(.is-collapsed),
+  body.admin-shell-page .worker-context-assistant.is-native-swipe-sheet:not(.is-collapsed) { top: max(8px, env(safe-area-inset-top)) !important; left: auto !important; right: 6px !important; bottom: calc(72px + env(safe-area-inset-bottom) + var(--worker-chat-viewport-bottom, 0px)) !important; width: min(338px, calc(100vw - 18px)) !important; max-width: min(338px, calc(100vw - 18px)) !important; height: auto !important; max-height: calc(100dvh - 88px - env(safe-area-inset-top)) !important; transform: none !important; border-radius: 18px !important; padding-bottom: 0 !important; }
+  body.admin-shell-page .worker-context-assistant.is-collapsed,
+  body.admin-shell-page .worker-context-assistant.is-native-swipe-sheet.is-collapsed { top: 39% !important; left: auto !important; right: 0 !important; bottom: auto !important; width: 44px !important; height: 116px !important; min-height: 116px !important; max-height: 116px !important; transform: none !important; border-radius: 12px 0 0 12px !important; z-index: 96 !important; }
+  body.admin-shell-page .worker-context-assistant.is-collapsed .worker-context-chat-head { height: 116px !important; min-height: 116px !important; padding: 8px !important; }
+  body.admin-shell-page .worker-context-assistant.is-collapsed .worker-context-chat-head > div:first-child { display: grid !important; gap: 6px !important; }
+  body.admin-shell-page .worker-context-assistant.is-collapsed .worker-context-chat-head strong { writing-mode: vertical-rl; font-size: 10px !important; max-height: 65px; overflow: hidden; }
+  body.admin-shell-page .worker-context-assistant.is-collapsed .worker-context-chat-head small,
+  body.admin-shell-page .worker-context-assistant.is-collapsed .worker-context-chat-head-actions { display: none !important; }
+  body.admin-shell-page .worker-context-assistant:not(.is-collapsed) .worker-context-chat-body { min-height: 0; }
+  body.admin-shell-page .worker-context-assistant[data-chat-tab="register"] .worker-context-chat-body { justify-content: flex-start; }
+  body.admin-shell-page .worker-context-assistant[data-chat-tab="register"] .worker-context-chat-form { margin-top: auto; }
+
+  body.admin-shell-page .atlas-profile-records { min-width: 0 !important; overflow: visible !important; padding: 18px 4px 28px !important; color: #242938; }
+  body.admin-shell-page .atlas-profile-records .workspace-head-v5360 { display: flex; align-items: start; gap: 12px; margin-bottom: 18px; }
+  body.admin-shell-page .atlas-profile-records .workspace-head-v5360 h1 { color: #242938 !important; font-size: clamp(22px, 7vw, 30px) !important; }
+  body.admin-shell-page .atlas-profile-records .workspace-head-v5360 p { color: #768092 !important; }
+  body.admin-shell-page .atlas-profile-records .workspace-head-v5360 > button { display: none !important; }
+  body.admin-shell-page .atlas-profile-records .records-kpis-v5360 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  body.admin-shell-page .atlas-profile-records .records-kpis-v5360 article { min-width: 0; border: 1px solid #e4e7ed; border-radius: 14px; background: #fff; color: #252b3a; }
+  body.admin-shell-page .atlas-profile-records .records-kpis-v5360 article small { color: #8b94a3; }
+  body.admin-shell-page .atlas-profile-records .records-kpis-v5360 article b { color: #252b3a; }
+  body.admin-shell-page .atlas-profile-records .records-table-v5360 { display: none !important; }
+  body.admin-shell-page .atlas-profile-record-list { display: grid; gap: 11px; margin: 18px 0 0; }
+  body.admin-shell-page .atlas-profile-record { min-width: 0; padding: 17px; border: 1px solid #e4e7ed; border-radius: 16px; background: #fff; box-shadow: 0 4px 16px #1b29400b; }
+  body.admin-shell-page .atlas-profile-record-top, body.admin-shell-page .atlas-profile-record footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  body.admin-shell-page .atlas-profile-record-top { color: #8791a1; font-size: 11px; }
+  body.admin-shell-page .atlas-profile-record h2 { margin: 13px 0 7px; color: #242938; font-size: 16px; }
+  body.admin-shell-page .atlas-profile-record p { margin: 0 0 16px; color: #677386; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+  body.admin-shell-page .atlas-profile-record footer { padding-top: 12px; border-top: 1px solid #eef0f4; }
+  body.admin-shell-page .atlas-profile-record footer span { min-width: 0; color: #8390a2; font-size: 10px; overflow-wrap: anywhere; }
+  body.admin-shell-page .atlas-profile-record button { flex: none; min-height: 34px; padding: 0 10px; border: 1px solid #dbe5f5; border-radius: 8px; background: #f5f8ff; color: #2457a6; font-weight: 700; font-size: 11px; }
+  body.admin-shell-page .atlas-profile-record-empty { padding: 22px; border: 1px solid #e4e7ed; border-radius: 14px; background: #fff; color: #687487; }
+}
+
+@media (min-width: 761px) { body.admin-shell-page .atlas-profile-record-list { display: none; } }
