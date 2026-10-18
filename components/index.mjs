@@ -1,12 +1,12 @@
 // BELAVISTA_ORIGINAL_ADMIN_NAV_TRIM_V5350
 import { esc, ico, notify } from "./shared/dom.mjs";
+import { program as atlasFrontendProgram } from "../dist/frontend/program.js";
 import { statusClass } from "./shared/status-class-v1.mjs?v=status-class-v1";
 import { installControlCenterPriorityChatV1 } from "./planning/control-center-priority-chat-v1.mjs?v=control-center-priority-chat-v2";
 import "./shared/brand-normalizer.mjs?v=brand-normalizer-v1";
 import { runtimeRouteV1 } from "./shared/routing.mjs";
 import { installFloatingWidgetLayoutV1 } from "./shared/floating-widget-layout-v1.mjs?v=floating-widget-layout-v1";
 import { installCashRecordFiscalControlsV1 } from "./finance/cash-record-fiscal-controls-v1.mjs?v=cash-record-fiscal-controls-v1";
-import { installRepassePageV1 } from "./finance/repasse-page-v1.mjs?v=repasse-finance-v1";
 import { installAgendaDashboardDetailV1 } from "./planning/agenda-dashboard-detail-v1.mjs?v=agenda-dashboard-detail-v2";
 import { installStageSurfaceRegistrationV1 } from "./planning/stage-surface-registration-v1.mjs?v=stage-surface-registration-v1";
 import { installStageApplicationCompositionV1 } from "./planning/stage-application-composition-v1.mjs?v=stage-application-composition-v1";
@@ -201,8 +201,6 @@ const {
 
 
 
-
-installRepassePageV1(ViewLayer, { appStore, esc, ico, REPASSE_PRICE_CATALOG });
 
 installFloatingWidgetLayoutV1(ViewLayer, { appStore });
 
@@ -554,7 +552,7 @@ installControlCenterPriorityChatV1(ViewLayer, {
   notify,
 });
 
-installRecordsWorkspaceRegistrationV1({ViewLayer,appStore,controlCenterMaterialRowsV1,controlCenterPublishV1,controlCenterRecordChangeV1,esc,executionModel,ico,normalizeActivityRouteTextV1,notify,stageProfileSettingsFor,stageV9FlowPackets,apiFetch,operationalHeaders,documentRef:globalThis.document,DateCtor:globalThis.Date});
+installRecordsWorkspaceRegistrationV1({ViewLayer,appStore,controlCenterMaterialRowsV1,controlCenterPublishV1,controlCenterRecordChangeV1,esc,executionModel,ico,normalizeActivityRouteTextV1,notify,stageProfileSettingsFor,stageV9FlowPackets,apiFetch,operationalHeaders,documentRef:globalThis.document,DateCtor:globalThis.Date,materialsWorkspaceInstallerV1:()=>{},materialsDatabaseInstallerV1:()=>{},materialTransitionInstallerV1:()=>{}});
 // STAGE_RECORD_CENTER_V1
 // A Central operacional deixa de ser uma consolidação de contratos/comissões:
 // ela passa a ser a leitura operacional das etapas, seus registros e anexos.
@@ -634,9 +632,19 @@ const commercialHistoryRegistrationV1 = installCommercialHistoryRegistrationV1({
   windowRef: globalThis.window,
 });
 const { commercialDealsForWorkspaceV1, brokerWorkspaceStatsV1 } = commercialHistoryRegistrationV1;
+const atlasFrontendSystem = atlasFrontendProgram().next().value;
+atlasFrontendSystem.installSalesHistoryRoute(ViewLayer, appStore, document);
+atlasFrontendSystem.installRepassesRoute(ViewLayer, document);
+atlasFrontendSystem.installBrokersRoute(ViewLayer, appStore, document);
+atlasFrontendSystem.installMaterialsRoute(ViewLayer, document);
+atlasFrontendSystem.installDashboardRoute(ViewLayer, appStore, document);
 installAgendaDashboardDetailV1(ViewLayer, {
   appStore, apiFetch, operationalHeaders, ensureAgendaCalendarLoadedV8, agendaCalendarReadV3, agendaCalendarOperationalEventsV3, agendaCalendarIsoV3, agendaCalendarWriteV3, agendaCalendarParseDateV3, agendaCalendarStatusToneV3, agendaCalendarAddDaysV3, executionModel, stageV9LiveFor, esc, ico, notify, stageRecordStagesV1, stageRecordDashboardActionWorkspaceMarkupV1, stageMaterialReportDialogV1, stageRecordMaterialRowsV1, capacitor: globalThis.Capacitor, NotificationCtor: globalThis.Notification, FormDataCtor: globalThis.FormData, queueMicrotaskFn: globalThis.queueMicrotask.bind(globalThis),
 });
+atlasFrontendSystem.installAgendaRoute(ViewLayer, document);
+atlasFrontendSystem.installActivitiesRoute(ViewLayer, appStore, document);
+atlasFrontendSystem.installProgressRoute(ViewLayer, appStore, document);
+atlasFrontendSystem.installCashRecordRoute(ViewLayer, appStore, document);
 installStageHomeRecordResourcesApplicationV1({
   ViewLayer,
   appStore,
@@ -694,6 +702,13 @@ const AiChat = registerBelavistaAdminAiChatV1({
   },
   ui: { esc, ico, notify },
 });
+
+// Settings is rendered by the TypeScript Web Element; its service events remain
+// owned by the single imperative frontend program.
+atlasFrontendSystem.installSettingsRoute(ViewLayer, appStore, document);
+atlasFrontendSystem.installLeadsRoute(ViewLayer, appStore, document);
+atlasFrontendSystem.installLotDevelopmentRoute(ViewLayer, appStore, document);
+atlasFrontendSystem.installProjectDocumentsRoute(ViewLayer, appStore, document);
 
 
   return {AppSidebar,AppTopbar,ViewLayer,MapFilterRail,MapScene,prepareAssistantLotStatusPromptV1,prepareAssistantMapAreaPromptV1,ico,esc,AiChat};

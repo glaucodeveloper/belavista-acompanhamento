@@ -4,40 +4,11 @@ export const createFinanceWorkspaceV8 = (services = {}) => {
   if (typeof appStore?.get !== "function" || typeof appStore?.set !== "function") throw new TypeError("Finance workspace requires appStore get/set.");
   for (const [name, dependency] of Object.entries({ executionModel, esc, ico, formatBRL, queueMicrotaskFn, DateCtor })) if (typeof dependency !== "function" && name !== "executionModel") throw new TypeError(`Finance workspace requires ${name}().`);
   if (!executionModel || typeof executionModel !== "object") throw new TypeError("Finance workspace requires the execution model.");
-const cashRecordStagesV1 = () =>
-  (executionModel.stages || []).map((item) => ({
-    value: String(item.name || item.title || item.key || "Etapa operacional"),
-    label: String(item.name || item.title || item.key || "Etapa operacional"),
-  }));
-
 const cashRecordLauncherMarkupV1 = (returnView = "finance") => {
   const actor = appStore.get().currentActor || { role: "owner", label: "Dono" };
   const allowed = actor.role === "owner" || actor.role === "developer";
   return `<section class="cash-record-launcher" data-cash-record-launcher><div><span class="activity-kind">SAÍDAS DE CAIXA</span><h2>Registrar uma saída</h2><p>Entradas de lotes e repasses são registradas exclusivamente na página Repasses.</p></div>${allowed ? `<button type="button" class="toolbar-primary" data-cash-record-open data-return-view="${esc(returnView)}">${ico("plus")} Nova saída</button>` : `<span class="cash-record-permission">Somente o Dono pode registrar movimentações.</span>`}</section>`;
 };
-
-const CashRecordPageV1 = ({ props = {} } = {}) => ({
-  next(message = {}) {
-    const model = { ...props, ...message },
-      actor = appStore.get().currentActor || { role: "owner", label: "Dono" },
-      allowed = actor.role === "owner" || actor.role === "developer",
-      stages = cashRecordStagesV1(),
-      today = new DateCtor().toISOString().slice(0, 10),
-      returnView = model.returnView || "finance";
-    return {
-      done: false,
-      value: `<section class="cash-record-page control-page"><header class="cash-record-page-head"><div><button type="button" class="cash-record-back" data-cash-record-back data-return-view="${esc(returnView)}">${ico("arrow-left")} Voltar</button><span class="activity-kind">CAIXA · SAÍDA</span><h1>Registrar saída de caixa</h1><p>Entradas comerciais são registradas e conciliadas somente em Repasses.</p></div><span class="cash-record-actor">${esc(actor.label || actor.role)}</span></header>${allowed ? `<form class="cash-record-form" data-cash-record-form><input type="hidden" name="date" value="${today}"><input type="hidden" name="kind" value="saida"><div class="cash-record-form-grid"><label>Nome do registro<input name="name" required maxlength="120" placeholder="Ex.: pagamento de serviço"></label><label>Etapa<select name="stage"><option value="Geral">Geral</option>${stages.map((item) => `<option value="${esc(item.value)}">${esc(item.label)}</option>`).join("")}</select></label><label>Valor (R$)<input name="amount" inputmode="decimal" required placeholder="0,00"></label><label class="cash-record-description">Descrição<textarea name="description" required maxlength="800" rows="6" placeholder="Explique a finalidade e condição do lançamento."></textarea></label><label class="cash-record-attachment">Anexo opcional<input type="file" name="attachment" accept="image/jpeg,image/png,image/webp,application/pdf"><small>PDF, JPG, PNG ou WEBP · até 6 MB.</small></label></div><footer><span data-cash-record-status>A saída será incorporada ao caixa e recalculará as frentes relacionadas.</span><button type="submit" class="toolbar-primary">${ico("save")} Registrar saída</button></footer></form>` : `<div class="role-boundary-notice">${ico("lock-keyhole")} Seu perfil (${esc(actor.label || actor.role)}) pode consultar o caixa, mas não criar lançamentos.</div>`}</section>`,
-    };
-  },
-});
-
-const cashRecordPageV1 = function () {
-  return CashRecordPageV1({
-    props: { returnView: appStore.get().cashRecordReturnView || "finance" },
-  }).next().value;
-};
-
-
 
 const agentAwarenessStepsV1 = (item = {}) => {
   const baseAt =
@@ -234,17 +205,16 @@ const financeControlV8 = function () {
 };
 
 
-  return { cashRecordLauncherMarkupV1, cashRecordPageV1, financeAgentAwarenessMarkupV1, financeControlV8 };
+  return { cashRecordLauncherMarkupV1, financeAgentAwarenessMarkupV1, financeControlV8 };
 };
 
 export const installFinancePageV8 = (ViewLayer, workspace = {}, appStore) => {
-  if (!ViewLayer?.prototype || typeof workspace.financeControlV8 !== "function" || typeof workspace.cashRecordPageV1 !== "function" || typeof workspace.cashRecordLauncherMarkupV1 !== "function" || typeof workspace.financeAgentAwarenessMarkupV1 !== "function") throw new TypeError("Finance page requires a complete finance workspace.");
-  const { financeControlV8, cashRecordPageV1, cashRecordLauncherMarkupV1, financeAgentAwarenessMarkupV1 } = workspace;
+  if (!ViewLayer?.prototype || typeof workspace.financeControlV8 !== "function" || typeof workspace.cashRecordLauncherMarkupV1 !== "function" || typeof workspace.financeAgentAwarenessMarkupV1 !== "function") throw new TypeError("Finance page requires a complete finance workspace.");
+  const { financeControlV8, cashRecordLauncherMarkupV1, financeAgentAwarenessMarkupV1 } = workspace;
   ViewLayer.prototype.finance = function (...args) {
     const html = financeControlV8.apply(this, args);
     const withPrint = html.replace(/(<button type="button" class="toolbar-primary" data-v7-finance-export>[\s\S]*?<\/button>)/, (match) => `${match}<button type="button" class="toolbar-action" data-v7-finance-print>Imprimir</button>`);
     const withCashRecordLauncher = withPrint.replace(/<form class="cash-entry-control" data-v8-cash-entry>[\s\S]*?<\/form>|<div class="role-boundary-notice">[\s\S]*?<\/div>/, cashRecordLauncherMarkupV1("finance"));
     return withCashRecordLauncher.replace(/<aside class="finance-notification-list">[\s\S]*?<\/aside>/, financeAgentAwarenessMarkupV1(appStore.get()));
   };
-  ViewLayer.prototype["cash-record"] = cashRecordPageV1;
 };

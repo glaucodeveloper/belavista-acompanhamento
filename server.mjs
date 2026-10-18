@@ -30,7 +30,7 @@ const nvidiaReasoningVisionModel = process.env.NVIDIA_REASONING_VISION_MODEL || 
 const nvidiaReasoningApiUrl = process.env.NVIDIA_REASONING_API_URL || nvidiaApiUrl;
 const nvidiaReasoningBudget = Math.max(256,Math.min(16384,Number(process.env.NVIDIA_REASONING_BUDGET)||2048));
 const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.glb':'model/gltf-binary','.pdf':'application/pdf','.xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'};
-const {health,entitySummary,listRecords,createRecord,createMaterialTransition,createFieldConfirmation,updateRecord,deleteRecord,listMaterials,createMaterial,updateMaterial,deleteMaterial,listAgendaEvents,saveAgendaSnapshot,createActivityAdmin,updateActivityAdmin,deleteActivityAdmin,listServiceRequests,getServiceRequest,createServiceRequest,updateServiceRequest,addServiceRequestFiles,getServiceRequestFile,listPurchaseReceipts,purchaseReceiptSummary,createPurchaseReceipt,getPurchaseReceiptFile,deletePurchaseReceipt,listCommercialSales,createCommercialSale,updateCommercialSale,getCommercialSaleFile,deleteCommercialSale,listCashFlowEntries,createCashFlowEntry,updateRepasseEntryV1,deleteRepasseEntryV1,addCashFlowAttachment,getCashFlowAttachment,cashFlowSummary,listCommissionReasons,updateCommissionReason,listRepasseOperationsV1,saveRepasseBrokerRuleV1,deleteRepasseBrokerRuleV1,saveRepasseSalePlanV1,deleteRepasseSalePlanV1,listOutsourcingReceipts,createOutsourcingReceipt,getOutsourcingReceiptFile,listLeadMessages,createLeadMessage,getDesktopSetup,saveDesktopSetup,getAtlasLeadContactSettings,saveAtlasLeadContactSettings,ingestInstagramDirect,listInstagramLeadReports,getInstagramLeadReport,listStagesAdmin,getStageAdmin,createStageAdmin,updateStageAdmin,deleteStageAdmin,saveStageActivitiesAdmin,saveStageAiConfig,getStageReport,getStageWorkbenchState,saveStageWorkbenchState,listWorkbenchActivityLocations,listWorkbenchDiary,createWorkbenchDiary,listWorkbenchAttachments,createWorkbenchAttachment,getWorkbenchAttachmentFile,deleteWorkbenchAttachment,initializeDevelopmentSeed}=await import('./persistence.mjs');
+const {health,entitySummary,listRecords,createRecord,createMaterialTransition,createFieldConfirmation,updateRecord,deleteRecord,listMaterials,createMaterial,updateMaterial,deleteMaterial,listMaterialCustomColumns,saveMaterialCustomColumn,deleteMaterialCustomColumn,listAgendaEvents,saveAgendaSnapshot,createActivityAdmin,updateActivityAdmin,deleteActivityAdmin,listServiceRequests,getServiceRequest,createServiceRequest,updateServiceRequest,addServiceRequestFiles,getServiceRequestFile,listPurchaseReceipts,purchaseReceiptSummary,createPurchaseReceipt,getPurchaseReceiptFile,deletePurchaseReceipt,listCommercialSales,createCommercialSale,updateCommercialSale,getCommercialSaleFile,deleteCommercialSale,listBrokerProfiles,getBrokerProfile,saveBrokerProfile,deleteBrokerProfile,listLotDevelopmentProfiles,saveLotDevelopmentProfile,deleteLotDevelopmentProfile,listProjectDocuments,getProjectDocumentFile,saveProjectDocument,deleteProjectDocument,createProjectDocumentColumn,deleteProjectDocumentColumn,listCashFlowEntries,createCashFlowEntry,updateRepasseEntryV1,deleteRepasseEntryV1,addCashFlowAttachment,getCashFlowAttachment,cashFlowSummary,listCommissionReasons,updateCommissionReason,listRepasseOperationsV1,saveRepasseBrokerRuleV1,deleteRepasseBrokerRuleV1,saveRepasseSalePlanV1,deleteRepasseSalePlanV1,listOutsourcingReceipts,createOutsourcingReceipt,getOutsourcingReceiptFile,listLeadMessages,createLeadMessage,getDesktopSetup,saveDesktopSetup,getAtlasLeadContactSettings,saveAtlasLeadContactSettings,ingestInstagramDirect,listInstagramLeadReports,getInstagramLeadReport,listStagesAdmin,getStageAdmin,createStageAdmin,updateStageAdmin,deleteStageAdmin,saveStageActivitiesAdmin,saveStageAiConfig,getStageReport,getStageWorkbenchState,saveStageWorkbenchState,listWorkbenchActivityLocations,listWorkbenchDiary,createWorkbenchDiary,listWorkbenchAttachments,createWorkbenchAttachment,getWorkbenchAttachmentFile,deleteWorkbenchAttachment,initializeDevelopmentSeed}=await import('./persistence.mjs');
 const {ServerInitializationProgramV1,driveServerInitializationProgramV1}=await import('./bootstrap/server-initialization-program-v1.mjs');
 await driveServerInitializationProgramV1(ServerInitializationProgramV1.program(),{
   'initialize-clean-development-database':()=>initializeDevelopmentSeed(),
@@ -49,6 +49,7 @@ const {extractLocalRecordOcr}=await import('./local-record-ocr.mjs');
 const {buildRecordInterpretationV1}=await import('./record-stage-interpretation-v1.mjs');
 const {getCamofoxBridgeStatus,openInstagramInbox,fallbackInstagramDraft}=await import('./desktop/instagram-bridge.mjs');
 const {listInstagramFeed,replyInstagramComment,defaultInstagramAutomationPolicy}=await import('./worker/src/social.js');
+const {isLocalDevelopmentRequest,listStageMilestones,milestoneImage,startStageMilestoneRun}=await import('./dev-stage-milestones.mjs');
 
 // A mesma fonte legível pelo time fica incorporada ao prompt operacional. Isso
 // evita que a interface, o worker e o modelo mantenham ordens de execução
@@ -506,7 +507,7 @@ function pageForPath(pathname){
   return pathname==='/'?'index.html':pathname;
 }
 function send(res,status,data,headers={}){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto',...headers});res.end(JSON.stringify(data));}
-const proxiedApiPrefixes=['/api/auth/session','/api/access-keys','/api/access-roles','/api/admin/config','/api/records','/api/field-confirmations','/api/purchase-receipts','/api/budget-lines','/api/agenda-items','/api/notifications','/api/stages','/api/stage-correlations','/api/communications','/api/lot-documents','/api/settings/public-lead-contact'];
+const proxiedApiPrefixes=['/api/auth/session','/api/access-keys','/api/access-roles','/api/admin/config','/api/admin/public-leads','/api/records','/api/field-confirmations','/api/purchase-receipts','/api/budget-lines','/api/agenda-items','/api/notifications','/api/stages','/api/stage-correlations','/api/communications','/api/lot-documents','/api/settings/public-lead-contact'];
 function shouldProxyApi(pathname){
   // A instalação local sem BELAVISTA_API_TOKEN precisa gravar os registros na
   // base SQLite local. Sem esta exceção, o HTML de campo era encaminhado ao
@@ -818,6 +819,22 @@ async function cashFlowApi(req,res,pathname){
 }
 async function materialsApi(req,res,pathname){
   const roles=['owner','admin','foreman'];
+  if(pathname==='/api/materials/schema'&&req.method==='GET'){
+    await requireRoles(req,roles);
+    return send(res,200,{columns:listMaterialCustomColumns()});
+  }
+  if(pathname==='/api/materials/schema'&&req.method==='POST'){
+    const actor=await requireRoles(req,['owner','admin']),column=saveMaterialCustomColumn(await body(req));
+    bridgeAgentEvent({type:'material.schema.changed',entity:'material_custom_columns',entityId:column.id,actor,payload:column});
+    return send(res,201,{column,columns:listMaterialCustomColumns()});
+  }
+  const schemaMatch=pathname.match(/^\/api\/materials\/schema\/([^/]+)$/);
+  if(schemaMatch&&req.method==='DELETE'){
+    const actor=await requireRoles(req,['owner','admin']),id=decodeURIComponent(schemaMatch[1]);
+    if(!deleteMaterialCustomColumn(id))return send(res,404,{error:'Coluna de material não encontrada.'});
+    bridgeAgentEvent({type:'material.schema.changed',entity:'material_custom_columns',entityId:id,actor,payload:{deleted:true}});
+    return send(res,200,{ok:true,columns:listMaterialCustomColumns(),materials:listMaterials()});
+  }
   if(req.method==='GET'&&pathname==='/api/materials'){
     await requireRoles(req,roles);
     return send(res,200,{materials:listMaterials()});
@@ -1003,7 +1020,7 @@ async function outsourcingReceiptsApi(req,res,pathname){
 
 async function commercialSalesApi(req,res,pathname){
   if(req.method==='GET'&&pathname==='/api/commercial-sales')return send(res,200,{sales:listCommercialSales()});
-  if(req.method==='POST'&&pathname==='/api/commercial-sales')return send(res,201,{sale:createCommercialSale(await body(req,36_000_000))});
+  if(req.method==='POST'&&pathname==='/api/commercial-sales')return send(res,201,{sale:createCommercialSale(await body(req,45_000_000))});
   const fileMatch=pathname.match(/^\/api\/commercial-sales\/([^/]+)\/files\/([^/]+)$/);
   if(fileMatch&&req.method==='GET'){
     const saleId=decodeURIComponent(fileMatch[1]),fileId=decodeURIComponent(fileMatch[2]),file=getCommercialSaleFile(saleId,fileId);if(!file)return send(res,404,{error:'Arquivo comercial não encontrado.'});
@@ -1011,8 +1028,108 @@ async function commercialSalesApi(req,res,pathname){
   }
   const match=pathname.match(/^\/api\/commercial-sales\/([^/]+)$/);if(!match)return send(res,404,{error:'Venda não encontrada.'});
   const id=decodeURIComponent(match[1]);
-  if(req.method==='PUT'){await requireRoles(req,['owner','admin']);const sale=updateCommercialSale(id,await body(req));return sale?send(res,200,{sale}):send(res,404,{error:'Venda não encontrada.'});}
+  if(req.method==='PUT'){await requireRoles(req,['owner','admin']);const sale=updateCommercialSale(id,await body(req,45_000_000));return sale?send(res,200,{sale}):send(res,404,{error:'Venda não encontrada.'});}
   if(req.method==='DELETE')return deleteCommercialSale(id)?send(res,200,{ok:true,id}):send(res,404,{error:'Venda não encontrada.'});
+  return send(res,405,{error:'Método não permitido.'});
+}
+
+async function brokerProfilesApi(req,res,pathname){
+  if(req.method==='GET'&&pathname==='/api/broker-profiles'){
+    await requireRoles(req,['owner','admin']);
+    return send(res,200,{profiles:listBrokerProfiles()});
+  }
+  const match=pathname.match(/^\/api\/broker-profiles\/([^/]+)$/);
+  if(!match)return send(res,404,{error:'Perfil de corretor não encontrado.'});
+  const name=decodeURIComponent(match[1]);
+  if(req.method==='GET'){
+    await requireRoles(req,['owner','admin']);
+    const profile=getBrokerProfile(name);return profile?send(res,200,{profile}):send(res,404,{error:'Cadastro profissional não encontrado.'});
+  }
+  if(req.method==='PUT'||req.method==='POST'){
+    await requireRoles(req,['owner','admin']);
+    return send(res,200,{profile:saveBrokerProfile(name,await body(req,16_000))});
+  }
+  if(req.method==='DELETE'){
+    await requireRoles(req,['owner','admin']);
+    return deleteBrokerProfile(name)?send(res,200,{ok:true,name}):send(res,404,{error:'Cadastro profissional não encontrado.'});
+  }
+  return send(res,405,{error:'Método não permitido.'});
+}
+
+async function lotDevelopmentApi(req,res,pathname){
+  if(pathname==='/api/lot-development/profiles'&&req.method==='GET'){
+    await requireRoles(req,['owner','admin','developer']);
+    return send(res,200,{profiles:listLotDevelopmentProfiles()});
+  }
+  if(pathname==='/api/lot-development/profiles'&&req.method==='POST'){
+    const actor=await requireRoles(req,['owner','admin','developer']),profile=saveLotDevelopmentProfile(await body(req,16_000));
+    bridgeAgentEvent({type:'lot-development.profile.changed',entity:'lot_development_profiles',entityId:profile.id,actor,payload:{id:profile.id,kind:profile.kind,title:profile.title}});
+    return send(res,201,{profile});
+  }
+  const match=pathname.match(/^\/api\/lot-development\/profiles\/([^/]+)$/);
+  if(!match)return send(res,404,{error:'Perfil do loteamento não encontrado.'});
+  const id=decodeURIComponent(match[1]);
+  if(req.method==='PUT'){
+    const actor=await requireRoles(req,['owner','admin','developer']),profile=saveLotDevelopmentProfile({...await body(req,16_000),id});
+    bridgeAgentEvent({type:'lot-development.profile.changed',entity:'lot_development_profiles',entityId:profile.id,actor,payload:{id:profile.id,kind:profile.kind,title:profile.title}});
+    return send(res,200,{profile});
+  }
+  if(req.method==='DELETE'){
+    const actor=await requireRoles(req,['owner','admin','developer']);
+    if(!deleteLotDevelopmentProfile(id))return send(res,404,{error:'Perfil do loteamento não encontrado.'});
+    bridgeAgentEvent({type:'lot-development.profile.deleted',entity:'lot_development_profiles',entityId:id,actor,payload:{id}});
+    return send(res,200,{ok:true,id});
+  }
+  return send(res,405,{error:'Método não permitido.'});
+}
+
+async function projectDocumentsApi(req,res,pathname){
+  const roles=['owner','admin','developer'];
+  if(pathname==='/api/project-documents'){
+    if(req.method==='GET'){await requireRoles(req,roles);return send(res,200,listProjectDocuments());}
+    if(req.method==='POST'){
+      const actor=await requireRoles(req,roles),document=saveProjectDocument(await body(req,36_000_000));
+      bridgeAgentEvent({type:'project.document.created',entity:'project_documents',entityId:document.id,actor,payload:{id:document.id,title:document.title}});
+      return send(res,201,{document});
+    }
+    return send(res,405,{error:'Método não permitido.'});
+  }
+  if(pathname==='/api/project-documents/columns'&&req.method==='POST'){
+    const actor=await requireRoles(req,roles),column=createProjectDocumentColumn(await body(req,16_000));
+    bridgeAgentEvent({type:'project.document.column.created',entity:'project_document_columns',entityId:column.id,actor,payload:{id:column.id,label:column.label}});
+    return send(res,201,{column});
+  }
+  const columnMatch=pathname.match(/^\/api\/project-documents\/columns\/([^/]+)$/);
+  if(columnMatch&&req.method==='DELETE'){
+    const actor=await requireRoles(req,roles),id=decodeURIComponent(columnMatch[1]);
+    if(!deleteProjectDocumentColumn(id))return send(res,404,{error:'Propriedade não encontrada.'});
+    bridgeAgentEvent({type:'project.document.column.deleted',entity:'project_document_columns',entityId:id,actor,payload:{id}});
+    return send(res,200,{ok:true});
+  }
+  const fileMatch=pathname.match(/^\/api\/project-documents\/([^/]+)\/file$/);
+  if(fileMatch&&req.method==='GET'){
+    await requireRoles(req,roles);
+    const file=getProjectDocumentFile(decodeURIComponent(fileMatch[1]));
+    if(!file)return send(res,404,{error:'Arquivo não encontrado.'});
+    res.writeHead(200,{'Content-Type':file.fileType||'application/octet-stream','Content-Length':file.content.length,'Content-Disposition':`attachment; filename*=UTF-8''${encodeURIComponent(file.fileName)}`,'Cache-Control':'private, no-store'});
+    res.end(file.content);return;
+  }
+  const match=pathname.match(/^\/api\/project-documents\/([^/]+)$/);
+  if(!match)return send(res,404,{error:'Documento não encontrado.'});
+  const id=decodeURIComponent(match[1]);
+  if(req.method==='PUT'){
+    const actor=await requireRoles(req,roles);
+    if(!listProjectDocuments().documents.some(document=>document.id===id))return send(res,404,{error:'Documento não encontrado.'});
+    const document=saveProjectDocument({...await body(req,36_000_000),id});
+    bridgeAgentEvent({type:'project.document.updated',entity:'project_documents',entityId:id,actor,payload:{id,title:document.title}});
+    return send(res,200,{document});
+  }
+  if(req.method==='DELETE'){
+    const actor=await requireRoles(req,roles);
+    if(!deleteProjectDocument(id))return send(res,404,{error:'Documento não encontrado.'});
+    bridgeAgentEvent({type:'project.document.deleted',entity:'project_documents',entityId:id,actor,payload:{id}});
+    return send(res,200,{ok:true});
+  }
   return send(res,405,{error:'Método não permitido.'});
 }
 
@@ -1204,6 +1321,23 @@ async function brokerReportsApi(req,res){
   return send(res,200,{files:files.sort((a,b)=>b.month.localeCompare(a.month)||a.name.localeCompare(b.name))});
 }
 
+async function developmentStageMilestonesApi(req,res,pathname){
+  if(!isLocalDevelopmentRequest(req))return send(res,404,{error:'Laboratório disponível apenas no servidor local em desenvolvimento.'});
+  await requireRoles(req,['owner','developer']);
+  res.setHeader('Cache-Control','no-store');
+  if(pathname==='/api/dev/stage-milestones'&&req.method==='GET')return send(res,200,await listStageMilestones());
+  const image=pathname.match(/^\/api\/dev\/stage-milestones\/([a-z0-9-]+)\/image$/);
+  if(image&&req.method==='GET'){
+    const data=await milestoneImage(image[1]);
+    if(!data)return send(res,404,{error:'Imagem QA não encontrada.'});
+    res.writeHead(200,{'Content-Type':'image/png','Content-Length':data.length,'Cache-Control':'no-store'});
+    return res.end(data);
+  }
+  const run=pathname.match(/^\/api\/dev\/stage-milestones\/([a-z0-9-]+)\/(ocr|inference)$/);
+  if(run&&req.method==='POST')return send(res,202,await startStageMilestoneRun(run[1],run[2]));
+  return send(res,404,{error:'Operação QA não encontrada.'});
+}
+
 createServer(async (req,res)=>{
   if(new URL(req.url,'http://localhost').pathname.startsWith('/api/auth/')){
     const pathname=new URL(req.url,'http://localhost').pathname;
@@ -1225,5 +1359,17 @@ createServer(async (req,res)=>{
     try{await authorizeApiSurface(req,new URL(req.url,'http://localhost').pathname);return await serviceRequestsApi(req,res,new URL(req.url,'http://localhost').pathname);}
     catch(error){return send(res,error?.statusCode||500,{error:error?.message||'Falha na solicitação de serviço.'});}
   }
-  try { const pathname=new URL(req.url,'http://localhost').pathname; await authorizeApiSurface(req,pathname); if(shouldProxyApi(pathname))return await proxyApi(req,res,pathname); if(pathname==='/api/access-keys'||pathname.startsWith('/api/access-keys/'))return await foremanAccessKeysApi(req,res,pathname); if(publicCatalogApi(req,res,pathname))return; if(pathname==='/api/health'&&req.method==='GET')return send(res,200,{...health(),ai:aiStatus(),inference:inferenceStatus(),auth:authStatus(),origin:requestOrigin(req),forwarded:Boolean(req.headers['x-forwarded-host']),belavistaApiBase}); if(pathname==='/api/runtime'&&req.method==='GET')return send(res,200,{origin:requestOrigin(req),host,port,forwardedHost:req.headers['x-forwarded-host']||null,forwardedProto:req.headers['x-forwarded-proto']||null,firebaseMessagingVapidKey:process.env.FIREBASE_MESSAGING_VAPID_KEY||'',belavistaApiBase}); if(pathname==='/api/ai/status'&&req.method==='GET')return send(res,200,aiStatus()); if(pathname==='/api/inference/status'&&req.method==='GET')return send(res,200,inferenceStatus()); if(pathname==='/api/ai/tools'&&req.method==='GET')return send(res,200,{protocol:'belavista-client-tools/v1',tools:clientTools}); if(pathname==='/api/agent/tree'||pathname==='/api/agent/evaluate')return await agentTreeApi(req,res,pathname); if(pathname==='/api/operational-loop'||pathname==='/api/operational-state'||pathname==='/api/calibrations'||pathname==='/api/automation/panorama'||pathname==='/api/automation/run'||pathname==='/api/devices'||pathname==='/api/notifications'||pathname.startsWith('/api/notifications/'))return await operationalApi(req,res,pathname); if(pathname==='/api/stages-admin'||pathname.startsWith('/api/stages-admin/'))return await stagesAdminApi(req,res,pathname); if(pathname==='/api/workbench/infer'&&req.method==='POST')return await workbenchInferenceApi(req,res); if(pathname.startsWith('/api/communications'))return await communicationsApi(req,res,pathname); if(pathname==='/api/workbench/state'||pathname==='/api/workbench/diary')return await workbenchApi(req,res,pathname); if(pathname==='/api/desktop/setup'||pathname.startsWith('/api/instagram/'))return await instagramDesktopApi(req,res,pathname); if(pathname.startsWith('/api/leads/'))return await leadMessagesApi(req,res,pathname); if(pathname==='/api/entities'&&req.method==='GET')return send(res,200,{entities:entitySummary()}); if(pathname==='/api/broker-reports')return await brokerReportsApi(req,res); if(pathname==='/api/field-confirmations')return await fieldConfirmationsApi(req,res); if(pathname==='/api/records'||pathname.startsWith('/api/records/'))return await recordsApi(req,res,pathname); if(pathname==='/api/materials'||pathname.startsWith('/api/materials/'))return await materialsApi(req,res,pathname); if(pathname==='/api/repasses'||pathname.startsWith('/api/repasses/'))return await repassesApi(req,res,pathname); if(pathname==='/api/cash-flow'||pathname.startsWith('/api/cash-flow/'))return await cashFlowApi(req,res,pathname); if(pathname==='/api/commission-reasons'||pathname.startsWith('/api/commission-reasons/'))return await commissionReasonsApi(req,res,pathname); if(pathname==='/api/outsourcing-receipts'||pathname.startsWith('/api/outsourcing-receipts/'))return await outsourcingReceiptsApi(req,res,pathname); if(pathname==='/api/purchase-receipts'||pathname.startsWith('/api/purchase-receipts/'))return await purchaseReceiptsApi(req,res,pathname); if(pathname==='/api/commercial-sales'||pathname.startsWith('/api/commercial-sales/'))return await commercialSalesApi(req,res,pathname); if(req.method==='POST'&&(pathname==='/api/gemini'||pathname==='/api/ai'||pathname==='/api/ai/vision-reasoning'||pathname==='/api/inference')) return await ai(req,res); if(req.method!=='GET') return send(res,405,{error:'Método não permitido.'}); const requested=normalize(pageForPath(pathname)).replace(/^[/\\]+/,''); const file=join(root,requested); if(!file.startsWith(root)) return send(res,403,{error:'Acesso negado.'}); const data=await readFile(file); res.writeHead(200,{'Content-Type':types[extname(file)]||'application/octet-stream','Content-Length':data.length,'Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto'}); res.end(data); } catch (error) { if(String(req.url||'').startsWith('/api/')) return send(res,error?.statusCode||500,{error:error?.message||'Falha no serviço local.'}); const data=await readFile(join(root,'index.html')); res.writeHead(200,{'Content-Type':types['.html'],'Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto'}); res.end(data); }
+  if(new URL(req.url,'http://localhost').pathname.startsWith('/api/dev/stage-milestones')){
+    try{const pathname=new URL(req.url,'http://localhost').pathname;return await developmentStageMilestonesApi(req,res,pathname);}
+    catch(error){return send(res,error?.statusCode||500,{error:error?.message||'Falha no laboratório de marcos.'});}
+  }
+  if(new URL(req.url,'http://localhost').pathname.startsWith('/api/lot-development/profiles')){
+    try{const pathname=new URL(req.url,'http://localhost').pathname;await authorizeApiSurface(req,pathname);return await lotDevelopmentApi(req,res,pathname);}
+    catch(error){return send(res,error?.statusCode||500,{error:error?.message||'Falha nos perfis do loteamento.'});}
+  }
+  if(new URL(req.url,'http://localhost').pathname.startsWith('/api/project-documents')){
+    try{const pathname=new URL(req.url,'http://localhost').pathname;await authorizeApiSurface(req,pathname);return await projectDocumentsApi(req,res,pathname);}
+    catch(error){return send(res,error?.statusCode||500,{error:error?.message||'Falha no acervo documental.'});}
+  }
+  try { const pathname=new URL(req.url,'http://localhost').pathname; await authorizeApiSurface(req,pathname); if(shouldProxyApi(pathname))return await proxyApi(req,res,pathname); if(pathname==='/api/access-keys'||pathname.startsWith('/api/access-keys/'))return await foremanAccessKeysApi(req,res,pathname); if(publicCatalogApi(req,res,pathname))return; if(pathname==='/api/health'&&req.method==='GET')return send(res,200,{...health(),ai:aiStatus(),inference:inferenceStatus(),auth:authStatus(),origin:requestOrigin(req),forwarded:Boolean(req.headers['x-forwarded-host']),belavistaApiBase}); if(pathname==='/api/runtime'&&req.method==='GET')return send(res,200,{origin:requestOrigin(req),host,port,forwardedHost:req.headers['x-forwarded-host']||null,forwardedProto:req.headers['x-forwarded-proto']||null,firebaseMessagingVapidKey:process.env.FIREBASE_MESSAGING_VAPID_KEY||'',belavistaApiBase}); if(pathname==='/api/ai/status'&&req.method==='GET')return send(res,200,aiStatus()); if(pathname==='/api/inference/status'&&req.method==='GET')return send(res,200,inferenceStatus()); if(pathname==='/api/ai/tools'&&req.method==='GET')return send(res,200,{protocol:'belavista-client-tools/v1',tools:clientTools}); if(pathname==='/api/agent/tree'||pathname==='/api/agent/evaluate')return await agentTreeApi(req,res,pathname); if(pathname==='/api/operational-loop'||pathname==='/api/operational-state'||pathname==='/api/calibrations'||pathname==='/api/automation/panorama'||pathname==='/api/automation/run'||pathname==='/api/devices'||pathname==='/api/notifications'||pathname.startsWith('/api/notifications/'))return await operationalApi(req,res,pathname); if(pathname==='/api/stages-admin'||pathname.startsWith('/api/stages-admin/'))return await stagesAdminApi(req,res,pathname); if(pathname==='/api/workbench/infer'&&req.method==='POST')return await workbenchInferenceApi(req,res); if(pathname.startsWith('/api/communications'))return await communicationsApi(req,res,pathname); if(pathname==='/api/workbench/state'||pathname==='/api/workbench/diary')return await workbenchApi(req,res,pathname); if(pathname==='/api/desktop/setup'||pathname.startsWith('/api/instagram/'))return await instagramDesktopApi(req,res,pathname); if(pathname.startsWith('/api/leads/'))return await leadMessagesApi(req,res,pathname); if(pathname==='/api/entities'&&req.method==='GET')return send(res,200,{entities:entitySummary()}); if(pathname==='/api/broker-profiles'||pathname.startsWith('/api/broker-profiles/'))return await brokerProfilesApi(req,res,pathname); if(pathname==='/api/broker-reports')return await brokerReportsApi(req,res); if(pathname==='/api/field-confirmations')return await fieldConfirmationsApi(req,res); if(pathname==='/api/records'||pathname.startsWith('/api/records/'))return await recordsApi(req,res,pathname); if(pathname==='/api/materials'||pathname.startsWith('/api/materials/'))return await materialsApi(req,res,pathname); if(pathname==='/api/repasses'||pathname.startsWith('/api/repasses/'))return await repassesApi(req,res,pathname); if(pathname==='/api/cash-flow'||pathname.startsWith('/api/cash-flow/'))return await cashFlowApi(req,res,pathname); if(pathname==='/api/commission-reasons'||pathname.startsWith('/api/commission-reasons/'))return await commissionReasonsApi(req,res,pathname); if(pathname==='/api/outsourcing-receipts'||pathname.startsWith('/api/outsourcing-receipts/'))return await outsourcingReceiptsApi(req,res,pathname); if(pathname==='/api/purchase-receipts'||pathname.startsWith('/api/purchase-receipts/'))return await purchaseReceiptsApi(req,res,pathname); if(pathname==='/api/commercial-sales'||pathname.startsWith('/api/commercial-sales/'))return await commercialSalesApi(req,res,pathname); if(req.method==='POST'&&(pathname==='/api/gemini'||pathname==='/api/ai'||pathname==='/api/ai/vision-reasoning'||pathname==='/api/inference')) return await ai(req,res); if(req.method!=='GET') return send(res,405,{error:'Método não permitido.'}); const requested=normalize(pageForPath(pathname)).replace(/^[/\\]+/,''); const file=join(root,requested); if(!file.startsWith(root)) return send(res,403,{error:'Acesso negado.'}); const data=await readFile(file); res.writeHead(200,{'Content-Type':types[extname(file)]||'application/octet-stream','Content-Length':data.length,'Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto'}); res.end(data); } catch (error) { if(String(req.url||'').startsWith('/api/')) return send(res,error?.statusCode||500,{error:error?.message||'Falha no serviço local.'}); const data=await readFile(join(root,'index.html')); res.writeHead(200,{'Content-Type':types['.html'],'Vary':'Host, X-Forwarded-Host, X-Forwarded-Proto'}); res.end(data); }
  }).listen(port,host,()=>console.log(`Aliança Park local: http://localhost:${port} · rede: http://10.75.216.173:${port} · bind: ${host}`));

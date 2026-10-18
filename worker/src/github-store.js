@@ -49,12 +49,19 @@ export async function readOperationalConfig(env,kind,{fallback=true}={}){
   if(!PATHS[kind])throw new Error(`Configuração desconhecida: ${kind}`);
   const rt=runtime(env);
   if(!rt.configured){
+    if(kind==='commercial')throw new Error('Configuração comercial indisponível: configure o acesso ao repositório antes de carregar vendas e regras.');
     if(!fallback)throw new Error('GITHUB_PAT/GITHUB_REPO não configurados no Worker.');
     return {kind,path:PATHS[kind],source:'defaults',sha:'',data:clone(DEFAULTS[kind])};
   }
   const url=`https://api.github.com/repos/${rt.repo}/contents/${PATHS[kind]}?ref=${encodeURIComponent(rt.branch)}`;
   const response=await fetch(url,{headers:headers(env)});
-  if(response.status===404&&fallback)return {kind,path:PATHS[kind],source:'defaults',sha:'',data:clone(DEFAULTS[kind])};
+  if(response.status===404&&fallback){
+    // Commercial sales and commission rules are operational records. Falling
+    // back to demo sales here makes a broken repository configuration look
+    // like real financial data, so require an explicit repository document.
+    if(kind==='commercial')throw new Error(`Configuração comercial ausente no repositório: ${PATHS[kind]}.`);
+    return {kind,path:PATHS[kind],source:'defaults',sha:'',data:clone(DEFAULTS[kind])};
+  }
   const payload=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(payload?.message||`GitHub respondeu ${response.status}.`);
   let data;

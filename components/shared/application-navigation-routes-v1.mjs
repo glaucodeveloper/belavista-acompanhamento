@@ -13,7 +13,7 @@ export const APP_VIEW_ALIASES_V1 = Object.freeze({
 const APP_DIRECT_VIEWS_V1 = new Set([
   "map", "control", "lot-development", "lot-profile", "stages", "materials",
   "agenda", "activities", "progress", "records", "foremen",
-  "messages", "brokers", "broker-detail", "sales-history", "brokers-board",
+  "messages", "leads", "documents", "brokers", "broker-detail", "sales-history", "brokers-board",
   "cash-record", "repasses", "settings", "activity-installation",
 ]);
 
@@ -34,7 +34,7 @@ export const resolveSidebarNavigationTargetV1 = (rawView) => {
   const requestedNext = rawView === "inventory" || rawView === "assistant"
       ? "map"
       : String(rawView || ""),
-    next = ["documents", "personnel", "leads", "reports"].includes(requestedNext)
+    next = ["personnel", "reports"].includes(requestedNext)
       ? "map"
       : ["contracts", "commission-deal", "proposals"].includes(requestedNext)
         ? "control"

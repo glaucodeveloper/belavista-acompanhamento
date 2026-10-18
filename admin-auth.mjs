@@ -1,5 +1,5 @@
 import {apiUrl} from './api-client.mjs?v=github-pat-gateway-v1';
-import {normalizeUserType} from './admin-role-policy.mjs';
+import {actorCanUseAiChat,normalizeUserType} from './admin-role-policy.mjs';
 import {clearGithubPat,readGithubPat,saveGithubPat} from './github-pat-vault-v1.mjs';
 
 const tokenKey='belavista.github.session.v1';
@@ -90,6 +90,7 @@ function activate(session,token,resolve){
   globalThis.BELAVISTA_GET_ID_TOKEN=()=>token;
   document.documentElement.dataset.belavistaAuth='ready';
   document.documentElement.dataset.belavistaAuthRole=actor.role;
+  document.documentElement.dataset.belavistaAiChat=String(actorCanUseAiChat(actor));
   if(userType)document.documentElement.dataset.belavistaUserType=userType;
   else delete document.documentElement.dataset.belavistaUserType;
   delete document.documentElement.dataset.belavistaAuthPending;
@@ -200,6 +201,7 @@ globalThis.BELAVISTA_ADMIN_AUTH_INVALIDATE=()=>{
   delete document.documentElement.dataset.belavistaAuth;
   delete document.documentElement.dataset.belavistaAuthRole;
   delete document.documentElement.dataset.belavistaUserType;
+  delete document.documentElement.dataset.belavistaAiChat;
   document.documentElement.dataset.belavistaAuthPending='true';
   form.elements.pat.value='';
   status.textContent='A sessão foi recusada pelo serviço. Informe novamente um PAT com acesso ao repositório.';

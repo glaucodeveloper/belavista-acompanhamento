@@ -8,6 +8,7 @@ export const SIDEBAR_MODE_LABELS_V1 = Object.freeze({
 export const SIDEBAR_MODE_ITEMS_V1 = Object.freeze({
   tracking: [
     ["map", "house", "Mapa"], ["lot-development", "land-plot", "Loteamento"],
+    ["leads", "contact-round", "Leads"], ["documents", "files", "Documentos"],
     ["control", "table-properties", "Dashboard"], ["agenda", "calendar-days", "Agenda"],
     ["records", "clipboard-pen-line", "Registros"], ["materials", "package", "Materiais"],
     ["brokers-board", "map-pinned", "Lotes"], ["repasses", "wallet", "Repasses"],
@@ -16,6 +17,7 @@ export const SIDEBAR_MODE_ITEMS_V1 = Object.freeze({
   ],
   commercial: [
     ["map", "house", "Mapa"], ["lot-development", "land-plot", "Loteamento"],
+    ["leads", "contact-round", "Leads"], ["documents", "files", "Documentos"],
     ["agenda", "calendar-days", "Agenda"], ["materials", "package", "Materiais"],
     ["brokers-board", "map-pinned", "Lotes"], ["repasses", "wallet", "Repasses"],
     ["brokers", "users-round", "Corretores"], ["sales-history", "history", "Histórico de movimentações"],
@@ -24,6 +26,7 @@ export const SIDEBAR_MODE_ITEMS_V1 = Object.freeze({
   ],
   social: [
     ["map", "house", "Mapa"], ["lot-development", "land-plot", "Loteamento"],
+    ["leads", "contact-round", "Leads"], ["documents", "files", "Documentos"],
     ["agenda", "calendar-days", "Agenda"], ["messages", "messages-square", "Mensagens", "messages"],
     ["control", "table-properties", "Dashboard"], ["records", "clipboard-pen-line", "Registros"],
     ["brokers-board", "map-pinned", "Lotes"], ["brokers", "users-round", "Corretores"],

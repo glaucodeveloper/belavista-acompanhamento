@@ -76,7 +76,7 @@ export const installCommercialHistoryPageEventsV1 = (ViewLayer, {
       root.querySelector("[data-broker-history-all]")?.addEventListener("click", () => appStore.set({ view: "sales-history", selectedSalesHistoryId: null, lastAction: "Abriu histórico completo de vendas" }));
       root.querySelectorAll("[data-history-open]").forEach((button) => button.addEventListener("click", () => appStore.set({ view: "sales-history", selectedSalesHistoryId: button.dataset.historyOpen, lastAction: "Abriu relatório completo da venda" })));
     }
-    if (route === "sales-history") {
+    if (route === "sales-history" && !root.querySelector('atlas-sales-history')) {
       root.querySelector("[data-history-search]")?.addEventListener("input", (event) => {
         const query = event.target.value.toLocaleLowerCase("pt-BR");
         root.querySelectorAll("[data-history-row]").forEach((row) => { row.hidden = !row.dataset.search.includes(query); });

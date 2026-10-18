@@ -19,9 +19,7 @@ export const FOREMAN_EXTENSION_VIEWS = Object.freeze([]);
 export const LIMITED_OPERATIONAL_VIEWS = Object.freeze(["map", "agenda", "records", "stages"]);
 
 export const REMOVED_ADMIN_VIEWS = Object.freeze([
-  "documents",
   "personnel",
-  "leads",
   "reports",
 ]);
 const REMOVED_ADMIN_VIEW_SET = new Set(REMOVED_ADMIN_VIEWS);
@@ -68,6 +66,14 @@ export const userTypeForActor = (actor = {}) =>
 export const isForemanUser = (actor = {}) => userTypeForActor(actor) === "foreman";
 export const isLimitedOperationalActor = (actor = {}) =>
   isForemanUser(actor) || BROKER_ROLES.has(accessLevelForActor(actor));
+
+export const actorCanUseAiChat = (actor = {}) => {
+  const permissions = new Set(Array.isArray(actor.permissions) ? actor.permissions : []);
+  if (actor.mode === "delegated-foreman-key" || isForemanUser(actor) || BROKER_ROLES.has(accessLevelForActor(actor)))
+    return permissions.has("ai.notes") || permissions.has("ai.photos");
+  return PRIVILEGED_ROLES.has(accessLevelForActor(actor)) ||
+    permissions.has("ai.notes") || permissions.has("ai.photos");
+};
 
 // Claims antigos usavam role=foreman. Para não ampliar esse acesso, o valor
 // vira uma propriedade do usuário e o nível base passa a ser administrativo.
@@ -128,6 +134,7 @@ export const navigationItemsForActor = (actor = {}, items = []) => {
   if (isLimitedOperationalActor(actor)) {
     return [
       ["map", "house", "Mapa"],
+      ["agenda", "calendar-range", "Agenda"],
       ["records", "clipboard-list", "Registros"],
       ["stages", "calendar-range", "Linha do tempo do cronograma"],
     ];

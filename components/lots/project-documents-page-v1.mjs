@@ -80,7 +80,7 @@ export const installProjectDocumentsPageV1 = (ViewLayer, dependencies = {}) => {
   ViewLayer.prototype.bind = function (...args) {
     const result = bindBeforeProjectDocumentsV1?.apply(this, args);
     const root = this.querySelector("[data-project-documents-page]");
-    if (!root || root.dataset.documentsBound) return result;
+    if (!root || root.closest('atlas-project-documents') || root.dataset.documentsBound) return result;
     root.dataset.documentsBound = "true";
     root.querySelectorAll('[data-document-delete="doc-proj-exec"],[data-document-delete="doc-proj-licenses"],[data-document-delete="doc-presentation-v3"]').forEach((button) => button.remove());
     if (appStore.get().documentsEditId !== "new")

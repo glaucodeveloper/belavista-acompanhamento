@@ -32,6 +32,7 @@ const requiredFiles=[
 ];
 // Entradas carregadas diretamente pelo index.html precisam acompanhar o APK.
 const supplementalEntries=[
+  'dev-stage-milestones-ui.mjs','dev-stage-milestones.css',
   'admin-communications.css','control-record-accordion-v1.css','material-transition-v1.css',
   'record-ocr-dynamic-v21.css','atlas-application-v1.css','atlas-zip-shell-v2.css',
   'atlas-operational-design-v1.css','atlas-carbon-integration-v1.css','atlas-mobile-focus-v1.css','github-access-settings-v1.css',
@@ -65,6 +66,7 @@ for(const rel of [
   'admin-runtime-v11.js','admin-lots-canvas-v1.js','stage-admin-v10.js','dashboard-map-tabs-v3.js','admin-public-map-surface-v5352.mjs','public-leads-map-v50.mjs','admin-public-map-3d-status-v5353.mjs','finance-mobile-cash-v5358.mjs','chat-tab-widget-ghost-v5359.mjs','final-workspaces-v5360.mjs','stages-landing-v5361.mjs','belavista-final-ui-v5362.mjs'
 ])await copy(rel);
 for(const rel of supplementalEntries)await copy(rel);
+await copy('dist/frontend');
 
 // A aplicação é distribuída como módulos ES nativos. Manter apenas uma lista
 // manual de entradas fazia imports transitivos (por exemplo, os módulos usados

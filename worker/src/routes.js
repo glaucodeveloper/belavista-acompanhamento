@@ -54,11 +54,12 @@ import {requireAdminRequest,bearerToken} from './request-auth.js';
 import {actorFromGithubSession,openGithubSession,revokeGithubSession,
   listForemanAccessKeys,createForemanAccessKey,revokeForemanAccessKey,
   listForemanAccessRoles,saveForemanAccessRole,deleteForemanAccessRole} from './github-session-store.js';
-import {readPublicCatalog} from './public-commercial-store.js';
+import {readPublicCatalog,readPublicCommercialRecords} from './public-commercial-store.js';
 import {createLiveTestSession,readLiveTestSession,saveLiveTestSession,deleteLiveTestSession,applyLiveTestEvent} from './live-test-session.js';
 
 import {saveCashEvidence} from './cash-evidence.js';
 import {saveLotDocument} from './lot-document-store.js';
+import {listProjectDocuments,getProjectDocument,saveProjectDocument,deleteProjectDocument,getProjectDocumentFile,createProjectDocumentColumn,deleteProjectDocumentColumn} from './project-document-store.js';
 import {webhookVerification,parseWebhook,saveInboundSocialMessages,socialRuntime,listSocialConversations,listSocialMessages,sendSocialMessage,saveInstagramCommercialLead,listInstagramFeed,replyInstagramComment,getInstagramAutomationPolicy,saveInstagramAutomationPolicy} from './social.js';
 import {getHeldImage,holdImageInWorker,readHeldImageDataUrl,normalizeImageAttachment} from './media-attachments.js';
 
@@ -268,6 +269,14 @@ export async function routeRequest(request,env,ctx){
     }
   }
 
+  if(pathname==='/api/admin/public-leads'){
+    if(request.method!=='GET')return methodNotAllowed();
+    const actor=await requireAdminRequest(request,env);
+    if(!['owner','admin','developer'].includes(String(actor?.role||'')))return json({error:'Somente administração pode consultar dados pessoais de leads e reservas.'},403,{'cache-control':'no-store'});
+    try{return json(await readPublicCommercialRecords(env),200,{'cache-control':'private, no-store'});}
+    catch(error){return json({error:error?.message||'Não foi possível ler os leads públicos do repositório.'},502,{'cache-control':'no-store'});}
+  }
+
   if(pathname==='/api/public/catalog'&&request.method==='GET'){
     const catalog=await readPublicCatalog(env);
     return json({
@@ -420,6 +429,35 @@ export async function routeRequest(request,env,ctx){
     const payload=await body(request);
     const proof=await saveCashEvidence(env,payload.evidence||payload);
     return json({proof},201);
+  }
+
+  if(pathname==='/api/project-documents'||pathname.startsWith('/api/project-documents/')){
+    const actor=await requireAdminRequest(request,env);
+    if(!['owner','admin','developer'].includes(actor.role)||actor.userType==='foreman')return json({error:'Seu perfil não pode acessar o acervo do empreendimento.'},403);
+    const privateHeaders={'cache-control':'private, no-store'};
+    if(pathname==='/api/project-documents'){
+      if(request.method==='GET')return json(await listProjectDocuments(env),200,privateHeaders);
+      if(request.method==='POST')return json({document:await saveProjectDocument(env,await body(request))},201,privateHeaders);
+      return methodNotAllowed();
+    }
+    if(pathname==='/api/project-documents/columns'&&request.method==='POST')return json({column:await createProjectDocumentColumn(env,await body(request))},201,privateHeaders);
+    const columnMatch=pathname.match(/^\/api\/project-documents\/columns\/([^/]+)$/);
+    if(columnMatch&&request.method==='DELETE')return await deleteProjectDocumentColumn(env,decodeURIComponent(columnMatch[1]))?json({ok:true},200,privateHeaders):notFound('Propriedade não encontrada.');
+    const fileMatch=pathname.match(/^\/api\/project-documents\/([^/]+)\/file$/);
+    if(fileMatch&&request.method==='GET'){
+      const file=await getProjectDocumentFile(env,decodeURIComponent(fileMatch[1]));
+      if(!file)return notFound('Arquivo não encontrado.');
+      return new Response(file.content,{status:200,headers:{'content-type':file.fileType||'application/octet-stream','content-disposition':`attachment; filename*=UTF-8''${encodeURIComponent(file.fileName)}`,'cache-control':'private, no-store'}});
+    }
+    const match=pathname.match(/^\/api\/project-documents\/([^/]+)$/);
+    if(!match)return notFound('Documento não encontrado.');
+    const id=decodeURIComponent(match[1]);
+    if(request.method==='PUT'){
+      if(!await getProjectDocument(env,id))return notFound('Documento não encontrado.');
+      return json({document:await saveProjectDocument(env,{...await body(request),id})},200,privateHeaders);
+    }
+    if(request.method==='DELETE')return await deleteProjectDocument(env,id)?json({ok:true},200,privateHeaders):notFound('Documento não encontrado.');
+    return methodNotAllowed();
   }
 
   if(pathname==='/api/lot-documents/upload'&&request.method==='POST'){

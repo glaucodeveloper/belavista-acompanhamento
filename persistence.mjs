@@ -165,6 +165,53 @@ db.exec(`
     updated_at TEXT NOT NULL,
     PRIMARY KEY(broker_name,lot_key)
   );
+  CREATE TABLE IF NOT EXISTS broker_profiles (
+    broker_key TEXT PRIMARY KEY,
+    broker_name TEXT NOT NULL,
+    creci TEXT NOT NULL DEFAULT '',
+    phone TEXT NOT NULL DEFAULT '',
+    email TEXT NOT NULL DEFAULT '',
+    notes TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS lot_development_profiles (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL CHECK(kind IN ('lot','common-area')),
+    lot_key TEXT NOT NULL DEFAULT '',
+    title TEXT NOT NULL,
+    quadra TEXT NOT NULL DEFAULT '',
+    area REAL,
+    value_cents INTEGER,
+    status TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS lot_development_profiles_lot_key
+    ON lot_development_profiles(lot_key) WHERE kind='lot';
+  CREATE TABLE IF NOT EXISTS project_documents (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    category TEXT NOT NULL,
+    code TEXT NOT NULL DEFAULT '',
+    issuer TEXT NOT NULL DEFAULT '',
+    document_date TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    source_material_id TEXT NOT NULL DEFAULT '',
+    file_name TEXT NOT NULL,
+    file_type TEXT NOT NULL,
+    file_content BLOB NOT NULL,
+    properties_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS project_document_columns (
+    id TEXT PRIMARY KEY,
+    label TEXT NOT NULL UNIQUE,
+    position INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+  );
   CREATE TABLE IF NOT EXISTS repasse_sale_plans (
     sale_id TEXT PRIMARY KEY REFERENCES commercial_sales(id) ON DELETE CASCADE,
     contract_price_cents INTEGER NOT NULL CHECK(contract_price_cents > 0),
@@ -472,6 +519,21 @@ for (const [name, definition] of [
 ]) if (!cashFlowColumns.has(name)) db.exec(`ALTER TABLE cash_flow_entries ADD COLUMN ${name} ${definition}`);
 db.exec(`CREATE INDEX IF NOT EXISTS cash_flow_repasse_sale_idx ON cash_flow_entries(sale_id,entry_date,created_at)`);
 db.prepare(`INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES(4,?)`).run(new Date().toISOString());
+db.prepare(`INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES(5,?)`).run(new Date().toISOString());
+const materialColumns = new Set(db.prepare(`PRAGMA table_info(materials)`).all().map((column) => column.name));
+for (const [name, definition] of [
+  ["stage_id", "INTEGER REFERENCES stages(id) ON DELETE SET NULL"],
+  ["activity_name", "TEXT NOT NULL DEFAULT ''"],
+  ["scope", "TEXT NOT NULL DEFAULT ''"],
+  ["updated_at", "TEXT NOT NULL DEFAULT ''"],
+]) if (!materialColumns.has(name)) db.exec(`ALTER TABLE materials ADD COLUMN ${name} ${definition}`);
+db.prepare(`INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES(6,?)`).run(new Date().toISOString());
+const materialPropertyColumns = new Set(db.prepare(`PRAGMA table_info(materials)`).all().map((column) => column.name));
+if (!materialPropertyColumns.has("properties_json")) db.exec(`ALTER TABLE materials ADD COLUMN properties_json TEXT NOT NULL DEFAULT '{}'`);
+db.exec(`CREATE TABLE IF NOT EXISTS material_custom_columns(id TEXT PRIMARY KEY,label TEXT NOT NULL UNIQUE,position INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`);
+db.prepare(`INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES(7,?)`).run(new Date().toISOString());
+db.prepare(`INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES(8,?)`).run(new Date().toISOString());
+db.prepare(`INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES(9,?)`).run(new Date().toISOString());
 db.prepare(`INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES(3,?)`).run(new Date().toISOString());
 const now=()=>new Date().toISOString();
 const hasOperationalRows=()=>db.prepare(`
@@ -643,8 +705,36 @@ export function listCollaborators(){
   return db.prepare(`SELECT id,name,role,specialty,phone,active FROM collaborators ORDER BY active DESC,name`).all().map(row=>({...row,active:Boolean(row.active)}));
 }
 export function listMaterials(){
-  return db.prepare(`SELECT id,name,unit,planned_quantity AS plannedQuantity,received_quantity AS receivedQuantity,used_quantity AS usedQuantity,status FROM materials ORDER BY name`).all();
+  return db.prepare(`SELECT m.id,m.name,m.unit,m.planned_quantity AS plannedQuantity,m.received_quantity AS receivedQuantity,m.used_quantity AS usedQuantity,m.status,m.stage_id AS stageId,s.name AS stageName,m.activity_name AS activityName,m.scope,m.updated_at AS updatedAt,m.properties_json AS propertiesJson FROM materials m LEFT JOIN stages s ON s.id=m.stage_id ORDER BY m.name`).all().map(({propertiesJson,...material})=>({...material,properties:safeJson(propertiesJson,{})}));
 }
+export function listMaterialCustomColumns(){return db.prepare(`SELECT id,label,position,created_at AS createdAt,updated_at AS updatedAt FROM material_custom_columns ORDER BY position,label`).all();}
+export function saveMaterialCustomColumn(input={}){
+  const label=asText(input.label).trim().slice(0,50),id=asText(input.id,`material-property-${Date.now().toString(36)}`).slice(0,100);
+  if(!label)throw Object.assign(new Error('Informe o nome da coluna.'),{statusCode:400});
+  const timestamp=now(),position=Number.isInteger(Number(input.position))?Number(input.position):listMaterialCustomColumns().length;
+  db.prepare(`INSERT INTO material_custom_columns(id,label,position,created_at,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET label=excluded.label,position=excluded.position,updated_at=excluded.updated_at`).run(id,label,position,timestamp,timestamp);
+  audit.run('material_custom_columns',id,'saved',JSON.stringify({label,position}),timestamp);
+  return listMaterialCustomColumns().find(column=>column.id===id);
+}
+export function deleteMaterialCustomColumn(id){
+  const column=db.prepare(`SELECT id,label FROM material_custom_columns WHERE id=?`).get(asText(id));if(!column)return false;
+  const timestamp=now();db.exec('BEGIN');
+  try{
+    const rows=db.prepare(`SELECT id,properties_json AS propertiesJson FROM materials`).all();
+    const update=db.prepare(`UPDATE materials SET properties_json=?,updated_at=? WHERE id=?`);
+    for(const row of rows){const properties=safeJson(row.propertiesJson,{});if(Object.hasOwn(properties,column.id)){delete properties[column.id];update.run(JSON.stringify(properties),timestamp,row.id);}}
+    db.prepare(`DELETE FROM material_custom_columns WHERE id=?`).run(column.id);
+    audit.run('material_custom_columns',column.id,'deleted',JSON.stringify({label:column.label}),timestamp);db.exec('COMMIT');
+  }catch(error){db.exec('ROLLBACK');throw error;}
+  return true;
+}
+const materialProperties=value=>{
+  const source=value&&typeof value==='object'&&!Array.isArray(value)?value:{},result={};
+  for(const [key,item] of Object.entries(source).slice(0,100)){
+    const normalized=asText(key).slice(0,100);if(normalized)result[normalized]=asText(item).slice(0,500);
+  }
+  return result;
+};
 const materialQuantity=(value,fallback=0)=>{
   if(value===undefined||value===null||value==='')return fallback;
   const parsed=Number(String(value).trim().replace(',','.'));
@@ -654,31 +744,37 @@ export function createMaterial(input={}){
   const id=asText(input.id,`MAT-${Date.now().toString(36).toUpperCase()}`).slice(0,100),
     name=asText(input.name).slice(0,160),unit=asText(input.unit,'un').slice(0,40),
     planned=materialQuantity(input.plannedQuantity),received=materialQuantity(input.receivedQuantity),
-    used=materialQuantity(input.usedQuantity),status=asText(input.status,'Planejado').slice(0,60);
+    used=materialQuantity(input.usedQuantity),status=asText(input.status,'Planejado').slice(0,60),
+    stageId=input.stageId==null||input.stageId===''?null:Number(input.stageId),activityName=asText(input.activityName).slice(0,160),scope=asText(input.scope).slice(0,2000),properties=materialProperties(input.properties);
   if(!name)throw Object.assign(new Error('Informe o nome do material.'),{statusCode:400});
   if(![planned,received,used].every(Number.isFinite))throw Object.assign(new Error('Informe quantidades numéricas não negativas.'),{statusCode:400});
+  if(stageId!==null&&(!Number.isInteger(stageId)||!db.prepare(`SELECT 1 FROM stages WHERE id=?`).get(stageId)))throw Object.assign(new Error('Selecione uma etapa existente.'),{statusCode:400});
   const timestamp=now();
   db.exec('BEGIN');
   try{
-    db.prepare(`INSERT INTO materials(id,name,unit,planned_quantity,received_quantity,used_quantity,status) VALUES(?,?,?,?,?,?,?)`).run(id,name,unit,planned,received,used,status);
-    audit.run('materials',id,'created',JSON.stringify({name,unit,plannedQuantity:planned,receivedQuantity:received,usedQuantity:used,status}),timestamp);
+    db.prepare(`INSERT INTO materials(id,name,unit,planned_quantity,received_quantity,used_quantity,status,stage_id,activity_name,scope,updated_at,properties_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,name,unit,planned,received,used,status,stageId,activityName,scope,timestamp,JSON.stringify(properties));
+    audit.run('materials',id,'created',JSON.stringify({name,unit,plannedQuantity:planned,receivedQuantity:received,usedQuantity:used,status,stageId,activityName,scope,properties}),timestamp);
     db.exec('COMMIT');
   }catch(error){db.exec('ROLLBACK');throw error;}
   return listMaterials().find(item=>item.id===id);
 }
 export function updateMaterial(id,input={}){
-  const current=db.prepare(`SELECT id,name,unit,planned_quantity AS plannedQuantity,received_quantity AS receivedQuantity,used_quantity AS usedQuantity,status FROM materials WHERE id=?`).get(asText(id));
+  const currentRow=db.prepare(`SELECT id,name,unit,planned_quantity AS plannedQuantity,received_quantity AS receivedQuantity,used_quantity AS usedQuantity,status,stage_id AS stageId,activity_name AS activityName,scope,properties_json AS propertiesJson FROM materials WHERE id=?`).get(asText(id));
+  const current=currentRow&&({...currentRow,properties:safeJson(currentRow.propertiesJson,{})});
   if(!current)return null;
   const next={name:asText(input.name,current.name).slice(0,160),unit:asText(input.unit,current.unit).slice(0,40),
     planned:materialQuantity(input.plannedQuantity,current.plannedQuantity),received:materialQuantity(input.receivedQuantity,current.receivedQuantity),
-    used:materialQuantity(input.usedQuantity,current.usedQuantity),status:asText(input.status,current.status).slice(0,60)};
+    used:materialQuantity(input.usedQuantity,current.usedQuantity),status:asText(input.status,current.status).slice(0,60),
+    stageId:input.stageId===undefined?current.stageId:(input.stageId==null||input.stageId===''?null:Number(input.stageId)),
+    activityName:asText(input.activityName,current.activityName).slice(0,160),scope:asText(input.scope,current.scope).slice(0,2000),properties:input.properties===undefined?current.properties:materialProperties(input.properties)};
   if(!next.name)throw Object.assign(new Error('Informe o nome do material.'),{statusCode:400});
   if(![next.planned,next.received,next.used].every(Number.isFinite))throw Object.assign(new Error('Informe quantidades numéricas não negativas.'),{statusCode:400});
+  if(next.stageId!==null&&(!Number.isInteger(next.stageId)||!db.prepare(`SELECT 1 FROM stages WHERE id=?`).get(next.stageId)))throw Object.assign(new Error('Selecione uma etapa existente.'),{statusCode:400});
   const timestamp=now();
   db.exec('BEGIN');
   try{
-    db.prepare(`UPDATE materials SET name=?,unit=?,planned_quantity=?,received_quantity=?,used_quantity=?,status=? WHERE id=?`).run(next.name,next.unit,next.planned,next.received,next.used,next.status,asText(id));
-    audit.run('materials',asText(id),'updated',JSON.stringify({before:current,after:{name:next.name,unit:next.unit,plannedQuantity:next.planned,receivedQuantity:next.received,usedQuantity:next.used,status:next.status}}),timestamp);
+    db.prepare(`UPDATE materials SET name=?,unit=?,planned_quantity=?,received_quantity=?,used_quantity=?,status=?,stage_id=?,activity_name=?,scope=?,updated_at=?,properties_json=? WHERE id=?`).run(next.name,next.unit,next.planned,next.received,next.used,next.status,next.stageId,next.activityName,next.scope,timestamp,JSON.stringify(next.properties),asText(id));
+    audit.run('materials',asText(id),'updated',JSON.stringify({before:current,after:{name:next.name,unit:next.unit,plannedQuantity:next.planned,receivedQuantity:next.received,usedQuantity:next.used,status:next.status,stageId:next.stageId,activityName:next.activityName,scope:next.scope,properties:next.properties}}),timestamp);
     db.exec('COMMIT');
   }catch(error){db.exec('ROLLBACK');throw error;}
   return listMaterials().find(item=>item.id===asText(id));
@@ -770,13 +866,125 @@ export function deletePurchaseReceipt(id){
 
 
 const saleSelect=`SELECT id,lot,client,client_phone AS clientPhone,broker,status,value_cents AS valueCents,notes,created_at AS createdAt,updated_at AS updatedAt FROM commercial_sales`;
+const brokerProfileKey=value=>String(value||'').trim().replace(/\s+/g,' ').toLocaleLowerCase('pt-BR');
+const brokerProfileSelect=`SELECT broker_key AS id,broker_name AS name,creci,phone,email,notes,created_at AS createdAt,updated_at AS updatedAt FROM broker_profiles`;
+export function listBrokerProfiles(){return db.prepare(`${brokerProfileSelect} ORDER BY broker_name COLLATE NOCASE`).all();}
+export function getBrokerProfile(name){return db.prepare(`${brokerProfileSelect} WHERE broker_key=?`).get(brokerProfileKey(name))||null;}
+export function saveBrokerProfile(name,input={}){
+  const brokerName=String(name||'').trim().replace(/\s+/g,' '),key=brokerProfileKey(brokerName);
+  if(!brokerName||brokerName.length>160)throw Object.assign(new Error('Nome do corretor inválido.'),{statusCode:400});
+  const fields={creci:String(input.creci||'').trim(),phone:String(input.phone||'').trim(),email:String(input.email||'').trim(),notes:String(input.notes||'').trim()};
+  if(fields.creci.length>80||fields.phone.length>40||fields.email.length>254||fields.notes.length>4000)throw Object.assign(new Error('Um ou mais campos excedem o tamanho permitido.'),{statusCode:400});
+  if(fields.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email))throw Object.assign(new Error('E-mail inválido.'),{statusCode:400});
+  const timestamp=now(),existing=getBrokerProfile(brokerName);
+  db.prepare(`INSERT INTO broker_profiles(broker_key,broker_name,creci,phone,email,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(broker_key) DO UPDATE SET broker_name=excluded.broker_name,creci=excluded.creci,phone=excluded.phone,email=excluded.email,notes=excluded.notes,updated_at=excluded.updated_at`).run(key,brokerName,fields.creci,fields.phone,fields.email,fields.notes,existing?.createdAt||timestamp,timestamp);
+  audit.run('broker_profiles',key,existing?'updated':'created',JSON.stringify({name:brokerName,...fields}),timestamp);
+  return getBrokerProfile(brokerName);
+}
+export function deleteBrokerProfile(name){const key=brokerProfileKey(name),existing=getBrokerProfile(name);if(!existing)return false;db.prepare(`DELETE FROM broker_profiles WHERE broker_key=?`).run(key);audit.run('broker_profiles',key,'deleted',JSON.stringify({name:existing.name}),now());return true;}
+const lotDevelopmentProfileSelect=`SELECT id,kind,lot_key AS lotKey,title,quadra,area,value_cents AS valueCents,status,description,created_at AS createdAt,updated_at AS updatedAt FROM lot_development_profiles`;
+const lotDevelopmentProfileKey=value=>normalizedLotKey(value);
+export function listLotDevelopmentProfiles(){
+  const overrides=db.prepare(`${lotDevelopmentProfileSelect}`).all(),overrideByLot=new Map(overrides.filter(row=>row.kind==='lot').map(row=>[lotDevelopmentProfileKey(row.lotKey),row]));
+  const latestSaleByLot=new Map();
+  for(const sale of listCommercialSales().sort((left,right)=>String(right.updatedAt||right.createdAt).localeCompare(String(left.updatedAt||left.createdAt)))){
+    const key=lotDevelopmentProfileKey(sale.lot);if(!key||latestSaleByLot.has(key))continue;
+    latestSaleByLot.set(key,sale);
+  }
+  const lots=REPASSE_PRICE_CATALOG.filter(item=>Number(item?.lot)>0).map(item=>{
+    const label=String(item.label||`${item.quadra}-${item.lot}`),saved=overrideByLot.get(lotDevelopmentProfileKey(label)),sale=latestSaleByLot.get(lotDevelopmentProfileKey(label));
+    const status=sale?String(sale.status||'Em negociação'):'Disponível';
+    return {id:`lot:${label}`,kind:'lot',title:String(saved?.title||`Lote ${label}`),lotLabel:label,quadra:String(item.quadra||''),area:Number(item.area)||0,value:Number(item.price)||0,status,description:String(saved?.description||''),source:'Tabela oficial de preços',customized:Boolean(saved),inferredAt:saved?.updatedAt||null,createdAt:saved?.createdAt||null,updatedAt:saved?.updatedAt||null};
+  });
+  const commonAreas=overrides.filter(row=>row.kind==='common-area').map(row=>({id:row.id,kind:row.kind,title:row.title,lotLabel:'',quadra:row.quadra,area:Number(row.area)||0,value:Number(row.valueCents||0)/100,status:row.status,description:row.description,source:'Cadastro persistido',customized:true,inferredAt:null,createdAt:row.createdAt,updatedAt:row.updatedAt}));
+  return [...lots,...commonAreas];
+}
+export function saveLotDevelopmentProfile(input={}){
+  const kind=input.kind==='common-area'?'common-area':'lot',requestedId=String(input.id||'').trim(),requestedLot=String(input.lotLabel||input.lot||'').trim();
+  const catalogLot=kind==='lot'?REPASSE_PRICE_CATALOG.find(item=>lotDevelopmentProfileKey(item.label)===lotDevelopmentProfileKey(requestedLot)):null;
+  if(kind==='lot'&&!catalogLot)throw Object.assign(new Error('Lote não encontrado na tabela oficial de preços.'),{statusCode:404});
+  if(kind==='lot'&&input.id&&String(input.id)!==`lot:${catalogLot.label}`)throw Object.assign(new Error('O identificador não corresponde ao lote informado.'),{statusCode:400});
+  const id=kind==='lot'?`lot:${catalogLot.label}`:(requestedId&&requestedId.startsWith('common:')?requestedId:`common:${crypto.randomUUID()}`);
+  const existing=db.prepare(`${lotDevelopmentProfileSelect} WHERE id=?`).get(id),title=String(input.title||existing?.title||(catalogLot?`Lote ${catalogLot.label}`:'')).trim().slice(0,120);
+  if(!title)throw Object.assign(new Error('Informe o nome do perfil.'),{statusCode:400});
+  const description=String(input.description??existing?.description??'').trim().slice(0,2000),timestamp=now();
+  const quadra=kind==='lot'?String(catalogLot.quadra||''):String(input.quadra??existing?.quadra??'').trim().slice(0,120);
+  const area=kind==='lot'?Number(catalogLot.area)||0:Math.max(0,Number(input.area??existing?.area)||0);
+  const valueCents=kind==='lot'?Math.round((Number(catalogLot.price)||0)*100):Math.max(0,Math.round((Number(input.value??((existing?.valueCents||0)/100))||0)*100));
+  const status=kind==='lot'?String((listCommercialSales().find(sale=>lotDevelopmentProfileKey(sale.lot)===lotDevelopmentProfileKey(catalogLot.label))?.status)||'Disponível'):String(input.status??existing?.status??'Em planejamento').trim().slice(0,80);
+  db.prepare(`INSERT INTO lot_development_profiles(id,kind,lot_key,title,quadra,area,value_cents,status,description,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,quadra=excluded.quadra,area=excluded.area,value_cents=excluded.value_cents,status=excluded.status,description=excluded.description,updated_at=excluded.updated_at`).run(id,kind,kind==='lot'?catalogLot.label:'',title,quadra,area,valueCents,status,description,existing?.createdAt||timestamp,timestamp);
+  audit.run('lot_development_profiles',id,existing?'updated':'created',JSON.stringify({kind,lotKey:kind==='lot'?catalogLot.label:'',title,status,description}),timestamp);
+  return listLotDevelopmentProfiles().find(profile=>profile.id===id)||null;
+}
+export function deleteLotDevelopmentProfile(id){
+  const key=String(id||''),existing=db.prepare(`${lotDevelopmentProfileSelect} WHERE id=?`).get(key);
+  if(!existing)return false;
+  db.prepare(`DELETE FROM lot_development_profiles WHERE id=?`).run(key);
+  audit.run('lot_development_profiles',key,'deleted',JSON.stringify({kind:existing.kind,lotKey:existing.lotKey}),now());
+  return true;
+}
+const projectDocumentColumns=()=>db.prepare(`SELECT id,label,position,created_at AS createdAt FROM project_document_columns ORDER BY position,id`).all();
+const projectDocumentSelect=`SELECT id,title,category,code,issuer,document_date AS documentDate,description,source_material_id AS sourceMaterialId,file_name AS fileName,file_type AS fileType,length(file_content) AS fileSize,properties_json AS propertiesJson,created_at AS createdAt,updated_at AS updatedAt FROM project_documents`;
+const projectDocumentRow=row=>row?(({propertiesJson,...record})=>({...record,properties:JSON.parse(propertiesJson||'{}')}))(row):null;
+export function listProjectDocuments(){return {documents:db.prepare(`${projectDocumentSelect} ORDER BY updated_at DESC,id`).all().map(projectDocumentRow),columns:projectDocumentColumns()};}
+export function getProjectDocumentFile(id){const file=db.prepare(`SELECT file_name AS fileName,file_type AS fileType,file_content AS content FROM project_documents WHERE id=?`).get(String(id||''));return file?.content?.length?file:null;}
+export function saveProjectDocument(input={}){
+  const fail=message=>{throw Object.assign(new Error(message),{statusCode:400});};
+  const id=String(input.id||'').trim()||`doc-${crypto.randomUUID()}`;
+  const existing=db.prepare(`${projectDocumentSelect} WHERE id=?`).get(id);
+  const title=String(input.title||'').trim(),category=String(input.category||'').trim();
+  if(!title||title.length>140||!category||category.length>80)fail('Título e categoria válidos são obrigatórios.');
+  const code=String(input.code||'').trim(),issuer=String(input.issuer||'').trim(),documentDate=String(input.documentDate||'').trim(),description=String(input.description||'').trim(),sourceMaterialId=String(input.sourceMaterialId||'').trim();
+  if(code.length>60||issuer.length>100||description.length>800||sourceMaterialId.length>100||documentDate&&!/^\d{4}-\d{2}-\d{2}$/.test(documentDate))fail('Campos do documento inválidos.');
+  const configured=new Set(projectDocumentColumns().map(column=>column.id));
+  const properties={};
+  if(input.properties&&typeof input.properties==='object'&&!Array.isArray(input.properties))for(const [key,value] of Object.entries(input.properties)){
+    if(!configured.has(key)||String(value).length>500)fail('Propriedade documental inválida.');
+    properties[key]=String(value).trim();
+  }
+  const encoded=String(input.dataUrl||'');
+  let content=null,fileName='',fileType='';
+  if(encoded){
+    const match=encoded.match(/^data:([^;,]*);base64,([A-Za-z0-9+/=]+)$/);
+    if(!match)fail('Arquivo em base64 inválido.');
+    content=Buffer.from(match[2],'base64');
+    fileName=String(input.fileName||'').trim();
+    if(!content.length||content.length>25*1024*1024||fileName.length>180||!/\.(pdf|docx?|xlsx?|dwg|dxf|png|jpe?g|webp)$/i.test(fileName))fail('Arquivo incompatível ou maior que 25 MB.');
+    const extension=fileName.split('.').at(-1).toLowerCase();
+    fileType=({pdf:'application/pdf',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',xls:'application/vnd.ms-excel',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',dwg:'application/octet-stream',dxf:'application/octet-stream'})[extension]||'application/octet-stream';
+  }
+  const timestamp=now();
+  db.prepare(`INSERT INTO project_documents(id,title,category,code,issuer,document_date,description,source_material_id,file_name,file_type,file_content,properties_json,created_at,updated_at)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,category=excluded.category,code=excluded.code,issuer=excluded.issuer,document_date=excluded.document_date,description=excluded.description,source_material_id=excluded.source_material_id,file_name=excluded.file_name,file_type=excluded.file_type,file_content=excluded.file_content,properties_json=excluded.properties_json,updated_at=excluded.updated_at`).run(id,title,category,code,issuer,documentDate,description,sourceMaterialId,content?fileName:existing?.fileName||'',content?fileType:existing?.fileType||'',content||getProjectDocumentFile(id)?.content||Buffer.alloc(0),JSON.stringify(properties),existing?.createdAt||timestamp,timestamp);
+  audit.run('project_documents',id,existing?'updated':'created',JSON.stringify({title,category,fileName:content?fileName:existing?.fileName||''}),timestamp);
+  return projectDocumentRow(db.prepare(`${projectDocumentSelect} WHERE id=?`).get(id));
+}
+export function deleteProjectDocument(id){const key=String(id||''),existing=db.prepare(`${projectDocumentSelect} WHERE id=?`).get(key);if(!existing)return false;if(['doc-proj-exec','doc-proj-licenses','doc-presentation-v3'].includes(key)||existing.sourceMaterialId)throw Object.assign(new Error('Este documento de referência não pode ser excluído.'),{statusCode:403});db.prepare(`DELETE FROM project_documents WHERE id=?`).run(key);audit.run('project_documents',key,'deleted',JSON.stringify({title:existing.title}),now());return true;}
+export function createProjectDocumentColumn(input={}){
+  const label=String(input.label||'').trim();if(!label||label.length>50)throw Object.assign(new Error('Nome da propriedade inválido.'),{statusCode:400});
+  if(projectDocumentColumns().some(column=>column.label.toLocaleLowerCase('pt-BR')===label.toLocaleLowerCase('pt-BR')))throw Object.assign(new Error('Essa propriedade já existe.'),{statusCode:409});
+  const id=`custom-${crypto.randomUUID()}`,timestamp=now(),position=Number(db.prepare(`SELECT COALESCE(MAX(position),-1)+1 AS position FROM project_document_columns`).get().position);
+  db.prepare(`INSERT INTO project_document_columns(id,label,position,created_at) VALUES(?,?,?,?)`).run(id,label,position,timestamp);
+  audit.run('project_document_columns',id,'created',JSON.stringify({label}),timestamp);return projectDocumentColumns().find(column=>column.id===id);
+}
+export function deleteProjectDocumentColumn(id){
+  const key=String(id||''),column=projectDocumentColumns().find(row=>row.id===key);if(!column)return false;
+  db.exec('BEGIN');try{
+    for(const row of db.prepare(`SELECT id,properties_json AS propertiesJson FROM project_documents`).all()){
+      const properties=JSON.parse(row.propertiesJson||'{}');if(!(key in properties))continue;delete properties[key];db.prepare(`UPDATE project_documents SET properties_json=?,updated_at=? WHERE id=?`).run(JSON.stringify(properties),now(),row.id);
+    }
+    db.prepare(`DELETE FROM project_document_columns WHERE id=?`).run(key);db.exec('COMMIT');
+  }catch(error){db.exec('ROLLBACK');throw error;}
+  audit.run('project_document_columns',key,'deleted',JSON.stringify({label:column.label}),now());return true;
+}
 const safeSaleName=(name='arquivo')=>String(name||'arquivo').normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,120)||'arquivo';
 const saleMimeExt=mime=>({'application/pdf':'.pdf','image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp'}[mime]||'');
 const saleFileRows=saleId=>db.prepare(`SELECT id,sale_id AS saleId,kind,file_name AS fileName,mime_type AS mimeType,created_at AS createdAt FROM commercial_sale_files WHERE sale_id=? ORDER BY created_at`).all(saleId).map(row=>({...row,fileUrl:`/api/commercial-sales/${encodeURIComponent(saleId)}/files/${encodeURIComponent(row.id)}`}));
 export function listCommercialSales(){return db.prepare(`${saleSelect} ORDER BY created_at DESC`).all().map(row=>({...row,files:saleFileRows(row.id)}));}
 export function createCommercialSale(input={}){
   const id=asText(input.id)||`VEN-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`,timestamp=now();
-  const files=Array.isArray(input.files)?input.files.slice(0,8):[];
+  const files=Array.isArray(input.files)?input.files:[];
+  if(files.length>8)throw Object.assign(new Error('No máximo 8 anexos por venda.'),{statusCode:400});
   const valueCents=Math.max(0,Math.round(Number(input.valueCents)||0));
   db.exec('BEGIN');
   const createdPaths=[];
@@ -803,21 +1011,27 @@ export function createCommercialSale(input={}){
 }
 export function updateCommercialSale(id,input={}){
   const current=db.prepare(`${saleSelect} WHERE id=?`).get(asText(id));if(!current)return null;
-  const status=asText(input.status,current.status),notes=asText(input.notes,current.notes),timestamp=now(),files=Array.isArray(input.files)?input.files.slice(0,8):[];
-  db.prepare(`UPDATE commercial_sales SET status=?,notes=?,updated_at=? WHERE id=?`).run(status,notes,timestamp,asText(id));
-  let totalBytes=0;
-  for(let index=0;index<files.length;index++){
-    const file=files[index]||{},dataUrl=String(file.dataUrl||''),match=dataUrl.match(/^data:(application\/pdf|image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
-    if(!match)throw new Error('Anexos devem ser PDF, JPG, PNG ou WEBP.');
-    const bytes=Buffer.from(match[2],'base64'); totalBytes+=bytes.length;
-    if(!bytes.length)throw new Error('Arquivo comercial vazio.');
-    if(bytes.length>12_000_000||totalBytes>30_000_000)throw new Error('Anexos da venda excedem o limite permitido.');
-    const mimeType=match[1],requested=safeSaleName(file.fileName||`arquivo-${index+1}`),ext=saleMimeExt(mimeType),fileName=requested.toLowerCase().endsWith(ext)?requested:`${requested}${ext}`;
-    const fileId=`ARQ-${Date.now().toString(36).toUpperCase()}-${index}-${Math.random().toString(36).slice(2,5).toUpperCase()}`,storagePath=join(salesRoot,`${id}-${fileId}-${fileName}`);
-    writeFileSync(storagePath,bytes,{flag:'wx'});
-    db.prepare(`INSERT INTO commercial_sale_files(id,sale_id,kind,file_name,mime_type,storage_path,created_at) VALUES(?,?,?,?,?,?,?)`).run(fileId,asText(id),asText(file.kind,'attachment'),fileName,mimeType,storagePath,timestamp);
-  }
-  audit.run('commercial_sales',asText(id),'updated',JSON.stringify({status,documentValidation:Boolean(input.documentValidation),files:files.length}),timestamp);
+  const status=asText(input.status,current.status),notes=asText(input.notes,current.notes),timestamp=now(),files=Array.isArray(input.files)?input.files:[];
+  if(files.length>8)throw Object.assign(new Error('No máximo 8 anexos por atualização.'),{statusCode:400});
+  const createdPaths=[];
+  db.exec('BEGIN');
+  try{
+    db.prepare(`UPDATE commercial_sales SET status=?,notes=?,updated_at=? WHERE id=?`).run(status,notes,timestamp,asText(id));
+    let totalBytes=0;
+    for(let index=0;index<files.length;index++){
+      const file=files[index]||{},dataUrl=String(file.dataUrl||''),match=dataUrl.match(/^data:(application\/pdf|image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
+      if(!match)throw new Error('Anexos devem ser PDF, JPG, PNG ou WEBP.');
+      const bytes=Buffer.from(match[2],'base64'); totalBytes+=bytes.length;
+      if(!bytes.length)throw new Error('Arquivo comercial vazio.');
+      if(bytes.length>12_000_000||totalBytes>30_000_000)throw new Error('Anexos da venda excedem o limite permitido.');
+      const mimeType=match[1],requested=safeSaleName(file.fileName||`arquivo-${index+1}`),ext=saleMimeExt(mimeType),fileName=requested.toLowerCase().endsWith(ext)?requested:`${requested}${ext}`;
+      const fileId=`ARQ-${Date.now().toString(36).toUpperCase()}-${index}-${Math.random().toString(36).slice(2,5).toUpperCase()}`,storagePath=join(salesRoot,`${id}-${fileId}-${fileName}`);
+      writeFileSync(storagePath,bytes,{flag:'wx'});createdPaths.push(storagePath);
+      db.prepare(`INSERT INTO commercial_sale_files(id,sale_id,kind,file_name,mime_type,storage_path,created_at) VALUES(?,?,?,?,?,?,?)`).run(fileId,asText(id),asText(file.kind,'attachment'),fileName,mimeType,storagePath,timestamp);
+    }
+    audit.run('commercial_sales',asText(id),'updated',JSON.stringify({status,documentValidation:Boolean(input.documentValidation),files:files.length}),timestamp);
+    db.exec('COMMIT');
+  }catch(error){db.exec('ROLLBACK');for(const filePath of createdPaths)try{unlinkSync(filePath)}catch{}throw error;}
   return listCommercialSales().find(row=>row.id===asText(id));
 }
 export function getCommercialSaleFile(saleId,fileId){
@@ -1146,10 +1360,11 @@ export function createRecord(input){
 }
 export function createMaterialTransition(input={}){
   const materialId=asText(input.materialId).slice(0,100),name=asText(input.name).slice(0,120);
-  const stageName=asText(input.stageName),unit=asText(input.unit,'un.').slice(0,20);
+  const stageName=asText(input.stageName),unit=asText(input.unit,'un.').slice(0,20),stageId=input.stageId==null||input.stageId===''?null:Number(input.stageId),activityName=asText(input.activityName).slice(0,160);
   const before=input.before||{},after=input.after||{};
   const quantity=Number(after.quantity),previousQuantity=before.quantity==null?null:Number(before.quantity);
   if(!materialId||!name||!stageName||!Number.isFinite(quantity)||quantity<0||!Number.isFinite(previousQuantity??0))throw Object.assign(new Error('Material, etapa e quantidades válidas são obrigatórios.'),{statusCode:400});
+  if(stageId!==null&&(!Number.isInteger(stageId)||!db.prepare(`SELECT 1 FROM stages WHERE id=?`).get(stageId)))throw Object.assign(new Error('Etapa operacional inexistente.'),{statusCode:400});
   const description=asText(after.description).slice(0,4000),previousDescription=asText(before.description).slice(0,4000);
   if(!description)throw Object.assign(new Error('Descreva a mudança do material.'),{statusCode:400});
   const documentList=Array.isArray(input.documents)?input.documents.slice(0,3):[];
@@ -1160,10 +1375,10 @@ export function createMaterialTransition(input={}){
   try{
     const record=createRecord({id:`REG-MAT-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`,obra:'Aliança Park',etapa:stageName,atividade:`Material: ${name}`,responsavel:asText(input.responsible,'Equipe de suprimentos'),data:stamp.slice(0,10),hora:stamp.slice(11,16),detalhes:`Material ${number} · ${name}\n${previousQuantity??'—'} ${before.unit||unit} → ${quantity} ${unit}\nAntes: ${previousDescription||'Sem descrição'}\nDepois: ${description}\nComprovantes: ${documentList.map(item=>item.fileName).join(', ')||'nenhum'}`,status:'Pendente',evidenceUri:documentList[0]?.fileUrl||null,properties});
     const dbStatus=/atenç/i.test(status)?'atencao':/crític/i.test(status)?'critico':'bom';
-    db.prepare(`INSERT INTO materials(id,name,unit,planned_quantity,received_quantity,used_quantity,status) VALUES(?,?,?,?,0,0,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,unit=excluded.unit,planned_quantity=excluded.planned_quantity,status=excluded.status`).run(materialId,name,unit,quantity,dbStatus);
+    db.prepare(`INSERT INTO materials(id,name,unit,planned_quantity,received_quantity,used_quantity,status,stage_id,activity_name,scope,updated_at) VALUES(?,?,?,?,0,0,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,unit=excluded.unit,planned_quantity=excluded.planned_quantity,status=excluded.status,stage_id=excluded.stage_id,activity_name=excluded.activity_name,scope=excluded.scope,updated_at=excluded.updated_at`).run(materialId,name,unit,quantity,dbStatus,stageId,activityName,description,stamp);
     audit.run('materials',materialId,'transition',JSON.stringify({recordId:record.id,before,after:{quantity,unit,status,description},documentIds:documentList.map(item=>item.id)}),stamp);
     db.exec('COMMIT');
-    return {record,material:{id:materialId,name,quantity,unit,status,description,updatedAt:stamp},documents:documentList};
+    return {record,material:{id:materialId,name,quantity,unit,status,description,stageId,activityName,updatedAt:stamp},documents:documentList};
   }catch(error){db.exec('ROLLBACK');throw error;}
 }
 export function createFieldConfirmation(input={}){
@@ -1309,9 +1524,7 @@ export function getStageAdmin(stageId){
   if(!s)return null;
   const activities=db.prepare(`SELECT id,name,category,status,progress,owner_id AS ownerId,planned_start AS plannedStart,planned_end AS plannedEnd,properties_json AS propertiesJson FROM activities WHERE stage_id=? ORDER BY name`).all(s.id);
   const purchases=db.prepare(`SELECT id,supplier,description,value_cents AS valueCents,status,expected_date AS expectedDate,delay FROM purchases WHERE stage_id=? ORDER BY expected_date DESC`).all(s.id);
-  const materialAuditRows=db.prepare(`SELECT entity_id AS entityId,payload_json AS payloadJson FROM audit_events WHERE entity='materials' ORDER BY created_at DESC`).all();
-  const materialIds=new Set(materialAuditRows.filter(row=>String(safeJson(row.payloadJson,{}).stage||'').trim().toLocaleLowerCase('pt-BR')===String(s.name||'').trim().toLocaleLowerCase('pt-BR')).map(row=>String(row.entityId)));
-  const materials=db.prepare(`SELECT id,name,unit,planned_quantity AS plannedQuantity,received_quantity AS receivedQuantity,used_quantity AS usedQuantity,status FROM materials ORDER BY name`).all().filter(item=>materialIds.has(String(item.id)));
+  const materials=db.prepare(`SELECT id,name,unit,planned_quantity AS plannedQuantity,received_quantity AS receivedQuantity,used_quantity AS usedQuantity,status,stage_id AS stageId,activity_name AS activityName,scope,updated_at AS updatedAt FROM materials WHERE stage_id=? ORDER BY name`).all(s.id);
   const records=db.prepare(`SELECT r.id,r.record_date AS data,r.record_time AS hora,r.responsible_name AS responsavel,r.details AS detalhes,r.status,s2.name AS etapa FROM records r LEFT JOIN stages s2 ON s2.id=r.stage_id WHERE r.stage_id=? ORDER BY r.record_date DESC,r.record_time DESC`).all(s.id);
   const cashEntries=db.prepare(`SELECT id,entry_date AS date,kind,category,stage,description,amount_cents AS amountCents FROM cash_flow_entries WHERE lower(stage)=lower(?) ORDER BY entry_date DESC`).all(s.name);
   const receipts=db.prepare(`SELECT id,supplier,amount_cents AS amountCents,issue_date AS issueDate,document_number AS documentNumber,file_name AS fileName,notes FROM purchase_receipts WHERE lower(stage)=lower(?) ORDER BY created_at DESC`).all(s.name);
@@ -1370,14 +1583,11 @@ export function deleteStageAdmin(stageId){
   const stage=db.prepare(`SELECT id,name FROM stages WHERE id=?`).get(stageId);if(!stage)return false;
   const stageKeys=[String(stage.name||'').trim().toLocaleLowerCase('pt-BR'),String(stage.id)].filter(Boolean);
   const keyPlaceholders=stageKeys.map(()=>'?').join(',');
-  const materialAuditRows=db.prepare(`SELECT entity_id AS entityId,payload_json AS payloadJson FROM audit_events WHERE entity='materials'`).all();
-  const materialIds=new Set(materialAuditRows.filter(row=>String(safeJson(row.payloadJson,{}).stage||'').trim().toLocaleLowerCase('pt-BR')===String(stage.name||'').trim().toLocaleLowerCase('pt-BR')).map(row=>String(row.entityId)));
-  const currentMaterialIds=new Set(db.prepare(`SELECT id FROM materials`).all().map(row=>String(row.id)));
   const linked={
     activities:Number(db.prepare(`SELECT COUNT(*) AS total FROM activities WHERE stage_id=?`).get(stageId)?.total||0),
     records:Number(db.prepare(`SELECT COUNT(*) AS total FROM records WHERE stage_id=?`).get(stageId)?.total||0),
     purchases:Number(db.prepare(`SELECT COUNT(*) AS total FROM purchases WHERE stage_id=?`).get(stageId)?.total||0),
-    materials:[...materialIds].filter(id=>currentMaterialIds.has(id)).length,
+    materials:Number(db.prepare(`SELECT COUNT(*) AS total FROM materials WHERE stage_id=?`).get(stageId)?.total||0),
     agendaEvents:Number(db.prepare(`SELECT COUNT(*) AS total FROM agenda_events WHERE lower(stage_name)=lower(?)`).get(stage.name)?.total||0),
     workbenchDiary:Number(db.prepare(`SELECT COUNT(*) AS total FROM workbench_diary WHERE lower(stage_key) IN (${keyPlaceholders})`).get(...stageKeys)?.total||0),
     workbenchAttachments:Number(db.prepare(`SELECT COUNT(*) AS total FROM workbench_attachments WHERE lower(stage_key) IN (${keyPlaceholders})`).get(...stageKeys)?.total||0),

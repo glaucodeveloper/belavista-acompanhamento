@@ -1,7 +1,8 @@
 // v13: unifica a sessão PAT da aplicação local e do Worker autenticado.
-const SHELL = 'belavista-shell-admin-twa-v87-mobile-navigation-tabs';
-const RUNTIME = 'belavista-runtime-admin-twa-v38-mobile-navigation-tabs';
+const SHELL = 'belavista-shell-admin-twa-v88-ts-history';
+const RUNTIME = 'belavista-runtime-admin-twa-v39-ts-history';
 const APP_SHELL = [
+  './dist/frontend/program.js', './dist/frontend/components.js',
   './masterplan-pdf-artwork-v3.mjs', './app.js?v=dashboard-mobile-tabs-v2', './components.js?v=mobile-agenda-v1',
   './atlas-mobile-focus-v1.css?v=5-map-agenda-chat-tabs', './worker-context-chat.mjs?v=worker-chat-auth-api-v4-mobile-tab',
   './public-runtime-polish-v5332.mjs?v=5.3.32',
@@ -44,6 +45,17 @@ self.addEventListener('fetch', event => {
   if (url.hostname === 'api.github.com') return; // never cache token-backed GitHub responses
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(fetch(req));
+    return;
+  }
+
+  if (url.origin === self.location.origin && url.pathname.startsWith('/dist/frontend/')) {
+    event.respondWith(fetch(req).then(response => {
+      if (response.ok) {
+        const copy = response.clone();
+        caches.open(RUNTIME).then(cache => cache.put(req, copy));
+      }
+      return response;
+    }).catch(() => caches.match(req)));
     return;
   }
 
