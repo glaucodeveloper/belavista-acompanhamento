@@ -62,7 +62,7 @@ import {
   PDF_MASTERPLAN_PAGE_SIZE_V1,
   PDF_MASTERPLAN_SITE_FRAME_V1,
   PDF_MASTERPLAN_VEHICLE_ANCHORS_V1,
-} from "./georeference.mjs?v=admin-map-georeference-v1&pdf-yellow-circles-v2";
+} from "./georeference.mjs?v=admin-map-georeference-v1&pdf-yellow-circles-v4";
 import {
   MAP_GEOREFERENCE_FALLBACK,
   localClockHourForGeo,
@@ -76,7 +76,7 @@ import { installMapSceneControlsV1 } from "./map-scene-controls-v1.mjs?v=map-sce
 import { installMapTileModeControllerV1 } from "./map-tile-mode-controller-v1.mjs?v=map-tile-mode-controller-v1";
 import { installSceneNavigationV1 } from "./scene-navigation-v1.mjs?v=scene-navigation-v1";
 import { createSatelliteLotProjectionV1 } from "./satellite-lot-projection-v1.mjs?v=satellite-lot-projection-v3";
-import { installSatelliteLotPlanOverlayV1 } from "./satellite-lot-plan-overlay-v1.mjs?v=satellite-lot-plan-overlay-v7";
+import { installSatelliteLotPlanOverlayV1 } from "./satellite-lot-plan-overlay-v1.mjs?v=satellite-lot-plan-overlay-v8";
 import { installAdminStandaloneStartupV5370 } from "./admin-standalone-startup-v5370.mjs?v=admin-standalone-startup-v5370-v2";
 import { installAdminStandaloneAerialV5380 } from "./admin-standalone-aerial-v5380.mjs?v=admin-standalone-aerial-v5380-v1";
 import { installAdminReferenceAerialSceneV1 } from "./admin-reference-aerial-scene-v1.mjs?v=admin-reference-aerial-scene-v1";

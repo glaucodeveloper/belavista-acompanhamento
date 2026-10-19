@@ -42,14 +42,15 @@ test("projection uses the reviewed production PDF mapping and canonical lot trac
   assert.equal(projection.usesCanonicalTraceMarkers, true);
   assert.equal(projection.hasOfficialPdfLabels, true);
   assert.deepEqual(labels.labels.map((item) => item.number).sort((a, b) => a - b),
-    Array.from({ length: 272 }, (_, index) => index + 1));
-  assert.equal(mapping.mappings.length, 272);
-  assert.equal(new Set(mapping.mappings.map((item) => item.lotId)).size, 272);
+    Array.from({ length: 272 }, (_, index) => index + 1).filter((number) => number !== 55));
+  assert.deepEqual(labels.source.excludedLabels, [55]);
+  assert.equal(mapping.mappings.length, 271);
+  assert.equal(new Set(mapping.mappings.map((item) => item.lotId)).size, 271);
   assert.equal(mapping.mappings.filter((item) => !item.greenPolygonId).length, 13);
-  assert.equal(projection.greenMappingByLot.size, 272);
+  assert.equal(projection.greenMappingByLot.size, 271);
   assert.equal(projection.canonicalTraceMarkerByLot.size, trace.lotCount);
   assert.equal(projection.projectedLots.length, validMappedLots.length);
-  assert.equal(projection.projectedLots.length, 259);
+  assert.equal(projection.projectedLots.length, 258);
   assert.ok(Number.isFinite(projection.projectedBounds.minU));
   assert.ok(Number.isFinite(projection.projectedBounds.maxV));
   assert.deepEqual(

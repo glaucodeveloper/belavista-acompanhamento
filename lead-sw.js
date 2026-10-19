@@ -1,4 +1,4 @@
-const CACHE='alianca-park-leads-v52';
+const CACHE='alianca-park-leads-v58';
 const PREFIX='alianca-park-leads-';
 
 self.addEventListener('install',event=>{

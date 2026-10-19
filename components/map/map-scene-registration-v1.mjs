@@ -1,4 +1,4 @@
-import { installMapSceneCompositionV1 } from "./map-scene-composition-v1.mjs?v=map-scene-composition-v2&pdf-marker-anchors-v1&pdf-yellow-circles-v3";
+import { installMapSceneCompositionV1 } from "./map-scene-composition-v1.mjs?v=map-scene-composition-v2&pdf-marker-anchors-v1&pdf-yellow-circles-v4";
 
 /** Create the shared map custom element only after all map methods are composed. */
 export const createMapSceneElementV1 = ({

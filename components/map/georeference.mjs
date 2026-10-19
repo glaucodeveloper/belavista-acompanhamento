@@ -160,11 +160,11 @@ export const ADMIN_MASTERPLAN_LOT_POLYGONS_URL_V2 =
 // Centros de etiquetas lidos na prancha comercial oficial. Esta fonte é a
 // autoridade para o número visível e substitui os IDs sequenciais do GLB,
 // que também continham ruas, áreas comuns e reservas como se fossem lotes.
-export const PDF_LOT_LABELS_URL_V1 = "/assets/data/pdf-lot-labels-v1.json?v=pdf-lot-centers-v2";
+export const PDF_LOT_LABELS_URL_V1 = "/assets/data/pdf-lot-labels-v1.json?v=pdf-lot-centers-v3";
 // Relação entre o número oficial da prancha e a área verde correspondente.
 // Os IDs do arquivo de polígonos são apenas IDs técnicos da segmentação; não
 // podem ser usados como numeração comercial dos lotes.
-export const PDF_LOT_GREEN_MAPPING_URL_V1 = "/assets/data/pdf-lot-green-mapping-v1.json?v=pdf-yellow-circles-v3";
+export const PDF_LOT_GREEN_MAPPING_URL_V1 = "/assets/data/pdf-lot-green-mapping-v1.json?v=pdf-yellow-circles-v4";
 // Registro geométrico entre o traçado canônico (GLB/DWG, 298 unidades) e a
 // prancha vertical aplicada sobre o satélite. O mapeamento anterior partia de
 // círculos extraídos do PDF e acabava associando retângulos de borda a números

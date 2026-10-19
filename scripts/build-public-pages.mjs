@@ -32,7 +32,6 @@ const requiredFiles=[
 ];
 // Entradas carregadas diretamente pelo index.html precisam acompanhar o APK.
 const supplementalEntries=[
-  'dev-stage-milestones-ui.mjs','dev-stage-milestones.css',
   'admin-communications.css','control-record-accordion-v1.css','material-transition-v1.css',
   'record-ocr-dynamic-v21.css','atlas-application-v1.css','atlas-zip-shell-v2.css',
   'atlas-operational-design-v1.css','atlas-carbon-integration-v1.css','atlas-mobile-focus-v1.css','github-access-settings-v1.css',

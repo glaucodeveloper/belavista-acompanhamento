@@ -85,10 +85,18 @@ public-lead-chat{position:absolute;z-index:9;right:clamp(24px,4.5vw,72px);top:50
    transparente, com a textura verde removida e só logo + nome preservados. */
 body.public-leads-page .public-pdf-brand-layer{
   position:absolute;
-  left:clamp(24px,6vw,92px);
-  bottom:clamp(30px,7vh,82px);
-  z-index:2;
-  width:min(270px,23vw);
+  left:clamp(18px,3vw,42px);
+  top:clamp(16px,3vh,30px);
+  bottom:auto;
+  z-index:11;
+  display:flex;
+  align-items:center;
+  gap:11px;
+  width:auto;
+  padding:8px 9px 8px 15px;
+  border:1px solid rgba(232,245,238,.22);
+  background:rgba(5,17,14,.72);
+  backdrop-filter:blur(14px);
   opacity:0;
   visibility:hidden;
   pointer-events:none;
@@ -97,19 +105,30 @@ body.public-leads-page .public-pdf-brand-layer{
 }
 body.public-leads-page .public-pdf-brand-layer img{
   display:block;
-  width:100%;
-  height:auto;
+  width:48px;
+  height:48px;
+  object-fit:contain;
   background:transparent!important;
   mix-blend-mode:normal;
   filter:drop-shadow(0 16px 30px rgba(0,0,0,.30));
 }
+body.public-leads-page .public-pdf-brand-name{display:block;color:#fff;font:600 19px/1 Georgia,serif;white-space:nowrap;text-shadow:0 2px 8px rgba(0,0,0,.5)}
+body.public-leads-page .public-pdf-brand-name small{display:block;margin-top:5px;color:#bcd8c9;font:700 8px/1 "IBM Plex Mono",monospace;letter-spacing:.22em}
 body.public-leads-page[data-public-scroll-section="map"] .public-pdf-brand-layer{
-  opacity:.88;
+  opacity:1;
   visibility:visible;
   transform:none;
+  z-index:2147483647!important;
+}
+body.public-leads-page[data-public-scroll-section="map"] [data-public-alianca-brand-v5346]{
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
 }
 @media(max-width:900px){
-  body.public-leads-page .public-pdf-brand-layer{left:20px;bottom:24px;width:min(190px,42vw);}
+  body.public-leads-page .public-pdf-brand-layer{left:14px;top:14px;padding:7px 8px 7px 11px;gap:8px;}
+  body.public-leads-page .public-pdf-brand-layer img{width:38px;height:38px;}
+  body.public-leads-page .public-pdf-brand-name{font-size:16px;}
 }
 
 
@@ -645,11 +664,36 @@ body.public-leads-page .public-map-sticky>.public-map-static-bg,
 body.public-leads-page .public-map-sticky>.admin-masterplan-overlay,
 body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay{
   opacity:var(--public-plan-opacity,0);
-  transform:translate3d(var(--public-plan-pan-x,var(--public-plan-pan,0px)),var(--public-plan-pan-y,0px),0) scale(var(--public-plan-zoom,1))!important;
+  transform:translate3d(var(--public-plan-pan-x,var(--public-plan-pan,0px)),var(--public-plan-pan-y,0px),0) perspective(1600px) rotateZ(var(--public-plan-rotation,0deg)) rotateX(var(--public-plan-tilt,0deg)) scale(var(--public-plan-zoom,1))!important;
   transform-origin:50% 46%!important;
   will-change:transform,opacity;
 }
+body.public-leads-page .public-map-sticky{overflow:clip!important;}
 body.public-leads-page .public-map-sticky>.public-map-static-bg{z-index:2;opacity:1!important;}
+/* A faixa sul é uma extensão visual. A imagem original segue intacta sobre
+   toda a área georreferenciada do loteamento. */
+body.public-leads-page .public-map-sticky>.public-map-static-bg{
+  --public-satellite-side:max(100vw,100svh);
+  background:none!important;
+  overflow:visible;
+}
+body.public-leads-page .public-map-sticky>.public-map-static-bg::before,
+body.public-leads-page .public-map-sticky>.public-map-static-bg::after{
+  content:"";position:absolute;left:calc((100% - var(--public-satellite-side))/2);
+  top:calc((100% - var(--public-satellite-side))/2);
+  width:var(--public-satellite-side);pointer-events:none;background-position:top center;
+  background-size:100% 100%;background-repeat:no-repeat;
+}
+body.public-leads-page .public-map-sticky>.public-map-static-bg::before{
+  height:calc(var(--public-satellite-side) * 1.349074);
+  background-image:url('/assets/public/dwg-satellite-south-extension-v2.png');
+}
+body.public-leads-page .public-map-sticky>.public-map-static-bg::after{
+  height:var(--public-satellite-side);
+  background-image:url('/assets/public/dwg-satellite-public-v1.webp');
+  -webkit-mask-image:linear-gradient(#000 0%,#000 95%,transparent 100%);
+  mask-image:linear-gradient(#000 0%,#000 95%,transparent 100%);
+}
 body.public-leads-page .public-map-sticky>.admin-masterplan-overlay{z-index:3;overflow:clip;}
 body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay{z-index:4;overflow:clip;}
 body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-plan-marker{min-width:8px;height:8px;padding:0;border:1px solid #fff;border-radius:999px;background:#f1c21b;color:#161616;font:700 3px/8px "IBM Plex Mono",monospace;}
@@ -657,13 +701,13 @@ body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay .satellite
    espaço visual quando a planta já está ampliada o bastante para separá-los. */
 body.public-leads-page public-leads-surface[data-lot-marker-detail="number"] .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-plan-marker{
   min-width:0;width:auto;height:auto;padding:0;border:0;border-radius:0;
-  background:transparent;box-shadow:none;color:#ffed86;
+  background:transparent;box-shadow:none;color:transparent;opacity:0;
   font:700 4px/1 "IBM Plex Mono",monospace;letter-spacing:-.12em;
-  text-shadow:0 0 1px #07101e,0 1px 2px #07101e;
+  text-shadow:none;
   transform:translate(-50%,-50%) scale(calc(1 / var(--public-plan-zoom,1)));
 }
 body.public-leads-page public-leads-surface[data-lot-marker-detail="number"] .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-plan-marker:is(:hover,:focus-visible,.is-selected){
-  width:auto;height:auto;background:transparent;box-shadow:none;color:#fff;
+  width:auto;height:auto;background:transparent;box-shadow:none;color:#fff;opacity:1;
   text-decoration:underline;
 }
 body.public-leads-page public-leads-surface[data-lot-marker-detail="circle"] .public-map-sticky>.satellite-lot-plan-overlay .satellite-lot-plan-marker{
@@ -698,37 +742,32 @@ body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay .satellite
     padding:14px!important;transform:translate(-50%,calc(-100% - 10px)) scale(calc(1 / var(--public-plan-zoom,1)))!important;
   }
 }
-body.public-leads-page .public-map-gesture-controls{
-  position:absolute;z-index:12;top:clamp(18px,4vh,42px);left:clamp(18px,4vw,64px);
-  display:grid;grid-template-columns:34px 34px 34px auto;align-items:center;gap:6px;
-  padding:7px 9px;border:1px solid rgba(220,239,230,.24);background:rgba(5,17,14,.78);
-  color:#edf8f2;backdrop-filter:blur(14px);opacity:0;visibility:hidden;pointer-events:none;
-  transition:opacity .2s ease,visibility .2s ease;
+body.public-leads-page .public-map-gesture-hint{
+  position:absolute;z-index:12;left:clamp(14px,3vw,36px);bottom:clamp(16px,3vh,30px);
+  max-width:min(280px,calc(100vw - 28px));padding:0;border:1px solid rgba(220,239,230,.24);
+  background:rgba(5,17,14,.76);color:#edf8f2;backdrop-filter:blur(14px);
+  opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility .2s ease;
 }
-body.public-leads-page .public-map-gesture-controls[data-visible="true"]{opacity:1;visibility:visible;pointer-events:auto;}
-body.public-leads-page .public-map-gesture-controls>span{grid-column:1/-1;color:#a7d8c6;font:700 9px/1 ui-monospace,monospace;letter-spacing:.15em}
-body.public-leads-page .public-map-gesture-controls button{
-  width:34px;height:32px;border:1px solid rgba(220,239,230,.2);background:rgba(255,255,255,.08);
-  color:#f5fbf7;font:600 18px/1 Inter,system-ui,sans-serif;cursor:pointer;
+body.public-leads-page .public-map-gesture-hint[data-visible="true"]{opacity:1;visibility:visible;pointer-events:auto;}
+body.public-leads-page .public-map-gesture-hint summary{
+  padding:9px 12px;cursor:pointer;list-style:none;color:#e8f5ee;
+  font:600 10px/1.25 "IBM Plex Sans",sans-serif;letter-spacing:.04em;
 }
-body.public-leads-page .public-map-gesture-controls button:hover,
-body.public-leads-page .public-map-gesture-controls button:focus-visible{background:#bcebdc;color:#082019;outline:2px solid transparent}
-body.public-leads-page .public-map-gesture-controls small{padding:0 6px;color:#b8c9c1;font-size:10px;white-space:nowrap}
+body.public-leads-page .public-map-gesture-hint summary::-webkit-details-marker{display:none}
+body.public-leads-page .public-map-gesture-hint summary::after{content:'  ⓘ';color:#a7d8c6}
+body.public-leads-page .public-map-gesture-hint p{
+  display:none;margin:0;padding:0 12px 11px;color:#c3d7cc;
+  font:400 10px/1.65 "IBM Plex Sans",sans-serif;
+}
+body.public-leads-page .public-map-gesture-hint:is(:hover,:focus-within,[open]) p{display:block}
+body.public-leads-page .public-map-gesture-hint summary:focus-visible{outline:2px solid #bcebdc;outline-offset:2px}
 body.public-leads-page .public-map-sticky.is-public-map-panning{cursor:grabbing}
 body.public-leads-page .public-map-sticky{cursor:grab}
-@media(max-width:720px){
-  body.public-leads-page .public-map-gesture-controls{top:auto;bottom:clamp(16px,3vh,28px);left:14px;grid-template-columns:34px 34px 34px}
-  body.public-leads-page .public-map-gesture-controls small{grid-column:1/-1;white-space:normal;font-size:9px}
-}
 body.public-leads-page .public-map-sticky>map-scene[data-admin-public-map] .map-solar-control,
 body.public-leads-page .public-map-sticky>map-scene[data-admin-public-map] .map-marker-adjust-toolbar,
 body.public-leads-page .public-map-sticky>map-scene[data-admin-public-map] .admin-masterplan-adjust-toolbar,
 body.public-leads-page .public-map-sticky>map-scene[data-admin-public-map] [data-map-3d-loading],
 body.public-leads-page .public-map-sticky>map-scene[data-admin-public-map] .satellite-lot-context-widget footer{display:none!important;}
-body.public-leads-page[data-public-scroll-section="map"] .public-pdf-brand-layer{
-  opacity:0!important;
-  visibility:hidden!important;
-}
 @media(max-width:900px){body.public-leads-page .public-map-sticky>.public-map-static-bg,body.public-leads-page .public-map-sticky>.admin-masterplan-overlay,body.public-leads-page .public-map-sticky>.satellite-lot-plan-overlay{transform-origin:55% 42%!important;}}
 body.public-leads-page .public-reveal,
 body.public-leads-page .public-seals{opacity:0;transform:translateY(44px);transition:opacity .75s ease,transform .9s cubic-bezier(.2,.75,.2,1);}

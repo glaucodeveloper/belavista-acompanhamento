@@ -261,13 +261,10 @@ const pageMarkup=()=>`<div class="public-leads-experience">
         <div><b data-legend-title>Encontre seu lugar</b><small data-legend-text>Consulte lotes, compare posições e converse com a equipe para planejar sua visita ou iniciar uma reserva.</small></div>
       </div>
 
-      <div class="public-map-gesture-controls" data-public-map-controls aria-label="Controles do mapa">
-        <span>MAPA</span>
-        <button type="button" data-map-zoom="out" aria-label="Diminuir zoom" title="Diminuir zoom">−</button>
-        <button type="button" data-map-zoom="in" aria-label="Aumentar zoom" title="Aumentar zoom">+</button>
-        <button type="button" data-map-zoom="reset" aria-label="Recentralizar mapa" title="Recentralizar mapa">⌖</button>
-        <small>Arraste para mover · Shift + arraste para aproximar</small>
-      </div>
+      <details class="public-map-gesture-hint" data-public-map-controls>
+        <summary>Gestos do mapa</summary>
+        <p>Arraste para mover<br>Shift + arraste para zoom<br>Ctrl + arraste para inclinar<br>Alt + arraste para girar<br>Dois cliques para recentralizar</p>
+      </details>
 
       <public-lead-chat></public-lead-chat>
       <div class="public-selected-lot" data-selected-lot hidden></div>
@@ -371,18 +368,60 @@ export class PublicLeadsSurface extends HTMLElement{
       chat?.querySelector('[name="message"]')?.focus({preventScroll:true});
     });
     const clamp=value=>Math.min(1,Math.max(0,value));
+    const clampZoom=value=>Math.min(3.2,Math.max(.75,value));
     const smooth=(a,b,value)=>{const t=clamp((value-a)/Math.max(.0001,b-a));return t*t*(3-2*t);};
-    const gesture={zoom:1,panX:0,panY:0,drag:null};
+    const gesture={zoom:1,panX:0,panY:0,tilt:0,rotation:0,drag:null};
+    const mapGeometry=()=>{
+      const width=sticky?.clientWidth||innerWidth,height=sticky?.clientHeight||innerHeight;
+      const side=Math.max(width,height),offsetX=(width-side)/2,offsetY=(height-side)/2;
+      // Extremos dos 271 centros conferidos na prancha; recalcular quando a camada carregar.
+      let coverage=this._publicLotCoverage||{minU:.25116,maxU:.451155,minV:.462343,maxV:.727755,count:0};
+      const markers=sticky?.querySelectorAll('.satellite-lot-plan-marker')||[];
+      if(markers.length&&markers.length!==coverage.count){
+        const us=[],vs=[];
+        markers.forEach(marker=>{
+          if(!marker.style.left.endsWith('%')||!marker.style.top.endsWith('%'))return;
+          const u=Number(marker.style.left.replace('%',''))/100,v=Number(marker.style.top.replace('%',''))/100;
+          if(Number.isFinite(u)&&Number.isFinite(v)){us.push(u);vs.push(v);}
+        });
+        if(us.length){coverage={minU:Math.min(...us),maxU:Math.max(...us),minV:Math.min(...vs),maxV:Math.max(...vs),count:markers.length};this._publicLotCoverage=coverage;}
+      }
+      const minX=offsetX+coverage.minU*side,maxX=offsetX+coverage.maxU*side;
+      const minY=offsetY+coverage.minV*side,maxY=offsetY+coverage.maxV*side;
+      const compact=width<=720,originX=width*(compact?.55:.5),originY=height*(compact?.42:.46);
+      const targetX=width*.5+Math.min(42,width*.08);
+      const targetY=height*.5-Math.min(44,height*.045);
+      const fitZoom=Math.max(1,Math.min(2.4,width*.84/(maxX-minX),height*.72/(maxY-minY)));
+      return {width,height,minX,maxX,minY,maxY,originX,originY,targetX,targetY,fitZoom};
+    };
+    const basePan=(geometry,zoom,progress)=>({
+      x:progress*(geometry.targetX-geometry.originX-zoom*((geometry.minX+geometry.maxX)/2-geometry.originX)),
+      y:progress*(geometry.targetY-geometry.originY-zoom*((geometry.minY+geometry.maxY)/2-geometry.originY))
+    });
+    const clampPan=(value,min,max,origin,zoom,viewport,center)=>{
+      const projectedMin=origin+zoom*(min-origin),projectedMax=origin+zoom*(max-origin);
+      const margin=Math.min(48,viewport*.06),span=projectedMax-projectedMin;
+      if(span<=viewport-2*margin){
+        const free=(viewport-span)/2-margin;
+        const allowance=Math.max(0,Math.min(viewport*.08,free));
+        return Math.max(center-allowance,Math.min(center+allowance,value));
+      }
+      return Math.max(viewport-margin-projectedMax,Math.min(margin-projectedMin,value));
+    };
     const publishGesture=()=>{
       this.style.setProperty('--public-plan-gesture-zoom',String(gesture.zoom));
       this.style.setProperty('--public-plan-gesture-pan-x',gesture.panX+'px');
       this.style.setProperty('--public-plan-gesture-pan-y',gesture.panY+'px');
+      this.style.setProperty('--public-plan-tilt',gesture.tilt+'deg');
+      this.style.setProperty('--public-plan-rotation',gesture.rotation+'deg');
       if(map){
         map.dataset.publicGestureZoom=gesture.zoom.toFixed(3);
         map.dataset.publicGesturePan=Math.round(gesture.panX)+','+Math.round(gesture.panY);
+        map.dataset.publicGestureTilt=gesture.tilt.toFixed(1);
+        map.dataset.publicGestureRotation=gesture.rotation.toFixed(1);
       }
     };
-    const clearGesture=()=>{gesture.zoom=1;gesture.panX=0;gesture.panY=0;publishGesture();};
+    const clearGesture=()=>{gesture.zoom=1;gesture.panX=0;gesture.panY=0;gesture.tilt=0;gesture.rotation=0;publishGesture();requestRender();};
     const disableAdministrativeMapControls=()=>{
       if(!map)return;
       map.dataset.publicPresentation='true';
@@ -419,12 +458,19 @@ export class PublicLeadsSurface extends HTMLElement{
       const planReveal=smooth(titleEnd,titleEnd+innerHeight*.24,sceneY);
       const planZoom=smooth(titleEnd,titleEnd+innerHeight*.78,sceneY);
       this.style.setProperty('--public-plan-opacity',planReveal.toFixed(4));
-      const scrollZoom=1+planZoom*.32,scrollPan=Math.min(innerWidth*.10,150)*planZoom;
-      const totalPlanZoom=scrollZoom*gesture.zoom;
+      const geometry=mapGeometry();
+      const totalPlanZoom=(1+(geometry.fitZoom-1)*planZoom)*gesture.zoom;
       this.style.setProperty('--public-plan-zoom',totalPlanZoom.toFixed(4));
-      this.dataset.lotMarkerDetail=totalPlanZoom>=2.2?'circle':'number';
-      this.style.setProperty('--public-plan-pan-x',(scrollPan+gesture.panX).toFixed(1)+'px');
-      this.style.setProperty('--public-plan-pan-y',gesture.panY.toFixed(1)+'px');
+      const circleZoomThreshold=Math.min(4.5,Math.max(2.2,2750/Math.max(innerWidth,innerHeight)));
+      this.dataset.lotMarkerDetail=totalPlanZoom>=circleZoomThreshold?'circle':'number';
+      const focus=basePan(geometry,totalPlanZoom,planZoom);
+      if(planZoom>.42){
+        gesture.panX=clampPan(focus.x+gesture.panX,geometry.minX,geometry.maxX,geometry.originX,totalPlanZoom,geometry.width,focus.x)-focus.x;
+        gesture.panY=clampPan(focus.y+gesture.panY,geometry.minY,geometry.maxY,geometry.originY,totalPlanZoom,geometry.height,focus.y)-focus.y;
+      }
+      this.style.setProperty('--public-plan-pan-x',(focus.x+gesture.panX).toFixed(1)+'px');
+      this.style.setProperty('--public-plan-pan-y',(focus.y+gesture.panY).toFixed(1)+'px');
+      publishGesture();
       this.dataset.planProgress=planZoom.toFixed(4);
       this.querySelector('public-lead-chat')?.dispatchEvent(new CustomEvent('belavista:public-map-scroll-zoom',{
         detail:{active:planZoom>.08}
@@ -455,21 +501,16 @@ export class PublicLeadsSurface extends HTMLElement{
     this._publicResizeHandler=requestRender;
     addEventListener('scroll',requestRender,{passive:true});
     addEventListener('resize',requestRender,{passive:true});
+    // Foco/âncoras podem rolar este contêiner mesmo quando ele está fixo.
+    // A cena acompanha somente a rolagem do documento.
+    sticky?.addEventListener('scroll',()=>{if(sticky.scrollTop||sticky.scrollLeft){sticky.scrollTop=0;sticky.scrollLeft=0;}},{passive:true});
 
-    const activateZoomControl=button=>{
-      if(button.dataset.mapZoom==='reset')clearGesture();
-      else gesture.zoom=clamp((button.dataset.mapZoom==='in'?gesture.zoom*1.2:gesture.zoom/1.2),.65,3.5);
-      publishGesture();requestRender();
-    };
     sticky?.addEventListener('pointerdown',event=>{
-      const zoomButton=event.target.closest?.('[data-map-zoom]');
-      if(zoomButton&&gestureControls?.contains(zoomButton)){
-        event.preventDefault();event.stopPropagation();activateZoomControl(zoomButton);return;
-      }
       if(event.button!==0||Number(this.dataset.planProgress||0)<.42||
         event.target.closest('button,a,input,select,textarea,[role="button"],[contenteditable="true"],.satellite-lot-plan-marker,.satellite-lot-hit-area,public-lead-chat,[data-public-map-controls]'))return;
-      gesture.drag={x:event.clientX,y:event.clientY,mode:event.shiftKey||event.ctrlKey?'zoom':'pan'};
-      sticky.dataset.mapGesture=gesture.drag.mode==='zoom'?'shift-drag-zoom':'drag-pan';
+      const mode=event.shiftKey?'zoom':event.ctrlKey?'tilt':event.altKey?'rotation':'pan';
+      gesture.drag={x:event.clientX,y:event.clientY,mode};
+      sticky.dataset.mapGesture=mode;
       sticky.classList.toggle('is-public-map-panning',gesture.drag.mode==='pan');
       try{sticky.setPointerCapture(event.pointerId);}catch{}
       event.preventDefault();
@@ -479,13 +520,22 @@ export class PublicLeadsSurface extends HTMLElement{
       const dx=event.clientX-gesture.drag.x,dy=event.clientY-gesture.drag.y;
       if(gesture.drag.mode==='pan'){
         gesture.panX+=dx;gesture.panY+=dy;
-      }else if(dy){
-        const rect=sticky.getBoundingClientRect(),oldZoom=gesture.zoom;
-        const nextZoom=clamp(oldZoom-dy*.008,.65,3.5),ratio=nextZoom/oldZoom;
-        const offsetX=event.clientX-(rect.left+rect.width/2),offsetY=event.clientY-(rect.top+rect.height/2);
-        gesture.panX=offsetX-(offsetX-gesture.panX)*ratio;
-        gesture.panY=offsetY-(offsetY-gesture.panY)*ratio;
+      }else if(gesture.drag.mode==='zoom'&&dy){
+        const geometry=mapGeometry(),progress=Number(this.dataset.planProgress||0),oldZoom=gesture.zoom;
+        const nextZoom=clampZoom(oldZoom-dy*.008),ratio=nextZoom/oldZoom;
+        const oldScale=(1+(geometry.fitZoom-1)*progress)*oldZoom;
+        const newScale=(1+(geometry.fitZoom-1)*progress)*nextZoom;
+        const oldFocus=basePan(geometry,oldScale,progress),newFocus=basePan(geometry,newScale,progress);
+        const rect=sticky.getBoundingClientRect();
+        const pointerX=event.clientX-rect.left,pointerY=event.clientY-rect.top;
+        const totalPanX=oldFocus.x+gesture.panX,totalPanY=oldFocus.y+gesture.panY;
+        gesture.panX=pointerX-geometry.originX-ratio*(pointerX-geometry.originX-totalPanX)-newFocus.x;
+        gesture.panY=pointerY-geometry.originY-ratio*(pointerY-geometry.originY-totalPanY)-newFocus.y;
         gesture.zoom=nextZoom;
+      }else if(gesture.drag.mode==='tilt'){
+        gesture.tilt=Math.max(-35,Math.min(35,gesture.tilt-dy*.18));
+      }else if(gesture.drag.mode==='rotation'){
+        gesture.rotation=Math.max(-45,Math.min(45,gesture.rotation+dx*.2));
       }
       gesture.drag.x=event.clientX;gesture.drag.y=event.clientY;
       publishGesture();requestRender();event.preventDefault();
@@ -499,9 +549,9 @@ export class PublicLeadsSurface extends HTMLElement{
     };
     sticky?.addEventListener('pointerup',endMapDrag);
     sticky?.addEventListener('pointercancel',endMapDrag);
-    gestureControls?.addEventListener('click',event=>{
-      const button=event.target.closest?.('[data-map-zoom]');
-      if(button&&event.detail===0)activateZoomControl(button);
+    sticky?.addEventListener('dblclick',event=>{
+      if(event.target.closest('button,a,input,select,textarea,public-lead-chat,[data-public-map-controls]'))return;
+      clearGesture();event.preventDefault();
     });
     publishGesture();
 

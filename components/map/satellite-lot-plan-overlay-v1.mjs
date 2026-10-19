@@ -264,7 +264,7 @@ export const installSatelliteLotPlanOverlayV1 = (MapScene, dependencies = {}) =>
         // oversized coordinate space and clips its area/actions on Android.
         surface.append(lotWidget, commonAreaWidget);
       }
-      const renderDomMarkers = !masterplanOverlay && Boolean(markers || this._satelliteLotPlanRequestedMarkersV1);
+      const renderDomMarkers = (isPublicLeadsMap || !masterplanOverlay) && Boolean(markers || this._satelliteLotPlanRequestedMarkersV1);
       let markerOverrides = {};
       try {
         const stored = JSON.parse(localStorage.getItem("belavista.map.lot-marker-overrides.v1") || "{}");

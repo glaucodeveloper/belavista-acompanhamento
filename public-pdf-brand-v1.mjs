@@ -1,9 +1,8 @@
 // BELAVISTA_PUBLIC_PDF_BRAND_CUTOUT_V1
-// A variante transparente representa o resultado visual do PDF após remover
-// a textura verde: somente a marca (símbolo + nome) permanece sobre a cena.
+// Marca horizontal permanente durante a leitura do mapa.
 const PDF_SOURCE='./assets/public/alianca-park-masterplan-static-v535-no-photo.webp';
-const BRAND_SOURCE='./assets/public/alianca-park-logo-full-letter-cutouts-v555.png';
-const VERSION='pdf-logo-cutout-v1';
+const BRAND_SOURCE='./assets/public/alianca-park-logo-mark-transparent-v552.png';
+const VERSION='map-brand-horizontal-v2';
 
 function mountPdfBrand(){
   const sticky=document.querySelector('.public-map-sticky');
@@ -12,9 +11,9 @@ function mountPdfBrand(){
   layer.className='public-pdf-brand-layer';
   layer.dataset.publicPdfBrand=VERSION;
   layer.dataset.pdfBackgroundSource=PDF_SOURCE;
-  layer.dataset.pdfBackgroundTreatment='textura verde removida · logo + nome preservados';
+  layer.dataset.pdfBackgroundTreatment='marca horizontal sobre o mapa';
   layer.setAttribute('aria-hidden','true');
-  layer.innerHTML=`<img src="${BRAND_SOURCE}" alt="" decoding="async">`;
+  layer.innerHTML=`<span class="public-pdf-brand-name">Aliança Park<small>LOTEAMENTO</small></span><img src="${BRAND_SOURCE}" alt="" decoding="async">`;
   sticky.append(layer);
   return true;
 }
