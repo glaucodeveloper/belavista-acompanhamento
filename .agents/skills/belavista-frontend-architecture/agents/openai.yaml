@@ -1,0 +1,3 @@
+interface:
+  display_name: "Belavista Frontend Architecture"
+  short_description: "Apply the components.ts and program.ts boundaries"
