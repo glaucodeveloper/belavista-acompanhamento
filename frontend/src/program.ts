@@ -96,7 +96,6 @@ import stageOverlayCatalogData from './data/stage-overlay-catalog.json' with { t
 import adminDeferredModulesData from './data/admin-deferred-modules.json' with { type: 'json' };
 import aiChatStorageData from './data/ai-chat-storage.json' with { type: 'json' };
 import aiChatPoliciesData from './data/ai-chat-policies.json' with { type: 'json' };
-import aiChatContextualSuggestionsData from './data/ai-chat-contextual-suggestions.json' with { type: 'json' };
 import firebaseWebConfigData from './data/firebase-web-config.json' with { type: 'json' };
 import aiAgendaComprehensionDefaultsData from './data/ai-agenda-comprehension-defaults.json' with { type: 'json' };
 import workerDevelopmentStageCatalogData from './data/worker-development-stage-catalog.json' with { type: 'json' };
@@ -121,7 +120,11 @@ import type { AtlasLegacyStageUtilityCommandV1, AtlasLegacyStageTodoResultV1 } f
 import { type AtlasActivityFormGroupsInputV1, type AtlasAgendaRouteFocusV1, type AtlasOperationalRecordCreateCommandDetailV1, type AtlasDashboardRecordCreateCommandDetailV1, type AtlasProgressRecordDraftDetailV1, type AtlasLegacyOperationalRecordSaveCommandV1, type AtlasLegacyOperationalRecordDeleteCommandV1, type AtlasLegacyRecordEditorComponentCommandV1, type AtlasLegacyProgressRecordCreateCommandV1, type AtlasLegacyActivityCommandV1, type AtlasLegacyViewNavigationCommandV1, AtlasActivities, installAtlasActivitiesComponentControllerV1, AtlasAgenda, installAtlasAgendaComponentControllerV1, AtlasBrokers, AtlasCashRecord, installAtlasCommunicationsComponentControllerV1, AtlasDashboard, installAtlasDashboardComponentControllerV1, AtlasDesktopSetup, AtlasForemen, AtlasLeads, type AtlasLeadsCommandV1, AtlasLotBoard, type AtlasLotBoardComponentCommandV1, installAtlasLotBoardComponentControllerV1, AtlasLotDevelopment, AtlasMaterials, installAtlasMaterialsComponentControllerV1, AtlasPersonnel, AtlasProgress, AtlasProjectDocuments, AtlasPublicFieldRecords, AtlasPublicLeadsSurface, createAtlasPublicMapRuntimeSurfaceV1, AtlasPublicReservationFlow, AtlasRecords, AtlasReports, AtlasRepasses, AtlasSalesHistory, AtlasSettings, createAtlasStageContextMarkupV1, createAtlasCardCanvasLinkV1, renderAtlasActivityFormGroupsV1 } from './components.js';
 import type { AtlasOperationalRecordSubmissionV1 } from './components.js';
 import type { AtlasStageRecordCenterOutputV1 } from './components.js';
-import type { AtlasAgendaDeleteCommandV1, AtlasAgendaSaveCommandV1, AtlasProjectDocumentCellSaveCommandV1, AtlasProjectDocumentColumnCreateCommandV1, AtlasProjectDocumentColumnDeleteCommandV1, AtlasProjectDocumentDeleteCommandV1, AtlasProjectDocumentOpenCommandV1, AtlasProjectDocumentSaveCommandV1, AtlasProjectDocumentsImportCommandV1, AtlasProjectDocumentsOpenRequestDetailV1 } from './components.js';
+import type {
+  AtlasSettingsAiAgendaDraftV1, AtlasSettingsComprehensionDraftV1, AtlasSettingsContactDraftV1,
+  AtlasSettingsKeyDraftV1, AtlasSettingsRoleDraftV1, AtlasSettingsStageDraftV1, AtlasSettingsUsageDraftV1,
+} from './components.js';
+import type { AtlasAgendaDeleteCommandV1, AtlasAgendaFormDraftCommandV1, AtlasAgendaGestureSaveCommandV1, AtlasAgendaRecordDraftCommandV1, AtlasAgendaSaveCommandV1, AtlasAgendaTransitionDraftCommandV1, AtlasProjectDocumentCellSaveCommandV1, AtlasProjectDocumentColumnCreateCommandV1, AtlasProjectDocumentColumnDeleteCommandV1, AtlasProjectDocumentDeleteCommandV1, AtlasProjectDocumentOpenCommandV1, AtlasProjectDocumentSaveCommandV1, AtlasProjectDocumentsImportCommandV1, AtlasProjectDocumentsOpenRequestDetailV1 } from './components.js';
 import type { AtlasMaterialAllocationCommandV1, AtlasMaterialColumnDeleteCommandV1, AtlasMaterialColumnSaveCommandV1, AtlasMaterialDeleteCommandV1, AtlasMaterialFileOpenCommandV1, AtlasMaterialSaveCommandV1, AtlasMaterialTransitionOpenCommandV1, AtlasMaterialTransitionSaveCommandV1 } from './components.js';
 import { registerAtlasStandaloneMapSceneV1 } from './components.js';
 import { installAtlasProjectDocumentsComponentControllerV1 } from './components.js';
@@ -142,7 +145,7 @@ import { installAtlasPertWorkspace } from './components.js';
 import { installAtlasExecutionPlanningComponentControllerV1, type AtlasExecutionPlanningComponentSnapshotV1, type AtlasExecutionPlanningBrokerReportV1, type AtlasExecutionPlanningCashPanelV1, type AtlasExecutionPlanningCommissionReasonV1, type AtlasExecutionPlanningOutsourcingReceiptV1 } from './components.js';
 import { mountAtlasAdminCashEvidenceFormV1, type AtlasAdminCashEvidenceFormViewV1 } from './components.js';
 import { installAtlasOperationalViewBindingsV1, type AtlasOperationalViewActionV1 } from './components.js';
-import { installAtlasOperationalMapPageV1 } from './components.js';
+import { installAtlasOperationalMapPageV1, type AtlasOperationalMapLotOptionV1 } from './components.js';
 import { installAtlasActivityMapLayerV1 } from './components.js';
 import type { AtlasCommissionHistoryActionV1 } from './components.js';
 import type { AtlasCommissionProfileActionV1 } from './components.js';
@@ -575,6 +578,51 @@ export function parseAtlasProposalVisionPayloadV1(payload: unknown = {}): AtlasP
     if (draft) return draft;
   }
   return null;
+}
+
+export interface AtlasProposalVisionInferenceV1 {
+  draft: AtlasProposalVisionDraftV1;
+  inference: Record<string, unknown>;
+}
+
+/** Run the proposal image inference request and normalize its persisted evidence metadata. */
+export async function inferAtlasProposalAttachmentV1(input: {
+  file: File;
+  readAsDataUrl(file: File): Promise<string>;
+  fetcher: typeof fetch;
+  now?: Date;
+}): Promise<AtlasProposalVisionInferenceV1> {
+  const dataUrl = await input.readAsDataUrl(input.file);
+  const response = await input.fetcher('/api/ai/vision-reasoning', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: PROPOSAL_VISION_PROMPT_V1,
+      view: 'contracts',
+      context: {
+        purpose: 'proposta de reserva de lote',
+        fields: ['client', 'lot', 'value', 'payment'],
+      },
+      attachment: { name: input.file.name, type: input.file.type, dataUrl },
+    }),
+  });
+  const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
+  if (!response.ok)
+    throw new Error(String(payload.error || `Falha na inferência (${response.status})`));
+  const draft = parseAtlasProposalVisionPayloadV1(payload);
+  if (!draft) throw new Error('A NVIDIA não retornou campos reconhecíveis.');
+  const now = input.now || new Date();
+  return Object.freeze({
+    draft,
+    inference: Object.freeze({
+      provider: String(payload.provider || 'nvidia'),
+      model: String(payload.model || ''),
+      sourceFile: input.file.name,
+      confidence: draft.confidence,
+      extracted: draft,
+      extractedAt: now.toISOString(),
+    }),
+  });
 }
 
 type AtlasApiClientRuntimeV1 = typeof globalThis & {
@@ -1308,7 +1356,7 @@ export interface AtlasMapMasterplanGpuEnrichmentDependenciesV1 extends Record<st
   appStore: { get(): Record<string, unknown> };
   publishMapPreview(): unknown;
   syncCompactMapMirrors(): unknown;
-  browserRef?: Record<string, any>;
+  browserRef: Record<string, any>;
 }
 
 export interface AtlasLegacyViewLayerDependenciesV1 {
@@ -1337,6 +1385,7 @@ export interface AtlasLegacyViewLayerDependenciesV1 {
   actorCanOpenView: typeof actorCanOpenAtlasViewV1;
   isForemanUser: typeof isAtlasForemanUserV1;
   isLimitedOperationalActor: typeof isAtlasLimitedOperationalActorV1;
+  recoverRestrictedRoute(): void;
   renderStageHomePageV1(model: Record<string, unknown>): string;
   stageHomeSnapshotV1(calendarWeek?: string): AtlasStageHomeSnapshot;
   stageHomePageMarkupV1(calendarWeek?: string): string;
@@ -3229,16 +3278,14 @@ export interface AtlasAdminStandaloneStartupDependenciesV1 extends Pick<AtlasMap
 > {
   ADMIN_REFERENCE_AERIAL_ASSET_V1: string;
   ADMIN_REFERENCE_AERIAL_GEO_WARP_VERSION_V1: string;
-  ADMIN_REFERENCE_AERIAL_LOT_TRACE_URL_V1: string;
-  ADMIN_REFERENCE_AERIAL_ROAD_TRACE_URL_V1: string;
   MAP_GEOREFERENCE_FALLBACK: Readonly<AtlasMapSolarGeoPoint>;
-  DateRef?: DateConstructor;
   consoleRef?: Pick<Console, 'error' | 'info' | 'warn'>;
-  localStorageRef?: Pick<Storage, 'setItem'>;
   requestAnimationFrameRef?: typeof requestAnimationFrame;
   windowRef?: Window;
   readMapStartupState(): Pick<AtlasApplicationStoreState, 'solarHour' | 'records' | 'mapProgressSelection'>;
-  loadAdminDwgGeoreferenceV1(): Promise<AdminDwgGeoreferenceDocument>;
+  loadAdminStandaloneAerialAssetsV1(): Promise<AtlasAdminStandaloneAerialAssetsV1>;
+  validateAdminStandaloneAerialAssetsV1(input: Pick<AtlasAdminStandaloneAerialAssetsV1, 'trace' | 'roadTrace'>): AtlasAdminStandaloneValidatedAerialAssetsV1;
+  persistAdminStandalonePhaseV5370(phase: string, extra?: Record<string, unknown>): AtlasAdminStandaloneBootPhaseV5370;
   loadGlbWithClientCacheV14(
     loader: unknown,
     url: string,
@@ -3251,6 +3298,32 @@ export interface AtlasAdminStandaloneStartupDependenciesV1 extends Pick<AtlasMap
   runtimeRouteV1(path: string, query?: string): string;
   solarStateForHour: typeof solarStateForHour;
   warpAdminGlbToFixedAerialV1(input: Pick<import('./components.js').AtlasAdminFixedAerialGeoWarpInputV1, 'THREE' | 'source' | 'georef' | 'image' | 'trace' | 'roadTrace'>): ReturnType<typeof warpAdminGlbToFixedAerialV1>;
+}
+
+export interface AtlasAdminStandaloneAerialAssetsV1 {
+  georeference: AdminDwgGeoreferenceDocument;
+  trace: unknown;
+  roadTrace: unknown;
+}
+
+export type AtlasAdminRoadTracePointDtoV1 = readonly [number, number];
+export interface AtlasAdminRoadTraceRoadDtoV1 {
+  outer: readonly AtlasAdminRoadTracePointDtoV1[];
+  holes?: readonly (readonly AtlasAdminRoadTracePointDtoV1[])[];
+}
+export interface AtlasAdminRoadTraceDtoV1 extends Record<string, unknown> {
+  roads: readonly AtlasAdminRoadTraceRoadDtoV1[];
+}
+
+export interface AtlasAdminStandaloneValidatedAerialAssetsV1 {
+  trace: Record<string, unknown> & { lotCount: number; grid: unknown[] };
+  roadTrace: AtlasAdminRoadTraceDtoV1;
+}
+
+export interface AtlasAdminStandaloneBootPhaseV5370 extends Record<string, unknown> {
+  version: '5.3.70';
+  phase: string;
+  at: string;
 }
 export interface AtlasAdminStandaloneAerialDependenciesV1 extends Record<string, unknown>, Pick<AtlasMapScenePresentationConfig,
   | 'ADMIN_STANDALONE_MODEL_ALIGNMENT_V1'
@@ -3287,10 +3360,11 @@ export interface AtlasSatelliteLotPlanOverlayDependenciesV1 {
   PDF_LOT_LABELS_URL_V1: string;
   PDF_LOT_TRACE_SATELLITE_ALIGNMENT_V1: string;
   REPASSE_PRICE_CATALOG: readonly RepassePriceCatalogEntry[];
+  loadMarkerOverridesV1(): PublicMapMarkerOverrides;
   readLotStatuses(): NonNullable<AtlasApplicationStoreState['lotStatuses']>;
   subscribeLotStatuses(listener: () => void): () => void;
   commands: Pick<AtlasMapSceneStateCommandsV1, 'openCatalogLot' | 'recordSelection'>;
-  loadPublicMapGeometryAssets?: typeof loadPublicMapGeometryAssets;
+  loadPublicMapGeometryAssets: typeof loadPublicMapGeometryAssets;
   isPublicMapMarkerActionsInstalledV1?: () => boolean;
   projectPublicLotMarkerStatusV1?: typeof publicMapLotMarkerStatus;
   projectPublicLotMarkerStatusesV1?: typeof publicMapLotMarkerStatuses;
@@ -3436,7 +3510,7 @@ export function installAtlasMapSceneInteractionCompositionV1(
   install(owners.contextLifecycle, { requestAnimationFrame: windowRef.requestAnimationFrame.bind(windowRef) });
   install(owners.zoomPolicy, { appStore, minSceneZoom: config.MIN_SCENE_ZOOM });
   install(owners.statePersistence, {
-    appStore,
+    commands: { saveMapView: (mapView: unknown) => sceneStateCommands.saveMapView(mapView) },
     config: {
       MAP_SCENE_STATE_VERSION: config.MAP_SCENE_STATE_VERSION,
       ADMIN_REFERENCE_AERIAL_VIEW_VERSION: config.ADMIN_REFERENCE_AERIAL_VIEW_VERSION,
@@ -3652,10 +3726,18 @@ export function installAtlasMapSceneFoundationCompositionV1(
     consoleRef,
   });
   install(owners.geometryOverlays, { logger: consoleRef });
+  const mapLoadingBootStateGlobal = browser.globalRef as AtlasMapLoadingBootStateGlobalV1;
+  if (!mapLoadingBootStateGlobal)
+    throw new TypeError('Map loading boot-state program requires the application global.');
   install(owners.loadingScreen, {
     GENERATED_AERIAL_ASSET: config.GENERATED_AERIAL_ASSET,
     browser,
-    globalRef: browser.globalRef,
+    ...createAtlasMapLoadingBootStateCommandsV1({
+      globalRef: mapLoadingBootStateGlobal,
+      performanceNow: () => performanceRef.now(),
+      writeStorage: (key, value) => mapLoadingBootStateGlobal.localStorage?.setItem(key, value),
+      wallClock: () => new mapLoadingBootStateGlobal.Date().toISOString(),
+    }),
   });
   install(owners.surfacePolicy, { locationRef: browser.location });
   install(owners.publicLotStatus, { CustomEventImpl: browser.CustomEvent });
@@ -3936,8 +4018,6 @@ export async function installAtlasMapSceneAssetCompositionV1(
   const adminStandaloneStartupDependenciesV1: AtlasAdminStandaloneStartupDependenciesV1 = {
     ADMIN_REFERENCE_AERIAL_ASSET_V1: value('ADMIN_REFERENCE_AERIAL_ASSET_V1'),
     ADMIN_REFERENCE_AERIAL_GEO_WARP_VERSION_V1: value('ADMIN_REFERENCE_AERIAL_GEO_WARP_VERSION_V1'),
-    ADMIN_REFERENCE_AERIAL_LOT_TRACE_URL_V1: value('ADMIN_REFERENCE_AERIAL_LOT_TRACE_URL_V1'),
-    ADMIN_REFERENCE_AERIAL_ROAD_TRACE_URL_V1: value('ADMIN_REFERENCE_AERIAL_ROAD_TRACE_URL_V1'),
     ADMIN_GEO_MODEL_FINE_ROTATION_DEG: config.ADMIN_GEO_MODEL_FINE_ROTATION_DEG,
     ADMIN_GEO_MODEL_FINE_SHIFT_X: config.ADMIN_GEO_MODEL_FINE_SHIFT_X,
     ADMIN_GEO_MODEL_FINE_SHIFT_Y: config.ADMIN_GEO_MODEL_FINE_SHIFT_Y,
@@ -3949,16 +4029,25 @@ export async function installAtlasMapSceneAssetCompositionV1(
     SCENE_MAP_Z: config.SCENE_MAP_Z,
     TILT_DRAG_SENSITIVITY: config.TILT_DRAG_SENSITIVITY,
     ZOOM_DRAG_SENSITIVITY: config.ZOOM_DRAG_SENSITIVITY,
-    DateRef: browser.Date,
     consoleRef: browser.console,
-    localStorageRef: { setItem: (...args: [string, string]) => (browser.localStorage as Storage).setItem(...args) },
     requestAnimationFrameRef: browser.requestAnimationFrame,
     windowRef,
     readMapStartupState: () => {
       const state = appStore.get();
       return { solarHour: state.solarHour, records: state.records, mapProgressSelection: state.mapProgressSelection };
     },
-    loadAdminDwgGeoreferenceV1: helper('loadAdminDwgGeoreferenceV1'),
+    loadAdminStandaloneAerialAssetsV1: () => loadAtlasAdminStandaloneAerialAssetsV1({
+      lotTraceUrl: value('ADMIN_REFERENCE_AERIAL_LOT_TRACE_URL_V1'),
+      roadTraceUrl: value('ADMIN_REFERENCE_AERIAL_ROAD_TRACE_URL_V1'),
+      loadGeoreference: helper('loadAdminDwgGeoreferenceV1'),
+    }),
+    validateAdminStandaloneAerialAssetsV1: validateAtlasAdminStandaloneAerialAssetsV1,
+    persistAdminStandalonePhaseV5370: (phase, extra = {}) => persistAtlasAdminStandaloneBootPhaseV5370(
+      phase,
+      extra,
+      browser.localStorage as Storage,
+      browser.Date,
+    ),
     loadGlbWithClientCacheV14: helper('loadGlbWithClientCacheV14'),
     importThree: helper('importThree') as AtlasAdminStandaloneStartupDependenciesV1['importThree'],
     importGltfLoader: helper('importGltfLoader') as AtlasAdminStandaloneStartupDependenciesV1['importGltfLoader'],
@@ -3981,6 +4070,7 @@ export async function installAtlasMapSceneAssetCompositionV1(
     PDF_LOT_LABELS_URL_V1: value('PDF_LOT_LABELS_URL_V1'),
     PDF_LOT_TRACE_SATELLITE_ALIGNMENT_V1: value('PDF_LOT_TRACE_SATELLITE_ALIGNMENT_V1'),
     REPASSE_PRICE_CATALOG: value('REPASSE_PRICE_CATALOG'),
+    loadMarkerOverridesV1: () => publicMapCalibrationStorage.readMarkers(atlasAdminMasterplanOverlayPolicy.markerOverridesStorageKey),
     readLotStatuses: () => appStore.get().lotStatuses || {},
     subscribeLotStatuses: listener => {
       const unsubscribe = appStore.subscribe(() => listener());
@@ -4226,6 +4316,7 @@ export async function installAtlasStageApplicationCompositionV1(input: AtlasStag
   const extensionStage = () => stageContextV1().record || demoData.activities?.[1];
   const activityCanvasDependencies: Parameters<typeof installAtlasStageActivityCanvasV1>[1] = {
     appStore: appStore as Parameters<typeof installAtlasStageActivityCanvasV1>[1]['appStore'],
+    onAction: action => applyAtlasWorkflowCanvasActionV1({ appStore, action }),
     demoData: demoData as Parameters<typeof installAtlasStageActivityCanvasV1>[1]['demoData'],
     activityCatalog: activityCatalog as Parameters<typeof installAtlasStageActivityCanvasV1>[1]['activityCatalog'],
     esc: esc as Parameters<typeof installAtlasStageActivityCanvasV1>[1]['esc'],
@@ -4249,7 +4340,7 @@ export async function installAtlasStageApplicationCompositionV1(input: AtlasStag
   };
   installAtlasStageDedicatedWorkspaceV1(ViewLayer as Parameters<typeof installAtlasStageDedicatedWorkspaceV1>[0], dedicatedWorkspaceDependencies);
   const workflowCanvasDependencies: Parameters<typeof installAtlasWorkflowCanvasConnectionsV1>[1] = {
-    appStore: appStore as Parameters<typeof installAtlasWorkflowCanvasConnectionsV1>[1]['appStore'],
+    onAction: action => applyAtlasWorkflowCanvasActionV1({ appStore, action }),
     activityCatalog: activityCatalog as Parameters<typeof installAtlasWorkflowCanvasConnectionsV1>[1]['activityCatalog'],
     esc: esc as Parameters<typeof installAtlasWorkflowCanvasConnectionsV1>[1]['esc'],
     notify: notify as Parameters<typeof installAtlasWorkflowCanvasConnectionsV1>[1]['notify'],
@@ -4554,6 +4645,8 @@ export interface AtlasOperationalMapPageCompositionInputV1 {
   ViewLayer: Parameters<typeof installAtlasOperationalMapPageV1>[0];
   appStore: Parameters<typeof installAtlasOperationalMapPageV1>[1]['appStore'];
   highlightStatus: Parameters<typeof installAtlasOperationalMapPageV1>[1]['highlightStatus'];
+  lotOptions: () => readonly AtlasOperationalMapLotOptionV1[];
+  documentRef: Document;
   esc: (value: unknown) => string;
   ico?: (name: string) => string;
 }
@@ -4571,6 +4664,8 @@ export function installAtlasOperationalMapPageCompositionV1(
   return installAtlasOperationalMapPageV1(input.ViewLayer, {
     appStore: input.appStore,
     highlightStatus: input.highlightStatus,
+    lotOptions: input.lotOptions,
+    documentRef: input.documentRef,
     ico: input.ico,
   });
 }
@@ -4672,6 +4767,7 @@ export function installAtlasStagePagesApplicationCompositionV1(
   });
   const stageControlInstalled = installAtlasDashboardStageControlV1({
     ViewLayer,
+    documentRef: input.documentRef,
     appStore: input.appStore,
     executionModel: input.executionModel,
     stageV9LiveFor: input.stageV9LiveFor,
@@ -4954,6 +5050,7 @@ export interface AtlasPlanningPagesApplicationInput {
   commissionDeals: typeof ATLAS_COMMISSION_DEALS_V1;
   executionModel: typeof executionModelCatalogData;
   activityCatalog: typeof activityCatalogData;
+  REPASSE_PRICE_CATALOG: RepassePriceCatalogEntry[];
   extensionStage(): Record<string, any>;
   stageOverlayKey(value: unknown): string;
   stageProfileSettingsFor: AtlasPlanningRuntimeContextV1['stageProfileSettingsFor'];
@@ -5010,6 +5107,7 @@ export async function installAtlasPlanningPagesApplicationV1(
 ): Promise<Readonly<AtlasPlanningPagesApplicationOutputV1>> {
   const {
     ViewLayer, appStore, demoData, commissionDeals, executionModel, activityCatalog,
+    REPASSE_PRICE_CATALOG,
     extensionStage, stageOverlayKey, stageProfileSettingsFor, stageMaterialsFor,
     formatBRL, esc, ico, notify, runtimeRouteV1, apiFetch, operationalHeaders,
     highlightStatus, workbenchActivityRouteV1, stageRecordServices, controlCenterData,
@@ -5040,6 +5138,11 @@ export async function installAtlasPlanningPagesApplicationV1(
     ViewLayer: ViewLayer as unknown as Parameters<typeof installAtlasOperationalMapPageV1>[0],
     appStore: appStore as AtlasOperationalMapPageCompositionInputV1['appStore'],
     highlightStatus: highlightStatus as AtlasOperationalMapPageCompositionInputV1['highlightStatus'],
+    lotOptions: () => projectAtlasLotBoardRows(
+      (appStore.get().lotStatuses || {}) as Record<string, AtlasLotStatus | undefined>,
+      REPASSE_PRICE_CATALOG,
+    ).map(({ label, quadra, lot, area, price, status }) => ({ label, quadra, lot: Number(lot), area: Number(area), price: Number(price), status })),
+    documentRef: browserGlobal.document,
     esc: esc as (value: unknown) => string,
     ico: ico as (name: string) => string,
   });
@@ -5108,9 +5211,12 @@ export async function installAtlasPlanningPagesApplicationV1(
   installAtlasActivityRouteBridgeLifecycleV1(activityRouteBridgeDependenciesV1);
   const stageSubpageEventsBindBaseV1 = (ViewLayer as Parameters<typeof installAtlasStageDedicatedSubpagesEventsV1>[0]).prototype.bind;
   const stageSubpageEventsDependenciesV1: Parameters<typeof installAtlasStageDedicatedSubpagesEventsV1>[1] = {
-    appStore: appStore as Parameters<typeof installAtlasStageDedicatedSubpagesEventsV1>[1]['appStore'],
-    executionModel: executionModel as Parameters<typeof installAtlasStageDedicatedSubpagesEventsV1>[1]['executionModel'],
-    demoData: demoData as Parameters<typeof installAtlasStageDedicatedSubpagesEventsV1>[1]['demoData'],
+    dispatchNavigation: command => applyAtlasStageDedicatedPageNavigationCommandV1({
+      appStore,
+      executionModel,
+      demoActivities: demoData.activities,
+      command,
+    }),
     bindBase: stageSubpageEventsBindBaseV1,
   };
   installAtlasStageDedicatedSubpagesEventsV1(
@@ -7087,6 +7193,11 @@ export interface AtlasApplicationStoreState extends Record<string, unknown> {
   commissionFilters?: { query?: string; status?: string; profile?: string };
   commissionHiddenIds?: string[];
   commissionEntries?: AtlasCommissionNegotiationDealV1[];
+  contractFilters?: { query?: string; status?: string };
+  contractStatusOverrides?: Record<string, string>;
+  contractEditing?: AtlasCommercialContractRecordV1 | null;
+  proposalFormOpen?: boolean;
+  selectedCommissionProposal?: string | null;
   commissionNegotiationFilters?: Partial<AtlasCommissionNegotiationFiltersV1>;
   commissionDealAttachments?: Record<string, Partial<Record<AtlasCommissionAttachmentKindV1, AtlasCommissionAttachmentV1[]>>>;
   selectedCommissionNegotiation?: string | null;
@@ -7618,15 +7729,6 @@ export interface AtlasOperationalAction {
   materialRequirements?: string[];
 }
 
-export interface AtlasDataTablePageProjectionV1<T> {
-  matching: T[];
-  visible: T[];
-  page: number;
-  pages: number;
-  start: number;
-  end: number;
-}
-
 export interface AtlasRecordAttachmentPolicyV1 {
   maxBytes: number;
   mimeTypes: readonly string[];
@@ -7642,48 +7744,6 @@ export const ATLAS_RECORD_ATTACHMENT_POLICY_V1: Readonly<AtlasRecordAttachmentPo
 export function isAtlasRecordDropAttachmentAllowedV1(file: { type: string; size: number }): boolean {
   return (ATLAS_RECORD_ATTACHMENT_POLICY_V1.mimeTypes as readonly string[]).includes(file.type)
     && file.size <= ATLAS_RECORD_ATTACHMENT_POLICY_V1.maxBytes;
-}
-
-/** Keep table category options stable and localized before rendering controls. */
-export function projectAtlasDataTableCategoriesV1<T>(
-  rows: readonly T[],
-  categoryOf: (row: T) => string | null | undefined,
-): string[] {
-  return [...new Set(rows.map(categoryOf).filter((value): value is string => Boolean(value)))]
-    .sort((left, right) => left.localeCompare(right, "pt-BR"));
-}
-
-/** Apply the shared search, category, and paging rules used by admin tables. */
-export function projectAtlasDataTablePageV1<T>(input: {
-  rows: readonly T[];
-  page: number;
-  pageSize: number | "all";
-  query: string;
-  category: string;
-  textOf: (row: T) => string | null | undefined;
-  categoryOf: (row: T) => string | null | undefined;
-}): AtlasDataTablePageProjectionV1<T> {
-  const normalizedQuery = input.query.trim().toLocaleLowerCase("pt-BR");
-  const matching = input.rows.filter((row) => {
-    const text = String(input.textOf(row) || "").toLocaleLowerCase("pt-BR");
-    return (!normalizedQuery || text.includes(normalizedQuery))
-      && (!input.category || input.categoryOf(row) === input.category);
-  });
-  const pageSize = input.pageSize === "all"
-    ? Math.max(matching.length, 1)
-    : Math.max(1, Math.floor(Number(input.pageSize) || 1));
-  const pages = Math.max(1, Math.ceil(matching.length / pageSize));
-  const page = Math.max(0, Math.min(Math.floor(Number(input.page) || 0), pages - 1));
-  const start = matching.length ? page * pageSize + 1 : 0;
-  const end = Math.min((page + 1) * pageSize, matching.length);
-  return {
-    matching,
-    visible: matching.slice(page * pageSize, (page + 1) * pageSize),
-    page,
-    pages,
-    start,
-    end,
-  };
 }
 
 /** Serialize the data-table export with a UTF-8 BOM and semicolon separators. */
@@ -12713,6 +12773,7 @@ export interface AtlasWorkerContextChatRuntimeV1 extends AtlasWorkerContextChatO
   bindComponent(input: {
     componentOwners: AtlasWorkerContextChatBindingComponentsV1;
     native: boolean;
+    capturePhoto?: () => Promise<File | null>;
     setStorage(key: string, value: string): void;
     installSwipeSheet?: (input: { root: HTMLElement; setCollapsed(collapsed: boolean): void; native: boolean }) => void;
   }): boolean;
@@ -12720,6 +12781,33 @@ export interface AtlasWorkerContextChatRuntimeV1 extends AtlasWorkerContextChatO
     documentRef: Document;
     storage?: Pick<Storage, 'removeItem'> | null;
   }): boolean;
+}
+
+/** Capture a new image with the native camera, never opening the gallery picker. */
+export async function captureAtlasWorkerContextChatPhotoV1(): Promise<File | null> {
+  const camera = await import('@capacitor/camera');
+  try {
+    const photo = await camera.Camera.takePhoto({
+      quality: 88,
+      correctOrientation: true,
+      cameraDirection: 'REAR',
+    });
+    const capacitor = globalThis as typeof globalThis & {
+      Capacitor?: { convertFileSrc?: (path: string) => string };
+    };
+    const source = photo.webPath || (photo.uri ? capacitor.Capacitor?.convertFileSrc?.(photo.uri) : '');
+    if (!source) throw new Error('A câmera não retornou a foto capturada.');
+    const response = await fetch(source);
+    if (!response.ok) throw new Error('Não foi possível ler a foto capturada.');
+    const blob = await response.blob();
+    return new File([blob], `foto-chat-${Date.now()}.jpg`, {
+      type: blob.type.startsWith('image/') ? blob.type : 'image/jpeg',
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error || '');
+    if (/cancel/i.test(message)) return null;
+    throw new Error(message ? `Não foi possível abrir a câmera: ${message}` : 'Não foi possível abrir a câmera.');
+  }
 }
 
 export type AtlasWorkerContextChatHostRuntimeInputV1 = Omit<AtlasWorkerContextChatRuntimeInputV1, 'voice'> & {
@@ -12869,6 +12957,7 @@ export function createAtlasWorkerContextChatRuntimeV1(
         serviceKey: input.serviceKey,
         setStorage: binding.setStorage,
         native: binding.native,
+        capturePhoto: binding.capturePhoto,
         installSwipeSheet: binding.installSwipeSheet,
       });
     },
@@ -13110,11 +13199,13 @@ export function startAtlasWorkerContextChatBootstrapV1(input: {
       },
       renderAttachment: () => { component()?.renderAttachments?.(); },
       bind: () => {
+        const native = Boolean((globalThis as typeof globalThis & {BELAVISTA_CAPACITOR_NATIVE?: boolean}).BELAVISTA_CAPACITOR_NATIVE)
+          || Boolean((globalThis as typeof globalThis & {Capacitor?: {isNativePlatform?: () => boolean}}).Capacitor?.isNativePlatform?.());
         runtime?.bindComponent({
           componentOwners: atlasComponentOwners as unknown as AtlasWorkerContextChatBindingComponentsV1,
           setStorage: (key, value) => { storageAdapters.writeStorage(key, value); },
-          native: Boolean((globalThis as typeof globalThis & {BELAVISTA_CAPACITOR_NATIVE?: boolean}).BELAVISTA_CAPACITOR_NATIVE)
-            || Boolean((globalThis as typeof globalThis & {Capacitor?: {isNativePlatform?: () => boolean}}).Capacitor?.isNativePlatform?.()),
+          native,
+          capturePhoto: native ? captureAtlasWorkerContextChatPhotoV1 : undefined,
           installSwipeSheet: ({root, setCollapsed, native}) => {
             atlasComponentOwners.installAtlasWorkerChatSwipeSheetV1({root, setCollapsed, native, windowRef});
           },
@@ -14593,184 +14684,12 @@ export interface SettingsSnapshot {
   isNative: boolean;
 }
 
-export interface AtlasSettingsStageDraftV1 { name: string; status: string; progress: string; week: string; owner: string }
-export interface AtlasSettingsComprehensionDraftV1 {
-  requirements: string; conditions: string; typicalDescription: string; requestHints: string;
-  evidenceFocus: string; procurementFocus: string; organizationRequest: string; organizationContext: string;
-  notifyOwner: string; notifyAdmin: string; notifyForeman: string; expectedActivities: string;
-  productionQuantity: string; productionUnit: string; productionRate: string; productionRateUnit: string;
-  materialsTable: Array<{ name: string; description: string; quantity: string; unit: string; status: string }>;
-}
-export interface AtlasSettingsAiAgendaDraftV1 { reading: string; determination: string; generation: string; autoCreatePending: boolean }
-export interface AtlasSettingsContactDraftV1 { whatsappNumber: string }
-export interface AtlasSettingsUsageDraftV1 {
-  defaultPage: string; density: string; reduceMotion: boolean; voiceEnabled: boolean;
-  whatsappNumber: string; instagramAccount: string; autoNotify: boolean; pixKey: string;
-  signalAmount: string; pixReceiver: string; pixCity: string;
-}
-export interface AtlasSettingsRoleDraftV1 { id: string | null; name: string; permissions: string[] }
-export interface AtlasSettingsKeyDraftV1 { label: string; roleId: string }
-
-const atlasSettingsFormTextV1 = (values: Record<string, unknown>, name: string): string => String(values[name] || '');
-
-export function buildAtlasSettingsStageDraftV1(values: Record<string, unknown>): AtlasSettingsStageDraftV1 {
-  return { name: atlasSettingsFormTextV1(values, 'name'), status: atlasSettingsFormTextV1(values, 'status'), progress: atlasSettingsFormTextV1(values, 'progress'), week: atlasSettingsFormTextV1(values, 'week'), owner: atlasSettingsFormTextV1(values, 'owner') };
-}
-
-export function buildAtlasSettingsComprehensionDraftV1(input: {
-  values: Record<string, unknown>;
-  materialsTable: AtlasSettingsComprehensionDraftV1['materialsTable'];
-}): AtlasSettingsComprehensionDraftV1 {
-  const value = (name: string): string => atlasSettingsFormTextV1(input.values, name);
-  return {
-    requirements: value('requirements'), conditions: value('conditions'), typicalDescription: value('typicalDescription'), requestHints: value('requestHints'),
-    evidenceFocus: value('evidenceFocus'), procurementFocus: value('procurementFocus'), organizationRequest: value('organizationRequest'), organizationContext: value('organizationContext'),
-    notifyOwner: value('notifyOwner'), notifyAdmin: value('notifyAdmin'), notifyForeman: value('notifyForeman'), expectedActivities: value('expectedActivities'),
-    productionQuantity: value('productionQuantity'), productionUnit: value('productionUnit'), productionRate: value('productionRate'), productionRateUnit: value('productionRateUnit'),
-    materialsTable: input.materialsTable,
-  };
-}
-
-export function buildAtlasSettingsAiAgendaDraftV1(values: Record<string, unknown>): AtlasSettingsAiAgendaDraftV1 {
-  return { reading: atlasSettingsFormTextV1(values, 'reading'), determination: atlasSettingsFormTextV1(values, 'determination'), generation: atlasSettingsFormTextV1(values, 'generation'), autoCreatePending: Boolean(values.autoCreatePending) };
-}
-
-export function buildAtlasSettingsContactDraftV1(values: Record<string, unknown>): AtlasSettingsContactDraftV1 {
-  return { whatsappNumber: atlasSettingsFormTextV1(values, 'whatsappNumber') };
-}
-
-export function buildAtlasSettingsUsageDraftV1(values: Record<string, unknown>): AtlasSettingsUsageDraftV1 {
-  return {
-    defaultPage: atlasSettingsFormTextV1(values, 'defaultPage'), density: atlasSettingsFormTextV1(values, 'density'),
-    reduceMotion: Boolean(values.reduceMotion), voiceEnabled: Boolean(values.voiceEnabled), whatsappNumber: atlasSettingsFormTextV1(values, 'whatsappNumber'),
-    instagramAccount: atlasSettingsFormTextV1(values, 'instagramAccount'), autoNotify: Boolean(values.autoNotify), pixKey: atlasSettingsFormTextV1(values, 'pixKey'),
-    signalAmount: atlasSettingsFormTextV1(values, 'signalAmount'), pixReceiver: atlasSettingsFormTextV1(values, 'pixReceiver'), pixCity: atlasSettingsFormTextV1(values, 'pixCity'),
-  };
-}
-
-export function buildAtlasSettingsRoleDraftV1(input: { values: Record<string, unknown>; id: string | null; permissions: string[] }): AtlasSettingsRoleDraftV1 {
-  return { id: input.id, name: atlasSettingsFormTextV1(input.values, 'name'), permissions: input.permissions.map(String) };
-}
-
-export function buildAtlasSettingsKeyDraftV1(values: Record<string, unknown>): AtlasSettingsKeyDraftV1 {
-  return { label: atlasSettingsFormTextV1(values, 'label'), roleId: atlasSettingsFormTextV1(values, 'roleId') };
-}
-
-export function projectAtlasSettingsWorkbenchSessionsV1(sessions: WorkbenchSession[]): WorkbenchSession[] {
-  return [...sessions].sort((left, right) => Number(left.order) - Number(right.order));
-}
-
-export function projectAtlasSettingsWorkbenchSessionV1(
-  session: WorkbenchSession,
-  index: number,
-  count: number,
-  options: Array<{ key: string; label: string; group: string }>,
-) {
-  const materials = Array.isArray(session.materials) ? session.materials.map((item, materialIndex): WorkbenchMaterial =>
-    typeof item === "string"
-      ? { id: `material-${materialIndex}`, name: item, description: "", usage: "", quantity: "", unit: "" }
-      : item) : [];
-  const conditions = (session.inference?.conditions || session.operational?.entryConditions || []) as Array<Record<string, unknown> | string>;
-  const production = (session.inference?.production || session.operational?.production || {}) as Record<string, unknown>;
-  const automation = session.automation || {};
-  const programming = session.programming || {};
-  return {
-    id: session.id,
-    title: session.title || "Atividade",
-    unit: session.unit || "Unidade não definida",
-    release: session.release || "Sem requisito de liberação",
-    summary: (session.inference?.summary as string) || "Editar compreensão",
-    status: (session.inference?.summary as string) || "Alterações são salvas na compreensão original do Worker.",
-    moveUpDisabled: index === 0,
-    moveDownDisabled: index === count - 1,
-    materials,
-    properties: session.properties || [],
-    conditions: conditions.map(condition => typeof condition === "string"
-      ? { label: "Condição", trigger: condition, severity: "warning" }
-      : condition),
-    production,
-    automation,
-    programming,
-    options: options.map(option => ({
-      ...option,
-      checked: Boolean((option.group === "automation" ? automation[option.key] : programming[option.key])),
-    })),
-    custom: session.custom,
-  };
-}
-
-export function projectAtlasSettingsPageV1(input: {
-  snapshot: SettingsSnapshot;
-  selectedStageId: string;
-  activeTab: "materials" | "activities" | "execution";
-  creatingStage: boolean;
-  usagePages: AtlasUsagePageOptionV1[];
-  usageDensities: AtlasUsageDensityOptionV1[];
-  usageBusinessDefaults: AtlasUsageBusinessDefaultsV1 | null;
-}) {
-  const { snapshot } = input;
-  const stage = snapshot.stages.find(item => String(item.id) === input.selectedStageId) || snapshot.stages[0];
-  const config = stage?.aiConfig || ({} as StageAIConfig);
-  const profile = config.executionProfile || {};
-  const sessions = stage ? projectAtlasSettingsWorkbenchSessionsV1(stage.workbenchSessions) : [];
-  const materials = (profile.materialsTable || []) as StageComprehensionMaterial[];
-  const activities = (profile.expectedActivities || sessions.map(session => session.title)) as string[];
-  const production = profile.production || { quantity: null, unit: "", rate: null, rateUnit: "" };
-  const listText = (value: unknown) => Array.isArray(value)
-    ? value.map(item => typeof item === "string" ? item : "").filter(Boolean).join("\n")
-    : "";
-  const targetText = (value: unknown) => Array.isArray(value) ? value.join(", ") : "";
-  const sourceMaterials = sessions.flatMap(session => (Array.isArray(session.materials) ? session.materials : []).map((value, index) => ({
-    session,
-    material: typeof value === "string"
-      ? { id: `${session.id}-${index}`, name: value, description: "", usage: "", quantity: "", unit: "" }
-      : value,
-  })));
-  const sourceMaterialsCount = sourceMaterials.length;
+export function projectAtlasSettingsAccessPolicyV1(snapshot: Pick<SettingsSnapshot, 'actorRole' | 'isNative'>) {
   const actorRole = snapshot.actorRole;
   return {
-    stage,
-    sessions,
-    materials,
-    fields: {
-      procurementFocus: listText(config.procurementFocus),
-      expectedActivities: listText(activities),
-      requestHints: listText(config.requestHints),
-      typicalDescription: String(config.typicalDescription || ""),
-      requirements: listText(config.requirements),
-      conditions: listText(config.conditions),
-      evidenceFocus: listText(config.evidenceFocus),
-      organizationContext: String(config.organizationContext || ""),
-      organizationRequest: String(config.organizationRequest || ""),
-      productionQuantity: String(production.quantity ?? ""),
-      productionUnit: String(production.unit ?? ""),
-      productionRate: String(production.rate ?? ""),
-      productionRateUnit: String(production.rateUnit ?? ""),
-      notifyOwner: targetText(config.notificationTargets?.owner),
-      notifyAdmin: targetText(config.notificationTargets?.admin),
-      notifyForeman: targetText(config.notificationTargets?.foreman),
-    },
     admin: actorRole === "owner" || actorRole === "admin",
     roleAdmin: actorRole === "owner" && !snapshot.isNative,
     contactWritable: ["owner", "admin", "developer"].includes(actorRole),
-    stageChoices: snapshot.stages.map(item => ({
-      item,
-      selected: String(item.id) === String(stage?.id ?? ""),
-      progress: Number(item.progress) || 0,
-      disabled: input.creatingStage,
-    })),
-    sourceMaterials,
-    workbenchSourceLabel: stage?.workbenchSource === "persisted"
-      ? "sessões salvas no banco"
-      : stage?.workbenchSource === "worker-defaults"
-        ? "catálogo original do Worker · somente leitura até salvar"
-        : "estado do Worker indisponível",
-    tabs: [
-      { key: "materials", label: "Materiais", active: input.activeTab === "materials", count: materials.length + sourceMaterialsCount },
-      { key: "activities", label: "Atividades esperadas", active: input.activeTab === "activities", count: sessions.length },
-      { key: "execution", label: "Execução", active: input.activeTab === "execution", count: null },
-    ],
-    usagePanelVisible: Boolean(input.usagePages.length && input.usageDensities.length && input.usageBusinessDefaults),
   };
 }
 
@@ -15042,6 +14961,77 @@ export function applyAtlasStageActivityNavigationV1(input: AtlasStageActivityNav
         lastAction: 'Fechou o modal de novo registro',
       });
   }
+}
+
+export type AtlasStageDedicatedPageNavigationCommandV1 =
+  | { type: 'open-stage-v9'; stageKey: unknown; label: string }
+  | { type: 'open-stage-v9-tab'; stageKey: unknown; key: string; label: string };
+
+export interface AtlasStageDedicatedPageNavigationInputV1 {
+  appStore: AtlasApplicationStore<AtlasApplicationStoreState>;
+  executionModel: { stages: Array<{ key?: unknown; name?: unknown }> };
+  demoActivities: Array<{ id?: unknown; name?: unknown }>;
+  command: AtlasStageDedicatedPageNavigationCommandV1;
+}
+
+/** Resolve stage context and own canonical navigation state for the dedicated stage page. */
+export function applyAtlasStageDedicatedPageNavigationCommandV1(input: AtlasStageDedicatedPageNavigationInputV1): void {
+  const { appStore, executionModel, demoActivities, command } = input;
+  const stage = executionModel.stages.find(item => String(item.key) === String(command.stageKey)) || executionModel.stages[0];
+  if (!stage) return;
+  const activity = demoActivities.find(item => item.name === stage.name)
+    || demoActivities.find(item => item.id === stage.key);
+  const context = {
+    selectedStageV9: String(stage.key || ''),
+    selectedStage: String(activity?.id || stage.key || ''),
+  };
+
+  if (command.type === 'open-stage-v9') {
+    appStore.set({
+      ...context,
+      view: 'stages',
+      activityDedicated: true,
+      stageActivityDedicatedV9: false,
+      selectedStageDetailTab: 'andamento',
+      lastAction: `Abriu a etapa ${command.label}`,
+    });
+    return;
+  }
+
+  if (command.key === 'agenda' || command.key === 'diario') {
+    appStore.set({
+      ...context,
+      view: command.key === 'agenda' ? 'agenda' : 'records',
+      activityDedicated: false,
+      stageActivityDedicatedV9: false,
+      selectedStageDetailTab: command.key,
+      lastAction: `Abriu ${command.label} da etapa`,
+    });
+    return;
+  }
+
+  appStore.set({
+    ...context,
+    selectedStageDetailTab: command.key,
+    lastAction: `Abriu a aba ${command.label} da etapa`,
+  });
+}
+
+export type AtlasWorkflowCanvasActionV1 =
+  | { kind: 'field-tree-saved'; activityName: string }
+  | { kind: 'activity-repositioned'; activityName: string };
+
+/** Record workflow-canvas actions in canonical application state. */
+export function applyAtlasWorkflowCanvasActionV1(input: {
+  appStore: AtlasApplicationStore<AtlasApplicationStoreState>;
+  action: AtlasWorkflowCanvasActionV1;
+}): void {
+  const { appStore, action } = input;
+  appStore.set({
+    lastAction: action.kind === 'field-tree-saved'
+      ? `Preencheu ${action.activityName}`
+      : `Reposicionou atividade ${action.activityName}`,
+  });
 }
 
 export type AtlasOperationalLoopRunInputV1 = Pick<AtlasLegacyViewLayerDependenciesV1,
@@ -16252,13 +16242,44 @@ export function buildAtlasActivityRecordSubmissionV1(input: {
   });
 }
 
+export interface AtlasAgendaEventFormValuesV1 {
+  id: string;
+  title: string;
+  stageKey: string;
+  activityId: string;
+  owner: string;
+  date: string;
+  start: string;
+  durationHours: string;
+  spanDays: string;
+  status: string;
+  relatedFrom: string;
+  notes: string;
+  materialIds: string[];
+  customStatus: string;
+  requirements: string;
+  materials: string;
+  cancellationReason: string;
+  cancellationConfirmed: boolean;
+  notificationOffsetMinutes: string;
+}
+
+export interface AtlasAgendaRecordFormValuesV1 {
+  eventId: string;
+  details: string;
+  date: string;
+  time: string;
+  responsible: string;
+  status: string;
+}
+
 export type AtlasAgendaEventPayloadV1 =
   | { ok: true; payload: OperationalAgendaEvent }
   | { ok: false; error: string };
 
 /** Build and validate an agenda form command before the component dispatches it. */
 export function buildAtlasAgendaEventPayloadV1(input: {
-  values: Record<string, unknown>;
+  values: AtlasAgendaEventFormValuesV1;
   stages: OperationalStage[];
   existingEvents: OperationalAgendaEvent[];
   createId(): string;
@@ -16584,156 +16605,6 @@ export function projectAtlasAgendaDataRefreshV1(input: AtlasAgendaDataRefreshInp
     relatedFrom: focusedEvent?.relatedFrom || input.previousRelatedFrom,
     detailMode: input.detailMode,
     notificationsEnabled: input.notificationsEnabled,
-  };
-}
-
-export interface AtlasAgendaPageProjectionInputV1 {
-  events: readonly OperationalAgendaEvent[];
-  stages: readonly OperationalStage[];
-  materials: readonly OperationalMaterial[];
-  week: string;
-  selectedDate: string;
-  editor: OperationalAgendaEvent | null | false;
-  relatedFrom: string;
-  statusPriority: readonly string[];
-  statusLabels: Readonly<Record<string, string>>;
-}
-
-export interface AtlasAgendaCalendarEventProjectionV1 {
-  event: OperationalAgendaEvent;
-  startHour: number;
-  durationHours: number;
-  spanDays: number;
-  tone: 'done' | 'warning' | 'planned';
-  heightPixels: number;
-  widthPercent: number;
-  widthOffsetPixels: number;
-  startLabel: string;
-  durationLabel: string;
-  spanLabel: string;
-}
-
-export interface AtlasAgendaPageProjectionV1 {
-  dayNavigation: Array<{ date: string; weekdayLabel: string; dayOfMonth: number; eventCount: number; selected: boolean }>;
-  orderedEvents: OperationalAgendaEvent[];
-  selected: OperationalAgendaEvent | null;
-  editing: boolean;
-  stage: OperationalStage | undefined;
-  stageName: string;
-  stageOptions: Array<{ stage: OperationalStage; selected: boolean }>;
-  activityOptions: Array<{ activity: OperationalActivity; selected: boolean }>;
-  materialOptions: Array<{ material: OperationalMaterial; selected: boolean }>;
-  timeLabels: Array<{ hour: number; label: string }>;
-  statusGroups: Array<{ key: string; title: string; events: OperationalAgendaEvent[] }>;
-  calendarDays: Array<{ date: string; label: string; eventCount: number; events: AtlasAgendaCalendarEventProjectionV1[] }>;
-}
-
-/** Resolve agenda form resources when its stage selection changes. */
-export function projectAtlasAgendaResourceOptionsV1(input: {
-  stages: readonly OperationalStage[];
-  materials: readonly OperationalMaterial[];
-  stageName: string;
-  selectedActivityId?: string;
-  selectedMaterialIds?: readonly string[];
-}) {
-  const selectedMaterialIds = input.selectedMaterialIds || [];
-  const stage = input.stages.find(item => item.name === input.stageName);
-  return {
-    activities: (stage?.activities || []).map(activity => ({
-      activity,
-      selected: input.selectedActivityId === activity.id,
-    })),
-    materials: input.materials.filter(item => item.stageName === input.stageName).map(material => ({
-      material,
-      selected: selectedMaterialIds.includes(material.id),
-    })),
-  };
-}
-
-/** Project the weekly agenda view, status groups, related resources, and calendar geometry. */
-export function projectAtlasAgendaPageV1(input: AtlasAgendaPageProjectionInputV1): AtlasAgendaPageProjectionV1 {
-  const iso = (date: Date): string => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-  const start = new Date(`${input.week}T12:00:00`);
-  const days = Array.from({ length: 7 }, (_, index) => {
-    const day = new Date(start);
-    day.setDate(day.getDate() + index);
-    return day;
-  });
-  const keys = days.map(iso);
-  const weekEvents = input.events.filter(event => keys.includes(event.date));
-  const selected = input.editor && typeof input.editor === 'object' ? input.editor : null;
-  const relatedStageName = input.events.find(event => event.id === input.relatedFrom)?.stageName;
-  const stage = selected
-    ? input.stages.find(item => item.name === selected.stageName)
-    : input.stages.find(item => item.name === relatedStageName) || input.stages[0];
-  const stageName = selected?.stageName || stage?.name || '';
-  const orderedEvents = [...weekEvents].sort((left, right) => `${left.date}T${left.start || '00:00'}`.localeCompare(`${right.date}T${right.start || '00:00'}`));
-  const normalizeStatus = (value: string): string => value.toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[̀-ͯ]/g, '').replaceAll('_', ' ').trim();
-  const statusKeys = [...new Set(orderedEvents.map(event => normalizeStatus(event.status)))].sort((left, right) => {
-    const leftIndex = input.statusPriority.indexOf(left), rightIndex = input.statusPriority.indexOf(right);
-    return (leftIndex < 0 ? input.statusPriority.length : leftIndex)
-      - (rightIndex < 0 ? input.statusPriority.length : rightIndex)
-      || left.localeCompare(right, 'pt-BR');
-  });
-  const statusGroups = statusKeys.map(key => ({
-    key,
-    title: input.statusLabels[key] || key,
-    events: orderedEvents.filter(event => normalizeStatus(event.status) === key),
-  }));
-  const dayNavigation = days.map(day => {
-    const date = iso(day);
-    return {
-      date,
-      weekdayLabel: day.toLocaleDateString('pt-BR', { weekday: 'short' }),
-      dayOfMonth: day.getDate(),
-      eventCount: weekEvents.filter(event => event.date === date).length,
-      selected: date === input.selectedDate,
-    };
-  });
-  const stageOptions = input.stages.map(item => ({ stage: item, selected: selected ? selected.stageName === item.name : stage?.id === item.id }));
-  const resources = projectAtlasAgendaResourceOptionsV1({
-    stages: input.stages, materials: input.materials, stageName,
-    selectedActivityId: selected?.activityId, selectedMaterialIds: selected?.materialIds,
-  });
-  const timeLabels = [0, 4, 8, 12, 16, 20].map(hour => ({ hour, label: `${String(hour).padStart(2, '0')}:00` }));
-  const calendarDays = days.map(day => {
-    const date = iso(day);
-    const events = orderedEvents.filter(event => event.date === date).map(event => {
-      const [hour, minute] = String(event.start || '08:00').split(':').map(Number);
-      const startHour = hour + minute / 60;
-      const durationHours = Math.max(0.5, Math.min(24 - startHour, Number(event.durationHours) || 1));
-      const spanDays = Math.min(Math.max(1, Number(event.spanDays) || 1), 7 - day.getDay());
-      const tone: AtlasAgendaCalendarEventProjectionV1['tone'] = /concl/i.test(event.status) ? 'done' : /pend|risco|bloq/i.test(event.status) ? 'warning' : 'planned';
-      return {
-        event, startHour, durationHours, spanDays, tone,
-        heightPixels: Math.max(24, durationHours * 48),
-        widthPercent: spanDays * 100,
-        widthOffsetPixels: (spanDays - 1) * 8,
-        startLabel: String(event.start || ''),
-        durationLabel: `${durationHours} h`,
-        spanLabel: `${spanDays} dia(s)`,
-      };
-    });
-    return {
-      date,
-      label: day.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' }),
-      eventCount: events.length,
-      events,
-    };
-  });
-  return {
-    dayNavigation,
-    orderedEvents,
-    selected,
-    editing: input.editor !== false,
-    stage,
-    stageName,
-    stageOptions,
-    activityOptions: resources.activities,
-    materialOptions: resources.materials,
-    timeLabels,
-    statusGroups,
-    calendarDays,
   };
 }
 
@@ -17913,6 +17784,7 @@ export function createAtlasStageOperationalModelV1(input: AtlasStageOperationalM
 
 export interface AtlasDashboardStageControlProgramInputV1 {
   ViewLayer: AtlasPlanningViewLayer;
+  documentRef?: Document;
   appStore: {
     get(): Record<string, any>;
     set(patch: Record<string, any>): unknown;
@@ -17970,7 +17842,7 @@ export function projectAtlasDashboardStageControlRowsV1(
 /** Own Dashboard stage catalog loading and worker-page navigation effects. */
 export function installAtlasDashboardStageControlV1(input: AtlasDashboardStageControlProgramInputV1): boolean {
   const globalRef = input.globalRef || globalThis;
-  const viewLayerTarget = input.ViewLayer as unknown as EventTarget;
+  const viewLayerTarget = input.documentRef || globalRef.document;
   const connectedViewLayers = new WeakSet<object>();
   installAtlasDashboardStageControlElementV1({
     ViewLayer: input.ViewLayer as any,
@@ -19061,43 +18933,6 @@ export function projectAtlasRepasseDestinationStageOptionsV1(
   return stages.map(stage => ({ stage, selected: stage.name === chosen }));
 }
 
-export interface AtlasRepassePageProjectionV1 extends AtlasRepasseWorkspaceSummaryV1 {
-  reasonOptions: RepasseOperations['reasons'];
-  registerableSaleOptions: Array<{ id: string; label: string }>;
-  saleEditors: Array<ReturnType<typeof projectAtlasRepasseSaleEditorV1>>;
-  destinationStageOptions: AtlasRepasseDestinationStageOptionV1[];
-  entryDate: string;
-}
-
-/** Project the repasse route's report joins and form catalogs beside its KPIs. */
-export function projectAtlasRepassePageV1(
-  data: RepasseOperations,
-  reports: readonly RepasseReport[],
-  selectedSaleId: string,
-  now: Date = new Date(),
-): AtlasRepassePageProjectionV1 {
-  const summary = projectAtlasRepasseWorkspaceSummaryV1(data, reports, selectedSaleId);
-  const reportsBySale = new Map(reports.map(report => [report.saleId, report]));
-  const reasonOrder: Record<string, number> = { signal: 0, intermediate: 1, monthly: 2 };
-  const reasonOptions = data.reasons.filter(reason => reason.active).sort((left, right) =>
-    (reasonOrder[left.id] ?? 9) - (reasonOrder[right.id] ?? 9));
-  return {
-    ...summary,
-    reasonOptions,
-    registerableSaleOptions: summary.registerableSales.map(sale => ({
-      id: sale.id,
-      label: `${sale.lot || 'Lote'} · ${sale.client || 'Cliente'} · ${sale.broker || 'Sem corretor'}`,
-    })),
-    saleEditors: data.sales.map(sale => projectAtlasRepasseSaleEditorV1(
-      sale,
-      reportsBySale.get(sale.id),
-      data.stages,
-    )),
-    destinationStageOptions: projectAtlasRepasseDestinationStageOptionsV1(data.stages),
-    entryDate: now.toISOString().slice(0, 10),
-  };
-}
-
 export interface AtlasRepasseSaleConfigurationV1 {
   basePriceCents: number;
   status: string;
@@ -19193,47 +19028,6 @@ export function projectAtlasBrokerDirectoryProfilesV1(
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-}
-
-/** Keep the broker directory's search limited to the visible name and lot fields. */
-export function projectAtlasBrokerDirectoryVisibleProfilesV1(
-  profiles: readonly AtlasBrokerDirectoryProfileV1[],
-  query: unknown,
-): AtlasBrokerDirectoryProfileV1[] {
-  const search = String(query || '').trim().toLocaleLowerCase('pt-BR');
-  return profiles.filter((profile) =>
-    !search || `${profile.name} ${profile.lots.join(' ')}`.toLocaleLowerCase('pt-BR').includes(search),
-  );
-}
-
-export interface AtlasBrokerDirectoryPageProjectionV1 {
-  profiles: AtlasBrokerDirectoryProfileV1[];
-  visibleProfiles: AtlasBrokerDirectoryProfileV1[];
-  selectedProfile: AtlasBrokerDirectoryProfileV1 | null;
-  selectedSales: Array<{ sale: RepasseSale; receivedCents: number }>;
-}
-
-/** Resolve the selected broker and join its portfolio rows for the directory detail page. */
-export function projectAtlasBrokerDirectoryPageV1(input: {
-  data: RepasseOperations | null;
-  reports: readonly RepasseReport[];
-  profileRecords: readonly BrokerProfile[];
-  query: string;
-  selectedBrokerId: string;
-}): AtlasBrokerDirectoryPageProjectionV1 {
-  const profiles = projectAtlasBrokerDirectoryProfilesV1(input.data, input.reports, input.profileRecords);
-  const selectedProfile = profiles.find(profile => profile.id === input.selectedBrokerId) || null;
-  return {
-    profiles,
-    visibleProfiles: projectAtlasBrokerDirectoryVisibleProfilesV1(profiles, input.query),
-    selectedProfile,
-    selectedSales: selectedProfile
-      ? selectedProfile.sales.map(sale => ({
-        sale,
-        receivedCents: selectedProfile.report.find(report => report.saleId === sale.id)?.receivedCents || 0,
-      }))
-      : [],
-  };
 }
 
 /** Project archive metadata; file bytes live in the persistent document service. */
@@ -19389,8 +19183,6 @@ export interface ProjectDocumentColumn {
   createdAt: string;
 }
 
-export type AtlasProjectDocumentsSelectionV1 = { type: "cell" | "row" | "column"; id: string; field: string };
-
 export function projectAtlasDocumentFieldValueV1(row: ProjectDocument, field: string): string {
   if (Object.prototype.hasOwnProperty.call(row.properties, field)) return row.properties[field] || "";
   switch (field) {
@@ -19473,67 +19265,6 @@ export function buildAtlasProjectDocumentCellMutationV1(input: {
     default: return null;
   }
   return payload;
-}
-
-export function projectAtlasProjectDocumentsPageV1(input: {
-  documents: ProjectDocument[] | null;
-  columns: ProjectDocumentColumn[];
-  query: string;
-  category: string;
-  fileFilter: string;
-  hiddenColumns: string[];
-  editId: string;
-  selectedCell: { id: string; field: string } | null;
-  sheetSelection: AtlasProjectDocumentsSelectionV1 | null;
-  baseFields: Array<[keyof ProjectDocument, string]>;
-}) {
-  const documents = input.documents || [];
-  const query = input.query.toLocaleLowerCase("pt-BR");
-  const visibleDocuments = documents.filter(row =>
-    (input.category === "all" || row.category === input.category)
-    && (input.fileFilter === "all" || (input.fileFilter === "attached" ? Boolean(row.fileName) : !row.fileName))
-    && (!query || [row.title, row.category, row.code, row.issuer, row.description, row.fileName, ...Object.values(row.properties || {})]
-      .some(value => String(value || "").toLocaleLowerCase("pt-BR").includes(query))));
-  const columns = [...input.baseFields.map(([id, label]) => ({ id, label })), ...input.columns]
-    .filter(column => !input.hiddenColumns.includes(column.id));
-  const editing = documents.find(row => row.id === input.editId);
-  const selection = input.sheetSelection;
-  const selectedDocument = selection && selection.type !== "column"
-    ? documents.find(row => row.id === selection.id)
-    : undefined;
-  const selectedColumn = selection?.type === "column" ? columns.find(column => column.id === selection.field) : undefined;
-  const selectedCellRow = input.selectedCell ? documents.find(row => row.id === input.selectedCell?.id) : undefined;
-  const selectedCellField = input.selectedCell?.field || "";
-  const selectedCellLabel = columns.find(column => column.id === selectedCellField)?.label || selectedCellField;
-  const selectedCellEditor = selectedCellRow && selectedCellField
-    ? { row: selectedCellRow, field: selectedCellField, label: selectedCellLabel, value: projectAtlasDocumentFieldValueV1(selectedCellRow, selectedCellField) }
-    : null;
-  const selectionLabel = selection?.type === "row"
-    ? `Linha: ${selectedDocument?.title || selection.id}`
-    : selection?.type === "column"
-      ? `Coluna: ${selectedColumn?.label || selection.field}`
-      : selection?.type === "cell"
-        ? `${selectedDocument?.title || selection.id} · ${selectedCellLabel}`
-        : "Selecione uma célula · Enter edita · Delete limpa · setas navegam";
-  const clearable = selection?.type === "cell" && !["title", "category", "createdAt", "updatedAt", "fileName"].includes(selection.field);
-  const canOpen = selection?.type === "cell" && selection.field === "fileName" && Boolean(selectedDocument?.fileName);
-  const canEdit = selection?.type === "row" || selection?.type === "cell";
-  const canDeleteRow = selection?.type === "row" && Boolean(selectedDocument && !isAtlasProjectDocumentProtectedV1(selectedDocument));
-  return {
-    documents,
-    visibleDocuments,
-    editing,
-    columns,
-    categoryCount: new Set(documents.map(row => row.category)).size,
-    selectionLabel,
-    clearable,
-    canOpen,
-    canEdit,
-    canDeleteRow,
-    selectedDocument,
-    selectedColumn,
-    selectedCellEditor,
-  };
 }
 
 export interface AtlasReportBuilderDraftV1 {
@@ -20440,6 +20171,221 @@ export interface AtlasCommissionDealV1 {
   stage: string;
 }
 
+export interface AtlasCommercialContractRecordV1 extends AtlasCommissionDealV1 {
+  seller?: string;
+  sellerDocument?: string;
+  lotArea?: string | number;
+  email?: string;
+  phone?: string;
+  attachments?: Array<{ name: string; type?: string; size?: number }>;
+  inference?: Record<string, unknown> | null;
+  createdBy?: string;
+}
+
+export interface AtlasContractsPageStateV1 extends Pick<AtlasApplicationStoreState,
+  'commissionEntries' | 'commissionHiddenIds' | 'contractStatusOverrides' | 'contractFilters'> {}
+
+export interface AtlasContractsPageProjectionV1 {
+  deals: AtlasCommercialContractRecordV1[];
+  visible: AtlasCommercialContractRecordV1[];
+  filters: { query: string; status: string };
+  totalValue: number;
+  confirmedCount: number;
+  paymentCount: number;
+  statuses: readonly string[];
+}
+
+export const ATLAS_CONTRACT_STATUS_OPTIONS_V1: readonly string[] = Object.freeze([
+  'Reserva', 'Em análise', 'Proposta', 'Assinado', 'Compra confirmada',
+]);
+
+/** Join the canonical commercial catalog with local entries and project the contract ledger. */
+export function projectAtlasContractsPageV1(input: {
+  scope: Pick<AtlasCommercialScopeV1, 'deals'>;
+  state: AtlasContractsPageStateV1;
+  brlToNumber(value: unknown): number;
+}): AtlasContractsPageProjectionV1 {
+  const hiddenIds = new Set(input.state.commissionHiddenIds || []);
+  const localById = new Map((input.state.commissionEntries || []).map(entry => [entry.id, entry]));
+  const merged = new Map<string, AtlasCommercialContractRecordV1>();
+
+  for (const deal of input.scope.deals) {
+    if (hiddenIds.has(deal.id)) continue;
+    merged.set(deal.id, { ...deal, ...(localById.get(deal.id) || {}) });
+  }
+  for (const entry of input.state.commissionEntries || []) {
+    if (!hiddenIds.has(entry.id) && !merged.has(entry.id)) merged.set(entry.id, { ...entry });
+  }
+
+  const overrides = input.state.contractStatusOverrides || {};
+  const deals = [...merged.values()].map(deal => ({
+    ...deal,
+    status: overrides[deal.id] || deal.status || 'Proposta',
+  }));
+  const filters = {
+    query: String(input.state.contractFilters?.query || ''),
+    status: String(input.state.contractFilters?.status || 'all'),
+  };
+  const query = filters.query.toLocaleLowerCase('pt-BR');
+  const visible = deals.filter(deal =>
+    (!query || JSON.stringify(deal).toLocaleLowerCase('pt-BR').includes(query))
+      && (filters.status === 'all' || deal.status === filters.status),
+  );
+  const totalValue = visible.reduce((sum, deal) => {
+    const value = input.brlToNumber(deal.value);
+    return sum + (Number.isFinite(value) ? value : 0);
+  }, 0);
+
+  return Object.freeze({
+    deals,
+    visible,
+    filters,
+    totalValue,
+    confirmedCount: visible.filter(deal => deal.status === 'Compra confirmada').length,
+    paymentCount: visible.filter(deal => Boolean(deal.payment)).length,
+    statuses: ATLAS_CONTRACT_STATUS_OPTIONS_V1,
+  });
+}
+
+export type AtlasContractsPageCommandV1 =
+  | { type: "filter"; name: "query" | "status"; value: string }
+  | { type: "clear-filters" }
+  | { type: "new" }
+  | { type: "open"; contractId: string }
+  | { type: "edit"; deal: AtlasCommercialContractRecordV1; source?: "row" | "button" }
+  | { type: "confirm-purchase"; deal: Pick<AtlasCommercialContractRecordV1, "id" | "status"> }
+  | { type: "export" };
+
+export interface AtlasContractsPageCommandResultV1 {
+  patch: Partial<AtlasApplicationStoreState>;
+  notification?: { message: string; tone: "success" };
+}
+
+/** Apply contract-ledger interactions as explicit app-store commands. */
+export function createAtlasContractsPageCommandV1(input: {
+  state: AtlasApplicationStoreState;
+  command: AtlasContractsPageCommandV1;
+}): AtlasContractsPageCommandResultV1 | null {
+  const { state, command } = input;
+  switch (command.type) {
+    case "filter":
+      return {
+        patch: {
+          contractFilters: { ...(state.contractFilters || {}), [command.name]: command.value },
+          lastAction: `Filtrou contratos por ${command.name}`,
+        },
+      };
+    case "clear-filters":
+      return { patch: { contractFilters: { query: "", status: "all" }, lastAction: "Limpou filtros de contratos" } };
+    case "new":
+      return { patch: {
+        view: "contracts", proposalFormOpen: true, contractEditing: null,
+        selectedCommissionProposal: null, selectedCommissionContract: null,
+        lastAction: "Abriu novo contrato",
+      } };
+    case "open":
+      return { patch: {
+        view: "contracts", proposalFormOpen: false, contractEditing: null,
+        selectedCommissionProposal: null, selectedCommissionContract: command.contractId,
+        lastAction: `Abriu contrato ${command.contractId}`,
+      } };
+    case "edit":
+      return { patch: {
+        view: "contracts", proposalFormOpen: true, contractEditing: command.deal,
+        selectedCommissionProposal: null, selectedCommissionContract: null,
+        lastAction: command.source === "row"
+          ? `Abriu formulário do contrato ${command.deal.id}`
+          : `Editou contrato ${command.deal.id}`,
+      } };
+    case "confirm-purchase": {
+      if (!command.deal.id || command.deal.status === "Compra confirmada") return null;
+      const id = command.deal.id;
+      return {
+        patch: {
+          view: "contracts", proposalFormOpen: false, contractEditing: null,
+          selectedCommissionProposal: null, selectedCommissionContract: null,
+          contractStatusOverrides: { ...(state.contractStatusOverrides || {}), [id]: "Compra confirmada" },
+          lastAction: `Confirmou compra ${id}`,
+        },
+        notification: { message: `Compra ${id} confirmada. O contrato voltou para a listagem.`, tone: "success" },
+      };
+    }
+    case "export":
+      return { patch: { lastAction: "Exportou contratos e recibos" } };
+  }
+}
+
+export type AtlasProposalFormSubmissionResultV1 =
+  | { accepted: false; message: string }
+  | {
+      accepted: true;
+      entry: AtlasCommercialContractRecordV1;
+      patch: Partial<AtlasApplicationStoreState>;
+      notification: { message: string; tone: 'success' };
+    };
+
+/** Validate and normalize a proposal form into the application-state transition. */
+export function createAtlasProposalFormSubmissionV1(input: {
+  state: AtlasApplicationStoreState;
+  scope: AtlasCommercialScopeV1;
+  values: Record<string, unknown>;
+  files: readonly { name: string; type: string; size: number }[];
+  inference?: Record<string, unknown> | null;
+  brlToNumber(value: unknown): number;
+  formatBRL(value: number): string;
+  now?: Date;
+}): AtlasProposalFormSubmissionResultV1 {
+  const value = (name: string, fallback = '') => String(input.values[name] ?? fallback);
+  const profile = input.scope.profiles.find(item => item.id === value('profile')) || input.scope.profile;
+  if (!profile)
+    return { accepted: false, message: 'Associe este login a um perfil comercial antes de criar propostas.' };
+  if (input.files.some(file => file.size > 12 * 1024 * 1024))
+    return { accepted: false, message: 'Cada anexo deve ter no máximo 12 MB.' };
+
+  const state = input.state;
+  const now = input.now || new Date();
+  const editing = state.contractEditing;
+  const id = editing?.id || `PROP-LOCAL-${now.getTime().toString().slice(-6)}`;
+  const amount = input.brlToNumber(value('value'));
+  const rate = Number(value('rate')) || 0;
+  const entry: AtlasCommercialContractRecordV1 = {
+    id,
+    profile: profile.id,
+    seller: value('seller') || 'Aliança Park Desenvolvimento Imobiliário Ltda.',
+    sellerDocument: value('sellerDocument'),
+    lot: value('lot').toUpperCase(),
+    lotArea: value('lotArea'),
+    quadra: value('quadra'),
+    client: value('client'),
+    cpf: value('cpf') || 'Não informado',
+    email: value('email'),
+    phone: value('phone'),
+    purpose: value('purpose', 'Moradia') || 'Moradia',
+    status: editing?.status || 'Proposta',
+    value: input.formatBRL(amount),
+    commission: input.formatBRL((amount * rate) / 100),
+    rate: `${rate.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}%`,
+    date: now.toLocaleDateString('pt-BR'),
+    payment: value('payment'),
+    stage: 'Proposta cadastrada',
+    attachments: input.files.map(file => ({ name: file.name, type: file.type, size: file.size })),
+    inference: input.inference || null,
+    createdBy: state.currentActor?.uid || '',
+  };
+  const existingEntries = (state.commissionEntries || []).filter(item => item.id !== id);
+  return {
+    accepted: true,
+    entry,
+    patch: {
+      commissionEntries: [entry, ...existingEntries],
+      proposalFormOpen: false,
+      contractEditing: null,
+      lastAction: `Salvou proposta ${id}`,
+    },
+    notification: { message: 'Proposta salva na carteira individual.', tone: 'success' },
+  };
+}
+
 export interface AtlasCommissionNegotiationTransactionV1 extends Record<string, unknown> {
   label?: string;
   type?: string;
@@ -20697,65 +20643,6 @@ export interface AtlasLotBoardRow extends RepassePriceCatalogEntry {
   hasControl: boolean;
 }
 
-export interface AtlasLotBoardPageProjectionV1 {
-  filteredRows: AtlasLotBoardRow[];
-  totalValue: number;
-  controlledCount: number;
-  selectedRow: AtlasLotBoardRow | undefined;
-  activeRow: AtlasLotBoardRow | undefined;
-  quadrants: string[];
-  sellerNames: string[];
-  pickerMatches: AtlasLotBoardRow[];
-  pickerRows: AtlasLotBoardRow[];
-  pickerPage: number;
-  pickerPages: number;
-  markerMatches: AtlasLotBoardRow[];
-}
-
-/** Project catalog filters, toolbar totals and lot-picker paging for Lotes. */
-export function projectAtlasLotBoardPageV1(input: {
-  rows: readonly AtlasLotBoardRow[];
-  search: string;
-  quadra: string;
-  status: string;
-  payment: string;
-  seller: string;
-  selectedKey: string;
-  activeLotKey: string;
-  pickerQuadra: string;
-  pickerPage: number;
-  markerLotNumber: number;
-}): AtlasLotBoardPageProjectionV1 {
-  const query = input.search.trim().toLocaleLowerCase('pt-BR');
-  const filteredRows = input.rows.filter(row =>
-    (!query || `${row.label} ${row.lot} ${row.quadra}`.toLocaleLowerCase('pt-BR').includes(query)) &&
-    (!input.quadra || row.quadra === input.quadra) &&
-    (!input.status || row.status === input.status) &&
-    (!input.payment || row.paymentStatus === input.payment) &&
-    (!input.seller || row.sellerName === input.seller),
-  );
-  const pickerMatches = input.rows.filter(row =>
-    (!input.pickerQuadra || row.quadra === input.pickerQuadra) &&
-    (!input.markerLotNumber || row.lot === input.markerLotNumber),
-  );
-  const pickerPages = Math.max(1, Math.ceil(pickerMatches.length / 12));
-  const pickerPage = Math.max(0, Math.min(input.pickerPage, pickerPages - 1));
-  return {
-    filteredRows,
-    totalValue: input.rows.reduce((sum, row) => sum + row.price, 0),
-    controlledCount: input.rows.filter(row => row.hasControl).length,
-    selectedRow: input.rows.find(row => row.label === input.selectedKey),
-    activeRow: input.rows.find(row => row.label === input.activeLotKey),
-    quadrants: [...new Set(input.rows.map(row => row.quadra))].sort(),
-    sellerNames: [...new Set(input.rows.map(row => row.sellerName).filter(Boolean))].sort(),
-    pickerMatches,
-    pickerRows: pickerMatches.slice(pickerPage * 12, (pickerPage + 1) * 12),
-    pickerPage,
-    pickerPages,
-    markerMatches: input.rows.filter(row => row.lot === input.markerLotNumber),
-  };
-}
-
 export interface AtlasMapOperationalStatus {
   key?: string;
   eyebrow: string;
@@ -20963,7 +20850,7 @@ export interface PublicMapLotWidgetContext extends PublicMapLotFacts {
 
 export interface PublicMapProjectionPoint { u: number; v: number }
 export interface PublicMapProjectedLot { lotId: string; projected: PublicMapProjectionPoint[]; greenMapping: PublicMapGreenLotMapping | null }
-export interface PublicMapGreenLotMapping extends Record<string, unknown> { lotId: string; u: number; v: number; greenPolygonId?: string }
+export interface PublicMapGreenLotMapping extends Record<string, unknown> { lotId: string; number?: unknown; u: number; v: number; greenPolygonId?: string }
 export interface PublicMapPdfMarker extends Record<string, unknown> { lotId: string; u: number; v: number }
 export interface PublicMapProjectedCommonArea { sourceId: string; projected: PublicMapProjectionPoint[] }
 export interface PublicMapProjectedBounds { minU: number; maxU: number; minV: number; maxV: number }
@@ -21016,6 +20903,30 @@ export interface AtlasAdminMasterplanImageRectV3 {
   height: number;
 }
 
+export interface AtlasAdminMasterplanPdfLotLabelInputV1 {
+  lotId?: string;
+  number?: string | number;
+  areaM2?: number;
+  u: number;
+  v: number;
+}
+
+export interface AtlasAdminMasterplanPdfLotLabelPlacementV1 extends AtlasAdminMasterplanPdfLotLabelInputV1 {
+  x: number;
+  y: number;
+}
+
+export interface AtlasAdminMasterplanOverlayLayoutV1 {
+  fit: { width: number; height: number; left: number; top: number };
+  transform: { leftPercent: number; topPercent: number; widthPercent: number; heightPercent: number; rotationDegrees: number };
+  artwork: AtlasAdminMasterplanImageRectV3;
+}
+
+export interface AtlasAdminMasterplanRasterSizeV1 {
+  width: number;
+  height: number;
+}
+
 export interface AtlasAdminMasterplanZoomInput {
   sceneZoom: unknown;
   publicZoom: unknown;
@@ -21051,6 +20962,61 @@ export function projectAtlasMasterplanPdfImageRectV3(widthValue: number, heightV
     width: artwork.crop.width * artwork.sourceScale * scale,
     height: artwork.crop.height * artwork.sourceScale * scale,
   };
+}
+
+/** Project official lot anchors into the PDF label surface and omit out-of-frame points. */
+export function projectAtlasMasterplanPdfLotLabelPlacementsV1(input: {
+  labels: readonly AtlasAdminMasterplanPdfLotLabelInputV1[];
+  legacyWidth: number;
+  legacyHeight: number;
+  designWidth: number;
+}): AtlasAdminMasterplanPdfLotLabelPlacementV1[] | null {
+  const legacy = projectAtlasMasterplanPdfImageRectV3(input.legacyWidth, input.legacyHeight);
+  if (!(legacy.width > 0) || !(legacy.height > 0) || !(input.designWidth > 0)) return null;
+  const designHeight = input.designWidth * input.legacyHeight / input.legacyWidth;
+  return input.labels.flatMap(label => {
+    const x = ((label.u * input.legacyWidth - legacy.left) / legacy.width) * input.designWidth;
+    const y = ((label.v * input.legacyHeight - legacy.top) / legacy.height) * designHeight;
+    if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > input.designWidth || y < 0 || y > designHeight) return [];
+    return [{ ...label, x, y }];
+  });
+}
+
+/** Project the square PDF overlay, calibrated transform, and artwork rectangle for a viewport. */
+export function projectAtlasAdminMasterplanOverlayLayoutV1(input: {
+  width: number;
+  height: number;
+  frame: PublicMapFrame;
+}): AtlasAdminMasterplanOverlayLayoutV1 | null {
+  if (!input.width || !input.height) return null;
+  const side = Math.max(input.width, input.height);
+  const frame = input.frame;
+  return {
+    fit: {
+      width: side,
+      height: side,
+      left: (input.width - side) / 2,
+      top: (input.height - side) / 2,
+    },
+    transform: {
+      leftPercent: frame.left * 100,
+      topPercent: frame.top * 100,
+      widthPercent: frame.width * 100,
+      heightPercent: frame.height * 100,
+      rotationDegrees: Number(frame.rotation || 0),
+    },
+    artwork: projectAtlasMasterplanPdfImageRectV3(side * frame.width, side * frame.height),
+  };
+}
+
+/** Bound the original PDF raster width while preserving its source aspect ratio. */
+export function projectAtlasAdminMasterplanRasterSizeV1(input: {
+  naturalWidth: number;
+  naturalHeight: number;
+}): AtlasAdminMasterplanRasterSizeV1 | null {
+  if (!input.naturalWidth) return null;
+  const width = Math.min(atlasAdminMasterplanOverlayPolicy.canvasMaxWidth, input.naturalWidth);
+  return { width, height: Math.round(width * input.naturalHeight / input.naturalWidth) };
 }
 
 /** Compatibility artwork contract used by the administrative MapScene composer. */
@@ -22064,7 +22030,7 @@ export interface PublicMapLotMarkerRenderInput {
   lotId: string;
   lotIndex: number;
   placement: PublicMapLotMarkerPlacement | null;
-  greenMapping?: Pick<PublicMapGreenLotMapping, 'u' | 'v'> | null;
+  greenMapping?: Pick<PublicMapGreenLotMapping, 'u' | 'v' | 'number'> | null;
   usesCanonicalTraceMarkers: boolean;
   manualPosition?: unknown;
 }
@@ -22081,6 +22047,7 @@ export interface PublicMapLotMarkerRenderModel {
 export interface PublicMapFallbackLotMarkerInput {
   lotId: string;
   relativePosition: PublicMapProjectionPoint;
+  pdfNumber?: unknown;
   frame: PublicMapFrame;
   fallbackIndex: number;
   usesGreenLotMapping: boolean;
@@ -22461,8 +22428,6 @@ export function createAtlasMapSceneGeoreferenceBindingsV1(): ReturnType<typeof c
   });
 }
 
-const ATLAS_MAP_WORKER_CONTEXT_CHAT_VERSION_V1 = 'worker-chat-lot-development-v1&ts-settings-ai-agenda-v1&ts-worker-context-chat-inference-v1&ts-worker-chat-observation-controller-v1&ts-worker-chat-submit-orchestration-v1&ts-worker-chat-voice-program-v1&ts-worker-chat-response-persistence-v1&ts-worker-chat-record-review-v1&ts-worker-chat-map-context-ts-owner-v1&ts-worker-chat-tab-state-ts-owner-v1&ts-worker-chat-attachment-renderer-owner-v1&ts-worker-chat-record-drawer-owner-v1&ts-worker-chat-quick-actions-owner-v1&ts-worker-chat-record-saved-event-owner-v1&ts-worker-chat-pending-state-owner-v1&ts-worker-chat-attachment-removal-owner-v1&worker-chat-visual-clarification-ts-owner-v1&ts-chat-component-controller-v1&ts-chat-component-actions-v1&ts-chat-component-shell-mount-v1&ts-chat-composer-state-component-v1&ts-chat-conversation-state-component-v1&ts-chat-inference-context-program-v1&ts-chat-response-commit-program-owner-v1&ts-chat-service-request-lifecycle-program-owner-v1&ts-chat-observation-program-owner-v2&ts-chat-map-context-reader-v1&ts-chat-storage-catalog-v1&ts-chat-inference-controller-v1&ts-chat-operational-controller-v3&ts-worker-chat-runtime-composition-v1&ts-worker-chat-host-runtime-owner-v2&ts-worker-chat-submit-runtime-owner-v1&ts-worker-chat-component-state-program-v7&ts-worker-chat-record-saved-runtime-v1&ts-worker-chat-bindings-runtime-v1&ts-worker-chat-host-adapters-v1&ts-worker-chat-host-storage-ports-v1';
-
 /** Compose the shared map scene through typed component owners for every document entry. */
 function createAtlasMapSceneComposerV1(): Parameters<typeof createAtlasMapSceneElementV1>[0]['composeMapSceneV1'] {
   const georeferenceBindingsV1 = createAtlasMapSceneGeoreferenceBindingsV1();
@@ -22470,7 +22435,6 @@ function createAtlasMapSceneComposerV1(): Parameters<typeof createAtlasMapSceneE
     MapScene,
     dependencies,
     georeferenceBindings: georeferenceBindingsV1,
-    loadWorkerContextChat: () => import(new URL(`../../worker-context-chat.mjs?v=${ATLAS_MAP_WORKER_CONTEXT_CHAT_VERSION_V1}`, import.meta.url).href),
     importThree: () => import('three'),
     importGltfLoader: () => import('three/addons/loaders/GLTFLoader.js'),
   });
@@ -22646,6 +22610,64 @@ export async function loadAdminDwgGeoreferenceV1(
   return geo as AdminDwgGeoreferenceDocument;
 }
 
+export interface AtlasAdminStandaloneAerialAssetLoaderInputV1 {
+  lotTraceUrl: string;
+  roadTraceUrl: string;
+  loadGeoreference(): Promise<AdminDwgGeoreferenceDocument>;
+  fetcher?: typeof fetch;
+}
+
+/** Load the administrative 3D map's authoritative georeference and aerial traces. */
+export async function loadAtlasAdminStandaloneAerialAssetsV1(
+  input: AtlasAdminStandaloneAerialAssetLoaderInputV1,
+): Promise<AtlasAdminStandaloneAerialAssetsV1> {
+  const georeference = await input.loadGeoreference();
+  const fetcher = input.fetcher || globalThis.fetch.bind(globalThis);
+  const [traceResponse, roadTraceResponse] = await Promise.all([
+    fetcher(input.lotTraceUrl),
+    fetcher(input.roadTraceUrl),
+  ]);
+  const [trace, roadTrace] = await Promise.all([
+    traceResponse.ok ? traceResponse.json() : Promise.resolve(null),
+    roadTraceResponse.ok ? roadTraceResponse.json() : Promise.resolve(null),
+  ]);
+  return Object.freeze({ georeference, trace, roadTrace });
+}
+
+/** Keep the 298-lot and road-outline source requirements beside map service ownership. */
+export function validateAtlasAdminStandaloneAerialAssetsV1(
+  input: Pick<AtlasAdminStandaloneAerialAssetsV1, 'trace' | 'roadTrace'>,
+): AtlasAdminStandaloneValidatedAerialAssetsV1 {
+  const trace = mapRecord(input.trace);
+  const roadTrace = mapRecord(input.roadTrace);
+  if (trace?.lotCount !== 298 || !Array.isArray(trace.grid))
+    throw new Error('Traçado aéreo dos 298 lotes indisponível ou inválido');
+  if (!Array.isArray(roadTrace?.roads) || !roadTrace.roads.length)
+    throw new Error('Contorno aéreo das ruas indisponível ou inválido');
+  return {
+    trace: trace as AtlasAdminStandaloneValidatedAerialAssetsV1['trace'],
+    roadTrace: roadTrace as AtlasAdminStandaloneValidatedAerialAssetsV1['roadTrace'],
+  };
+}
+
+/** Persist the same startup-phase record consumed by the administrative loading diagnostics. */
+export function persistAtlasAdminStandaloneBootPhaseV5370(
+  phase: string,
+  extra: Record<string, unknown> = {},
+  storage?: Pick<Storage, 'setItem'>,
+  DateRef: DateConstructor = Date,
+): AtlasAdminStandaloneBootPhaseV5370 {
+  const payload = {
+    version: '5.3.70' as const,
+    phase,
+    at: new DateRef().toISOString(),
+    ...extra,
+  } as AtlasAdminStandaloneBootPhaseV5370;
+  try { storage?.setItem('belavista.3d.boot.last.v5370', JSON.stringify(payload)); }
+  catch { }
+  return payload;
+}
+
 /** Weighted polygon center used for stable lot labels; degenerate polygons use the valid-point mean. */
 export function publicMapPolygonCentroid(polygon: unknown): { x: number; y: number } | null {
   if (!Array.isArray(polygon) || polygon.length < 3) return null;
@@ -22706,7 +22728,7 @@ export function publicMapLotMarkerPlacement(input: PublicMapLotMarkerPlacementIn
 /** Resolve the complete, stable view model for one vector lot marker. */
 export function publicMapLotMarkerRenderModel(input: PublicMapLotMarkerRenderInput): PublicMapLotMarkerRenderModel | null {
   if (!input.placement) return null;
-  const identity = publicMapLotMarkerIdentity(input.lotId);
+  const identity = publicMapLotMarkerIdentity(input.lotId, input.greenMapping?.number);
   const candidate = mapRecord(input.manualPosition);
   const u = Number(candidate?.u), v = Number(candidate?.v);
   const manualPosition = Number.isFinite(u) && Number.isFinite(v) ? { u, v } : null;
@@ -22730,7 +22752,7 @@ export function publicMapLotMarkerRenderModel(input: PublicMapLotMarkerRenderInp
 
 /** Resolve a PDF circle-only marker for lots without a corresponding polygon. */
 export function publicMapFallbackLotMarkerModel(input: PublicMapFallbackLotMarkerInput): PublicMapFallbackLotMarkerModel {
-  const identity = publicMapLotMarkerIdentity(input.lotId);
+  const identity = publicMapLotMarkerIdentity(input.lotId, input.pdfNumber);
   const source = input.usesGreenLotMapping ? 'pdf-circle-only' : 'canonical-trace-fallback';
   const candidate = mapRecord(input.manualPosition);
   const u = Number(candidate?.u), v = Number(candidate?.v);
@@ -22798,6 +22820,7 @@ export function projectPublicSatelliteLotMarkerBatch(input: PublicMapSatelliteLo
         ...publicMapFallbackLotMarkerModel({
           lotId,
           relativePosition,
+          pdfNumber: input.usesGreenLotMapping ? input.greenMappingByLot.get(lotId)?.number : undefined,
           frame: input.frame,
           fallbackIndex,
           usesGreenLotMapping: input.usesGreenLotMapping,
@@ -22956,6 +22979,25 @@ export const publicMapCalibrationStorage = {
     catch { return false; }
   },
 };
+
+export function readPublicMapCalibrationFrame(input: {
+  storageKey: string;
+  baseFrame: PublicMapFrame;
+}): PublicMapFrame {
+  return publicMapCalibrationStorage.readFrame(input.storageKey, input.baseFrame);
+}
+
+export function resetPublicMapCalibrationFrame(storageKey: string): boolean {
+  return publicMapCalibrationStorage.removeFrame(storageKey);
+}
+
+export function readPublicMapCalibrationMarkers(storageKey: string): PublicMapMarkerOverrides {
+  return publicMapCalibrationStorage.readMarkers(storageKey);
+}
+
+export function resetPublicMapCalibrationMarkers(storageKey: string): boolean {
+  return publicMapCalibrationStorage.removeMarkers(storageKey);
+}
 
 interface AtlasMapDragCalibrationSceneV1 extends HTMLElement {
   adminMasterplanDevToolsV1?: { get?: () => { defaults?: PublicMapFrame } | null };
@@ -23163,26 +23205,20 @@ export interface PublicMapAssistantContextActionsInput {
   host?: (typeof globalThis & { belavistaWorkerAssistant?: PublicMapWorkerAssistantPort }) | null;
   documentRef?: { querySelector?: (selector: string) => PublicMapAssistantChatPort | null } | null;
   commonAreaLabel?: string;
-  loadWorkerContextChat?: () => Promise<unknown>;
 }
 
-/** Bridge map selection into the lazy worker chat, preserving the chat fallback. */
+/** Bridge map selection directly into the already-mounted TypeScript chat. */
 export function createPublicMapAssistantContextActions(input: PublicMapAssistantContextActionsInput = {}): {
   prepareAssistantLotStatusPromptV1: (lotLabel: string) => Promise<boolean>;
   prepareAssistantMapAreaPromptV1: (areaLabel: string) => Promise<boolean>;
 } {
   if (!input.host || typeof input.host !== 'object')
     throw new TypeError('Map assistant actions require the application host.');
-  if (typeof input.loadWorkerContextChat !== 'function')
-    throw new TypeError('Map assistant actions require the worker-chat loader.');
   const host = input.host;
-  const loadWorkerContextChat = input.loadWorkerContextChat;
   const prepareAssistantLotStatusPrompt = async (lotLabel: string): Promise<boolean> => {
-    if (!host.belavistaWorkerAssistant?.openLotStatusContext) await loadWorkerContextChat();
     return host.belavistaWorkerAssistant?.openLotStatusContext?.(lotLabel) || false;
   };
   const prepareAssistantMapAreaPrompt = async (areaLabel: string): Promise<boolean> => {
-    if (!host.belavistaWorkerAssistant?.openMapAreaContext) await loadWorkerContextChat();
     const label = String(areaLabel || input.commonAreaLabel).trim();
     return host.belavistaWorkerAssistant?.openMapAreaContext?.(label)
       || input.documentRef?.querySelector?.('ai-chat')?.prepareMapAreaPrompt?.(label)
@@ -23577,7 +23613,6 @@ const sidebarLimitedViews = new Set(['map', 'agenda', 'records', 'stages']);
 const sidebarPrivilegedRoles = new Set(['owner', 'admin', 'developer']);
 const delegatedSidebarItems: Record<string, SidebarModeItem> = {
   map: ['map', 'house', 'Mapa'],
-  agenda: ['agenda', 'calendar-range', 'Agenda'],
   records: ['records', 'clipboard-list', 'Registros'],
 };
 
@@ -23634,8 +23669,7 @@ function sidebarItemsForActor(actor: Record<string, unknown>, items: SidebarMode
   }
   if (sidebarActorIsLimited(actor)) {
     return [
-      ['map', 'house', 'Mapa'], ['agenda', 'calendar-range', 'Agenda'],
-      ['records', 'clipboard-list', 'Registros'],
+      ['map', 'house', 'Mapa'], ['records', 'clipboard-list', 'Registros'],
     ];
   }
   // This is the effective tracking menu, not the full route catalog: Financeiro
@@ -24740,6 +24774,61 @@ export function projectAtlasMapLoadingBootStateConfig(): { version: string; stor
   return Object.freeze({ version: atlasMapLoadingCatalog.bootStateVersion, storageKey: atlasMapLoadingCatalog.bootStorageKey });
 }
 
+export interface AtlasMapLoadingBootStateGlobalV1 {
+  __BELAVISTA_ADMIN_MODEL_STATE__?: Record<string, unknown>;
+  Date: DateConstructor;
+  localStorage?: Pick<Storage, 'setItem'>;
+}
+
+export interface AtlasMapLoadingBootStateRecorderPortsV1 {
+  globalRef: AtlasMapLoadingBootStateGlobalV1;
+  performanceNow: () => number;
+  writeStorage: (key: string, value: string) => void;
+  wallClock: () => string;
+}
+
+export interface AtlasMapLoadingBootStateCommandsV1 {
+  beginBootStateV5367(initial: Record<string, unknown>): Record<string, unknown>;
+  updateBootStateV5367(patch: Record<string, unknown>): Record<string, unknown>;
+  persistBootPhaseV5367(phase: string, extra?: Record<string, unknown>): Record<string, unknown>;
+}
+
+/** Keep map boot-state lifecycle and durable persistence in the program owner. */
+export function createAtlasMapLoadingBootStateCommandsV1(
+  ports: AtlasMapLoadingBootStateRecorderPortsV1,
+): AtlasMapLoadingBootStateCommandsV1 {
+  const { version, storageKey } = projectAtlasMapLoadingBootStateConfig();
+  const readOrCreate = (): Record<string, unknown> => {
+    const state = ports.globalRef.__BELAVISTA_ADMIN_MODEL_STATE__
+      ??= { version, startedAt: ports.performanceNow() };
+    state.version = version;
+    return state;
+  };
+  return Object.freeze({
+    beginBootStateV5367(initial: Record<string, unknown>) {
+      const state = { version, startedAt: ports.performanceNow(), ...initial };
+      ports.globalRef.__BELAVISTA_ADMIN_MODEL_STATE__ = state;
+      return state;
+    },
+    updateBootStateV5367(patch: Record<string, unknown>) {
+      const state = readOrCreate();
+      Object.assign(state, patch);
+      return state;
+    },
+    persistBootPhaseV5367(phase: string, extra: Record<string, unknown> = {}) {
+      const state = readOrCreate();
+      state.version = version;
+      state.phase = phase;
+      Object.assign(state, extra);
+      ports.globalRef.__BELAVISTA_ADMIN_MODEL_STATE__ = state;
+      try {
+        ports.writeStorage(storageKey, JSON.stringify({ version, phase, wallClock: ports.wallClock(), ...extra }));
+      } catch { }
+      return state;
+    },
+  });
+}
+
 export interface AtlasMapMasterplanMeshSemanticsInputV1 {
   name?: unknown;
   role?: unknown;
@@ -25386,6 +25475,7 @@ export interface AtlasMapSceneStateCommandsV1 {
   createReservation(input: AtlasMapReservationCommandInput): AtlasMapReservationCommand;
   recordModelPartSelection(label: string): void;
   markMapReady(): void;
+  saveMapView(mapView: unknown): void;
 }
 
 /** Own persisted map imagery, solar-time, and focus-mode transitions. */
@@ -25425,6 +25515,9 @@ export function createAtlasMapSceneStateCommandsV1(appStore: {
     },
     markMapReady(): void {
       appStore.set({ mapReady: true });
+    },
+    saveMapView(mapView: unknown): void {
+      appStore.set({ mapView });
     },
   });
 }
@@ -26602,8 +26695,11 @@ export function projectPublicLotFootprintRecord(input: PublicLotFootprintRecordI
 }
 
 /** Build stable visible and accessible identity for a map lot marker. */
-export function publicMapLotMarkerIdentity(lotId: string): { lotNumber: string; label: string } {
-  const lotNumber = String(lotId.match(/\d+/g)?.at(-1) || '').padStart(3, '0');
+export function publicMapLotMarkerIdentity(lotId: string, pdfNumber?: unknown): { lotNumber: string; label: string } {
+  const officialNumber = Number(pdfNumber);
+  const lotNumber = Number.isFinite(officialNumber) && officialNumber > 0
+    ? String(officialNumber).padStart(2, '0')
+    : String(lotId.match(/\d+/g)?.at(-1) || '').padStart(3, '0');
   return { lotNumber, label: `Lote ${lotNumber || lotId.replace(/^Lote_?/, '')}` };
 }
 
@@ -28638,6 +28734,7 @@ export function* program(): Generator<SystemAPI, never, void> {
   let agendaElement: AtlasAgenda | null = null;
   let agendaRequestId = 0;
   let agendaEvents: OperationalAgendaEvent[] = [];
+  let agendaStages: OperationalStage[] = [];
   let agendaRouteServices: AgendaRouteServices = {};
   let agendaRouteStore: { get(): Record<string, unknown>; set(state: Record<string, unknown>): void } | null = null;
   let agendaLegacyMetadataMerged = false;
@@ -29036,7 +29133,7 @@ export function* program(): Generator<SystemAPI, never, void> {
     void (async () => {
       try {
         const registration = await navigator.serviceWorker.register(
-          './lead-sw.js?v=asset-stream-v184-ts-main-public-entry-v1&ts-public-map-scene-registration-v2',
+          './lead-sw.js?v=asset-stream-v184-ts-main-public-entry-v1&ts-public-map-scene-registration-v2&ts-map-lot-assets-298-v1',
           { updateViaCache: 'none' },
         );
         await registration.update();
@@ -29368,6 +29465,7 @@ export function* program(): Generator<SystemAPI, never, void> {
       const events=await mergeLegacyAgendaMetadata(agenda.events);
       if(requestId!==agendaRequestId||target!==agendaElement)return false;
       agendaEvents=events;
+      agendaStages=stages.stages;
       const route=agendaRouteStore?.get()||{},notificationsEnabled=Boolean(route.agendaMobileNotificationsEnabled),detailMode=focus.detailMode??route.view==='agenda-detail';
       target.setData(events,stages.stages,materials.materials,focus.date||String(route.agendaFocusedDateV1||''),focus.eventId||String(route.agendaFocusedEventId||route.selectedAgendaEventV3||''),focus.week||String(route.agendaCalendarWeekV8||''),detailMode,notificationsEnabled);
       if(notificationsEnabled&&agendaIsNative()&&!agendaNotificationsRescheduled){
@@ -29379,25 +29477,69 @@ export function* program(): Generator<SystemAPI, never, void> {
     }catch(error){if(requestId===agendaRequestId&&target===agendaElement)target.setError(error instanceof Error?error.message:String(error));return false;}
   }
 
-  /** Upsert one event in the server snapshot, then reload canonical agenda state. */
-  async function saveAgendaEvent(event:CustomEvent<AtlasAgendaSaveCommandV1>,appStore:{get():Record<string,unknown>;set(state:Record<string,unknown>):void}):Promise<void>{
-    const detail=event.detail;
-    if(!detail||detail.element!==agendaElement)return;
+  /** Persist a canonical agenda DTO, then reload its authoritative server snapshot. */
+  async function persistAgendaEvent(element:AtlasAgenda,payload:OperationalAgendaEvent,appStore:{get():Record<string,unknown>;set(state:Record<string,unknown>):void}):Promise<void>{
+    if(element!==agendaElement)return;
     try{
       await enqueueAgendaMutation(async()=>{
         const latest=await readApi<{events:OperationalAgendaEvent[]}>('/api/agenda-events');
         if(!Array.isArray(latest.events))throw new Error('O serviço não retornou o snapshot atual da agenda.');
-        const previous=latest.events.find(item=>item.id===detail.payload.id),next={...previous,...detail.payload};
+        const previous=latest.events.find(item=>item.id===payload.id),next={...previous,...payload};
         const events=previous?latest.events.map(item=>item.id===next.id?next:item):[...latest.events,next];
          const saved=await writeApi<{events:OperationalAgendaEvent[]}>('/api/agenda-events',{events});
          if(!Array.isArray(saved.events))throw new Error('A agenda não confirmou o snapshot salvo.');
          agendaEvents=saved.events;
          const savedEvent=saved.events.find(item=>item.id===next.id);
-         if(savedEvent)try{await syncAgendaNotification(savedEvent);}catch(error){agendaRouteServices.notify?.(`Compromisso salvo; lembrete não programado: ${error instanceof Error?error.message:String(error)}`,'warning');}
-         appStore.set({...appStore.get(),operationalAgenda:saved.events,lastAction:`Atualizou compromisso ${next.title}`});
-         await reloadAgenda();
-      });
-    }catch(error){detail.element.setError(error instanceof Error?error.message:String(error));}
+          if(savedEvent)try{await syncAgendaNotification(savedEvent);}catch(error){agendaRouteServices.notify?.(`Compromisso salvo; lembrete não programado: ${error instanceof Error?error.message:String(error)}`,'warning');}
+          appStore.set({...appStore.get(),operationalAgenda:saved.events,lastAction:`Atualizou compromisso ${next.title}`});
+          await reloadAgenda();
+       });
+     }catch(error){element.setError(error instanceof Error?error.message:String(error));}
+  }
+
+  /** Validate a raw form draft against the currently loaded canonical resources before persistence. */
+  async function saveAgendaDraft(event:CustomEvent<AtlasAgendaFormDraftCommandV1>,appStore:{get():Record<string,unknown>;set(state:Record<string,unknown>):void}):Promise<void>{
+    const detail=event.detail;
+    if(!detail||detail.element!==agendaElement)return;
+    const draft=buildAtlasAgendaEventPayloadV1({
+      values:detail.values,
+      stages:agendaStages,
+      existingEvents:agendaEvents,
+      createId:()=>`agenda-${crypto.randomUUID()}`,
+      nowIso:()=>new Date().toISOString(),
+    });
+    if(!draft.ok){detail.element.setError(draft.error);return;}
+    await persistAgendaEvent(detail.element,draft.payload,appStore);
+  }
+
+  /** Upsert a transition or gesture payload already projected by a typed program policy. */
+  async function saveAgendaEvent(event:CustomEvent<AtlasAgendaSaveCommandV1>,appStore:{get():Record<string,unknown>;set(state:Record<string,unknown>):void}):Promise<void>{
+    const detail=event.detail;
+    if(!detail||detail.element!==agendaElement)return;
+    await persistAgendaEvent(detail.element,detail.payload,appStore);
+  }
+
+  /** Resolve an agenda status command against canonical events, then persist its policy projection. */
+  async function transitionAgendaEvent(event:CustomEvent<AtlasAgendaTransitionDraftCommandV1>,appStore:{get():Record<string,unknown>;set(state:Record<string,unknown>):void}):Promise<void>{
+    const detail=event.detail;
+    if(!detail||detail.element!==agendaElement)return;
+    const source=agendaEvents.find(item=>item.id===detail.eventId);
+    if(!source){detail.element.setError('O compromisso selecionado não está mais disponível na agenda.');return;}
+    const transition=detail.kind==='complete'
+      ? buildAtlasAgendaCompletionPayloadV1({source,nowIso:()=>new Date().toISOString()})
+      : buildAtlasAgendaCancellationPayloadV1({source,cancellationConfirmed:detail.cancellationConfirmed,cancellationReason:detail.cancellationReason,nowIso:()=>new Date().toISOString()});
+    if(!transition.ok){detail.element.setError(transition.error);return;}
+    await persistAgendaEvent(detail.element,transition.payload,appStore);
+  }
+
+  /** Reproject a calendar gesture against the latest loaded event before persistence. */
+  async function saveAgendaGesture(event:CustomEvent<AtlasAgendaGestureSaveCommandV1>,appStore:{get():Record<string,unknown>;set(state:Record<string,unknown>):void}):Promise<void>{
+    const detail=event.detail;
+    if(!detail||detail.element!==agendaElement)return;
+    const source=agendaEvents.find(item=>item.id===detail.eventId);
+    if(!source){detail.element.setError('O compromisso arrastado não está mais disponível na agenda.');return;}
+    const payload=projectAtlasAgendaWeekGestureV1({source,mode:detail.mode,date:detail.date,pointerHours:detail.pointerHours});
+    await persistAgendaEvent(detail.element,payload,appStore);
   }
 
   /** Remove only the selected event from the persistent snapshot and reload it. */
@@ -29420,20 +29562,45 @@ export function* program(): Generator<SystemAPI, never, void> {
   }
 
   /** Create a field record linked to the selected agenda event. */
+  async function persistAgendaRecord(element:AtlasAgenda,payload:AtlasOperationalRecordSubmissionV1,activity:string,appStore:{get():Record<string,unknown>;set(state:Record<string,unknown>):void}):Promise<void>{
+    try{
+      const created=await createOperationalRecord(payload),record=created.record,recordId=created.id||String(record.id||'salvo');
+      const agendaReloaded=await reloadAgenda();
+      const message=`Registro ${recordId} adicionado à atividade ${activity}.`,state=appStore.get(),existing=Array.isArray(state.records)?state.records as Array<{id?:string}>:[];
+      appStore.set({...state,records:[record,...existing.filter(item=>String(item.id)!==recordId)],...(agendaReloaded?{operationalAgenda:agendaEvents}:{}),agendaActivityRecordFeedbackV1:{eventId:String((payload.properties as Array<{label?:string;value?:string}>|undefined)?.find(item=>item.label==='ID da atividade')?.value||''),message},lastAction:`Adicionou registro ${recordId} na atividade ${activity}`});
+      element.setRecordFeedback(message);
+      agendaRouteServices.notify?.(`Registro salvo na atividade ${activity}.`,'success');
+    }catch(error){
+      element.setRecordFeedback(`Registro não salvo: ${error instanceof Error?error.message:String(error)}`,false);
+      agendaRouteServices.notify?.('Registro não confirmado; revise a conexão e tente novamente.','warning');
+    }
+  }
+
+  /** Validate the linked diary draft against canonical agenda and stage data. */
+  async function createAgendaRecordDraft(event:CustomEvent<AtlasAgendaRecordDraftCommandV1>,appStore:{get():Record<string,unknown>;set(state:Record<string,unknown>):void}):Promise<void>{
+    const detail=event.detail;
+    if(!detail||detail.element!==agendaElement)return;
+    const source=agendaEvents.find(item=>item.id===detail.values.eventId);
+    if(!source){detail.element.setRecordFeedback(null,false);detail.element.setError('O compromisso associado ao registro não foi encontrado.');return;}
+    const stage=agendaStages.find(item=>item.name===source.stageName);
+    const draft=buildAtlasAgendaRecordPayloadV1({
+      source,
+      stageName:stage?.name||'',
+      details:detail.values.details,
+      date:detail.values.date,
+      time:detail.values.time,
+      responsible:detail.values.responsible,
+      status:detail.values.status,
+    });
+    if(!draft.ok){detail.element.setRecordFeedback(null,false);detail.element.setError(draft.error);return;}
+    await persistAgendaRecord(detail.element,draft.payload,draft.activity,appStore);
+  }
+
+  /** Preserve the canonical-command receiver for existing Agenda integrations. */
   async function createAgendaRecord(event:Event,appStore:{get():Record<string,unknown>;set(state:Record<string,unknown>):void}):Promise<void>{
     const detail=(event as CustomEvent<AtlasOperationalRecordCreateCommandDetailV1<AtlasAgenda>&{activity:string}>).detail;
     if(!detail||detail.element!==agendaElement)return;
-    try{
-      const created=await createOperationalRecord(detail.payload),record=created.record,recordId=created.id||String(record.id||'salvo');
-      const agendaReloaded=await reloadAgenda();
-      const message=`Registro ${recordId} adicionado à atividade ${detail.activity}.`,state=appStore.get(),existing=Array.isArray(state.records)?state.records as Array<{id?:string}>:[];
-      appStore.set({...state,records:[record,...existing.filter(item=>String(item.id)!==recordId)],...(agendaReloaded?{operationalAgenda:agendaEvents}:{}),agendaActivityRecordFeedbackV1:{eventId:String((detail.payload.properties as Array<{label?:string;value?:string}>|undefined)?.find(item=>item.label==='ID da atividade')?.value||''),message},lastAction:`Adicionou registro ${recordId} na atividade ${detail.activity}`});
-      detail.element.setRecordFeedback(message);
-      agendaRouteServices.notify?.(`Registro salvo na atividade ${detail.activity}.`,'success');
-    }catch(error){
-      detail.element.setRecordFeedback(`Registro não salvo: ${error instanceof Error?error.message:String(error)}`,false);
-      agendaRouteServices.notify?.('Registro não confirmado; revise a conexão e tente novamente.','warning');
-    }
+    await persistAgendaRecord(detail.element,detail.payload,detail.activity,appStore);
   }
 
   /** Create or update one backend material from the component's validated form. */
@@ -30147,8 +30314,12 @@ export function* program(): Generator<SystemAPI, never, void> {
       },
       onRefresh: () => { void reloadAgenda(); },
       onSave: event => { void saveAgendaEvent(event, appStore); },
+      onSaveDraft: event => { void saveAgendaDraft(event, appStore); },
       onDelete: event => { void deleteAgendaEvent(event, appStore); },
       onRecordCreate: event => { void createAgendaRecord(event, appStore); },
+      onRecordDraft: event => { void createAgendaRecordDraft(event, appStore); },
+      onTransition: event => { void transitionAgendaEvent(event, appStore); },
+      onGestureSave: event => { void saveAgendaGesture(event, appStore); },
       onNotificationsToggle: (element, enabled) => {
         void setAgendaNotificationsEnabled(enabled, appStore).catch(error => {
           element.setNotificationsEnabled(Boolean(appStore.get().agendaMobileNotificationsEnabled));
@@ -32928,47 +33099,6 @@ export function projectAtlasAiChatToolContextV1(input: {
   };
 }
 
-export interface AtlasAiChatContextualSuggestionV1 {
-  label: string;
-  title: string;
-  text: string;
-  actions: Array<[string, string]>;
-}
-
-interface AtlasAiChatContextualSuggestionDataV1 extends AtlasAiChatContextualSuggestionV1 {}
-
-const ATLAS_AI_CHAT_CONTEXTUAL_SUGGESTIONS_V1 = aiChatContextualSuggestionsData as unknown as
-  Record<string, AtlasAiChatContextualSuggestionDataV1>;
-
-/** Resolve the static chat copy for the active route with its current operational values. */
-export function projectAtlasAiChatContextualSuggestionV1(input: {
-  state: Record<string, any>;
-  activities: Array<Record<string, any>>;
-  metrics: Record<string, any>;
-}): AtlasAiChatContextualSuggestionV1 {
-  const { state, activities, metrics } = input;
-  const stage = activities.find(item => item.id === state.selectedStage) || activities[1];
-  const values: Record<string, unknown> = {
-    delayed: metrics.delayed,
-    criticalPurchases: metrics.criticalPurchases,
-    stageName: stage?.name || 'a etapa selecionada',
-    stageProgress: stage?.progress || 0,
-    leads: metrics.leads,
-    lotsWithInterest: metrics.lotsWithInterest,
-    reportFamily: state.reportFamily || 'Financeiro',
-  };
-  const replaceValues = (text: string): string => text.replace(/\{\{([\w]+)\}\}/g, (_match, key: string) =>
-    String(values[key]));
-  const suggestion = ATLAS_AI_CHAT_CONTEXTUAL_SUGGESTIONS_V1[String(state.view)] ||
-    ATLAS_AI_CHAT_CONTEXTUAL_SUGGESTIONS_V1.assistant;
-  return {
-    label: replaceValues(suggestion.label),
-    title: replaceValues(suggestion.title),
-    text: replaceValues(suggestion.text),
-    actions: suggestion.actions.map(([label, message]) => [replaceValues(label), replaceValues(message)]),
-  };
-}
-
 export interface AtlasAiChatVisualAttachmentInputV1 {
   stageKey?: unknown;
   activityKey?: unknown;
@@ -34835,7 +34965,7 @@ export async function startAtlasAdminDocumentBootstrapV1(ports: AtlasAdminDocume
       __BELAVISTA_ADMIN_RUNTIME_TS_V1?: AtlasAdminApplicationRuntime;
     };
     if (!runtimeGlobals.__BELAVISTA_ADMIN_RUNTIME_TS_V1) {
-      startAtlasAdminApplicationCompositionV1({
+      await startAtlasAdminApplicationCompositionV1({
         globalRef: globalThis as typeof globalThis & AtlasApplicationRuntimeGlobalV1 & Record<string, unknown>,
         windowRef: rootWindow,
         documentRef: rootDocument,
@@ -35106,10 +35236,10 @@ export function installAtlasGlaucoShellBridgeV1(input: AtlasGlaucoShellBridgeInp
   return installAtlasGlaucoShellBridgeComponentV1(input);
 }
 
-/** Assemble the administrative runtime and registered shell from injected host components. */
-export function startAtlasAdminApplicationCompositionV1(
+/** Assemble the administrative runtime, route components, and registered shell. */
+export async function startAtlasAdminApplicationCompositionV1(
   input: AtlasAdminApplicationCompositionInputV1,
-): AtlasAdminApplicationRuntime {
+): Promise<AtlasAdminApplicationRuntime> {
   const globalRef = input.globalRef || globalThis as unknown as AtlasAdminApplicationCompositionInputV1['globalRef'];
   const windowRef = input.windowRef || globalThis.window;
   const documentRef = input.documentRef || globalThis.document;
@@ -35167,6 +35297,7 @@ export function startAtlasAdminApplicationCompositionV1(
 
   globalRef.__BELAVISTA_ADMIN_RUNTIME_TS_V1 = runtime;
   documentRef.documentElement.dataset.adminRuntimeOwnerV1 = 'typescript';
+  await composeAtlasAdminComponentApplicationV1();
   registerShell({
     appStore,
     persistUiState: persistAtlasUiState,
@@ -36130,7 +36261,7 @@ export function navigationItemsForAtlasRoleV1(
   const normalized = normalizeAtlasOperationalRoleV1(role);
   const visibleItems = items.filter(([id]) => !atlasRemovedAdminViewsV1.has(id));
   if (atlasBrokerRolesV1.has(normalized))
-    return visibleItems.filter(([id]) => atlasAdminAccessPolicyV1.limitedOperationalViews.includes(id));
+    return visibleItems.filter(([id]) => id !== 'agenda' && atlasAdminAccessPolicyV1.limitedOperationalViews.includes(id));
   return visibleItems;
 }
 
@@ -36139,10 +36270,10 @@ export function navigationItemsForAtlasActorV1(
   items: AtlasSidebarNavigationItemV1[] = [],
 ): AtlasSidebarNavigationItemV1[] {
   if (actor.mode === 'delegated-foreman-key' && actor.delegatedRoleId && Array.isArray(actor.delegatedViews)) {
-    return actor.delegatedViews.map((view: string) => atlasAdminAccessPolicyV1.delegatedNavigationLabels[view]).filter(Boolean) as AtlasSidebarNavigationItemV1[];
+    return actor.delegatedViews.filter((view: string) => view !== 'agenda').map((view: string) => atlasAdminAccessPolicyV1.delegatedNavigationLabels[view]).filter(Boolean) as AtlasSidebarNavigationItemV1[];
   }
   if (isAtlasLimitedOperationalActorV1(actor)) {
-    return atlasAdminAccessPolicyV1.limitedOperationalViews.map(view => {
+    return atlasAdminAccessPolicyV1.limitedOperationalViews.filter(view => view !== 'agenda').map(view => {
       const canonical = atlasAdminAccessPolicyV1.delegatedNavigationLabels[view];
       return canonical || [view, '', view];
     }) as AtlasSidebarNavigationItemV1[];
@@ -40267,6 +40398,18 @@ export async function composeAtlasAdminComponentApplicationV1(): Promise<Readonl
       actorCanOpenView,
       isForemanUser,
       isLimitedOperationalActor,
+      recoverRestrictedRoute: () => {
+        const current = appStore.get();
+        if (isLimitedOperationalActor(current.currentActor) && !actorCanOpenView(current.currentActor, current.view)) {
+          appStore.set({
+            view: 'records',
+            activityDedicated: false,
+            stageActivityDedicatedV9: false,
+            selectedActivity: null,
+            lastAction: 'Área indisponível para este perfil',
+          });
+        }
+      },
       renderStageHomePageV1,
       stageHomeSnapshotV1: stageHomeSnapshotForShellV1,
       stageHomePageMarkupV1: stageHomeMarkupForShellV1,
@@ -40353,7 +40496,13 @@ export async function composeAtlasAdminComponentApplicationV1(): Promise<Readonl
 
 
 
-  installAtlasFloatingWidgetLayoutV1(ViewLayer, { appStore });
+  installAtlasFloatingWidgetLayoutV1(ViewLayer, {
+    appStore,
+    saveLayout: (key, position) => appStore.update(state => ({
+      ...state,
+      widgetLayouts: updateAtlasFloatingWidgetLayoutV1(state.widgetLayouts, key, position),
+    })),
+  });
 
   const operationalIntelligenceServicesV1 = createAtlasOperationalIntelligenceServicesV1({ appStore });
   const stageApplicationCompositionV1 = await installAtlasStageApplicationCompositionV1({
@@ -40504,6 +40653,7 @@ export async function composeAtlasAdminComponentApplicationV1(): Promise<Readonl
     appStore,
     demoData,
     commissionDeals,
+    REPASSE_PRICE_CATALOG,
     executionModel,
     activityCatalog,
     extensionStage: () => extensionStage() || {},

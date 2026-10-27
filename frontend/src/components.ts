@@ -29,6 +29,8 @@ import type {
   RepasseForecastRow,
   RepasseOperations,
   AtlasRepasseMutationCommandV1,
+  AtlasRepasseDestinationStageOptionV1,
+  AtlasRepasseWorkspaceSummaryV1,
   RepasseReport,
   RepasseSale,
   DashboardSnapshot,
@@ -195,40 +197,43 @@ import type {
   AtlasDashboardHomeCommandV1,
 } from "./program.js";
 import { createAtlasInstagramReplyDraftV1, projectAtlasLeadRecordsV1, projectAtlasLeadSelectionIdV1, projectAtlasLeadsPageV1 } from "./program.js";
-import { buildAtlasProjectDocumentSaveDraftV1, projectAtlasDocumentFieldValueV1, projectAtlasProjectDocumentsPageV1 } from "./program.js";
+import { buildAtlasProjectDocumentSaveDraftV1, projectAtlasDocumentFieldValueV1 } from "./program.js";
 import { projectAtlasMobileOperationalRecordsPageV5360, projectAtlasRecordPropertyTypesV1, projectAtlasRecordsActivityDrillRouteV1, projectAtlasRecordsStageShellV1 } from "./program.js";
 import type { AtlasRecordsActivityCatalogStageV1, AtlasRecordsActivityDrillRouteStateV1 } from "./program.js";
 import { buildAtlasReportBuilderDraftV1, projectAtlasReportCashUploadV1, projectAtlasReportExportV1, type AtlasReportsWorkspaceCommandsV1 } from "./program.js";
 import { buildAtlasDesktopSetupFormDraftV1, projectAtlasDesktopEnvironmentModeV1 } from "./program.js";
 import type { AtlasDesktopEnvironmentViewV1, AtlasDesktopSetupFormV1, AtlasDesktopSetupViewV1 } from "./program.js";
-import { projectAtlasSettingsPageV1, projectAtlasSettingsWorkbenchSessionV1, projectAtlasSettingsWorkbenchSessionsV1 } from "./program.js";
+import { projectAtlasSettingsAccessPolicyV1 } from "./program.js";
 import type { AtlasMapFilterRailCommandsV1, AtlasMapSceneStateCommandsV1, AtlasMapSelectionCommandsV1 } from "./program.js";
 import { projectAtlasSalesHistoryPageV1 } from "./program.js";
-import { buildAtlasActivityRecordSubmissionV1, projectAtlasActivityAdminDraftV1, type AtlasStageActivityNavigationCommandV1 } from "./program.js";
+import { buildAtlasActivityRecordSubmissionV1, projectAtlasActivityAdminDraftV1, type AtlasStageActivityNavigationCommandV1, type AtlasStageDedicatedPageNavigationCommandV1, type AtlasWorkflowCanvasActionV1 } from "./program.js";
 import { projectAtlasProgressPageV1, projectAtlasProgressSelectedStageIdV1 } from "./program.js";
 import { projectAtlasActivitiesPageV1 } from "./program.js";
 import { buildAtlasMaterialInlineEditPayloadV1, buildAtlasMaterialSaveDraftV1, buildAtlasMaterialTransitionDraftV1, projectAtlasMaterialInlineEditorV1, projectAtlasMaterialsPageV1 } from "./program.js";
-import { projectAtlasLotBoardPageV1, projectAtlasLotBoardRows, projectAtlasLotBoardSellers } from "./program.js";
+import { projectAtlasLotBoardRows, projectAtlasLotBoardSellers } from "./program.js";
 import { buildAtlasLotDevelopmentProfileSaveDraftV1, projectAtlasLotDevelopmentPageV1 } from "./program.js";
 import { projectAtlasRecordsPageV1 } from "./program.js";
 import { projectAtlasCommunicationsPageV1 } from "./program.js";
 import { projectAtlasOperationalMapOverviewV1, projectAtlasOperationalMapPageV1 } from "./program.js";
-import { projectAtlasAgendaResourceOptionsV1 } from "./program.js";
 import { publicMapLotSelectionCommand } from "./program.js";
 import lotBoardOptionsData from "./data/lot-board-options.json" with { type: "json" };
 import workerContextChatPresentationData from "./data/worker-context-chat-presentation.json" with { type: "json" };
-import { ACTIVITY_MAP_STATUSES_V1, projectAtlasActivityPhysicalMapCatalogV1, projectAtlasActivityLocationSuggestionV1, projectAtlasActivityLocationRecordV1, projectWorkerWorkbenchFlowConnectionsV1, projectWorkerWorkbenchFlowCardDragV1, projectWorkerWorkbenchFlowCardSnapV1, projectWorkerWorkbenchFlowCardResizeV1, projectAtlasActivityInstallationStateV1, projectAtlasActivityInstallationRationalizationV1, projectAtlasActivityInstallationSelectedMaterialsV1, projectAtlasActivityMapAssignmentsV1, projectAtlasActivityMapLeadGroupsV1, projectAtlasActivityMapLotNumberV1, ATLAS_TOPBAR_OPERATION_EVENTS, ATLAS_SHELL_COMMAND_EVENT_V1, atlasApplicationSystemConfiguration, constrainPublicMapPan, projectAtlasTopbarNotificationCollection, createAtlasMapLotSelectionCommand, createAtlasMapSceneControlCommand, createAtlasMapSceneInitialStateCommand, projectAtlasMapSceneStartupPolicy, projectAtlasMapSceneThreeSchedule, projectAtlasMapLoadingScreen, projectAtlasMapLoadingBootStateConfig, projectAtlasMapMasterplanMeshSemanticsV1, projectAtlasMapStaticCaptureSource, createAtlasStaticSatelliteViewCommand, createAtlasStaticSatelliteFitCommand, createAtlasStaticSatellitePanCommand, projectAtlasStaticSatelliteGesturePolicy, projectAtlasMapProgressArea, projectAtlasMapRecordArea, projectAtlasMapSelectionOptions, createAtlasSidebarChromeControllerV1, isSidebarActorLimited, normalizeSidebarOperationalRole, projectAtlasApplicationShellNavigation, projectSidebarNavigation, projectPublicLeadsBrandTransition, projectPublicLeadsScrollState, projectPublicLeadsStickyScene, projectPublicLeadsTitleTransition, projectPublicMapReturnScroll, projectPublicStaticLotMarkers, projectPublicStaticLotSelection, projectPublicMapLotWidgetContext, projectAtlasMapFilterCatalog, projectAtlasMapFilterSelectionKey, projectAtlasMapFilterSummaryMetrics, projectAtlasMapProgressSummary, projectAtlasMapReservationOptions, publicMapFrameFromOverrides, publicMapFramePosition, publicMapFrameSvgPath, publicMapLotWidgetCommand, publicMapLotWidgetDetails, publicMapLotSelectionWidgetPosition, publicMapOverlayLotSelection, publicMapCommonAreaSelection, publicMapContextWidgetScale, publicMapProjectedSvgPath, publicMapRelativeLotPolygon, publicMapSquareOverlayFit, publicLeadsMapBasePan, publicLeadsMapClampPan, publicLeadsMapGeometry, publicLeadsMapGestureDelta, publicLeadsMapGestureMode, publicLeadsMapZoomAtPointer, publicMapLotMarkerStatuses, projectPublicStaticLotMarkerStatuses, publicMapPanBounds, publicMapPresentationView, publicMapSelectionCameraFrame, publicMapSelectionCameraPlan, publicMapSelectionCameraStep, publicMapSelectionSavedView, publicMapSelectionScrollPlan, publicMapSelectionTargetScreen, sidebarActorCanOpenView } from "./program.js";
-import { AI_AGENDA_COMPREHENSION_DEFAULTS_V1, buildAtlasSettingsAiAgendaDraftV1, buildAtlasSettingsComprehensionDraftV1, buildAtlasSettingsContactDraftV1, buildAtlasSettingsKeyDraftV1, buildAtlasSettingsRoleDraftV1, buildAtlasSettingsStageDraftV1, buildAtlasSettingsUsageDraftV1, normalizeAiAgendaComprehensionV1, projectAtlasStageActivityDetailV1, projectAtlasStageActivityAdminRowsV1 } from "./program.js";
+import aiChatContextualSuggestionsData from "./data/ai-chat-contextual-suggestions.json" with { type: "json" };
+import activityMapStatusesData from "./data/activity-map-statuses.json" with { type: "json" };
+import { projectAtlasActivityPhysicalMapCatalogV1, projectAtlasActivityLocationSuggestionV1, projectAtlasActivityLocationRecordV1, projectWorkerWorkbenchFlowConnectionsV1, projectWorkerWorkbenchFlowCardDragV1, projectWorkerWorkbenchFlowCardSnapV1, projectWorkerWorkbenchFlowCardResizeV1, projectAtlasActivityInstallationStateV1, projectAtlasActivityInstallationRationalizationV1, projectAtlasActivityInstallationSelectedMaterialsV1, projectAtlasActivityMapAssignmentsV1, projectAtlasActivityMapLeadGroupsV1, projectAtlasActivityMapLotNumberV1, ATLAS_TOPBAR_OPERATION_EVENTS, ATLAS_SHELL_COMMAND_EVENT_V1, atlasApplicationSystemConfiguration, constrainPublicMapPan, projectAtlasTopbarNotificationCollection, createAtlasMapLotSelectionCommand, createAtlasMapSceneControlCommand, createAtlasMapSceneInitialStateCommand, projectAtlasMapSceneStartupPolicy, projectAtlasMapSceneThreeSchedule, projectAtlasMapLoadingScreen, projectAtlasMapMasterplanMeshSemanticsV1, projectAtlasMapStaticCaptureSource, createAtlasStaticSatelliteViewCommand, createAtlasStaticSatelliteFitCommand, createAtlasStaticSatellitePanCommand, projectAtlasStaticSatelliteGesturePolicy, projectAtlasMapProgressArea, projectAtlasMapRecordArea, projectAtlasMapSelectionOptions, createAtlasSidebarChromeControllerV1, isSidebarActorLimited, normalizeSidebarOperationalRole, projectAtlasApplicationShellNavigation, projectSidebarNavigation, projectPublicLeadsBrandTransition, projectPublicLeadsScrollState, projectPublicLeadsStickyScene, projectPublicLeadsTitleTransition, projectPublicMapReturnScroll, projectPublicStaticLotMarkers, projectPublicStaticLotSelection, projectPublicMapLotWidgetContext, projectAtlasMapFilterCatalog, projectAtlasMapFilterSelectionKey, projectAtlasMapFilterSummaryMetrics, projectAtlasMapProgressSummary, projectAtlasMapReservationOptions, publicMapFrameFromOverrides, publicMapFramePosition, publicMapFrameSvgPath, publicMapLotWidgetCommand, publicMapLotWidgetDetails, publicMapLotSelectionWidgetPosition, publicMapOverlayLotSelection, publicMapCommonAreaSelection, publicMapContextWidgetScale, publicMapProjectedSvgPath, publicMapRelativeLotPolygon, publicMapSquareOverlayFit, publicLeadsMapBasePan, publicLeadsMapClampPan, publicLeadsMapGeometry, publicLeadsMapGestureDelta, publicLeadsMapGestureMode, publicLeadsMapZoomAtPointer, publicMapLotMarkerStatuses, projectPublicStaticLotMarkerStatuses, publicMapPanBounds, publicMapPresentationView, publicMapSelectionCameraFrame, publicMapSelectionCameraPlan, publicMapSelectionCameraStep, publicMapSelectionSavedView, publicMapSelectionScrollPlan, publicMapSelectionTargetScreen, sidebarActorCanOpenView } from "./program.js";
+import { AI_AGENDA_COMPREHENSION_DEFAULTS_V1, normalizeAiAgendaComprehensionV1, projectAtlasStageActivityDetailV1, projectAtlasStageActivityAdminRowsV1 } from "./program.js";
 import { normalizeAtlasPublicFieldRecordMapAreaV1, prepareAtlasPublicFieldRecordDraftV1, projectAtlasPublicFieldRecordEvidenceContextV1, projectAtlasPublicFieldRecordInferenceV1, PUBLIC_FIELD_RECORD_MAX_IMAGE_BYTES_V1 } from "./program.js";
 import { buildAtlasControlCenterPriorityChatRequestV1 } from "./program.js";
-import { applyAtlasAiChatAttachmentActionV1, executeAtlasAiChatToolCallsV1, projectAtlasAiChatAttachmentActionsV1, projectAtlasAiChatContextualSuggestionV1, projectAtlasAiChatToolContextV1, submitAtlasAiChatMessageV1 } from "./program.js";
+import { applyAtlasAiChatAttachmentActionV1, executeAtlasAiChatToolCallsV1, projectAtlasAiChatAttachmentActionsV1, projectAtlasAiChatToolContextV1, submitAtlasAiChatMessageV1 } from "./program.js";
 import type { AtlasActivityInstallationCommandV1 } from "./program.js";
-import { buildAtlasDataTableCsvV1, projectAtlasDataTableCategoriesV1, projectAtlasDataTablePageV1 } from "./program.js";
+import { buildAtlasDataTableCsvV1 } from "./program.js";
 import { ATLAS_RECORD_ATTACHMENT_POLICY_V1, isAtlasRecordDropAttachmentAllowedV1 } from "./program.js";
 import { normalizeAtlasLeadToolbarFiltersV1, projectAtlasLeadExportRowsV1, projectAtlasLeadToolbarRowVisibleV1 } from "./program.js";
 import { createAtlasFloatingWidgetLayoutKeyV1, projectAtlasFloatingWidgetDragPositionV1, readAtlasFloatingWidgetPositionV1, updateAtlasFloatingWidgetLayoutV1 } from "./program.js";
-import { projectAtlasBrokerDirectoryPageV1, projectAtlasBrokerDirectoryProfilesV1, projectAtlasBrokerCommissionReportV1 } from "./program.js";
-import { buildAtlasRepasseMutationCommandV1, projectAtlasRepassePageV1, projectAtlasRepasseSaleEditorV1, projectAtlasRepasseSelectedSaleIdV1 } from "./program.js";
+import { projectAtlasBrokerDirectoryProfilesV1, projectAtlasBrokerCommissionReportV1 } from "./program.js";
+import { createAtlasContractsPageCommandV1, createAtlasProposalFormSubmissionV1, inferAtlasProposalAttachmentV1, projectAtlasContractsPageV1 } from "./program.js";
+import type { AtlasCommercialScopeV1 } from "./program.js";
+import { buildAtlasRepasseMutationCommandV1, projectAtlasRepasseWorkspaceSummaryV1, projectAtlasRepasseDestinationStageOptionsV1, projectAtlasRepasseSaleEditorV1, projectAtlasRepasseSelectedSaleIdV1 } from "./program.js";
 import { projectAtlasRecordOcrReviewPropertiesV1 } from "./program.js";
 import { buildAtlasCashRecordFormCommandV1, projectAtlasCashRecordPageV1 } from "./program.js";
 import type {
@@ -260,7 +265,7 @@ import mapRuntimeDependenciesData from "./data/map-runtime-dependencies.json" wi
 import mapAssetProfileData from "./data/map-asset-profile.json" with { type: "json" };
 import adminPublicMapSurfaceData from "./data/admin-public-map-surface.json" with { type: "json" };
 import { atlasMapThreeFoundation, createAtlasMapViewSnapshot, projectAtlasMapSceneZoom, projectAtlasMapSceneSurfacePolicy, projectAtlasMapSceneContextTransition, projectAtlasMapSceneTilt, projectAtlasPublicFocusFrame, projectAtlasPublicGapLayout, projectAtlasPublicGapScale, createAtlasMapSceneFitCommand, isAtlasMapCameraFramingRectVisible, projectAtlasPublicLotMeshStatuses, publicMapCommercialStatusPresentation, loadPublicCommercialMapDeals, projectPublicCommercialMapStatusSnapshot, projectPublicCommercialMarkerModel, projectPublicCommercialMarkerState, projectPublicLotFootprintRecord, publicMapMarkerLift, publicMapMarkerProjectionMetrics, publicMapMarkerScreenScale, publicMapLotPartNames, projectAtlasMapThreeRendererProfile, projectAtlasPublicMapEnvironmentV1 } from "./program.js";
-import { projectAtlasMasterplanPdfImageRectV3, commitPublicMapCalibrationFrame, commitPublicMapCalibrationMarker, commitPublicMapManualLotPlacement, projectAtlasAdminMasterplanZoom, publicMapCalibrationStorage, publicMapCalibrationFrameAfterDrag, publicMapDragPosition, publicMapFramePatch } from "./program.js";
+import { projectAtlasMasterplanPdfLotLabelPlacementsV1, projectAtlasAdminMasterplanOverlayLayoutV1, projectAtlasAdminMasterplanRasterSizeV1, commitPublicMapCalibrationFrame, commitPublicMapCalibrationMarker, commitPublicMapManualLotPlacement, readPublicMapCalibrationFrame, resetPublicMapCalibrationFrame, readPublicMapCalibrationMarkers, resetPublicMapCalibrationMarkers, projectAtlasAdminMasterplanZoom, publicMapCalibrationFrameAfterDrag, publicMapDragPosition, publicMapFramePatch } from "./program.js";
 import { atlasPublicModelLoadingCatalogV1, projectAtlasPublicModelLoadingV1 } from "./program.js";
 import { publicMapLotCommercialFacts, publicMapLotMarkerStatus, publicMapLotPdfAreas, projectPublicSatelliteLotMarkerBatch } from "./program.js";
 const atlasAdminMasterplanOverlayPolicy = Object.freeze(masterplanOverlayPolicyData);
@@ -274,7 +279,7 @@ import type { AtlasMapModelCacheProgressV1 } from "./program.js";
 import type { AtlasAdminPdfMasterplanFrameV1 } from "./program.js";
 import { isAtlasProjectDocumentProtectedV1 } from "./program.js";
 import { projectSidebarPageRender } from "./program.js";
-import { buildAtlasAgendaCancellationPayloadV1, buildAtlasAgendaCompletionPayloadV1, buildAtlasAgendaEventPayloadV1, buildAtlasAgendaRecordPayloadV1, projectAtlasAgendaDataRefreshV1, projectAtlasAgendaPageV1, projectAtlasAgendaWeekGestureV1, projectAtlasStageHomeSnapshot } from "./program.js";
+import { projectAtlasAgendaDataRefreshV1, projectAtlasAgendaWeekGestureV1, projectAtlasStageHomeSnapshot, type AtlasAgendaEventFormValuesV1, type AtlasAgendaRecordFormValuesV1 } from "./program.js";
 import type { AtlasAgendaCalendarProgramV1 } from "./program.js";
 import { projectAtlasWorkerContextChatRecordSavedNoticeV1 } from "./program.js";
 import { projectAtlasWorkerContextChatComposerSubmissionV1 } from "./program.js";
@@ -283,7 +288,8 @@ import { removeAtlasWorkerContextChatAttachmentV1 } from "./program.js";
 import type { AtlasWorkerContextChatAttachmentV1, AtlasWorkerContextChatComposerSubmissionInputV1, AtlasWorkerContextChatComposerSubmissionV1 } from "./program.js";
 import type { AtlasAiChatToolCallV1 } from "./program.js";
 import { PROPOSAL_VISION_MAX_BYTES_V1, PROPOSAL_VISION_MIME_TYPES_V1 } from "./program.js";
-import { createPublicMapAssistantContextActions, loadPublicMapGeometryAssets, projectPublicSatelliteLots } from "./program.js";
+import { createPublicMapAssistantContextActions, projectPublicSatelliteLots } from "./program.js";
+import type { PublicMapGeometryAssetBundle } from "./program.js";
 import {
   ATLAS_STATE_CATALOGS_V1,
   MASTERPLAN_PDF_ARTWORK_V3,
@@ -566,7 +572,8 @@ export function renderSidebarNavigation(input: {
         ...sidebarNavigationCatalog.stageExtensionItems,
       ];
       const hasStageContext = Boolean(state.stageSelected || state.activityDedicated || state.stageActivityDedicatedV9);
-      const visibleSub = foremanSurface ? sub.filter(([subId]) => foremanExtensionViews.includes(subId)) : sub;
+      const visibleSub = (foremanSurface ? sub.filter(([subId]) => foremanExtensionViews.includes(subId)) : sub)
+        .filter(([subId]) => subId !== "agenda");
       return `<div class="nav-group">${button}${hasStageContext && visibleSub.length ? `<div class="nav-subitems" aria-label="Extensões da etapa selecionada">${visibleSub.map(([subId, subIcon, subLabel]) => `<button class="nav-subitem ${subId === "agenda" ? "stage-agenda-nav-subitem" : ""} ${view === subId ? "active" : ""}" data-view="${subId}">${ico(subIcon)}<span>${subLabel}</span></button>`).join("")}</div>` : ""}</div>`;
     }
     if (id === "reports")
@@ -574,7 +581,7 @@ export function renderSidebarNavigation(input: {
     return button;
   };
   // `program.ts` projects the exact effective menu for the current actor.
-  const visibleItems = items;
+  const visibleItems = items.filter(([id]) => id !== "agenda");
   const operationsIds = new Set(["records", "materials", "messages"]);
   const groups: Array<[string, SidebarNavigationItem[]]> = [
     ["WORKSPACE", visibleItems.filter(([id]) => !operationsIds.has(id))],
@@ -614,7 +621,7 @@ export function renderAtlasMapSceneShell(input: {
   const solarMarkup = `<div class="map-solar-control" data-solar-control aria-label="Iluminação solar do mapa"><div class="map-solar-head"><span>${ico("sun")} SOL</span><b data-solar-time>09:00</b></div><input type="range" min="5.5" max="17.8" step="0.25" value="9" data-solar-hour aria-label="Horário solar, do amanhecer ao entardecer"><div class="map-solar-scale"><span data-solar-sunrise>05:30</span><span>AMANHECER → ENTARDECER</span><span data-solar-sunset>17:45</span></div><small data-solar-location>DWG · localização solar</small></div>`;
   const overlays = Object.entries(labels).map(([key, label]) => `<button type="button" data-scene-overlay="${key}" class="overlay-${key}">${label}</button>`).join("");
   const printMap = input.persistent ? `<button type="button" data-scene-print-map class="map-print-launch">${ico("printer")} Imprimir mapa</button>` : "";
-  const mapMarkup = `<div class="map-host" aria-hidden="true"></div><div class="scene-world"><canvas class="three-overlay"></canvas></div><div class="map-tint"></div><div class="map-badge">${ico("layers-3")} <span>Captura satélite local · visão temática</span></div><div class="map-category-switcher" role="group" aria-label="Categorias de visualização do mapa">${overlays}<button type="button" data-scene-selection="progress" class="map-selection-launch">${ico("paintbrush")} Progresso</button>${printMap}</div><div class="map-rotation-controls" data-map-controls="connected" aria-label="Controles da cena compartilhada"><span>MAPA · VISTA 3D</span><div class="map-tile-switcher" role="group" aria-label="Base cartográfica"><button type="button" data-map-tiles="satellite">Satélite realista</button><button type="button" data-map-tiles="generated">Captura tratada · DWG</button><button type="button" data-map-tiles="osm">Mapa OSM</button></div><div class="map-pan-pad" aria-label="Panorâmica"><button type="button" data-scene-pan="up" aria-label="Mover mapa para cima">↑</button><button type="button" data-scene-pan="left" aria-label="Mover mapa para a esquerda">←</button><button type="button" data-scene-pan="reset" aria-label="Centralizar mapa">⌖</button><button type="button" data-scene-pan="right" aria-label="Mover mapa para a direita">→</button><button type="button" data-scene-pan="down" aria-label="Mover mapa para baixo">↓</button></div><div class="map-view-row"><button type="button" data-scene-zoom="-0.08" aria-label="Afastar mapa">−</button><button type="button" data-scene-zoom="0.08" aria-label="Aproximar mapa">＋</button><button type="button" data-scene-tilt="-4" aria-label="Reduzir inclinação">▿</button><button type="button" data-scene-tilt="4" aria-label="Aumentar inclinação">▵</button></div><div class="map-tilt-control" data-scene-tilt-control><label for="map-scene-tilt">INCLINAÇÃO <output data-scene-tilt-value>37°</output></label><input id="map-scene-tilt" type="range" min="0" max="72" step="1" value="37" data-scene-tilt-range aria-label="Inclinação da cena em graus"><small>0° superior · 72° baixa</small></div><div class="map-rotation-row"><button type="button" data-scene-rotate="-15" aria-label="Girar para a esquerda">↺</button><button type="button" data-scene-rotate="15" aria-label="Girar para a direita">↻</button><button type="button" data-scene-rotate="reset" aria-label="Restaurar orientação">N</button></div><button type="button" class="map-fit-button" data-scene-fit aria-label="Ajustar enquadramento">⌗ Ajustar enquadramento</button></div><div class="map-gesture-legend" role="group" tabindex="0" aria-label="Gestos de navegação do mapa"><span>Arraste para mover</span><b>Botão direito + arraste</b><span>girar</span><b>Shift + arraste</b><span>zoom vertical</span><b>Roda do mouse</b><span>zoom</span><b>Ctrl + roda</b><span>zoom preciso</span><b>Alt + clique / arraste</b><span>selecionar progresso</span></div>`;
+  const mapMarkup = `<div class="map-host" aria-hidden="true"></div><div class="scene-world"><canvas class="three-overlay"></canvas></div><div class="map-tint"></div><div class="map-background-loading" data-map-background-loading role="status" aria-live="polite"><span class="map-background-loading-spinner" aria-hidden="true"></span><span>Carregando imagem de fundo…</span></div><div class="map-badge">${ico("layers-3")} <span>Captura satélite local · visão temática</span></div><div class="map-category-switcher" role="group" aria-label="Categorias de visualização do mapa">${overlays}<button type="button" data-scene-selection="progress" class="map-selection-launch">${ico("paintbrush")} Progresso</button>${printMap}</div><div class="map-rotation-controls" data-map-controls="connected" aria-label="Controles da cena compartilhada"><span>MAPA · VISTA 3D</span><div class="map-tile-switcher" role="group" aria-label="Base cartográfica"><button type="button" data-map-tiles="satellite">Satélite realista</button><button type="button" data-map-tiles="generated">Captura tratada · DWG</button><button type="button" data-map-tiles="osm">Mapa OSM</button></div><div class="map-pan-pad" aria-label="Panorâmica"><button type="button" data-scene-pan="up" aria-label="Mover mapa para cima">↑</button><button type="button" data-scene-pan="left" aria-label="Mover mapa para a esquerda">←</button><button type="button" data-scene-pan="reset" aria-label="Centralizar mapa">⌖</button><button type="button" data-scene-pan="right" aria-label="Mover mapa para a direita">→</button><button type="button" data-scene-pan="down" aria-label="Mover mapa para baixo">↓</button></div><div class="map-view-row"><button type="button" data-scene-zoom="-0.08" aria-label="Afastar mapa">−</button><button type="button" data-scene-zoom="0.08" aria-label="Aproximar mapa">＋</button><button type="button" data-scene-tilt="-4" aria-label="Reduzir inclinação">▿</button><button type="button" data-scene-tilt="4" aria-label="Aumentar inclinação">▵</button></div><div class="map-tilt-control" data-scene-tilt-control><label for="map-scene-tilt">INCLINAÇÃO <output data-scene-tilt-value>37°</output></label><input id="map-scene-tilt" type="range" min="0" max="72" step="1" value="37" data-scene-tilt-range aria-label="Inclinação da cena em graus"><small>0° superior · 72° baixa</small></div><div class="map-rotation-row"><button type="button" data-scene-rotate="-15" aria-label="Girar para a esquerda">↺</button><button type="button" data-scene-rotate="15" aria-label="Girar para a direita">↻</button><button type="button" data-scene-rotate="reset" aria-label="Restaurar orientação">N</button></div><button type="button" class="map-fit-button" data-scene-fit aria-label="Ajustar enquadramento">⌗ Ajustar enquadramento</button></div><div class="map-gesture-legend" role="group" tabindex="0" aria-label="Gestos de navegação do mapa"><span>Arraste para mover</span><b>Botão direito + arraste</b><span>girar</span><b>Shift + arraste</b><span>zoom vertical</span><b>Roda do mouse</b><span>zoom</span><b>Ctrl + roda</b><span>zoom preciso</span><b>Alt + clique / arraste</b><span>selecionar progresso</span></div>`;
   return Object.freeze({ solarMarkup, mapMarkup });
 }
 
@@ -649,13 +656,27 @@ export function applyAtlasMapSceneCoverLayout(scene: HTMLElement): void {
   scene.dataset.mapCoverPolicyV9 = "aerial-cover + pan-clamp + resize-lock";
 }
 
-/** Render the operational map page without the removed overview card. */
-export function renderAtlasMapOverview(input: { ico?: (name: string) => string; status?: AtlasMapOperationalStatus } = {}): string {
+export interface AtlasOperationalMapLotOptionV1 {
+  label: string;
+  quadra: string;
+  lot: number;
+  area: number;
+  price: number;
+  status: string;
+}
+
+/** Render the operational map with a lot navigator that opens the map's property widget. */
+export function renderAtlasMapOverview(input: {
+  ico?: (name: string) => string;
+  status?: AtlasMapOperationalStatus;
+  lotOptions?: readonly AtlasOperationalMapLotOptionV1[];
+} = {}): string {
   const ico = input.ico || (() => "");
   const page = projectAtlasOperationalMapOverviewV1(input.status);
   const {status, progress} = page;
   const esc = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[char] || char));
-  return `<map-scene data-operational-map-page="true" data-base-map data-public-map="true" data-admin-public-map="true" data-public-static-only="true" data-public-static-capture="/assets/public/dwg-satellite-treated-v5411.png" data-stage="Aliança Park" data-overlay="urbanizacao" aria-label="Mapa operacional do loteamento sobre imagem de satélite"></map-scene><section class="admin-public-map-interface-v5352 operational-map-highlights-v5370" data-highlight-family="operational" data-highlight-key="${esc(status.key)}" aria-label="Mapa operacional com destaques físicos"><aside class="admin-public-map-status-v5352" data-highlight-status="${esc(status.key)}" aria-live="polite"><span>${esc(status.eyebrow)}</span><header><div><h2>${esc(status.title)}</h2><small>${esc(status.status)}</small></div><b>${progress}%</b></header><i><em style="width:${progress}%"></em></i><p>${esc(status.detail)}</p><div class="operational-map-highlight-meta-v5370"><span>APLICADO NO MAPA</span><b>${esc(status.priority)}</b></div><footer><small>${esc(status.next)}</small><button type="button" data-map-widget-context="${esc(status.view)}">Abrir contexto</button></footer></aside><map-filter-rail></map-filter-rail></section>`;
+  const lotOptions = (input.lotOptions || []).map(lot => `<option value="${esc(lot.label)}" data-lot="${esc(lot.lot)}" data-quadra="${esc(lot.quadra)}">${esc(lot.label)}</option>`).join("");
+  return `<map-scene data-operational-map-page="true" data-base-map data-public-map="true" data-admin-public-map="true" data-public-static-only="true" data-public-static-capture="/assets/public/dwg-satellite-treated-v5411.png" data-stage="Aliança Park" data-overlay="urbanizacao" aria-label="Mapa operacional do loteamento sobre imagem de satélite"></map-scene><section class="admin-public-map-interface-v5352 operational-map-highlights-v5370" data-highlight-family="operational" data-highlight-key="${esc(status.key)}" aria-label="Mapa operacional com destaques físicos"><aside class="atlas-map-lot-navigator" aria-label="Navegação e propriedades de lotes"><label for="atlas-map-lot-select-v1">Localizar lote<select id="atlas-map-lot-select-v1" data-atlas-map-lot-select><option value="">Selecione um lote</option>${lotOptions}</select></label><small data-atlas-map-lot-feedback role="status" aria-live="polite">Escolha um lote para centralizar o mapa e consultar suas propriedades.</small></aside><aside class="admin-public-map-status-v5352" data-highlight-status="${esc(status.key)}" aria-live="polite"><span>${esc(status.eyebrow)}</span><header><div><h2>${esc(status.title)}</h2><small>${esc(status.status)}</small></div><b>${progress}%</b></header><i><em style="width:${progress}%"></em></i><p>${esc(status.detail)}</p><div class="operational-map-highlight-meta-v5370"><span>APLICADO NO MAPA</span><b>${esc(status.priority)}</b></div><footer><small>${esc(status.next)}</small><button type="button" data-map-widget-context="${esc(status.view)}">Abrir contexto</button></footer></aside><map-filter-rail></map-filter-rail></section>`;
 }
 
 /** Install the operational map renderer and keep its quick navigation with the map view. */
@@ -798,6 +819,8 @@ export function roadPlanarAngleV1(points: unknown, fallback = 0): number {
 export interface AtlasOperationalMapPageDependenciesV1 {
   appStore: { get(): Record<string, unknown> };
   highlightStatus: Record<string, AtlasMapOperationalStatus>;
+  lotOptions?: () => readonly AtlasOperationalMapLotOptionV1[];
+  documentRef?: Document;
   ico?: (name: string) => string;
 }
 
@@ -808,8 +831,65 @@ export function createAtlasOperationalMapPageV1(input: AtlasOperationalMapPageDe
       mapFilter: input.appStore.get().mapFilter,
       highlightStatus: input.highlightStatus,
     });
-    return status ? renderAtlasMapOverview({ ico: input.ico, status }) : renderAtlasMapOverview({ ico: input.ico });
+    const lotOptions = input.lotOptions?.() || [];
+    return status
+      ? renderAtlasMapOverview({ ico: input.ico, status, lotOptions })
+      : renderAtlasMapOverview({ ico: input.ico, lotOptions });
   };
+}
+
+const atlasMapLotNavigatorDocumentsV1 = new WeakSet<Document>();
+
+/** Bind the catalog select to the canonical map marker selection and focus behavior. */
+export function bindAtlasOperationalMapLotNavigatorV1(documentRef: Document): void {
+  if (atlasMapLotNavigatorDocumentsV1.has(documentRef)) return;
+  atlasMapLotNavigatorDocumentsV1.add(documentRef);
+  let selectionRevision = 0;
+  documentRef.addEventListener("change", event => {
+    const select = event.target instanceof HTMLSelectElement && event.target.matches("[data-atlas-map-lot-select]")
+      ? event.target : null;
+    if (!select) return;
+    const option = select.selectedOptions[0];
+    const feedback = select.closest<HTMLElement>(".atlas-map-lot-navigator")?.querySelector<HTMLElement>("[data-atlas-map-lot-feedback]");
+    const lotNumber = Number(option?.dataset.lot);
+    if (!Number.isInteger(lotNumber) || lotNumber < 1) return;
+    const revision = ++selectionRevision;
+    const map = documentRef.querySelector<HTMLElement & { focusStaticSatelliteLotV1?: (lotId: string) => boolean }>("map-scene[data-operational-map-page]");
+    if (!map) {
+      if (feedback) feedback.textContent = "O mapa ainda não está disponível.";
+      return;
+    }
+    const focusMarker = (): boolean => {
+      if (!map.isConnected || revision !== selectionRevision) return true;
+      const marker = [...map.querySelectorAll<HTMLElement>(".satellite-lot-plan-marker[data-lot]")]
+        .find(candidate => {
+          const number = Number(String(candidate.dataset.lotNumber || candidate.dataset.lot || "").match(/\d+/g)?.at(-1));
+          return number === lotNumber;
+        });
+      if (!marker) return false;
+      marker.click();
+      const focused = map.focusStaticSatelliteLotV1?.(marker.dataset.lot || "") === true;
+      if (feedback) feedback.textContent = focused
+        ? `${option.value} centralizado · propriedades do lote exibidas no mapa.`
+        : `${option.value} selecionado · propriedades exibidas; aguarde o enquadramento do mapa.`;
+      return true;
+    };
+    if (focusMarker()) return;
+    const MutationObserverCtor = documentRef.defaultView?.MutationObserver;
+    if (!MutationObserverCtor) {
+      if (feedback) feedback.textContent = `Lote ${option.value} ainda não apareceu na camada do mapa.`;
+      return;
+    }
+    const observer = new MutationObserverCtor(() => {
+      if (!map.isConnected || revision !== selectionRevision || focusMarker()) observer.disconnect();
+    });
+    observer.observe(map, { childList: true, subtree: true });
+    documentRef.defaultView?.setTimeout(() => {
+      observer.disconnect();
+      if (revision === selectionRevision && feedback && !map.querySelector(`.satellite-lot-plan-marker[data-lot-number="${lotNumber}"]`))
+        feedback.textContent = `O lote ${option.value} não foi encontrado na camada atual.`;
+    }, 10000);
+  }, true);
 }
 
 /** Install the typed operational map renderer on the legacy host element. */
@@ -818,6 +898,7 @@ export function installAtlasOperationalMapPageV1(
   input: AtlasOperationalMapPageDependenciesV1,
 ): () => string {
   if (!ViewLayer?.prototype) throw new TypeError("Operational map page requires the shared ViewLayer constructor.");
+  if (input.documentRef) bindAtlasOperationalMapLotNavigatorV1(input.documentRef);
   const render = createAtlasOperationalMapPageV1(input);
   ViewLayer.prototype.map = render;
   return render;
@@ -1281,7 +1362,6 @@ export async function installAtlasMapSceneFeatureCompositionV1(input: {
     host: globalThis,
     documentRef: globalThis.document,
     commonAreaLabel: MASTERPLAN_COMMON_AREA_LABEL_V1,
-    loadWorkerContextChat: ports.loadWorkerContextChat,
   });
   const {
     prepareAssistantLotStatusPromptV1,
@@ -1585,7 +1665,6 @@ export async function installAtlasMapSceneCompositionV1(input: {
   MapScene: CustomElementConstructor;
   dependencies: AtlasMapSceneCompositionDependenciesV1;
   georeferenceBindings: AtlasMapSceneGeoreferenceBindingsV1;
-  loadWorkerContextChat: () => Promise<unknown>;
   importThree: () => Promise<unknown>;
   importGltfLoader: () => Promise<unknown>;
 }): Promise<AtlasMapSceneAssistantActionsV1> {
@@ -1702,7 +1781,6 @@ export async function installAtlasMapSceneCompositionV1(input: {
     viewThemes,
     activityCatalog,
     loadGlbWithClientCacheV14: atlasMapComponentsTsV1.loadAtlasMapGlbWithClientCacheV1,
-    loadWorkerContextChat: input.loadWorkerContextChat,
     importThree: input.importThree,
     importGltfLoader: input.importGltfLoader,
   };
@@ -3402,13 +3480,11 @@ export function createAtlasTopbarElement(options: {
   const ico = options.ico || (() => ""), esc = options.esc || (value => String(value ?? ""));
   const routeLabels: Record<string, string> = {
     control: "Visão geral", map: "Mapa de lotes", stages: "Agenda", agenda: "Agenda", activities: "Atividades", progress: "Progresso",
-    records: "Registros de obras", materials: "Materiais", "lot-development": "Loteamento", "brokers-board": "Lotes",
+    records: "Registros de obras", materials: "Notas", "lot-development": "Loteamento", "brokers-board": "Lotes",
     brokers: "Corretores", "broker-detail": "Perfil do corretor", repasses: "Repasses", "sales-history": "Histórico de movimentações", settings: "Configurações",
   };
   return class AtlasTopbarElement extends AtlasHTMLElementBase {
     private unsubscribe: (() => void) | null = null;
-    private refreshTimer: ReturnType<typeof setInterval> | null = null;
-    private signature = "";
     private onClick = (event: Event): void => { void this.handleClick(event); };
 
     connectedCallback(): void {
@@ -3416,23 +3492,16 @@ export function createAtlasTopbarElement(options: {
       this.addEventListener("click", this.onClick);
       this.render();
       this.syncDashboardMode();
-      this.signature = "";
-      void this.requestTopbarOperation(ATLAS_TOPBAR_OPERATION_EVENTS.refreshNotifications).catch(error => console.info("Central de notificações persistidas indisponível.", error));
-      this.refreshTimer = setInterval(() => { void this.requestTopbarOperation(ATLAS_TOPBAR_OPERATION_EVENTS.refreshNotifications).catch(() => {}); }, 60_000);
       this.unsubscribe?.();
       this.unsubscribe = options.appStore.subscribe(state => {
         this.updateThemeButton(state.theme);
         this.updateAtlasNavigation(state);
-        const signature = atlasTopbarNotificationSignature(state.operationalNotifications);
-        if (signature !== this.signature) { this.signature = signature; this.render(); }
       });
     }
 
     disconnectedCallback(): void {
       this.removeEventListener("click", this.onClick);
       this.unsubscribe?.(); this.unsubscribe = null;
-      if (this.refreshTimer) clearInterval(this.refreshTimer);
-      this.refreshTimer = null;
     }
 
     private requestTopbarOperation<T = unknown>(eventName: string, values: Record<string, unknown> = {}): Promise<T> {
@@ -3456,18 +3525,6 @@ export function createAtlasTopbarElement(options: {
       if (environmentButton && this.contains(environmentButton)) { await this.switchDesktopEnvironment(environmentButton); return; }
       const syncButton = origin.closest<HTMLButtonElement>("#syncBtn");
       if (syncButton && this.contains(syncButton)) { await this.synchronizeAgenda(syncButton); return; }
-      const notificationButton = origin.closest<HTMLElement>('[aria-label="Notificações"]');
-      if (notificationButton && this.contains(notificationButton)) {
-        event.stopPropagation();
-        const panel = this.querySelector<HTMLElement>("[data-topbar-notification-panel]");
-        if (panel) { panel.hidden = !panel.hidden; if (!panel.hidden) void this.requestTopbarOperation(ATLAS_TOPBAR_OPERATION_EVENTS.refreshNotifications); }
-        return;
-      }
-      if (origin.closest("[data-notification-close]")) { this.querySelector("[data-topbar-notification-panel]")?.setAttribute("hidden", ""); return; }
-      const notificationItem = origin.closest<HTMLButtonElement>("[data-notification-item]");
-      if (notificationItem && this.contains(notificationItem)) { await this.markNotificationRead(notificationItem); return; }
-      const markAll = origin.closest<HTMLButtonElement>("[data-notification-mark-all]");
-      if (markAll && this.contains(markAll)) { await this.markAllNotificationsRead(markAll); return; }
       const profile = origin.closest(".top-profile");
       if (profile && this.contains(profile)) {
         this.querySelector(".top-admin-menu")?.classList.toggle("open");
@@ -3591,27 +3648,20 @@ export function createAtlasTopbarElement(options: {
     }
 
     private render(): void {
-      const panelWasOpen = Boolean(this.querySelector<HTMLElement>("[data-topbar-notification-panel]:not([hidden])"));
       const state = options.appStore.get();
       const actor = state.currentActor && typeof state.currentActor === "object" ? state.currentActor as Record<string, unknown> : { name: "Warley", label: "Dono" };
+      const nativeApp = Boolean((globalThis as typeof globalThis & { BELAVISTA_CAPACITOR_NATIVE?: boolean }).BELAVISTA_CAPACITOR_NATIVE);
       this.dataset.role = normalizeSidebarOperationalRole(actor.role || "owner");
-      const toolbar = [["control", "layout-dashboard", "Visão"], ["map", "map", "Mapa"], ["agenda", "calendar-days", "Agenda"]]
+      const toolbar = [["control", "layout-dashboard", "Visão"], ["map", "map", "Mapa"]]
         .map(([view, icon, label]) => `<button type="button" data-atlas-view="${view}" title="Abrir ${label}">${ico(icon)}<span>${label}</span></button>`).join("");
-      this.innerHTML = `<header class="topbar atlas-topbar"><div class="atlas-topbar-leading"><button type="button" class="icon-btn menu-toggle" data-sidebar-menu-toggle aria-label="Abrir menu" aria-expanded="false">${ico("menu")}</button><div class="atlas-breadcrumbs"><span>Empreendimentos</span><span>›</span><strong>${esc(routeLabels[String(state.view || "")] || "Acompanhamento")}</strong></div></div><nav class="atlas-toolbar" role="toolbar" aria-label="Barra de ferramentas da aplicação">${toolbar}</nav><div class="top-actions"><span class="atlas-session"><i></i>Sessão ativa</span><button type="button" class="ghost" data-desktop-environment hidden>Ambiente</button><button id="syncBtn" class="ghost">${ico("refresh-cw")}<span>Sincronizar</span></button><button class="icon-btn" aria-label="Notificações">${ico("bell")}<span class="badge">0</span></button><div class="top-admin-wrap"><div class="profile top-profile" id="topAdminTrigger" tabindex="0" role="button"><span class="avatar">${esc(String(actor.name || "Warley")[0] || "W")}</span><div><strong>${esc(actor.name || "Warley")}</strong><small>${esc(actor.label || "Dono")}</small></div>${ico("chevron-down")}</div><div class="top-admin-menu"><button>Perfil e permissões</button><button>Auditoria da sessão</button><button>Encerrar sessão</button></div></div></div></header>`;
+      const desktopEnvironmentButton = nativeApp ? "" : '<button type="button" class="ghost" data-desktop-environment hidden>Ambiente</button>';
+      this.innerHTML = `<header class="topbar atlas-topbar"><div class="atlas-topbar-leading"><button type="button" class="icon-btn menu-toggle" data-sidebar-menu-toggle aria-label="Abrir menu" aria-expanded="false">${ico("menu")}</button><button type="button" class="atlas-mobile-brand" data-mobile-view="control" aria-label="Abrir visão geral"><span class="atlas-mobile-brand-mark">${ico("layers")}</span><strong>atlas<span>.</span></strong><span class="atlas-mobile-brand-badge">ALIANÇA PARK</span></button><nav class="atlas-breadcrumbs" aria-label="Trilha de navegação"><button type="button" class="atlas-breadcrumb-link" data-atlas-view="control" aria-label="Abrir visão geral">Empreendimentos</button><span aria-hidden="true">›</span><strong aria-current="page">${esc(routeLabels[String(state.view || "")] || "Acompanhamento")}</strong></nav></div><nav class="atlas-toolbar" role="toolbar" aria-label="Barra de ferramentas da aplicação">${toolbar}</nav><div class="top-actions" id="atlasMobileTopActions"><span class="atlas-session"><i></i>Sessão ativa</span>${desktopEnvironmentButton}<button id="syncBtn" class="ghost">${ico("refresh-cw")}<span>Sincronizar</span></button><div class="top-admin-wrap"><div class="profile top-profile" id="topAdminTrigger" tabindex="0" role="button"><span class="avatar">${esc(String(actor.name || "Warley")[0] || "W")}</span><div><strong>${esc(actor.name || "Warley")}</strong><small>${esc(actor.label || "Dono")}</small></div>${ico("chevron-down")}</div><div class="top-admin-menu"><button>Perfil e permissões</button><button>Auditoria da sessão</button><button>Encerrar sessão</button></div></div></div></header>`;
       this.updateAtlasNavigation(state);
-      const notificationButton = this.querySelector<HTMLElement>('[aria-label="Notificações"]');
-      if (notificationButton) {
-        notificationButton.dataset.notificationsTrigger = "true";
-        const notificationProjection = projectAtlasTopbarNotificationCollection(state.operationalNotifications);
-        notificationButton.querySelector<HTMLElement>(".badge")!.textContent = String(notificationProjection.unreadCount);
-        this.insertAdjacentHTML("beforeend", renderAtlasTopbarNotificationPanel(state, esc));
-        if (panelWasOpen) this.querySelector("[data-topbar-notification-panel]")?.removeAttribute("hidden");
-      }
       if (isSidebarActorLimited(actor)) {
-        this.querySelector(".atlas-session")?.remove(); this.querySelector("#syncBtn")?.remove(); notificationButton?.remove();
+        this.querySelector(".atlas-session")?.remove(); this.querySelector("#syncBtn")?.remove();
         this.querySelectorAll(".top-admin-menu button:not(:last-child)").forEach(button => button.remove());
       }
-      void this.refreshDesktopEnvironmentButton();
+      if (!nativeApp) void this.refreshDesktopEnvironmentButton();
       windowRef?.lucide?.createIcons();
     }
   };
@@ -3778,8 +3828,6 @@ function renderAtlasWorkerContextChatShellBodyMarkupV1(input: AtlasWorkerContext
           <div class="worker-context-chat-head-actions"><button type="button" data-worker-chat-voice aria-pressed="${String(input.voiceEnabled)}" title="Ativar avisos falados">◖</button><button type="button" data-worker-chat-minimize aria-label="${collapsed ? 'Restaurar assistente' : 'Minimizar assistente'}">${collapsed ? '+' : '−'}</button></div>
         </header>
         <div class="worker-context-chat-body">
-          <div class="worker-chat-tabs" role="tablist" aria-label="Chat operacional"><button type="button" role="tab" data-worker-chat-tab="conversation" aria-selected="true">Conversa</button><button type="button" role="tab" data-worker-chat-tab="register" aria-selected="false">Registrar por câmera</button></div>
-          <div class="worker-chat-register-panel" data-worker-chat-register-panel role="tabpanel" hidden><strong>Registro com evidência</strong><p>Capture uma foto ou selecione um arquivo. Descreva o fato e envie para leitura; confirme a alocação antes de salvar o registro.</p><button type="button" data-worker-chat-capture> Abrir câmera</button></div>
           <div class="worker-context-chat-intro"><strong>Resposta atual</strong><span>Peça um serviço de qualquer área; solicitações e arquivos ficam acompanháveis pelo número gerado.</span></div>
           <div class="worker-chat-speaker-panel" data-worker-chat-speaker-panel>
             <label><span>Modelo de speaker</span><select data-worker-chat-speaker aria-label="Modelo de voz do assistente">${profiles}</select></label>
@@ -3796,10 +3844,12 @@ function renderAtlasWorkerContextChatShellBodyMarkupV1(input: AtlasWorkerContext
           <form class="worker-context-chat-form" data-worker-chat-form>
             <div class="worker-context-chat-attachment" data-worker-chat-attachment aria-live="polite" hidden></div>
             <div class="worker-context-chat-input-shell">
-              <textarea name="message" rows="2" maxlength="2000" placeholder="Descreva um fato, peça uma ação ou revise uma diretriz…" aria-label="Mensagem para o assistente dos workers"></textarea>
-              <div class="worker-chat-attachment-rail" role="group" aria-label="Ações da mensagem">
-                <button type="button" data-worker-chat-file aria-label="Anexar arquivo" title="Anexar arquivo"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 3.5h7l4 4V20H7a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M14 3.5V8h4M9 12h6M9 15h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span class="sr-only">Anexar arquivo</span></button>
-                <button type="button" data-worker-chat-camera aria-label="Tirar foto" title="Tirar foto"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h3l1.5-2h7L17 7h3v12H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="1.7"/></svg><span class="sr-only">Tirar foto</span></button>
+              <div class="worker-context-chat-compose-main">
+                <textarea name="message" rows="2" maxlength="2000" placeholder="Descreva um fato, peça uma ação ou revise uma diretriz…" aria-label="Mensagem para o assistente dos workers"></textarea>
+              </div>
+              <div class="worker-context-chat-action-rail" role="group" aria-label="Anexos e câmera da mensagem">
+                <button type="button" class="worker-context-chat-file-action" data-worker-chat-file aria-label="Anexar arquivo" title="Anexar arquivo"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 3.5h7l4 4V20H7a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M14 3.5V8h4M9 12h6M9 15h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span class="sr-only">Anexar arquivo</span></button>
+                <button type="button" class="worker-context-chat-camera-action" data-worker-chat-camera aria-label="Abrir câmera" title="Abrir câmera"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h3l1.5-2h7L17 7h3v12H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></button>
               </div>
               <input type="file" class="worker-context-chat-image-input" data-worker-chat-file-input accept="image/png,image/jpeg,image/webp,application/pdf,.pdf,.dwg,.dxf" aria-label="Selecionar anexo">
               <input type="file" class="worker-context-chat-image-input" data-worker-chat-camera-input accept="image/*" capture="environment" aria-label="Capturar foto">
@@ -3819,6 +3869,7 @@ export type AtlasWorkerContextChatAttachmentSourceV1 = 'camera' | 'file' | 'clip
 
 export interface AtlasWorkerContextChatComposerPortsV1 {
   readFiles(files: readonly File[], source: AtlasWorkerContextChatAttachmentSourceV1): void;
+  capturePhoto?(): Promise<File | null>;
   readSubmission(): AtlasWorkerContextChatComposerSubmissionInputV1;
   clearSubmission(): void;
   submit(submission: AtlasWorkerContextChatComposerSubmissionV1): void;
@@ -3859,6 +3910,7 @@ export function installAtlasWorkerContextChatComposerEventsV1(
   const fileInput = root.querySelector<HTMLInputElement>('[data-worker-chat-file-input]');
   const composer = root.querySelector<HTMLFormElement>('[data-worker-chat-form]');
   const message = root.querySelector<HTMLTextAreaElement>('textarea[name="message"]');
+  const status = root.querySelector<HTMLElement>('[data-worker-chat-status]');
 
   root.addEventListener('click', event => {
     const target = event.target instanceof Element ? event.target : null;
@@ -3869,7 +3921,15 @@ export function installAtlasWorkerContextChatComposerEventsV1(
       return;
     }
     if (target.closest('[data-worker-chat-capture], [data-worker-chat-camera]')) {
-      cameraInput?.click();
+      if (!ports.capturePhoto) {
+        cameraInput?.click();
+        return;
+      }
+      void ports.capturePhoto().then(file => {
+        if (file) ports.readFiles([file], 'camera');
+      }).catch(error => {
+        if (status) status.textContent = error instanceof Error ? error.message : 'Não foi possível abrir a câmera.';
+      });
       return;
     }
     if (target.closest('[data-worker-chat-file]')) {
@@ -3962,7 +4022,6 @@ export function readAtlasWorkerContextChatFileV1(
     };
     ports.setFiles([prepared]);
     ports.setAttachment(/^image\//.test(mimeType) ? prepared : null);
-    if (source === 'camera') ports.selectTab('register');
     ports.renderAttachment();
     ports.setStatus('Anexo preparado; escreva a instrução e envie para o worker.');
   };
@@ -4173,6 +4232,28 @@ export function installAtlasWorkerChatSwipeSheetV1(input: {
   return true;
 }
 
+/** Keep the mobile bottom navigation on one active destination, including the chat tab. */
+function syncAtlasMobileNavigationSelectionV1(documentRef: Document, currentView?: string): void {
+  const nav = documentRef.querySelector<HTMLElement>('.atlas-mobile-bottom');
+  if (!nav) return;
+  if (currentView) nav.dataset.mobileCurrentView = currentView;
+  const selectedView = String(currentView || nav.dataset.mobileCurrentView || '');
+  const shell = documentRef.querySelector<HTMLElement>('#app.app');
+  const chatOpen = shell?.dataset.mobileTab === 'chat' || documentRef.body.classList.contains('mobile-chat-tab-active');
+  nav.querySelectorAll<HTMLButtonElement>('[data-mobile-view]').forEach(button => {
+    const view = button.dataset.mobileView || '';
+    const selected = !chatOpen && (view === selectedView || view === 'stages' && ['agenda', 'actions', 'activities', 'progress', 'foremen', 'activity-installation'].includes(selectedView));
+    button.classList.toggle('active', selected);
+    if (selected) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
+  });
+  const chat = nav.querySelector<HTMLButtonElement>('[data-mobile-chat-tab]');
+  chat?.classList.toggle('active', Boolean(chatOpen));
+  chat?.setAttribute('aria-expanded', String(Boolean(chatOpen)));
+  if (chatOpen) chat?.setAttribute('aria-current', 'page');
+  else chat?.removeAttribute('aria-current');
+}
+
 /** Apply the collapsed/open chat state, including the mobile assistant tab. */
 export function applyAtlasWorkerContextChatCollapsedStateV1(
   root: HTMLElement,
@@ -4196,6 +4277,7 @@ export function applyAtlasWorkerContextChatCollapsedStateV1(
       if (app) app.dataset.mobileTab = 'chat';
       documentRef.body.classList.add('mobile-chat-tab-active');
     }
+    syncAtlasMobileNavigationSelectionV1(documentRef);
   }
   const minimize = root.querySelector<HTMLButtonElement>('[data-worker-chat-minimize]');
   if (minimize) {
@@ -4230,16 +4312,12 @@ export function applyAtlasWorkerContextChatTabV1(
   input: HTMLTextAreaElement | null,
   tab: unknown,
 ): 'register' | 'conversation' {
-  const selected = tab === 'register' ? 'register' : 'conversation';
+  const selected = 'conversation';
   root.dataset.chatTab = selected;
   root.querySelectorAll<HTMLElement>('[data-worker-chat-tab]').forEach(button => {
     button.setAttribute('aria-selected', String(button.dataset.workerChatTab === selected));
   });
-  const panel = root.querySelector<HTMLElement>('[data-worker-chat-register-panel]');
-  if (panel) panel.hidden = selected !== 'register';
-  if (input) input.placeholder = selected === 'register'
-    ? 'Descreva a foto ou o registro…'
-    : 'Descreva um fato, peça uma ação ou revise uma diretriz…';
+  if (input) input.placeholder = 'Descreva um fato, peça uma ação ou revise uma diretriz…';
   return selected;
 }
 
@@ -4904,6 +4982,7 @@ export interface AtlasWorkerContextChatBindingComponentsV1 extends Record<string
   }) => void;
   installAtlasWorkerContextChatComposerEventsV1?: (root: HTMLElement, ports: {
     readFiles(files: readonly File[], source: 'camera' | 'file' | 'clipboard'): void;
+    capturePhoto?(): Promise<File | null>;
     readSubmission(): AtlasWorkerContextChatComposerSubmissionInputV1;
     clearSubmission(): void;
     submit(submission: AtlasWorkerContextChatComposerSubmissionV1): void;
@@ -4922,6 +5001,7 @@ export function installAtlasWorkerContextChatBindingsV1(input: {
   serviceKey: string;
   setStorage(key: string, value: string): void;
   native: boolean;
+  capturePhoto?: () => Promise<File | null>;
   installSwipeSheet?: (input: { root: HTMLElement; setCollapsed(collapsed: boolean): void; native: boolean }) => void;
 }): boolean {
   const root = input?.root;
@@ -4977,6 +5057,7 @@ export function installAtlasWorkerContextChatBindingsV1(input: {
 
   installComposer(root, {
     readFiles: (files, source) => files.forEach(file => controller.readImage(file, source)),
+    capturePhoto: input.capturePhoto,
     readSubmission: () => ({
       text: controller.input?.value || '',
       editingId: controller.editingId,
@@ -5203,7 +5284,7 @@ export function installAtlasWorkerContextChatObservationV1(
 
 /** Keep the existing mobile navigation markup while making its rendering TS-owned. */
 export function renderAtlasMobileNavigation(): string {
-  return `<nav class="mobile-bottom atlas-mobile-bottom" aria-label="Navegação mobile"><button type="button" data-mobile-view="map"><i data-lucide="map"></i><span>Mapa</span></button><button type="button" data-mobile-view="agenda"><i data-lucide="calendar-days"></i><span>Agenda</span></button><button type="button" data-mobile-view="records"><i data-lucide="clipboard-pen-line"></i><span>Registros</span></button><button type="button" data-mobile-chat-tab aria-controls="worker-context-chat" aria-expanded="false"><i data-lucide="message-circle"></i><span>Chat</span></button></nav>`;
+  return `<nav class="mobile-bottom atlas-mobile-bottom" aria-label="Navegação mobile"><button type="button" data-mobile-view="control"><i data-lucide="house"></i><span>Visão geral</span></button><button type="button" data-mobile-view="map"><i data-lucide="map"></i><span>Mapa</span></button><button type="button" data-mobile-view="materials"><i data-lucide="package"></i><span>Notas</span></button><button type="button" data-mobile-chat-tab aria-controls="worker-context-chat" aria-expanded="false"><i data-lucide="message-circle"></i><span>Chat</span></button></nav>`;
 }
 
 /** Own mobile route, chat, drawer, overlay, and permission state for the app shell. */
@@ -5225,12 +5306,8 @@ export function installAtlasMobileNavigation(root: HTMLElement, options: {
     root.querySelectorAll<HTMLButtonElement>("[data-mobile-view]").forEach(button => {
       const view = button.dataset.mobileView || "";
       button.hidden = !sidebarActorCanOpenView(state.currentActor || {}, view);
-      button.classList.toggle("active", view === state.view || view === "stages" && ["agenda", "actions", "activities", "progress", "foremen", "activity-installation"].includes(String(state.view || "")));
     });
-    const chat = root.querySelector<HTMLButtonElement>("[data-mobile-chat-tab]");
-    const open = root.querySelector<HTMLElement>("#app.app")?.dataset.mobileTab === "chat";
-    chat?.classList.toggle("active", Boolean(open));
-    chat?.setAttribute("aria-expanded", String(Boolean(open)));
+    syncAtlasMobileNavigationSelectionV1(documentRef, String(state.view || ''));
   };
   const onClick = (event: Event): void => {
     const target = event.target;
@@ -5257,6 +5334,7 @@ export function installAtlasMobileNavigation(root: HTMLElement, options: {
         label: mobile.textContent?.trim() || "",
         reportFamily: mobile.dataset.reportFamily || "",
       });
+      update();
       return;
     }
     const chat = target.closest<HTMLButtonElement>("[data-mobile-chat-tab]");
@@ -5271,7 +5349,7 @@ export function installAtlasMobileNavigation(root: HTMLElement, options: {
         if (shell) shell.dataset.mobileTab = "chat";
         documentRef.body.classList.add("mobile-chat-tab-active"); chat.setAttribute("aria-expanded", "true");
       }
-      chat.classList.toggle("active", shell?.dataset.mobileTab === "chat");
+      update();
     }
   };
   root.dataset.mobileNavigationTsOwner = "true";
@@ -5696,7 +5774,7 @@ export function installAtlasStageDedicatedPageBaseV1(
     const diary = recordRows.length ? recordRows.map((record: AtlasStageActivityRecordV1) => `<tr><td><b>${esc(record.data || '—')}</b><small>${esc(record.hora || '')}</small></td><td>${esc(record.atividade || stage.name)}</td><td>${esc(record.responsavel || 'A definir')}</td><td>${esc(record.detalhes || 'Sem apontamento')}</td><td><span>${esc(record.status || 'Pendente')}</span></td><td>${record.comprovante || record.evidencias ? 'Anexado' : '—'}</td></tr>`).join('') : '<tr><td colspan="6" class="stage-v9-empty-diary">Nenhum apontamento desta etapa no histórico. O primeiro registro confirmado aparecerá aqui.</td></tr>';
     const production = stage.production && typeof stage.production === 'object' ? stage.production : {};
     const materialsMarkup = materials.map(item => `<div><b>${esc(item.name)}</b><span>${item.quantity == null ? 'Quantidade a medir' : `${esc(item.quantity)} ${esc(item.unit || 'un.')}`}</span><small>${esc(item.status || 'Planejado')} · ${esc(item.scope || 'Requisito da etapa')}</small></div>`).join('');
-    return `<section class="stage-v9-dedicated-page"><header class="stage-v9-dedicated-head"><button type="button" class="stage-v9-back" data-view="stages">${ico('arrow-left')} Todas as etapas</button><div><span class="activity-kind">ETAPA DEDICADA · ${esc(String(stage.key || '').toUpperCase())}</span><h1>${esc(stage.name)}</h1><p>${esc(live.week || 'Cronograma operacional')} · ${esc(live.owner || 'Responsável a definir')} · unidade ${esc(production.unit || 'produção')}</p></div><aside><small>AVANÇO REGISTRADO</small><b>${Number(live.progress) || 0}%</b><span>${esc(stageV9StatusFor(live))}</span></aside></header><section class="stage-v9-status-lines"><div><small>STATUS DA RELAÇÃO</small><b>${deps.length ? `Aguardando ${deps.join(', ')}` : 'Liberada para início'}</b></div><div><small>CAIXA / ORÇAMENTO</small><b>${formatBRL(budget)}</b><span>peso ${Number(stage.cashWeight || 0) * 100}% no caixa</span></div><div><small>PRODUÇÃO</small><b>${esc(stageV9ProductionFor(stage))}</b><span>medida validada no diário</span></div><div><small>NOTIFICAÇÕES</small><b>${Object.values(targets).flat().length || 0} destinos</b><span>eventos auditáveis</span></div></section><section class="stage-v9-flow-section"><header><div><span class="activity-kind">FLUXOGRAMA ATUAL DE EXECUÇÃO</span><h2>Atividades e linhagens de requisito</h2><p>Clique em qualquer card para abrir o cabeçalho estrutural da atividade e seu diário de obra.</p></div><span class="stage-v9-flow-note">${Array.isArray(stage.dependsOn) && stage.dependsOn.length ? `↳ depende de ${stage.dependsOn.join(' · ')}` : '↳ início do encadeamento'}</span></header><div class="stage-v9-flow">${flow}</div></section><section class="stage-v9-detail-grid"><article class="stage-v9-detail-card"><span class="activity-kind">DIRETRIZ ATIVA</span><h2>O que dispara esta etapa</h2><p>${esc(stageV9DirectiveText(stage, profile))}</p><h3>Requisitos de evidência</h3><ul>${listItems(profile.evidenceFocus)}</ul><h3>Pedidos e materiais</h3><ul>${listItems(profile.procurementFocus || materials.map(item => item.name))}</ul></article><article class="stage-v9-detail-card"><span class="activity-kind">MATERIAIS PRINCIPAIS</span><h2>Composição da frente</h2><div class="stage-v9-material-list">${materialsMarkup}</div></article></section><section class="stage-v9-diary"><header><div><span class="activity-kind">DIÁRIO DE OBRA · HISTÓRICO DA ETAPA</span><h2>Registros, medições e comprovantes</h2></div><button type="button" data-view="records">Abrir histórico completo ${ico('arrow-up-right')}</button></header><div class="stage-v9-diary-table-wrap"><table class="stage-v9-diary-table"><thead><tr><th>Data / hora</th><th>Atividade</th><th>Responsável</th><th>Apontamento</th><th>Status</th><th>Comprovante</th></tr></thead><tbody>${diary}</tbody></table></div></section></section>`;
+    return `<section class="stage-v9-dedicated-page" data-stage-key="${esc(String(stage.key || ""))}"><header class="stage-v9-dedicated-head"><button type="button" class="stage-v9-back" data-view="stages">${ico('arrow-left')} Todas as etapas</button><div><span class="activity-kind">ETAPA DEDICADA · ${esc(String(stage.key || '').toUpperCase())}</span><h1>${esc(stage.name)}</h1><p>${esc(live.week || 'Cronograma operacional')} · ${esc(live.owner || 'Responsável a definir')} · unidade ${esc(production.unit || 'produção')}</p></div><aside><small>AVANÇO REGISTRADO</small><b>${Number(live.progress) || 0}%</b><span>${esc(stageV9StatusFor(live))}</span></aside></header><section class="stage-v9-status-lines"><div><small>STATUS DA RELAÇÃO</small><b>${deps.length ? `Aguardando ${deps.join(', ')}` : 'Liberada para início'}</b></div><div><small>CAIXA / ORÇAMENTO</small><b>${formatBRL(budget)}</b><span>peso ${Number(stage.cashWeight || 0) * 100}% no caixa</span></div><div><small>PRODUÇÃO</small><b>${esc(stageV9ProductionFor(stage))}</b><span>medida validada no diário</span></div><div><small>NOTIFICAÇÕES</small><b>${Object.values(targets).flat().length || 0} destinos</b><span>eventos auditáveis</span></div></section><section class="stage-v9-flow-section"><header><div><span class="activity-kind">FLUXOGRAMA ATUAL DE EXECUÇÃO</span><h2>Atividades e linhagens de requisito</h2><p>Clique em qualquer card para abrir o cabeçalho estrutural da atividade e seu diário de obra.</p></div><span class="stage-v9-flow-note">${Array.isArray(stage.dependsOn) && stage.dependsOn.length ? `↳ depende de ${stage.dependsOn.join(' · ')}` : '↳ início do encadeamento'}</span></header><div class="stage-v9-flow">${flow}</div></section><section class="stage-v9-detail-grid"><article class="stage-v9-detail-card"><span class="activity-kind">DIRETRIZ ATIVA</span><h2>O que dispara esta etapa</h2><p>${esc(stageV9DirectiveText(stage, profile))}</p><h3>Requisitos de evidência</h3><ul>${listItems(profile.evidenceFocus)}</ul><h3>Pedidos e materiais</h3><ul>${listItems(profile.procurementFocus || materials.map(item => item.name))}</ul></article><article class="stage-v9-detail-card"><span class="activity-kind">MATERIAIS PRINCIPAIS</span><h2>Composição da frente</h2><div class="stage-v9-material-list">${materialsMarkup}</div></article></section><section class="stage-v9-diary"><header><div><span class="activity-kind">DIÁRIO DE OBRA · HISTÓRICO DA ETAPA</span><h2>Registros, medições e comprovantes</h2></div><button type="button" data-view="records">Abrir histórico completo ${ico('arrow-up-right')}</button></header><div class="stage-v9-diary-table-wrap"><table class="stage-v9-diary-table"><thead><tr><th>Data / hora</th><th>Atividade</th><th>Responsável</th><th>Apontamento</th><th>Status</th><th>Comprovante</th></tr></thead><tbody>${diary}</tbody></table></div></section></section>`;
   };
 }
 
@@ -7710,7 +7788,7 @@ export class AtlasDashboard extends AtlasHTMLElementBase {
     const agendaMarkup = this.renderAgendaMarkup(pageProjection.agendaWeek);
     const reportActions = dashboardPresentation.reportActions.map(({kind,title,description})=>`<article><div><strong>${title}</strong><p>${description}</p></div><button type="button" data-report="${kind}">Gerar CSV</button></article>`).join("");
     const widgets = dashboardPresentation.widgets.map(({view,label,icon})=>`<button type="button" class="atlas-widget" data-atlas-dashboard-view="${view}"><span aria-hidden="true">${icon}</span>${label} →</button>`).join("");
-    this.innerHTML = `${dashboardStyles}${dashboardAgendaStyles}<section class="atlas-dashboard atlas-dashboard-home"><header class="atlas-dashboard-head"><div><span class="atlas-eyebrow">DASHBOARD · ALIANÇA PARK</span><h1>Panorama operacional</h1><p>Resumo atualizado das fontes persistidas da aplicação.</p></div><div class="atlas-actions"><button type="button" data-refresh>Atualizar</button><button type="button" data-atlas-dashboard-view="map">Mapa</button><button type="button" class="atlas-primary" data-new-record>Novo registro</button></div></header>${s.error?`<p role="alert">${esc(s.error)}</p>`:""}${s.loading?`<p>Carregando panorama do banco operacional…</p>`:""}<section class="atlas-kpis"><article class="atlas-kpi"><small>SALDO DE CAIXA</small><strong>${s.loading?"—":money}</strong><span>Resumo retornado pelo serviço de caixa</span></article><article class="atlas-kpi"><small>ETAPAS ATIVAS</small><strong>${s.loading?"—":active}</strong><span>${done} concluídas · ${operationalOverview.totalStageCount} cadastradas</span></article><article class="atlas-kpi"><small>NOTIFICAÇÕES</small><strong>${s.loading?"—":s.notifications.length}</strong><span>Itens do serviço operacional</span></article><article class="atlas-kpi"><small>REGISTROS DE CAMPO</small><strong>${s.loading?"—":s.records.length}</strong><span>Histórico persistido</span></article></section>${this.renderLotAnalysis(s.lotAnalysis, this.commercialInterestCount, this.commercialInterestState, pageProjection.lotAnalysisPresentation)}<section class="atlas-panel"><header><div><span class="atlas-eyebrow">AGENDA · SEMANA</span><h2>Compromissos da obra</h2><p class="atlas-muted">Escolha um dia para consultar atividades, responsáveis e materiais.</p></div><button type="button" data-atlas-dashboard-view="agenda">Abrir agenda completa</button></header><div class="atlas-agenda-list">${agendaMarkup||`<p class="atlas-muted">${s.loading?"Carregando compromissos…":"Nenhum compromisso pendente nos próximos sete dias."}</p>`}</div></section><section class="atlas-panel"><header><div><span class="atlas-eyebrow">EXPORTAÇÕES · BANCO OPERACIONAL</span><h2>Relatórios rápidos</h2><p class="atlas-muted">Os arquivos são gerados a partir de leituras atualizadas do servidor.</p></div></header><div class="atlas-report-actions">${reportActions}</div><p class="atlas-feedback" data-dashboard-feedback role="status" aria-live="polite">${esc(s.feedback)}</p></section><section class="atlas-panel"><header><div><span class="atlas-eyebrow">MAPA OPERACIONAL</span><h2>Progresso físico por etapa</h2><p class="atlas-muted">Mapa compartilhado com a navegação operacional.</p></div><button type="button" data-atlas-dashboard-view="map">Abrir mapa completo</button></header><div class="atlas-dashboard-map"><map-scene compact interactive data-base-map data-dashboard-operational-map="true" class="dashboard-operational-map" data-stage="Execução do Aliança Park" data-overlay="drenagem" aria-label="Mapa operacional 3D"></map-scene><map-filter-rail></map-filter-rail></div></section><nav class="atlas-widgets" aria-label="Interfaces operacionais">${widgets}</nav></section>`;
+    this.innerHTML = `${dashboardStyles}${dashboardAgendaStyles}<section class="atlas-dashboard atlas-dashboard-home"><header class="atlas-dashboard-head"><div><span class="atlas-eyebrow">DASHBOARD · ALIANÇA PARK</span><h1>Panorama operacional</h1><p>Resumo atualizado das fontes persistidas da aplicação.</p></div><div class="atlas-actions"><button type="button" data-refresh>Atualizar</button><button type="button" data-atlas-dashboard-view="map">Mapa</button><button type="button" class="atlas-primary" data-new-record>Novo registro</button></div></header>${s.error?`<p role="alert">${esc(s.error)}</p>`:""}${s.loading?`<p>Carregando panorama do banco operacional…</p>`:""}<section class="atlas-kpis"><article class="atlas-kpi"><small>SALDO DE CAIXA</small><strong>${s.loading?"—":money}</strong><span>Resumo retornado pelo serviço de caixa</span></article><article class="atlas-kpi"><small>ETAPAS ATIVAS</small><strong>${s.loading?"—":active}</strong><span>${done} concluídas · ${operationalOverview.totalStageCount} cadastradas</span></article><article class="atlas-kpi"><small>NOTIFICAÇÕES</small><strong>${s.loading?"—":s.notifications.length}</strong><span>Itens do serviço operacional</span></article><article class="atlas-kpi"><small>REGISTROS DE CAMPO</small><strong>${s.loading?"—":s.records.length}</strong><span>Histórico persistido</span></article></section>${this.renderLotAnalysis(s.lotAnalysis, this.commercialInterestCount, this.commercialInterestState, pageProjection.lotAnalysisPresentation)}<section class="atlas-panel"><header><div><span class="atlas-eyebrow">AGENDA · SEMANA</span><h2>Compromissos da obra</h2><p class="atlas-muted">Escolha um dia para consultar atividades, responsáveis e materiais.</p></div><button type="button" data-atlas-dashboard-view="agenda">Abrir agenda completa</button></header><div class="atlas-agenda-list">${agendaMarkup||`<p class="atlas-muted">${s.loading?"Carregando compromissos…":"Nenhum compromisso pendente nos próximos sete dias."}</p>`}</div></section><section class="atlas-panel"><header><div><span class="atlas-eyebrow">EXPORTAÇÕES · BANCO OPERACIONAL</span><h2>Relatórios rápidos</h2><p class="atlas-muted">Os arquivos são gerados a partir de leituras atualizadas do servidor.</p></div></header><div class="atlas-report-actions">${reportActions}</div><p class="atlas-feedback" data-dashboard-feedback role="status" aria-live="polite">${esc(s.feedback)}</p></section><section class="atlas-panel atlas-dashboard-map-overview-panel"><header><div><span class="atlas-eyebrow">MAPA OPERACIONAL</span><h2>Progresso físico por etapa</h2><p class="atlas-muted">Mapa compartilhado com a navegação operacional.</p></div><button type="button" data-atlas-dashboard-view="map">Abrir mapa completo</button></header><div class="atlas-dashboard-map"><map-scene compact interactive data-base-map data-dashboard-operational-map="true" class="dashboard-operational-map" data-stage="Execução do Aliança Park" data-overlay="drenagem" aria-label="Mapa operacional 3D"></map-scene><map-filter-rail></map-filter-rail></div></section><nav class="atlas-widgets" aria-label="Interfaces operacionais">${widgets}</nav></section>`;
     const moneyCell = (cents: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format((Number(cents) || 0) / 100);
     const tableRows = pageProjection.controlTableRows;
     const financeRows = tableRows.finance.map(row => `<tr><td>${esc(row.date)}</td><td>${esc(row.kind)}</td><td>${esc(row.link)}</td><td>${moneyCell(row.amountCents)}</td><td>${esc(row.description)}</td></tr>`).join("");
@@ -7718,7 +7796,7 @@ export class AtlasDashboard extends AtlasHTMLElementBase {
     const stageRows = operationalOverview.stages.map(({ stage, progress, state, statusLabel }) => `<article class="atlas-stage-progress-row" data-state="${state}"><div class="atlas-stage-progress-heading"><strong>${esc(stage.name)}</strong><span>${progress}%</span></div><div class="atlas-stage-progress-track" role="progressbar" aria-label="Progresso de ${esc(stage.name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><i style="width:${progress}%"></i></div><small>${esc(stage.owner || "Responsável a definir")} · ${esc(statusLabel)}</small></article>`).join("");
     const saleRows = tableRows.sales.map(sale => `<tr><td>${esc(sale.id)}</td><td>${esc(sale.lot)}</td><td>${esc(sale.client)}</td><td>${esc(sale.broker)}</td><td>${sale.receiptCount}</td><td>${esc(sale.commissionLabel)}</td></tr>`).join("");
     const notices = tableRows.notices.map(item => `<li><strong>${esc(item.label)}</strong><span>${esc(item.statusLabel)}</span></li>`).join("");
-    const controlSectionsMarkup = `<div class="atlas-control-sections"><section class="atlas-panel atlas-panel-cash"><header><div><span class="atlas-eyebrow">01 · CAIXA</span><h2>Movimentações recentes</h2><p class="atlas-muted">Leitura do livro-caixa persistido.</p></div><button type="button" data-atlas-dashboard-view="cash-record">Registrar saída</button></header><div class="atlas-table-scroll"><table><thead><tr><th>Data</th><th>Tipo</th><th>Vínculo</th><th>Valor</th><th>Descrição</th></tr></thead><tbody>${financeRows || `<tr class="atlas-empty-row"><td colspan="5">Nenhuma movimentação retornada pelo serviço.</td></tr>`}</tbody></table></div></section><section class="atlas-panel atlas-panel-materials"><header><div><span class="atlas-eyebrow">02 · MATERIAIS</span><h2>Materiais por atividade</h2><p class="atlas-muted">Quantidades e estados lidos do inventário operacional.</p></div><button type="button" data-atlas-dashboard-view="materials">Abrir materiais</button></header><div class="atlas-table-scroll"><table><thead><tr><th>Etapa</th><th>Atividade</th><th>Material / uso</th><th>Recebido / previsto</th><th>Estado</th></tr></thead><tbody>${materialRows || `<tr class="atlas-empty-row"><td colspan="5">Nenhum material retornado pelo serviço.</td></tr>`}</tbody></table></div></section><section class="atlas-panel atlas-panel-execution"><header><div><span class="atlas-eyebrow">03 · EXECUÇÃO</span><h2>Etapas e progresso</h2><p class="atlas-muted">Situação composta a partir do catálogo operacional persistido.</p></div><button type="button" data-atlas-dashboard-view="agenda">Abrir agenda</button></header><div class="atlas-stage-progress-list">${stageRows || `<p class="atlas-section-empty">Nenhuma etapa retornada pelo serviço.</p>`}</div></section><section class="atlas-panel atlas-panel-sales"><header><div><span class="atlas-eyebrow">04 · VENDAS E REPASSES</span><h2>Perfis de lote relacionados</h2><p class="atlas-muted">Vendas e regras financeiras atuais; configuração detalhada em Repasses.</p></div><button type="button" data-atlas-dashboard-view="repasses">Abrir repasses</button></header><div class="atlas-table-scroll"><table><thead><tr><th>Venda</th><th>Lote</th><th>Cliente</th><th>Corretor</th><th>Entradas</th><th>Comissão</th></tr></thead><tbody>${saleRows || `<tr class="atlas-empty-row"><td colspan="6">Nenhuma venda retornada pelo serviço.</td></tr>`}</tbody></table></div></section><section class="atlas-panel atlas-panel-notices"><header><div><span class="atlas-eyebrow">05 · AVISOS OPERACIONAIS</span><h2>Notificações recentes</h2></div></header><ul class="atlas-notices">${notices || `<li class="atlas-section-empty">Nenhuma notificação retornada pelo serviço.</li>`}</ul></section></div>`;
+    const controlSectionsMarkup = `<div class="atlas-control-sections"><section class="atlas-panel atlas-panel-cash"><header><div><span class="atlas-eyebrow">01 · CAIXA</span><h2>Movimentações recentes</h2><p class="atlas-muted">Leitura do livro-caixa persistido.</p></div><button type="button" data-atlas-dashboard-view="cash-record">Registrar saída</button></header><div class="atlas-table-scroll"><table><thead><tr><th>Data</th><th>Tipo</th><th>Vínculo</th><th>Valor</th><th>Descrição</th></tr></thead><tbody>${financeRows || `<tr class="atlas-empty-row"><td colspan="5">Nenhuma movimentação retornada pelo serviço.</td></tr>`}</tbody></table></div></section><section class="atlas-panel atlas-panel-materials"><header><div><span class="atlas-eyebrow">02 · NOTAS</span><h2>Notas por atividade</h2><p class="atlas-muted">Itens, quantidades e estados vinculados às atividades operacionais.</p></div><button type="button" data-atlas-dashboard-view="materials">Abrir notas</button></header><div class="atlas-table-scroll"><table><thead><tr><th>Etapa</th><th>Atividade</th><th>Nota / uso</th><th>Recebido / previsto</th><th>Estado</th></tr></thead><tbody>${materialRows || `<tr class="atlas-empty-row"><td colspan="5">Nenhuma nota retornada pelo serviço.</td></tr>`}</tbody></table></div></section><section class="atlas-panel atlas-panel-execution"><header><div><span class="atlas-eyebrow">03 · EXECUÇÃO</span><h2>Etapas e progresso</h2><p class="atlas-muted">Situação composta a partir do catálogo operacional persistido.</p></div><button type="button" data-atlas-dashboard-view="agenda">Abrir agenda</button></header><div class="atlas-stage-progress-list">${stageRows || `<p class="atlas-section-empty">Nenhuma etapa retornada pelo serviço.</p>`}</div></section><section class="atlas-panel atlas-panel-sales"><header><div><span class="atlas-eyebrow">04 · VENDAS E REPASSES</span><h2>Perfis de lote relacionados</h2><p class="atlas-muted">Vendas e regras financeiras atuais; configuração detalhada em Repasses.</p></div><button type="button" data-atlas-dashboard-view="repasses">Abrir repasses</button></header><div class="atlas-table-scroll"><table><thead><tr><th>Venda</th><th>Lote</th><th>Cliente</th><th>Corretor</th><th>Entradas</th><th>Comissão</th></tr></thead><tbody>${saleRows || `<tr class="atlas-empty-row"><td colspan="6">Nenhuma venda retornada pelo serviço.</td></tr>`}</tbody></table></div></section><section class="atlas-panel atlas-panel-notices"><header><div><span class="atlas-eyebrow">05 · AVISOS OPERACIONAIS</span><h2>Notificações recentes</h2></div></header><ul class="atlas-notices">${notices || `<li class="atlas-section-empty">Nenhuma notificação retornada pelo serviço.</li>`}</ul></section></div>`;
     this.querySelector("[data-dashboard-lot-analysis]")?.insertAdjacentHTML("afterend", `<style>.atlas-dashboard .atlas-control-sections{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;align-items:start}.atlas-dashboard .atlas-control-sections>.atlas-panel{min-width:0;margin:0;padding:20px;border-radius:16px}.atlas-dashboard .atlas-control-sections>.atlas-panel-cash{grid-column:span 6}.atlas-dashboard .atlas-control-sections>.atlas-panel-materials{grid-column:span 6}.atlas-dashboard .atlas-control-sections>.atlas-panel-execution{grid-column:1/-1}.atlas-dashboard .atlas-control-sections>.atlas-panel-notices{grid-column:span 5}.atlas-dashboard .atlas-control-sections>.atlas-panel-sales{grid-column:span 7}.atlas-dashboard .atlas-table-scroll{max-width:100%;overflow:auto;border:1px solid #e8ecf2;border-radius:10px}.atlas-dashboard table{width:100%;border-collapse:collapse;font-size:12px}.atlas-dashboard th,.atlas-dashboard td{padding:10px;border-bottom:1px solid #e8ecf2;text-align:left;vertical-align:top}.atlas-dashboard tr:last-child td{border-bottom:0}.atlas-dashboard th{color:#708096;font-size:10px;text-transform:uppercase;white-space:nowrap}.atlas-dashboard td small{display:block;color:#758197;margin-top:3px}.atlas-dashboard .atlas-empty-row td,.atlas-dashboard .atlas-section-empty{padding:16px;color:#778399;font-size:12px;line-height:1.5}.atlas-dashboard .atlas-stage-progress-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}.atlas-dashboard .atlas-stage-progress-row{display:grid;align-content:start;gap:10px;min-width:0;padding:13px;border:1px solid #e5eaf1;border-radius:12px;background:#fafbfd}.atlas-dashboard .atlas-stage-progress-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;color:#29364b;font-size:12px}.atlas-dashboard .atlas-stage-progress-heading strong{font-weight:650}.atlas-dashboard .atlas-stage-progress-heading span{flex:none;color:#536782;font-variant-numeric:tabular-nums}.atlas-dashboard .atlas-stage-progress-track{height:7px;overflow:hidden;border-radius:99px;background:#e7edf5}.atlas-dashboard .atlas-stage-progress-track i{display:block;height:100%;border-radius:inherit;background:#3478db}.atlas-dashboard .atlas-stage-progress-row[data-state=done] .atlas-stage-progress-track i{background:#33996e}.atlas-dashboard .atlas-stage-progress-row small{color:#758197;font-size:10px}.atlas-dashboard .atlas-notices{display:grid;gap:4px;margin:0;padding:0;list-style:none}.atlas-dashboard .atlas-notices li{display:flex;justify-content:space-between;gap:12px;padding:12px;border-bottom:1px solid #e8ecf2;color:#29364b;font-size:12px}.atlas-dashboard .atlas-notices span{flex:none;color:#758197;font-size:11px}@media(max-width:1120px){.atlas-dashboard .atlas-control-sections>.atlas-panel{grid-column:1/-1}}@media(max-width:640px){.atlas-dashboard .atlas-control-sections>.atlas-panel{padding:14px}.atlas-dashboard .atlas-control-sections>.atlas-panel>header{display:grid}}</style>${controlSectionsMarkup}`);
     this.insertAdjacentHTML("beforeend", dashboardControlStyles);
     const controlGrid = this.querySelector<HTMLElement>(".atlas-control-sections");
@@ -7822,7 +7900,7 @@ export class AtlasDashboard extends AtlasHTMLElementBase {
       if (!coverage.length) {
         const empty = document.createElement("p");
         empty.className = "atlas-chart-empty";
-        empty.textContent = s.loading ? "Carregando materiais…" : "Nenhum material vinculado a uma atividade.";
+        empty.textContent = s.loading ? "Carregando materiais…" : "Nenhuma nota vinculada a uma atividade.";
         list.append(empty);
       } else if (coverage.length > 5) {
         const remainder = document.createElement("p");
@@ -9009,6 +9087,43 @@ type RepasseState = {
 };
 type RepasseSetter = (previous: RepasseState) => RepasseState;
 
+export interface AtlasRepassePageProjectionV1 extends AtlasRepasseWorkspaceSummaryV1 {
+  reasonOptions: RepasseOperations["reasons"];
+  registerableSaleOptions: Array<{ id: string; label: string }>;
+  saleEditors: Array<ReturnType<typeof projectAtlasRepasseSaleEditorV1>>;
+  destinationStageOptions: AtlasRepasseDestinationStageOptionV1[];
+  entryDate: string;
+}
+
+/** Assemble the Repasses page view from financial projections and form catalogs. */
+export function projectAtlasRepassePageV1(
+  data: RepasseOperations,
+  reports: readonly RepasseReport[],
+  selectedSaleId: string,
+  now: Date = new Date(),
+): AtlasRepassePageProjectionV1 {
+  const summary = projectAtlasRepasseWorkspaceSummaryV1(data, reports, selectedSaleId);
+  const reportsBySale = new Map(reports.map(report => [report.saleId, report]));
+  const reasonOrder: Record<string, number> = { signal: 0, intermediate: 1, monthly: 2 };
+  const reasonOptions = data.reasons.filter(reason => reason.active).sort((left, right) =>
+    (reasonOrder[left.id] ?? 9) - (reasonOrder[right.id] ?? 9));
+  return {
+    ...summary,
+    reasonOptions,
+    registerableSaleOptions: summary.registerableSales.map(sale => ({
+      id: sale.id,
+      label: [sale.lot || "Lote", sale.client || "Cliente", sale.broker || "Sem corretor"].join(" · "),
+    })),
+    saleEditors: data.sales.map(sale => projectAtlasRepasseSaleEditorV1(
+      sale,
+      reportsBySale.get(sale.id),
+      data.stages,
+    )),
+    destinationStageOptions: projectAtlasRepasseDestinationStageOptionsV1(data.stages),
+    entryDate: now.toISOString().slice(0, 10),
+  };
+}
+
 /** Cadastro, leitura e controles do caixa ficam no Web Element responsável pela rota. */
 export class AtlasRepasses extends AtlasHTMLElementBase {
   private readonly state: AtomicState<RepasseState>;
@@ -9322,6 +9437,47 @@ const brokerDirectoryStyles = `<style>
   @media(max-width:900px){.atlas-brokers-page .atlas-broker-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-brokers-page .atlas-detail-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media(max-width:620px){.atlas-brokers-page h1{font-size:24px}.atlas-brokers-page header{display:grid}.atlas-brokers-page .atlas-toolbar{grid-template-columns:1fr}.atlas-brokers-page .atlas-broker-grid{grid-template-columns:1fr}.atlas-brokers-page .atlas-detail-summary{grid-template-columns:1fr 1fr}.atlas-brokers-page .atlas-page-actions button{flex:1}}
 </style>`;
+
+export interface AtlasBrokerDirectoryPageProjectionV1 {
+  profiles: AtlasBrokerDirectoryProfileV1[];
+  visibleProfiles: AtlasBrokerDirectoryProfileV1[];
+  selectedProfile: AtlasBrokerDirectoryProfileV1 | null;
+  selectedSales: Array<{ sale: RepasseSale; receivedCents: number }>;
+}
+
+/** Keep broker search and selected-profile rows beside the directory component. */
+export function projectAtlasBrokerDirectoryVisibleProfilesV1(
+  profiles: readonly AtlasBrokerDirectoryProfileV1[],
+  query: unknown,
+): AtlasBrokerDirectoryProfileV1[] {
+  const search = String(query || "").trim().toLocaleLowerCase("pt-BR");
+  return profiles.filter(profile =>
+    !search || [profile.name, profile.lots.join(" ")].join(" ").toLocaleLowerCase("pt-BR").includes(search),
+  );
+}
+
+/** Resolve the selected broker and join its portfolio rows for the detail view. */
+export function projectAtlasBrokerDirectoryPageV1(input: {
+  data: RepasseOperations | null;
+  reports: readonly RepasseReport[];
+  profileRecords: readonly BrokerProfile[];
+  query: string;
+  selectedBrokerId: string;
+}): AtlasBrokerDirectoryPageProjectionV1 {
+  const profiles = projectAtlasBrokerDirectoryProfilesV1(input.data, input.reports, input.profileRecords);
+  const selectedProfile = profiles.find(profile => profile.id === input.selectedBrokerId) || null;
+  return {
+    profiles,
+    visibleProfiles: projectAtlasBrokerDirectoryVisibleProfilesV1(profiles, input.query),
+    selectedProfile,
+    selectedSales: selectedProfile
+      ? selectedProfile.sales.map(sale => ({
+        sale,
+        receivedCents: selectedProfile.report.find(report => report.saleId === sale.id)?.receivedCents || 0,
+      }))
+      : [],
+  };
+}
 
 type BrokersState = {
   data: RepasseOperations | null;
@@ -10167,6 +10323,65 @@ const atlasLotBoardStyles = `<style>
   @media print{body.lot-catalog-print-mode atlas-lot-board{display:block!important}body.lot-catalog-print-mode .atlas-lot-board{padding:0!important;color:#111!important}body.lot-catalog-print-mode .atlas-lot-board>:not(.lot-price-catalog-card){display:none!important}body.lot-catalog-print-mode .atlas-lot-board .lot-price-catalog-card{display:block!important;border:0!important;padding:0!important;box-shadow:none!important}body.lot-catalog-print-mode .atlas-lot-board .lot-catalog-print-header,body.lot-catalog-print-mode .atlas-lot-board .lot-catalog-print-footer{display:block!important}body.lot-catalog-print-mode .atlas-lot-board .atlas-lot-tools,body.lot-catalog-print-mode .atlas-lot-board .lot-catalog-map-drawer,body.lot-catalog-print-mode .atlas-lot-board .atlas-lot-feedback,body.lot-catalog-print-mode .atlas-lot-modal{display:none!important}body.lot-catalog-print-mode .atlas-lot-board .atlas-lot-table-wrap{max-height:none;overflow:visible;border:0}body.lot-catalog-print-mode .atlas-lot-board table{width:100%;min-width:0;font-size:8pt}body.lot-catalog-print-mode .atlas-lot-board th,body.lot-catalog-print-mode .atlas-lot-board td{position:static;padding:2mm;border:1px solid #bbb;background:#fff;color:#111;white-space:normal}}
 </style>`;
 
+export interface AtlasLotBoardPageProjectionV1 {
+  filteredRows: AtlasLotBoardRow[];
+  totalValue: number;
+  controlledCount: number;
+  selectedRow: AtlasLotBoardRow | undefined;
+  activeRow: AtlasLotBoardRow | undefined;
+  quadrants: string[];
+  sellerNames: string[];
+  pickerMatches: AtlasLotBoardRow[];
+  pickerRows: AtlasLotBoardRow[];
+  pickerPage: number;
+  pickerPages: number;
+  markerMatches: AtlasLotBoardRow[];
+}
+
+/** Project the Lotes page filters, totals and picker pagination beside its view. */
+export function projectAtlasLotBoardPageV1(input: {
+  rows: readonly AtlasLotBoardRow[];
+  search: string;
+  quadra: string;
+  status: string;
+  payment: string;
+  seller: string;
+  selectedKey: string;
+  activeLotKey: string;
+  pickerQuadra: string;
+  pickerPage: number;
+  markerLotNumber: number;
+}): AtlasLotBoardPageProjectionV1 {
+  const query = input.search.trim().toLocaleLowerCase("pt-BR");
+  const filteredRows = input.rows.filter(row =>
+    (!query || [row.label, String(row.lot), row.quadra].join(" ").toLocaleLowerCase("pt-BR").includes(query)) &&
+    (!input.quadra || row.quadra === input.quadra) &&
+    (!input.status || row.status === input.status) &&
+    (!input.payment || row.paymentStatus === input.payment) &&
+    (!input.seller || row.sellerName === input.seller),
+  );
+  const pickerMatches = input.rows.filter(row =>
+    (!input.pickerQuadra || row.quadra === input.pickerQuadra) &&
+    (!input.markerLotNumber || row.lot === input.markerLotNumber),
+  );
+  const pickerPages = Math.max(1, Math.ceil(pickerMatches.length / 12));
+  const pickerPage = Math.max(0, Math.min(input.pickerPage, pickerPages - 1));
+  return {
+    filteredRows,
+    totalValue: input.rows.reduce((sum, row) => sum + row.price, 0),
+    controlledCount: input.rows.filter(row => row.hasControl).length,
+    selectedRow: input.rows.find(row => row.label === input.selectedKey),
+    activeRow: input.rows.find(row => row.label === input.activeLotKey),
+    quadrants: [...new Set(input.rows.map(row => row.quadra))].sort(),
+    sellerNames: [...new Set(input.rows.map(row => row.sellerName).filter(Boolean))].sort(),
+    pickerMatches,
+    pickerRows: pickerMatches.slice(pickerPage * 12, (pickerPage + 1) * 12),
+    pickerPage,
+    pickerPages,
+    markerMatches: input.rows.filter(row => row.lot === input.markerLotNumber),
+  };
+}
+
 /** Complete, typed lot catalog and commercial control workflow for the active sidebar route. */
 export class AtlasLotBoard extends AtlasHTMLElementBase {
   private snapshot: AtlasLotBoardState;
@@ -10911,18 +11126,18 @@ export class AtlasMaterials extends AtlasHTMLElementBase {
     const customColumns=s.columns;
     const input=(name:string,label:string,value:unknown,type="text",required=false)=>`<label>${label}<input name="${name}" type="${type}" value="${this.escape(value)}"${required?" required":""}></label>`;
     const stageCanvas=stageAllocations.map(({stage,allocatedCount,agenda,agendaPreview})=>{
-      return `<article class="atlas-canvas-stage" data-stage-drop="${stage.id}" data-stage-label="${this.escape(stage.name)}"><span class="atlas-eyebrow">ETAPA · ${this.escape(stage.id)}</span><h3>${this.escape(stage.name)}</h3><small>${allocatedCount} materiais persistidos · ${agenda.length} eventos de agenda</small><section class="atlas-material-stage-context"><b>Agenda e registros relacionados</b>${agendaPreview.length?agendaPreview.map(event=>`<p>${this.escape(event.date)} · ${this.escape(event.title)} <small>${this.escape(event.status)}</small></p>`).join(""):`<p class="atlas-muted">Não há eventos de agenda relacionados registrados.</p>`}</section>${this.stageAiPreviewMarkup(stage)}<button type="button" data-add-stage="${stage.id}">＋ Adicionar material à etapa</button></article>`;
+      return `<article class="atlas-canvas-stage" data-stage-drop="${stage.id}" data-stage-label="${this.escape(stage.name)}"><span class="atlas-eyebrow">ETAPA · ${this.escape(stage.id)}</span><h3>${this.escape(stage.name)}</h3><small>${allocatedCount} notas persistidas · ${agenda.length} eventos de agenda</small><section class="atlas-material-stage-context"><b>Agenda e registros relacionados</b>${agendaPreview.length?agendaPreview.map(event=>`<p>${this.escape(event.date)} · ${this.escape(event.title)} <small>${this.escape(event.status)}</small></p>`).join(""):`<p class="atlas-muted">Não há eventos de agenda relacionados registrados.</p>`}</section>${this.stageAiPreviewMarkup(stage)}<button type="button" data-add-stage="${stage.id}">＋ Adicionar nota à etapa</button></article>`;
     }).join("");
-    const canvasMaterialsMarkup=canvasMaterials.map(({material:item,documents,statusLabel,stageLabel})=>{return `<article class="atlas-link-card${item.stageId?" atlas-linked":""}" data-material-link-card="${this.escape(item.id)}" data-stage-id="${item.stageId||""}" draggable="true"><div><span class="atlas-eyebrow">MATERIAL · ${this.escape(item.id)}</span><b>${this.escape(item.name)}</b><small>${item.plannedQuantity} ${this.escape(item.unit)} · ${this.escape(statusLabel)} · ${this.escape(stageLabel)}</small>${documents.length?`<div class="atlas-material-documents"><small>DOCUMENTOS VINCULADOS</small>${documents.map(document=>`<button type="button" data-material-document-open="${this.escape(document.id)}">${this.escape(document.title||document.fileName||"Documento")}${document.fileName?` · ${this.escape(document.fileName)}`:""}</button>`).join("")}</div>`:""}</div><div class="atlas-actions">${item.stageId?`<button type="button" data-unlink="${this.escape(item.id)}">Remover vínculo</button>`:""}<button type="button" data-transition="${this.escape(item.id)}">Registrar estado</button><button type="button" data-edit="${this.escape(item.id)}">Editar</button></div></article>`;}).join("")||`<p class="atlas-empty">Nenhum material persistido corresponde aos filtros.</p>`;
+    const canvasMaterialsMarkup=canvasMaterials.map(({material:item,documents,statusLabel,stageLabel})=>{return `<article class="atlas-link-card${item.stageId?" atlas-linked":""}" data-material-link-card="${this.escape(item.id)}" data-stage-id="${item.stageId||""}" draggable="true"><div><span class="atlas-eyebrow">NOTA · ${this.escape(item.id)}</span><b>${this.escape(item.name)}</b><small>${item.plannedQuantity} ${this.escape(item.unit)} · ${this.escape(statusLabel)} · ${this.escape(stageLabel)}</small>${documents.length?`<div class="atlas-material-documents"><small>DOCUMENTOS VINCULADOS</small>${documents.map(document=>`<button type="button" data-material-document-open="${this.escape(document.id)}">${this.escape(document.title||document.fileName||"Documento")}${document.fileName?` · ${this.escape(document.fileName)}`:""}</button>`).join("")}</div>`:""}</div><div class="atlas-actions">${item.stageId?`<button type="button" data-unlink="${this.escape(item.id)}">Remover vínculo</button>`:""}<button type="button" data-transition="${this.escape(item.id)}">Registrar estado</button><button type="button" data-edit="${this.escape(item.id)}">Editar</button></div></article>`;}).join("")||`<p class="atlas-empty">Nenhuma nota persistida corresponde aos filtros.</p>`;
     const history=historyRows.map(({record,beforeQuantity,beforeUnit,afterQuantity,afterUnit,afterDescription,documents})=>`<article><b>${this.escape(record.id)} · ${this.escape(record.data)} ${this.escape(record.hora||"")}</b><p>${this.escape(beforeQuantity||"—")} ${this.escape(beforeUnit)} → ${this.escape(afterQuantity)} ${this.escape(afterUnit)}</p><p>${this.escape(afterDescription)}</p>${documents.map(file=>`<button type="button" data-material-file="${this.escape(file.fileUrl)}" data-material-file-name="${this.escape(file.fileName)}">${this.escape(file.title||"Comprovante")} · ${this.escape(file.fileName)}</button>`).join("")||`<small>Sem comprovantes anexados.</small>`}</article>`).join("");
     const transition=s.transition;
     const stageFormOptions=stageOptions.map(({stage,selected:isSelected})=>`<option value="${stage.id}" ${isSelected?"selected":""}>${this.escape(stage.name)}</option>`).join("");
     const fieldValues=selected;
-    const form= formOpen?`<form class="atlas-material-form" data-form><div class="atlas-material-toolbar"><div><span class="atlas-eyebrow">CADASTRO OPERACIONAL</span><h2>${fieldValues?"Editar material":"Novo material"}</h2></div><button type="button" data-cancel>Cancelar</button></div><div class="atlas-fields">${input("name","Material",fieldValues?.name||"","text",true)}<label>Etapa<select name="stageId"><option value="">Sem etapa</option>${stageFormOptions}</select></label>${input("activityName","Atividade",fieldValues?.activityName||"")}${input("unit","Unidade",fieldValues?.unit||"un.")}${input("plannedQuantity","Quantidade prevista",fieldValues?.plannedQuantity||0,"number")}${input("receivedQuantity","Quantidade recebida",fieldValues?.receivedQuantity||0,"number")}${input("usedQuantity","Quantidade utilizada",fieldValues?.usedQuantity||0,"number")}<label>Situação<select name="status">${["Planejado","Em andamento","Adequado","Atenção","Crítico","Concluído"].map(value=>`<option ${fieldValues?.status===value?"selected":""}>${value}</option>`).join("")}</select></label><label class="atlas-wide">Descrição e uso<textarea name="scope">${this.escape(fieldValues?.scope||"")}</textarea></label>${customColumns.map(column=>input(`property:${column.id}`,column.label,fieldValues?.properties?.[column.id]||"")).join("")}</div>${s.error?`<p role="alert">${this.escape(s.error)}</p>`:""}<button class="atlas-primary" type="submit" ${s.saving?"disabled":""}>${s.saving?"Salvando…":fieldValues?"Salvar alterações":"Cadastrar material"}</button></form>`:"";
+    const form= formOpen?`<form class="atlas-material-form" data-form><div class="atlas-material-toolbar"><div><span class="atlas-eyebrow">CADASTRO OPERACIONAL</span><h2>${fieldValues?"Editar nota":"Nova nota"}</h2></div><button type="button" data-cancel>Cancelar</button></div><div class="atlas-fields">${input("name","Item",fieldValues?.name||"","text",true)}<label>Etapa<select name="stageId"><option value="">Sem etapa</option>${stageFormOptions}</select></label>${input("activityName","Atividade",fieldValues?.activityName||"")}${input("unit","Unidade",fieldValues?.unit||"un.")}${input("plannedQuantity","Quantidade prevista",fieldValues?.plannedQuantity||0,"number")}${input("receivedQuantity","Quantidade recebida",fieldValues?.receivedQuantity||0,"number")}${input("usedQuantity","Quantidade utilizada",fieldValues?.usedQuantity||0,"number")}<label>Situação<select name="status">${["Planejado","Em andamento","Adequado","Atenção","Crítico","Concluído"].map(value=>`<option ${fieldValues?.status===value?"selected":""}>${value}</option>`).join("")}</select></label><label class="atlas-wide">Descrição e uso<textarea name="scope">${this.escape(fieldValues?.scope||"")}</textarea></label>${customColumns.map(column=>input(`property:${column.id}`,column.label,fieldValues?.properties?.[column.id]||"")).join("")}</div>${s.error?`<p role="alert">${this.escape(s.error)}</p>`:""}<button class="atlas-primary" type="submit" ${s.saving?"disabled":""}>${s.saving?"Salvando…":fieldValues?"Salvar alterações":"Cadastrar nota"}</button></form>`:"";
     const listRows=tableRows.map(({item,cells})=>`<tr>${cells.map(({key,value})=>`<td><button type="button" data-sheet-cell="${this.escape(item.id)}" data-sheet-field="${this.escape(key)}" aria-selected="false">${this.escape(value)}</button></td>`).join("")}<td><div class="atlas-actions"><button type="button" data-transition="${this.escape(item.id)}">Registrar estado</button><button type="button" data-edit="${this.escape(item.id)}">Editar</button><button type="button" data-delete="${this.escape(item.id)}">Excluir</button></div></td></tr>`).join("");
-    const table=`<div class="atlas-material-card"><div class="atlas-stage-heading"><h2>Materiais cadastrados</h2><p>${rows.length} itens · página ${page} de ${pages}</p></div><div class="atlas-sheet-controls">${baseColumns.map(([id,label])=>`<label><input type="checkbox" data-column-toggle="${this.escape(id)}" ${s.hiddenColumns.includes(id)?"":"checked"}> ${this.escape(label)}</label>`).join("")}<form data-column-form><input name="label" aria-label="Nova propriedade" placeholder="Nova propriedade"><button type="submit">Adicionar coluna</button></form>${customColumns.map(column=>`<button type="button" data-column-delete="${this.escape(column.id)}">Remover ${this.escape(column.label)}</button>`).join("")}</div><div class="atlas-table-scroll"><table><thead><tr>${shownColumns.map(([,label])=>`<th>${this.escape(label)}</th>`).join("")}<th>Ações</th></tr></thead><tbody>${listRows||`<tr><td class="atlas-empty" colspan="${shownColumns.length+1}">Nenhum material corresponde aos filtros.</td></tr>`}</tbody></table></div><footer><button type="button" data-page="${Math.max(1,page-1)}" ${page<=1?"disabled":""}>Anterior</button><span>${page} / ${pages}</span><button type="button" data-page="${Math.min(pages,page+1)}" ${page>=pages?"disabled":""}>Próxima</button></footer></div>`;
+    const table=`<div class="atlas-material-card"><div class="atlas-stage-heading"><h2>Notas cadastradas</h2><p>${rows.length} itens · página ${page} de ${pages}</p></div><div class="atlas-sheet-controls">${baseColumns.map(([id,label])=>`<label><input type="checkbox" data-column-toggle="${this.escape(id)}" ${s.hiddenColumns.includes(id)?"":"checked"}> ${this.escape(label)}</label>`).join("")}<form data-column-form><input name="label" aria-label="Nova propriedade" placeholder="Nova propriedade"><button type="submit">Adicionar coluna</button></form>${customColumns.map(column=>`<button type="button" data-column-delete="${this.escape(column.id)}">Remover ${this.escape(column.label)}</button>`).join("")}</div><div class="atlas-table-scroll"><table><thead><tr>${shownColumns.map(([,label])=>`<th>${this.escape(label)}</th>`).join("")}<th>Ações</th></tr></thead><tbody>${listRows||`<tr><td class="atlas-empty" colspan="${shownColumns.length+1}">Nenhuma nota corresponde aos filtros.</td></tr>`}</tbody></table></div><footer><button type="button" data-page="${Math.max(1,page-1)}" ${page<=1?"disabled":""}>Anterior</button><span>${page} / ${pages}</span><button type="button" data-page="${Math.min(pages,page+1)}" ${page>=pages?"disabled":""}>Próxima</button></footer></div>`;
     const transitionDialog=transition?`<dialog class="atlas-transition" open><div><header><div><span class="atlas-eyebrow">REGISTRO DE MOVIMENTAÇÃO</span><h2>${this.escape(transition.name||"Novo material")}</h2><p>${this.escape(transitionStage?.name||"Material sem etapa")}</p></div><button type="button" data-transition-close>Fechar</button></header><form data-transition-form><div class="atlas-fields">${input("name","Material",transition.name,"text",true)}${input("materialNumber","Número do material",transition.id,"text",true)}<label>Etapa<select name="stageId" required>${stageFormOptions}</select></label>${input("activityName","Atividade",transition.activityName)}${input("quantity","Quantidade",transition.receivedQuantity,"number",true)}${input("unit","Unidade",transition.unit)}${input("status","Situação",transition.status)}${input("documentNumber","Número do documento","")}<label class="atlas-wide">Descrição da movimentação<textarea name="description" required></textarea></label><label class="atlas-wide">Descrição do comprovante<textarea name="documentDescription"></textarea></label><label class="atlas-wide">Comprovantes<input name="documents" type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp"></label></div>${s.error?`<p role="alert">${this.escape(s.error)}</p>`:""}<button class="atlas-primary" type="submit" ${s.saving?"disabled":""}>${s.saving?"Salvando…":"Registrar movimentação"}</button></form><section class="atlas-transition-history"><h3>Histórico persistido</h3>${history||"<p class=atlas-muted>Carregando histórico…</p>"}</section></div></dialog>`:"";
-    this.innerHTML=`${materialsStyles}${materialsAiPreviewStyles}<section class="atlas-materials"><header><div><span class="atlas-eyebrow">OPERAÇÃO · SUPRIMENTOS</span><h1>Materiais</h1><p>Catálogo operacional, alocação por etapa e histórico persistido.</p></div><div class="atlas-actions"><button type="button" data-refresh>Atualizar</button><button type="button" class="atlas-primary" data-new>Novo material</button></div></header>${s.error&&!formOpen?`<p role="alert">${this.escape(s.error)}</p>`:""}${s.status==="loading"?`<p>Carregando materiais do banco operacional…</p>`:""}<nav class="atlas-stage-tabs" aria-label="Etapas de materiais"><button type="button" data-stage="inventory" aria-selected="${s.activeStage==="inventory"}">Todos <small>${s.materials.length}</small></button>${stageAllocations.map(({stage,selected,allocatedCount})=>`<button type="button" data-stage="${stage.id}" aria-selected="${selected}">${this.escape(stage.name)} <small>${allocatedCount}</small></button>`).join("")}</nav><div class="atlas-material-toolbar"><label>Buscar material<input data-search type="search" value="${this.escape(s.query)}" placeholder="Nome, atividade, etapa ou descrição"></label><label>Situação<select data-status-filter><option value="all">Todas as situações</option>${statusOptions.map(({value,label,selected})=>`<option value="${this.escape(value)}" ${selected?"selected":""}>${this.escape(label)}</option>`).join("")}</select></label><nav class="atlas-view-tabs"><button type="button" data-view-tab="canvas" aria-pressed="${s.pageTab==="canvas"}">Alocação por etapa</button><button type="button" data-view-tab="list" aria-pressed="${s.pageTab==="list"}">Lista e cadastro</button></nav></div>${form}${s.pageTab==="canvas"?`<div class="atlas-material-card"><div class="atlas-stage-heading"><h2>Distribuição dos materiais por etapa</h2><p>Arraste um material até uma etapa para persistir sua alocação.</p></div><div class="atlas-canvas" data-canvas><svg class="atlas-canvas-links" data-links aria-hidden="true"></svg><div class="atlas-canvas-column">${stageCanvas||`<p class="atlas-empty">Não há etapas operacionais cadastradas.</p>`}</div><div class="atlas-canvas-column">${canvasMaterialsMarkup}</div></div></div>`:table}${transitionDialog}</section>`;
+    this.innerHTML=`${materialsStyles}${materialsAiPreviewStyles}<section class="atlas-materials"><header><div><span class="atlas-eyebrow">OPERAÇÃO · NOTAS</span><h1>Notas</h1><p>Notas operacionais, itens vinculados às etapas e histórico persistido.</p></div><div class="atlas-actions"><button type="button" data-refresh>Atualizar</button><button type="button" class="atlas-primary" data-new>Nova nota</button></div></header>${s.error&&!formOpen?`<p role="alert">${this.escape(s.error)}</p>`:""}${s.status==="loading"?`<p>Carregando notas do banco operacional…</p>`:""}<nav class="atlas-stage-tabs" aria-label="Notas por etapa"><button type="button" data-stage="inventory" aria-selected="${s.activeStage==="inventory"}">Todos <small>${s.materials.length}</small></button>${stageAllocations.map(({stage,selected,allocatedCount})=>`<button type="button" data-stage="${stage.id}" aria-selected="${selected}">${this.escape(stage.name)} <small>${allocatedCount}</small></button>`).join("")}</nav><div class="atlas-material-toolbar"><label>Buscar nota<input data-search type="search" value="${this.escape(s.query)}" placeholder="Nome, atividade, etapa ou descrição"></label><label>Situação<select data-status-filter><option value="all">Todas as situações</option>${statusOptions.map(({value,label,selected})=>`<option value="${this.escape(value)}" ${selected?"selected":""}>${this.escape(label)}</option>`).join("")}</select></label><nav class="atlas-view-tabs"><button type="button" data-view-tab="canvas" aria-pressed="${s.pageTab==="canvas"}">Alocação por etapa</button><button type="button" data-view-tab="list" aria-pressed="${s.pageTab==="list"}">Lista e cadastro</button></nav></div>${form}${s.pageTab==="canvas"?`<div class="atlas-material-card"><div class="atlas-stage-heading"><h2>Distribuição das notas por etapa</h2><p>Arraste uma nota até uma etapa para persistir sua alocação.</p></div><div class="atlas-canvas" data-canvas><svg class="atlas-canvas-links" data-links aria-hidden="true"></svg><div class="atlas-canvas-column">${stageCanvas||`<p class="atlas-empty">Não há etapas operacionais cadastradas.</p>`}</div><div class="atlas-canvas-column">${canvasMaterialsMarkup}</div></div></div>`:table}${transitionDialog}</section>`;
     queueMicrotask(()=>this.drawLinks());
   }
   connectedCallback(): void {
@@ -10967,6 +11182,40 @@ if(!customElements.get("atlas-materials"))customElements.define("atlas-materials
 
 type AgendaState={events:OperationalAgendaEvent[];stages:OperationalStage[];materials:OperationalMaterial[];week:string;selectedDate:string;presentation:"status"|"timeline";calendarOpen:boolean;editor:OperationalAgendaEvent|null|false;relatedFrom:string;detailMode:boolean;notificationsEnabled:boolean;recordFormOpen:boolean;recordFeedback:string|null;error:string|null;loading:boolean;saving:boolean};
 type AgendaSetter=(previous:AgendaState)=>AgendaState;
+interface AgendaCalendarEventProjection {event:OperationalAgendaEvent;startHour:number;durationHours:number;spanDays:number;tone:"done"|"warning"|"planned";heightPixels:number;widthPercent:number;widthOffsetPixels:number;startLabel:string;durationLabel:string;spanLabel:string}
+interface AgendaPageProjection {dayNavigation:Array<{date:string;weekdayLabel:string;dayOfMonth:number;eventCount:number;selected:boolean}>;orderedEvents:OperationalAgendaEvent[];selected:OperationalAgendaEvent|null;editing:boolean;stage:OperationalStage|undefined;stageName:string;stageOptions:Array<{stage:OperationalStage;selected:boolean}>;activityOptions:Array<{activity:OperationalActivity;selected:boolean}>;materialOptions:Array<{material:OperationalMaterial;selected:boolean}>;timeLabels:Array<{hour:number;label:string}>;statusGroups:Array<{key:string;title:string;events:OperationalAgendaEvent[]}>;calendarDays:Array<{date:string;label:string;eventCount:number;events:AgendaCalendarEventProjection[]}>}
+type AgendaPageCommandState=Pick<AgendaState,"events"|"week"|"selectedDate"|"presentation"|"calendarOpen"|"editor"|"relatedFrom"|"detailMode"|"recordFormOpen"|"recordFeedback"|"error">;
+type AgendaPageCommand={kind:"toggle-calendar"}|{kind:"new-event"}|{kind:"close-editor"}|{kind:"navigate-week";delta:number}|{kind:"set-presentation";value:unknown}|{kind:"select-day";date:string}|{kind:"edit-event";id:string}|{kind:"create-related-event";sourceId:string}|{kind:"open-record-form"}|{kind:"close-record-form"};
+const agendaPageDateIso=(date:Date):string=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+function projectAgendaResourceOptions(input:{stages:readonly OperationalStage[];materials:readonly OperationalMaterial[];stageName:string;selectedActivityId?:string;selectedMaterialIds?:readonly string[]}){
+  const selectedMaterialIds=input.selectedMaterialIds||[],stage=input.stages.find(item=>item.name===input.stageName);
+  return {activities:(stage?.activities||[]).map(activity=>({activity,selected:input.selectedActivityId===activity.id})),materials:input.materials.filter(item=>item.stageName===input.stageName).map(material=>({material,selected:selectedMaterialIds.includes(material.id)}))};
+}
+function projectAgendaPage(input:{events:readonly OperationalAgendaEvent[];stages:readonly OperationalStage[];materials:readonly OperationalMaterial[];week:string;selectedDate:string;editor:OperationalAgendaEvent|null|false;relatedFrom:string;statusPriority:readonly string[];statusLabels:Readonly<Record<string,string>>}):AgendaPageProjection{
+  const iso=agendaPageDateIso,start=new Date(`${input.week}T12:00:00`),days=Array.from({length:7},(_,index)=>{const day=new Date(start);day.setDate(day.getDate()+index);return day;}),keys=days.map(iso),weekEvents=input.events.filter(event=>keys.includes(event.date)),selected=input.editor&&typeof input.editor==="object"?input.editor:null;
+  const relatedStageName=input.events.find(event=>event.id===input.relatedFrom)?.stageName,stage=selected?input.stages.find(item=>item.name===selected.stageName):input.stages.find(item=>item.name===relatedStageName)||input.stages[0],stageName=selected?.stageName||stage?.name||"";
+  const orderedEvents=[...weekEvents].sort((left,right)=>`${left.date}T${left.start||"00:00"}`.localeCompare(`${right.date}T${right.start||"00:00"}`)),normalizeStatus=(value:string)=>value.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replaceAll("_"," ").trim();
+  const statusKeys=[...new Set(orderedEvents.map(event=>normalizeStatus(event.status)))].sort((left,right)=>{const leftIndex=input.statusPriority.indexOf(left),rightIndex=input.statusPriority.indexOf(right);return (leftIndex<0?input.statusPriority.length:leftIndex)-(rightIndex<0?input.statusPriority.length:rightIndex)||left.localeCompare(right,"pt-BR");});
+  const statusGroups=statusKeys.map(key=>({key,title:input.statusLabels[key]||key,events:orderedEvents.filter(event=>normalizeStatus(event.status)===key)}));
+  const dayNavigation=days.map(day=>{const date=iso(day);return {date,weekdayLabel:day.toLocaleDateString("pt-BR",{weekday:"short"}),dayOfMonth:day.getDate(),eventCount:weekEvents.filter(event=>event.date===date).length,selected:date===input.selectedDate};});
+  const stageOptions=input.stages.map(item=>({stage:item,selected:selected?selected.stageName===item.name:stage?.id===item.id})),resources=projectAgendaResourceOptions({stages:input.stages,materials:input.materials,stageName,selectedActivityId:selected?.activityId,selectedMaterialIds:selected?.materialIds}),timeLabels=[0,4,8,12,16,20].map(hour=>({hour,label:`${String(hour).padStart(2,"0")}:00`}));
+  const calendarDays=days.map(day=>{const date=iso(day),events=orderedEvents.filter(event=>event.date===date).map(event=>{const [hour,minute]=String(event.start||"08:00").split(":").map(Number),startHour=hour+minute/60,durationHours=Math.max(.5,Math.min(24-startHour,Number(event.durationHours)||1)),spanDays=Math.min(Math.max(1,Number(event.spanDays)||1),7-day.getDay()),tone:AgendaCalendarEventProjection["tone"]=/concl/i.test(event.status)?"done":/pend|risco|bloq/i.test(event.status)?"warning":"planned";return {event,startHour,durationHours,spanDays,tone,heightPixels:Math.max(24,durationHours*48),widthPercent:spanDays*100,widthOffsetPixels:(spanDays-1)*8,startLabel:String(event.start||""),durationLabel:`${durationHours} h`,spanLabel:`${spanDays} dia(s)`};});return {date,label:day.toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"short"}),eventCount:events.length,events};});
+  return {dayNavigation,orderedEvents,selected,editing:input.editor!==false,stage,stageName,stageOptions,activityOptions:resources.activities,materialOptions:resources.materials,timeLabels,statusGroups,calendarDays};
+}
+function createAgendaPageCommandController(ports:{readState:()=>AgendaPageCommandState;commit:(patch:Partial<AgendaPageCommandState>)=>void}):{dispatch:(command:AgendaPageCommand)=>boolean}{
+  return Object.freeze({dispatch(command){const state=ports.readState();let patch:Partial<AgendaPageCommandState>={};
+    if(command.kind==="toggle-calendar")patch={calendarOpen:!state.calendarOpen};
+    else if(command.kind==="new-event")patch={editor:null,relatedFrom:"",error:null};
+    else if(command.kind==="close-editor")patch={editor:false,relatedFrom:"",error:null};
+    else if(command.kind==="navigate-week"){const date=new Date(`${state.week}T12:00:00`);if(Number.isFinite(date.getTime())){date.setDate(date.getDate()+Number(command.delta||0)*7);const next=agendaPageDateIso(date);patch={week:next,selectedDate:next};}}
+    else if(command.kind==="set-presentation"){if(command.value==="status"||command.value==="timeline")patch={presentation:command.value};}
+    else if(command.kind==="select-day")patch={selectedDate:String(command.date||""),presentation:"timeline"};
+    else if(command.kind==="edit-event"){const event=state.events.find(item=>String(item.id)===String(command.id));if(event)patch={editor:event,relatedFrom:event.relatedFrom||"",error:null};}
+    else if(command.kind==="create-related-event")patch={editor:null,relatedFrom:command.sourceId,error:null};
+    else if(command.kind==="open-record-form")patch={recordFormOpen:true,recordFeedback:null,error:null};
+    else if(command.kind==="close-record-form")patch={recordFormOpen:false,recordFeedback:null};
+    if(!Object.keys(patch).length)return false;ports.commit(patch);return true;}});
+}
 const agendaCss=`<style>
 .atlas-agenda{display:grid;gap:16px;color:#202638}.atlas-agenda *{box-sizing:border-box}
 .atlas-agenda header,.atlas-agenda footer,.atlas-agenda .agenda-actions,.atlas-agenda .agenda-nav,.atlas-agenda .agenda-modes{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -10983,15 +11232,30 @@ const agendaCss=`<style>
 .atlas-agenda .agenda-calendar{overflow:auto;border:1px solid #dfe5ed;border-radius:12px;background:#f8f9fb}.atlas-agenda .agenda-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(145px,1fr));min-width:1015px}.atlas-agenda .agenda-calendar-day{position:relative;min-width:0;border-right:1px solid #e0e5ec}.atlas-agenda .agenda-calendar-day>header{position:sticky;top:0;z-index:4;display:grid;gap:3px;padding:9px;background:#f2f5f9;border-bottom:1px solid #dce3ec;color:#263149}.atlas-agenda .agenda-calendar-day>header small{color:#748096}.atlas-agenda .agenda-calendar-body{position:relative;height:1152px;background:repeating-linear-gradient(to bottom,#fff 0,#fff 47px,#e7ebf0 48px);background-size:100% 48px;overflow:visible}.atlas-agenda .agenda-time-label{position:absolute;left:3px;top:calc(var(--hour) * 48px);z-index:1;color:#8a94a3;font-size:9px;pointer-events:none}.atlas-agenda .agenda-calendar-event{position:absolute;left:24px;z-index:2;display:block;overflow:hidden;min-height:24px;padding:6px 8px;border:1px solid #9db7da;border-left:3px solid #397bd0;border-radius:7px;background:#eaf2fc;color:#1e3451;text-align:left;touch-action:none;cursor:grab}.atlas-agenda .agenda-calendar-event strong,.atlas-agenda .agenda-calendar-event small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:inherit}.atlas-agenda .agenda-calendar-event small{opacity:.76}.atlas-agenda .agenda-calendar-event [data-calendar-resize]{position:absolute;z-index:4;display:block;background:#246dd1;opacity:.55;touch-action:none}.atlas-agenda .agenda-calendar-event [data-calendar-resize=duration]{right:3px;bottom:0;left:3px;height:6px;cursor:ns-resize}.atlas-agenda .agenda-calendar-event [data-calendar-resize=span]{top:3px;right:0;bottom:3px;width:6px;cursor:ew-resize}.atlas-agenda .agenda-calendar-event[data-status-tone=done]{border-left-color:#2d9b71;background:#e8f6ef}.atlas-agenda .agenda-calendar-event[data-status-tone=warning]{border-left-color:#cf8c20;background:#fff4df}
 @media(max-width:760px){.atlas-agenda .agenda-head{align-items:stretch}.atlas-agenda .agenda-actions{justify-content:flex-start}.atlas-agenda .agenda-nav{width:100%}.atlas-agenda .agenda-nav b{min-width:0;flex:1}.atlas-agenda .agenda-days{grid-template-columns:repeat(7,minmax(65px,1fr))}.atlas-agenda .agenda-row{grid-template-columns:1fr auto}.atlas-agenda .agenda-fields{grid-template-columns:1fr 1fr}}
 </style>`;
-const agendaIso=(date:Date):string=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
 
 /** Agenda element: interface and transient state stay in the component; CRUD is delegated to program. */
 export class AtlasAgenda extends AtlasHTMLElementBase{
-  private readonly state:AtomicState<AgendaState>;private snapshot:AgendaState;private readonly materialSelections=new WeakMap<HTMLFormElement,Map<string,string[]>>();
-   constructor(){super();const today=new Date(),start=new Date(today.getFullYear(),today.getMonth(),today.getDate());start.setDate(start.getDate()-start.getDay());const initial:AgendaState={events:[],stages:[],materials:[],week:agendaIso(start),selectedDate:agendaIso(today),presentation:"status",calendarOpen:false,editor:false,relatedFrom:"",detailMode:false,notificationsEnabled:false,recordFormOpen:false,recordFeedback:null,error:null,loading:true,saving:false};function* state(value:AgendaState):Generator<AgendaState,never,AgendaSetter>{while(true)value=(yield value)(value);}const iterator=state(initial);iterator.next();this.snapshot=initial;this.state={next:setter=>{this.snapshot=iterator.next(setter).value;this.render();return this.snapshot;}};}
+  private readonly state:AtomicState<AgendaState>;
+  private snapshot:AgendaState;
+  private readonly materialSelections=new WeakMap<HTMLFormElement,Map<string,string[]>>();
+  private readonly pageCommands:ReturnType<typeof createAgendaPageCommandController>;
+  constructor(){
+    super();
+    const selected=new Date(),weekDate=new Date(selected.getFullYear(),selected.getMonth(),selected.getDate());
+    weekDate.setDate(weekDate.getDate()-weekDate.getDay());
+    const week=agendaPageDateIso(weekDate),selectedDate=agendaPageDateIso(selected);
+    const initial:AgendaState={events:[],stages:[],materials:[],week,selectedDate,presentation:"status",calendarOpen:false,editor:false,relatedFrom:"",detailMode:false,notificationsEnabled:false,recordFormOpen:false,recordFeedback:null,error:null,loading:true,saving:false};
+    function* state(value:AgendaState):Generator<AgendaState,never,AgendaSetter>{while(true)value=(yield value)(value);}
+    const iterator=state(initial);iterator.next();this.snapshot=initial;
+    this.state={next:setter=>{this.snapshot=iterator.next(setter).value;this.render();return this.snapshot;}};
+    this.pageCommands=createAgendaPageCommandController({
+      readState:()=>this.snapshot,
+      commit:patch=>{this.state.next(current=>Object.assign({},current,patch));},
+    });
+  }
   private esc(value:unknown):string{return String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]||char));}
-   private agendaActivityOptions(stageName:string,selectedId=""):string{return projectAtlasAgendaResourceOptionsV1({stages:this.snapshot.stages,materials:this.snapshot.materials,stageName,selectedActivityId:selectedId}).activities.map(({activity,selected})=>`<option value="${this.esc(activity.id)}" ${selected?"selected":""}>${this.esc(activity.name)}</option>`).join("");}
-   private agendaMaterialOptions(stageName:string,selectedIds:string[]=[]):string{return projectAtlasAgendaResourceOptionsV1({stages:this.snapshot.stages,materials:this.snapshot.materials,stageName,selectedMaterialIds:selectedIds}).materials.map(({material,selected})=>`<label><input type="checkbox" name="materialIds" value="${this.esc(material.id)}" ${selected?"checked":""}>${this.esc(material.name)} · ${this.esc(material.receivedQuantity)} ${this.esc(material.unit)}</label>`).join("");}
+   private agendaActivityOptions(stageName:string,selectedId=""):string{return projectAgendaResourceOptions({stages:this.snapshot.stages,materials:this.snapshot.materials,stageName,selectedActivityId:selectedId}).activities.map(({activity,selected})=>`<option value="${this.esc(activity.id)}" ${selected?"selected":""}>${this.esc(activity.name)}</option>`).join("");}
+   private agendaMaterialOptions(stageName:string,selectedIds:string[]=[]):string{return projectAgendaResourceOptions({stages:this.snapshot.stages,materials:this.snapshot.materials,stageName,selectedMaterialIds:selectedIds}).materials.map(({material,selected})=>`<label><input type="checkbox" name="materialIds" value="${this.esc(material.id)}" ${selected?"checked":""}>${this.esc(material.name)} · ${this.esc(material.receivedQuantity)} ${this.esc(material.unit)}</label>`).join("");}
    setData(events:OperationalAgendaEvent[],stages:OperationalStage[],materials:OperationalMaterial[],focusDate="",selectedEventId="",focusWeek="",detailMode=false,notificationsEnabled=this.snapshot.notificationsEnabled):void{
     const projection=projectAtlasAgendaDataRefreshV1({events,stages,materials,focusDate,selectedEventId,focusWeek,detailMode,notificationsEnabled,previousWeek:this.snapshot.week,previousSelectedDate:this.snapshot.selectedDate,previousEditor:this.snapshot.editor,previousRelatedFrom:this.snapshot.relatedFrom});
      this.state.next(s=>({...s,...projection,recordFormOpen:false,recordFeedback:null,loading:false,error:null,saving:false}));
@@ -11000,7 +11264,7 @@ export class AtlasAgenda extends AtlasHTMLElementBase{
    setRecordFeedback(message:string|null,closeForm=true):void{this.state.next(s=>({...s,recordFeedback:message,recordFormOpen:message&&closeForm?false:s.recordFormOpen,saving:false}));}
    setNotificationsEnabled(enabled:boolean):void{this.state.next(s=>({...s,notificationsEnabled:enabled}));}
   private render():void{
-      const s=this.snapshot,projection=projectAtlasAgendaPageV1({events:s.events,stages:s.stages,materials:s.materials,week:s.week,selectedDate:s.selectedDate,editor:s.editor,relatedFrom:s.relatedFrom,statusPriority:agendaStatusPresentation.agendaStatusPriority,statusLabels:agendaStatusPresentation.agendaStatusLabels});
+      const s=this.snapshot,projection=projectAgendaPage({events:s.events,stages:s.stages,materials:s.materials,week:s.week,selectedDate:s.selectedDate,editor:s.editor,relatedFrom:s.relatedFrom,statusPriority:agendaStatusPresentation.agendaStatusPriority,statusLabels:agendaStatusPresentation.agendaStatusLabels});
       const {dayNavigation,orderedEvents:ordered,selected,editing,stage,stageName,stageOptions,activityOptions:projectedActivityOptions,materialOptions:projectedMaterialOptions,timeLabels,statusGroups,calendarDays}=projection,esc=(v:unknown)=>this.esc(v);
       const days=calendarDays.map(({date})=>new Date(`${date}T12:00:00`)),events=ordered,normalize=(value:unknown)=>String(value??"").toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[_-]+/g," ").trim();
      const dayNav=dayNavigation.map(({date,weekdayLabel,dayOfMonth,eventCount,selected:isSelected})=>`<button type="button" data-day="${date}" aria-current="${isSelected?"date":"false"}"><span>${esc(weekdayLabel)}</span><strong>${dayOfMonth}</strong><small>${eventCount} compromisso(s)</small></button>`).join("");
@@ -11012,63 +11276,46 @@ export class AtlasAgenda extends AtlasHTMLElementBase{
      this.innerHTML=`${agendaCss}<section class="atlas-agenda"><header class="agenda-head"><div><span class="agenda-kicker">PLANEJAMENTO · COMPROMISSOS</span><h1>${s.detailMode?"Detalhe do compromisso":"Agenda"}</h1><p>${s.detailMode?"Edite o compromisso, registre a execução e ajuste os recursos da etapa.":"Compromissos operacionais organizados por estado e linha do tempo semanal."}</p></div><div class="agenda-actions">${s.detailMode?`<button type="button" data-agenda-back>Voltar à agenda</button>`:""}<button type="button" data-notifications-toggle>${s.notificationsEnabled?"Desativar lembretes":"Ativar lembretes"}</button><button type="button" data-refresh>Atualizar</button>${s.detailMode?"":`<button type="button" data-calendar-toggle aria-expanded="${s.calendarOpen}">${s.calendarOpen?"Fechar calendário":"Ajustar horários no calendário"}</button><button type="button" class="agenda-primary" data-new>Novo compromisso</button>`}</div></header>${s.loading?`<p>Carregando agenda persistida…</p>`:""}${s.error?`<p role="alert">${esc(s.error)}</p>`:""}${s.detailMode?selected?editor:`<p role="alert">Compromisso não encontrado na agenda.</p>`:`<section class="agenda-panel"><div class="agenda-controls"><div class="agenda-nav"><button type="button" data-week="-1">‹</button><b>${days[0].toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})} — ${days[6].toLocaleDateString("pt-BR",{day:"2-digit",month:"short",year:"numeric"})}</b><button type="button" data-week="1">›</button></div><div class="agenda-modes"><button type="button" data-presentation="status" aria-pressed="${s.presentation==="status"}">Por estado</button><button type="button" data-presentation="timeline" aria-pressed="${s.presentation==="timeline"}">Linha do tempo</button></div></div><nav class="agenda-days">${dayNav}</nav><p>${events.length} compromisso(s) nesta semana · ${s.events.length} registros persistidos</p></section>${s.calendarOpen?calendarMarkup:""}<section class="agenda-groups">${s.loading?"":body||`<p class="agenda-empty">Nenhum compromisso nesta semana.</p>`}</section>${editor}`}</section>`;
   }
   connectedCallback():void{
-    let calendarGesture:{id:string;mode:"move"|"duration"|"span";originX:number;originY:number;grabY:number;original:OperationalAgendaEvent;moved:boolean;preview:OperationalAgendaEvent}|null=null,suppressCalendarClick=false;
+    let calendarGesture:{id:string;mode:"move"|"duration"|"span";originX:number;originY:number;grabY:number;original:OperationalAgendaEvent;moved:boolean;preview:OperationalAgendaEvent;date:string;pointerHours?:number}|null=null,suppressCalendarClick=false;
     const calendarDayAt=(x:number):HTMLElement|null=>{const days=[...this.querySelectorAll<HTMLElement>("[data-calendar-date]")];return days.find(day=>{const rect=day.getBoundingClientRect();return x>=rect.left&&x<=rect.right;})||days.sort((a,b)=>{const ra=a.getBoundingClientRect(),rb=b.getBoundingClientRect();return Math.abs(x-(ra.left+ra.right)/2)-Math.abs(x-(rb.left+rb.right)/2);})[0]||null;};
     const calendarHoursAt=(body:HTMLElement,y:number):number=>{const rect=body.getBoundingClientRect();return Math.max(0,Math.min(23.5,Math.round(Math.max(0,y-rect.top)/48*2)/2));};
-    const saveCalendarGesture=()=>{if(!calendarGesture)return;const gesture=calendarGesture;calendarGesture=null;if(!gesture.moved)return;suppressCalendarClick=true;setTimeout(()=>{suppressCalendarClick=false;},0);this.dispatchEvent(new CustomEvent("atlas:agenda-save",{bubbles:true,detail:{element:this,payload:gesture.preview}}));};
+    const saveCalendarGesture=()=>{if(!calendarGesture)return;const gesture=calendarGesture;calendarGesture=null;if(!gesture.moved)return;suppressCalendarClick=true;setTimeout(()=>{suppressCalendarClick=false;},0);this.dispatchEvent(new CustomEvent("atlas:agenda-save",{bubbles:true,detail:{element:this,eventId:gesture.id,mode:gesture.mode,date:gesture.date,pointerHours:gesture.pointerHours}}));};
       let pointerController:AbortController|null=null;
-      this.addEventListener("click",event=>{const target=event.target;if(!(target instanceof Element))return;const button=target.closest<HTMLButtonElement>("button");if(!button)return;if(button.hasAttribute("data-agenda-back")||button.hasAttribute("data-editor-close")&&this.snapshot.detailMode){event.preventDefault();event.stopImmediatePropagation();this.dispatchEvent(new CustomEvent("atlas:agenda-back",{bubbles:true,detail:{element:this}}));return;}if(button.hasAttribute("data-notifications-toggle")){this.dispatchEvent(new CustomEvent("atlas:agenda-notifications-toggle",{bubbles:true,detail:{element:this,enabled:!this.snapshot.notificationsEnabled}}));return;}if(button.hasAttribute("data-agenda-record-open")){this.state.next(s=>({...s,recordFormOpen:true,recordFeedback:null,error:null}));return;}if(button.hasAttribute("data-record-close")){this.state.next(s=>({...s,recordFormOpen:false,recordFeedback:null}));return;}if(button.dataset.agendaComplete){const current=this.snapshot.events.find(item=>item.id===button.dataset.agendaComplete);if(current){const transition=buildAtlasAgendaCompletionPayloadV1({source:current,nowIso:()=>new Date().toISOString()});if(transition.ok)this.dispatchEvent(new CustomEvent("atlas:agenda-save",{bubbles:true,detail:{element:this,payload:transition.payload}}));}return;}if(button.dataset.agendaCancel){const current=this.snapshot.events.find(item=>item.id===button.dataset.agendaCancel),form=this.querySelector<HTMLFormElement>("[data-agenda-form]"),data=form?new FormData(form):null;if(!current)return;const transition=buildAtlasAgendaCancellationPayloadV1({source:current,cancellationConfirmed:data?.get("cancellationConfirmed")==="on",cancellationReason:data?.get("cancellationReason"),nowIso:()=>new Date().toISOString()});if(!transition.ok){this.setError(transition.error);return;}this.dispatchEvent(new CustomEvent("atlas:agenda-save",{bubbles:true,detail:{element:this,payload:transition.payload}}));}});
+      this.addEventListener("click",event=>{const target=event.target;if(!(target instanceof Element))return;const button=target.closest<HTMLButtonElement>("button");if(!button)return;if(button.hasAttribute("data-agenda-back")||button.hasAttribute("data-editor-close")&&this.snapshot.detailMode){event.preventDefault();event.stopImmediatePropagation();this.dispatchEvent(new CustomEvent("atlas:agenda-back",{bubbles:true,detail:{element:this}}));return;}if(button.hasAttribute("data-notifications-toggle")){this.dispatchEvent(new CustomEvent("atlas:agenda-notifications-toggle",{bubbles:true,detail:{element:this,enabled:!this.snapshot.notificationsEnabled}}));return;}if(button.hasAttribute("data-agenda-record-open")){this.pageCommands.dispatch({kind:"open-record-form"});return;}if(button.hasAttribute("data-record-close")){this.pageCommands.dispatch({kind:"close-record-form"});return;}if(button.dataset.agendaComplete){this.dispatchEvent(new CustomEvent("atlas:agenda-transition",{bubbles:true,detail:{element:this,eventId:button.dataset.agendaComplete,kind:"complete"}}));return;}if(button.dataset.agendaCancel){const form=this.querySelector<HTMLFormElement>("[data-agenda-form]"),data=form?new FormData(form):null;this.dispatchEvent(new CustomEvent("atlas:agenda-transition",{bubbles:true,detail:{element:this,eventId:button.dataset.agendaCancel,kind:"cancel",cancellationConfirmed:data?.get("cancellationConfirmed")==="on",cancellationReason:String(data?.get("cancellationReason")??"")}}));}});
       this.addEventListener("click",event=>{const target=event.target;if(target instanceof Element){const button=target.closest<HTMLButtonElement>("button[data-editor-close]");if(button&&!this.snapshot.detailMode)this.dispatchEvent(new CustomEvent("atlas:agenda-focus-clear",{bubbles:true,detail:{element:this}}));}});
-    this.addEventListener("pointerdown",event=>{const target=event.target;if(!(target instanceof Element))return;const card=target.closest<HTMLElement>("[data-calendar-event]");if(!card)return;const id=card.dataset.calendarEvent||"",original=this.snapshot.events.find(item=>item.id===id);if(!original)return;const handle=target.closest<HTMLElement>("[data-calendar-resize]"),body=card.closest<HTMLElement>(".agenda-calendar-body");if(!body)return;calendarGesture={id,mode:handle?.dataset.calendarResize==="duration"?"duration":handle?.dataset.calendarResize==="span"?"span":"move",originX:event.clientX,originY:event.clientY,grabY:event.clientY-card.getBoundingClientRect().top,original:{...original},moved:false,preview:{...original}};pointerController?.abort();pointerController=new AbortController();window.addEventListener("pointermove",onCalendarPointerMove,{passive:true,signal:pointerController.signal});window.addEventListener("pointerup",()=>{saveCalendarGesture();pointerController?.abort();},{once:true,signal:pointerController.signal});window.addEventListener("pointercancel",()=>{calendarGesture=null;pointerController?.abort();},{once:true,signal:pointerController.signal});});
+    this.addEventListener("pointerdown",event=>{const target=event.target;if(!(target instanceof Element))return;const card=target.closest<HTMLElement>("[data-calendar-event]");if(!card)return;const id=card.dataset.calendarEvent||"",original=this.snapshot.events.find(item=>item.id===id);if(!original)return;const handle=target.closest<HTMLElement>("[data-calendar-resize]"),body=card.closest<HTMLElement>(".agenda-calendar-body");if(!body)return;calendarGesture={id,mode:handle?.dataset.calendarResize==="duration"?"duration":handle?.dataset.calendarResize==="span"?"span":"move",originX:event.clientX,originY:event.clientY,grabY:event.clientY-card.getBoundingClientRect().top,original:{...original},moved:false,preview:{...original},date:original.date};pointerController?.abort();pointerController=new AbortController();window.addEventListener("pointermove",onCalendarPointerMove,{passive:true,signal:pointerController.signal});window.addEventListener("pointerup",()=>{saveCalendarGesture();pointerController?.abort();},{once:true,signal:pointerController.signal});window.addEventListener("pointercancel",()=>{calendarGesture=null;pointerController?.abort();},{once:true,signal:pointerController.signal});});
     const onCalendarPointerMove=(event:PointerEvent)=>{const g=calendarGesture;if(!g)return;if(Math.hypot(event.clientX-g.originX,event.clientY-g.originY)>3)g.moved=true;if(!g.moved)return;const card=this.querySelector<HTMLElement>(`[data-calendar-event="${CSS.escape(g.id)}"]`);if(!card)return;const day=calendarDayAt(event.clientX);if(!day)return;const date=day.dataset.calendarDate||g.original.date,body=day.querySelector<HTMLElement>(".agenda-calendar-body");if(!body)return;const bodyRect=body.getBoundingClientRect();
       const pointerHours=g.mode==="span"?undefined:calendarHoursAt(body,g.mode==="move"?event.clientY-g.grabY+bodyRect.top:event.clientY-bodyRect.top);
       const next=projectAtlasAgendaWeekGestureV1({source:g.original,mode:g.mode,date,pointerHours});
       if(g.mode==="move"){const el=document.elementFromPoint(event.clientX,event.clientY);const targetBody=el instanceof Element?el.closest<HTMLElement>(".agenda-calendar-body"):null;if(targetBody&&targetBody!==body){targetBody.append(card);}}
-      g.preview=next;const [hour,minute]=String(next.start||"08:00").split(":").map(Number),duration=Math.max(.5,Number(next.durationHours)||1);card.style.top=`${(hour+minute/60)*48}px`;card.style.height=`${Math.max(24,duration*48)}px`;card.style.width=`calc(${Math.max(1,Number(next.spanDays)||1)*100}% + ${(Math.max(1,Number(next.spanDays)||1)-1)*8}px)`;};
-    this.addEventListener("click",event=>{const target=event.target;if(!(target instanceof Element))return;const button=target.closest<HTMLButtonElement>("button");if(!button)return;if(button.hasAttribute("data-refresh")){this.dispatchEvent(new CustomEvent("atlas:agenda-refresh",{bubbles:true,detail:{element:this}}));return;}if(button.hasAttribute("data-calendar-toggle")){this.state.next(s=>({...s,calendarOpen:!s.calendarOpen}));return;}if(button.hasAttribute("data-new")){this.state.next(s=>({...s,editor:null,relatedFrom:"",error:null}));return;}if(button.hasAttribute("data-editor-close")){this.state.next(s=>({...s,editor:false,relatedFrom:"",error:null}));return;}if(button.dataset.week){const date=new Date(`${this.snapshot.week}T12:00:00`);date.setDate(date.getDate()+Number(button.dataset.week)*7);this.state.next(s=>({...s,week:agendaIso(date),selectedDate:agendaIso(date)}));return;}if(button.dataset.presentation){this.state.next(s=>({...s,presentation:button.dataset.presentation as AgendaState["presentation"]}));return;}if(button.dataset.day){const date=button.dataset.day||"";this.state.next(s=>({...s,selectedDate:date,presentation:"timeline"}));requestAnimationFrame(()=>this.querySelector<HTMLElement>(`[data-event-date="${CSS.escape(date)}"]`)?.scrollIntoView({behavior:"smooth",block:"nearest"}));return;}if(button.dataset.calendarEvent&&suppressCalendarClick){event.preventDefault();return;}const eventId=button.dataset.eventEdit||button.dataset.calendarEvent;if(eventId){const entry=this.snapshot.events.find(item=>item.id===eventId);if(entry)this.state.next(s=>({...s,editor:entry,relatedFrom:entry.relatedFrom||"",error:null}));return;}if(button.dataset.related){this.state.next(s=>({...s,editor:null,relatedFrom:button.dataset.related||""}));return;}if(button.dataset.delete&&confirm("Excluir este compromisso da agenda?"))this.dispatchEvent(new CustomEvent("atlas:agenda-delete",{bubbles:true,detail:{element:this,id:button.dataset.delete}}));});
+      g.date=date;g.pointerHours=pointerHours;g.preview=next;const [hour,minute]=String(next.start||"08:00").split(":").map(Number),duration=Math.max(.5,Number(next.durationHours)||1);card.style.top=`${(hour+minute/60)*48}px`;card.style.height=`${Math.max(24,duration*48)}px`;card.style.width=`calc(${Math.max(1,Number(next.spanDays)||1)*100}% + ${(Math.max(1,Number(next.spanDays)||1)-1)*8}px)`;};
+    this.addEventListener("click",event=>{const target=event.target;if(!(target instanceof Element))return;const button=target.closest<HTMLButtonElement>("button");if(!button)return;if(button.hasAttribute("data-refresh")){this.dispatchEvent(new CustomEvent("atlas:agenda-refresh",{bubbles:true,detail:{element:this}}));return;}if(button.hasAttribute("data-calendar-toggle")){this.pageCommands.dispatch({kind:"toggle-calendar"});return;}if(button.hasAttribute("data-new")){this.pageCommands.dispatch({kind:"new-event"});return;}if(button.hasAttribute("data-editor-close")){this.pageCommands.dispatch({kind:"close-editor"});return;}if(button.dataset.week){this.pageCommands.dispatch({kind:"navigate-week",delta:Number(button.dataset.week)});return;}if(button.dataset.presentation){this.pageCommands.dispatch({kind:"set-presentation",value:button.dataset.presentation});return;}if(button.dataset.day){const date=button.dataset.day||"";this.pageCommands.dispatch({kind:"select-day",date});requestAnimationFrame(()=>this.querySelector<HTMLElement>(`[data-event-date="${CSS.escape(date)}"]`)?.scrollIntoView({behavior:"smooth",block:"nearest"}));return;}if(button.dataset.calendarEvent&&suppressCalendarClick){event.preventDefault();return;}const eventId=button.dataset.eventEdit||button.dataset.calendarEvent;if(eventId){this.pageCommands.dispatch({kind:"edit-event",id:eventId});return;}if(button.dataset.related){this.pageCommands.dispatch({kind:"create-related-event",sourceId:button.dataset.related||""});return;}if(button.dataset.delete&&confirm("Excluir este compromisso da agenda?"))this.dispatchEvent(new CustomEvent("atlas:agenda-delete",{bubbles:true,detail:{element:this,id:button.dataset.delete}}));});
     this.addEventListener("change",event=>{const target=event.target;if(!(target instanceof HTMLSelectElement)||target.name!=="stageKey")return;const form=target.form;if(!form)return;const nextStageName=target.value,stage=this.snapshot.stages.find(item=>item.name===nextStageName),activitySelect=form.querySelector<HTMLSelectElement>("[data-agenda-activity-select]"),materialOptions=form.querySelector<HTMLElement>("[data-agenda-material-options]");if(!stage||!activitySelect||!materialOptions)return;let selections=this.materialSelections.get(form);if(!selections){selections=new Map();this.materialSelections.set(form,selections);}const currentStageName=form.dataset.agendaStageName||"";selections.set(currentStageName,[...form.querySelectorAll<HTMLInputElement>('input[name="materialIds"]:checked')].map(input=>input.value));const editor=this.snapshot.editor,initialSelection=editor&&typeof editor==="object"&&editor.stageName===nextStageName?editor.materialIds||[]:[],selectedIds=selections.get(nextStageName)||initialSelection,activities=stage.activities||[],activityId=activities.some(item=>item.id===activitySelect.value)?activitySelect.value:activities[0]?.id||"";activitySelect.innerHTML=this.agendaActivityOptions(nextStageName,activityId);materialOptions.innerHTML=this.agendaMaterialOptions(nextStageName,selectedIds)||`<small>Sem materiais registrados nesta etapa.</small>`;form.dataset.agendaStageName=nextStageName;});
      this.addEventListener("submit",event=>{
        const form=event.target;
        if(!(form instanceof HTMLFormElement))return;
-       if(form.matches("[data-agenda-record-form]")){
-         event.preventDefault();
-         const data=new FormData(form),eventId=String(data.get("activityEventId")||""),source=this.snapshot.events.find(item=>item.id===eventId);
-         if(!source){this.setError("O compromisso associado ao registro não foi encontrado.");return;}
-         const stage=this.snapshot.stages.find(item=>item.name===source.stageName);
-         const draft=buildAtlasAgendaRecordPayloadV1({
-           source,
-           stageName:stage?.name||"",
-           details:data.get("details"),
-           date:data.get("date"),
-           time:data.get("time"),
-           responsible:data.get("responsible"),
-           status:data.get("status"),
-         });
-         if(!draft.ok){this.setError(draft.error);return;}
-         this.state.next(s=>({...s,saving:true,error:null,recordFeedback:"Salvando registro no diário operacional…"}));
-         this.dispatchEvent(new CustomEvent("atlas:agenda-record-create",{bubbles:true,detail:{element:this,payload:draft.payload,activity:draft.activity}}));
+        if(form.matches("[data-agenda-record-form]")){
+          event.preventDefault();
+          const data=new FormData(form),value=(name:string):string=>String(data.get(name)??"");
+          const values:AtlasAgendaRecordFormValuesV1={eventId:value("activityEventId"),details:value("details"),date:value("date"),time:value("time"),responsible:value("responsible"),status:value("status")};
+          this.state.next(s=>({...s,saving:true,error:null,recordFeedback:"Salvando registro no diário operacional…"}));
+          this.dispatchEvent(new CustomEvent("atlas:agenda-record-draft",{bubbles:true,detail:{element:this,values}}));
          return;
        }
        if(!form.matches("[data-agenda-form]"))return;
        event.preventDefault();
        const data=new FormData(form);
-       const draft=buildAtlasAgendaEventPayloadV1({
-         values:{
-           id:data.get("id"),title:data.get("title"),stageKey:data.get("stageKey"),activityId:data.get("activityId"),
-           owner:data.get("owner"),date:data.get("date"),start:data.get("start"),durationHours:data.get("durationHours"),
-           spanDays:data.get("spanDays"),status:data.get("status"),relatedFrom:data.get("relatedFrom"),notes:data.get("notes"),
-           materialIds:data.getAll("materialIds").map(String),customStatus:data.get("customStatus"),
-           requirements:data.get("requirements"),materials:data.get("materials"),cancellationReason:data.get("cancellationReason"),
-           cancellationConfirmed:data.get("cancellationConfirmed")==="on",notificationOffsetMinutes:data.get("notificationOffsetMinutes"),
-         },
-         stages:this.snapshot.stages,
-         existingEvents:this.snapshot.events,
-         createId:()=>`agenda-${crypto.randomUUID()}`,
-         nowIso:()=>new Date().toISOString(),
-       });
-       if(!draft.ok){this.setError(draft.error);return;}
-       this.state.next(s=>({...s,saving:true,error:null,recordFeedback:null}));
-       this.dispatchEvent(new CustomEvent("atlas:agenda-save",{bubbles:true,detail:{element:this,payload:draft.payload}}));
+        const value=(name:string):string=>String(data.get(name)??"");
+        const values:AtlasAgendaEventFormValuesV1={
+          id:value("id"),title:value("title"),stageKey:value("stageKey"),activityId:value("activityId"),
+          owner:value("owner"),date:value("date"),start:value("start"),durationHours:value("durationHours"),
+          spanDays:value("spanDays"),status:value("status"),relatedFrom:value("relatedFrom"),notes:value("notes"),
+          materialIds:data.getAll("materialIds").map(String),customStatus:value("customStatus"),
+          requirements:value("requirements"),materials:value("materials"),cancellationReason:value("cancellationReason"),
+          cancellationConfirmed:data.get("cancellationConfirmed")==="on",notificationOffsetMinutes:value("notificationOffsetMinutes"),
+        };
+        this.state.next(s=>({...s,saving:true,error:null,recordFeedback:null}));
+        this.dispatchEvent(new CustomEvent("atlas:agenda-save-draft",{bubbles:true,detail:{element:this,values}}));
      });
     this.dispatchEvent(new CustomEvent("atlas:agenda-connected",{bubbles:true,detail:{element:this}}));
   }
@@ -11085,6 +11332,28 @@ export interface AtlasAgendaRouteFocusV1 {
 export interface AtlasAgendaSaveCommandV1 {
   element: AtlasAgenda;
   payload: OperationalAgendaEvent;
+}
+
+export interface AtlasAgendaFormDraftCommandV1 {
+  element: AtlasAgenda;
+  values: AtlasAgendaEventFormValuesV1;
+}
+
+export interface AtlasAgendaRecordDraftCommandV1 {
+  element: AtlasAgenda;
+  values: AtlasAgendaRecordFormValuesV1;
+}
+
+export type AtlasAgendaTransitionDraftCommandV1 =
+  | { element: AtlasAgenda; eventId: string; kind: "complete" }
+  | { element: AtlasAgenda; eventId: string; kind: "cancel"; cancellationConfirmed: boolean; cancellationReason: string };
+
+export interface AtlasAgendaGestureSaveCommandV1 {
+  element: AtlasAgenda;
+  eventId: string;
+  mode: "move" | "duration" | "span";
+  date: string;
+  pointerHours?: number;
 }
 
 export interface AtlasAgendaDeleteCommandV1 {
@@ -11105,8 +11374,12 @@ export interface AtlasAgendaComponentControllerInputV1 {
   onFocusClear(element: AtlasAgenda): void;
   onRefresh(element: AtlasAgenda): void;
   onSave(event: CustomEvent<AtlasAgendaSaveCommandV1>): void;
+  onSaveDraft(event: CustomEvent<AtlasAgendaFormDraftCommandV1>): void;
   onDelete(event: CustomEvent<AtlasAgendaDeleteCommandV1>): void;
   onRecordCreate(event: CustomEvent<AtlasOperationalRecordCreateCommandDetailV1<AtlasAgenda> & { activity: string }>): void;
+  onRecordDraft(event: CustomEvent<AtlasAgendaRecordDraftCommandV1>): void;
+  onTransition(event: CustomEvent<AtlasAgendaTransitionDraftCommandV1>): void;
+  onGestureSave(event: CustomEvent<AtlasAgendaGestureSaveCommandV1>): void;
   onNotificationsToggle(element: AtlasAgenda, enabled: boolean): void;
 }
 
@@ -11140,6 +11413,18 @@ export function installAtlasAgendaComponentControllerV1(input: AtlasAgendaCompon
     const element = elementFrom(event);
     if (element && element === activeElement) input.onSave(event as CustomEvent<AtlasAgendaSaveCommandV1>);
   }, options);
+  input.host.addEventListener('atlas:agenda-save-draft', event => {
+    const element = elementFrom(event);
+    if (element && element === activeElement) input.onSaveDraft(event as CustomEvent<AtlasAgendaFormDraftCommandV1>);
+  }, options);
+  input.host.addEventListener('atlas:agenda-transition', event => {
+    const element = elementFrom(event);
+    if (element && element === activeElement) input.onTransition(event as CustomEvent<AtlasAgendaTransitionDraftCommandV1>);
+  }, options);
+  input.host.addEventListener('atlas:agenda-gesture-save', event => {
+    const element = elementFrom(event);
+    if (element && element === activeElement) input.onGestureSave(event as CustomEvent<AtlasAgendaGestureSaveCommandV1>);
+  }, options);
   input.host.addEventListener('atlas:agenda-delete', event => {
     const element = elementFrom(event);
     if (element && element === activeElement) input.onDelete(event as CustomEvent<AtlasAgendaDeleteCommandV1>);
@@ -11147,6 +11432,10 @@ export function installAtlasAgendaComponentControllerV1(input: AtlasAgendaCompon
   input.host.addEventListener('atlas:agenda-record-create', event => {
     const element = elementFrom(event);
     if (element && element === activeElement) input.onRecordCreate(event as CustomEvent<AtlasOperationalRecordCreateCommandDetailV1<AtlasAgenda> & { activity: string }>);
+  }, options);
+  input.host.addEventListener('atlas:agenda-record-draft', event => {
+    const element = elementFrom(event);
+    if (element && element === activeElement) input.onRecordDraft(event as CustomEvent<AtlasAgendaRecordDraftCommandV1>);
   }, options);
   input.host.addEventListener('atlas:agenda-back', event => {
     const element = elementFrom(event);
@@ -13926,6 +14215,191 @@ export function installAtlasCashRecordComponentControllerV1(input: AtlasCashReco
   }, options);
 }
 
+export interface AtlasSettingsStageDraftV1 { name: string; status: string; progress: string; week: string; owner: string }
+export interface AtlasSettingsComprehensionDraftV1 {
+  requirements: string; conditions: string; typicalDescription: string; requestHints: string;
+  evidenceFocus: string; procurementFocus: string; organizationRequest: string; organizationContext: string;
+  notifyOwner: string; notifyAdmin: string; notifyForeman: string; expectedActivities: string;
+  productionQuantity: string; productionUnit: string; productionRate: string; productionRateUnit: string;
+  materialsTable: Array<{ name: string; description: string; quantity: string; unit: string; status: string }>;
+}
+export interface AtlasSettingsAiAgendaDraftV1 { reading: string; determination: string; generation: string; autoCreatePending: boolean }
+export interface AtlasSettingsContactDraftV1 { whatsappNumber: string }
+export interface AtlasSettingsUsageDraftV1 {
+  defaultPage: string; density: string; reduceMotion: boolean; voiceEnabled: boolean;
+  whatsappNumber: string; instagramAccount: string; autoNotify: boolean; pixKey: string;
+  signalAmount: string; pixReceiver: string; pixCity: string;
+}
+export interface AtlasSettingsRoleDraftV1 { id: string | null; name: string; permissions: string[] }
+export interface AtlasSettingsKeyDraftV1 { label: string; roleId: string }
+
+const atlasSettingsFormTextV1 = (values: Record<string, unknown>, name: string): string => String(values[name] || '');
+
+export function buildAtlasSettingsStageDraftV1(values: Record<string, unknown>): AtlasSettingsStageDraftV1 {
+  return {
+    name: atlasSettingsFormTextV1(values, 'name'), status: atlasSettingsFormTextV1(values, 'status'),
+    progress: atlasSettingsFormTextV1(values, 'progress'), week: atlasSettingsFormTextV1(values, 'week'),
+    owner: atlasSettingsFormTextV1(values, 'owner'),
+  };
+}
+
+export function buildAtlasSettingsComprehensionDraftV1(input: {
+  values: Record<string, unknown>;
+  materialsTable: AtlasSettingsComprehensionDraftV1['materialsTable'];
+}): AtlasSettingsComprehensionDraftV1 {
+  const value = (name: string): string => atlasSettingsFormTextV1(input.values, name);
+  return {
+    requirements: value('requirements'), conditions: value('conditions'), typicalDescription: value('typicalDescription'), requestHints: value('requestHints'),
+    evidenceFocus: value('evidenceFocus'), procurementFocus: value('procurementFocus'), organizationRequest: value('organizationRequest'), organizationContext: value('organizationContext'),
+    notifyOwner: value('notifyOwner'), notifyAdmin: value('notifyAdmin'), notifyForeman: value('notifyForeman'), expectedActivities: value('expectedActivities'),
+    productionQuantity: value('productionQuantity'), productionUnit: value('productionUnit'), productionRate: value('productionRate'), productionRateUnit: value('productionRateUnit'),
+    materialsTable: input.materialsTable,
+  };
+}
+
+export function buildAtlasSettingsAiAgendaDraftV1(values: Record<string, unknown>): AtlasSettingsAiAgendaDraftV1 {
+  return {
+    reading: atlasSettingsFormTextV1(values, 'reading'), determination: atlasSettingsFormTextV1(values, 'determination'),
+    generation: atlasSettingsFormTextV1(values, 'generation'), autoCreatePending: Boolean(values.autoCreatePending),
+  };
+}
+
+export function buildAtlasSettingsContactDraftV1(values: Record<string, unknown>): AtlasSettingsContactDraftV1 {
+  return { whatsappNumber: atlasSettingsFormTextV1(values, 'whatsappNumber') };
+}
+
+export function buildAtlasSettingsUsageDraftV1(values: Record<string, unknown>): AtlasSettingsUsageDraftV1 {
+  return {
+    defaultPage: atlasSettingsFormTextV1(values, 'defaultPage'), density: atlasSettingsFormTextV1(values, 'density'),
+    reduceMotion: Boolean(values.reduceMotion), voiceEnabled: Boolean(values.voiceEnabled), whatsappNumber: atlasSettingsFormTextV1(values, 'whatsappNumber'),
+    instagramAccount: atlasSettingsFormTextV1(values, 'instagramAccount'), autoNotify: Boolean(values.autoNotify), pixKey: atlasSettingsFormTextV1(values, 'pixKey'),
+    signalAmount: atlasSettingsFormTextV1(values, 'signalAmount'), pixReceiver: atlasSettingsFormTextV1(values, 'pixReceiver'), pixCity: atlasSettingsFormTextV1(values, 'pixCity'),
+  };
+}
+
+export function buildAtlasSettingsRoleDraftV1(input: { values: Record<string, unknown>; id: string | null; permissions: string[] }): AtlasSettingsRoleDraftV1 {
+  return { id: input.id, name: atlasSettingsFormTextV1(input.values, 'name'), permissions: input.permissions.map(String) };
+}
+
+export function buildAtlasSettingsKeyDraftV1(values: Record<string, unknown>): AtlasSettingsKeyDraftV1 {
+  return { label: atlasSettingsFormTextV1(values, 'label'), roleId: atlasSettingsFormTextV1(values, 'roleId') };
+}
+
+function projectAtlasSettingsWorkbenchSessionsV1(sessions: WorkbenchSession[]): WorkbenchSession[] {
+  return [...sessions].sort((left, right) => Number(left.order) - Number(right.order));
+}
+
+function projectAtlasSettingsWorkbenchSessionV1(
+  session: WorkbenchSession,
+  index: number,
+  count: number,
+  options: Array<{ key: string; label: string; group: string }>,
+) {
+  const materials = Array.isArray(session.materials) ? session.materials.map((item, materialIndex): WorkbenchMaterial =>
+    typeof item === "string"
+      ? { id: `material-${materialIndex}`, name: item, description: "", usage: "", quantity: "", unit: "" }
+      : item) : [];
+  const conditions = (session.inference?.conditions || session.operational?.entryConditions || []) as Array<Record<string, unknown> | string>;
+  const production = (session.inference?.production || session.operational?.production || {}) as Record<string, unknown>;
+  const automation = session.automation || {};
+  const programming = session.programming || {};
+  return {
+    id: session.id,
+    title: session.title || "Atividade",
+    unit: session.unit || "Unidade não definida",
+    release: session.release || "Sem requisito de liberação",
+    summary: (session.inference?.summary as string) || "Editar compreensão",
+    status: (session.inference?.summary as string) || "Alterações são salvas na compreensão original do Worker.",
+    moveUpDisabled: index === 0,
+    moveDownDisabled: index === count - 1,
+    materials,
+    properties: session.properties || [],
+    conditions: conditions.map(condition => typeof condition === "string"
+      ? { label: "Condição", trigger: condition, severity: "warning" }
+      : condition),
+    production,
+    automation,
+    programming,
+    options: options.map(option => ({
+      ...option,
+      checked: Boolean((option.group === "automation" ? automation[option.key] : programming[option.key])),
+    })),
+    custom: session.custom,
+  };
+}
+
+function projectAtlasSettingsPageV1(input: {
+  snapshot: SettingsSnapshot;
+  selectedStageId: string;
+  activeTab: "materials" | "activities" | "execution";
+  creatingStage: boolean;
+  usagePages: AtlasUsagePageOptionV1[];
+  usageDensities: AtlasUsageDensityOptionV1[];
+  usageBusinessDefaults: AtlasUsageBusinessDefaultsV1 | null;
+}) {
+  const { snapshot } = input;
+  const stage = snapshot.stages.find(item => String(item.id) === input.selectedStageId) || snapshot.stages[0];
+  const config = stage?.aiConfig || ({} as NonNullable<ConfiguredStage["aiConfig"]>);
+  const profile = config.executionProfile || {};
+  const sessions = stage ? projectAtlasSettingsWorkbenchSessionsV1(stage.workbenchSessions) : [];
+  const materials = profile.materialsTable || [];
+  const activities = profile.expectedActivities || sessions.map(session => session.title);
+  const production = profile.production || { quantity: null, unit: "", rate: null, rateUnit: "" };
+  const listText = (value: unknown) => Array.isArray(value)
+    ? value.map(item => typeof item === "string" ? item : "").filter(Boolean).join("\n")
+    : "";
+  const targetText = (value: unknown) => Array.isArray(value) ? value.join(", ") : "";
+  const sourceMaterials = sessions.flatMap(session => (Array.isArray(session.materials) ? session.materials : []).map((value, index) => ({
+    session,
+    material: typeof value === "string"
+      ? { id: `${session.id}-${index}`, name: value, description: "", usage: "", quantity: "", unit: "" }
+      : value,
+  })));
+  const actorRole = snapshot.actorRole;
+  return {
+    stage,
+    sessions,
+    materials,
+    fields: {
+      procurementFocus: listText(config.procurementFocus),
+      expectedActivities: listText(activities),
+      requestHints: listText(config.requestHints),
+      typicalDescription: String(config.typicalDescription || ""),
+      requirements: listText(config.requirements),
+      conditions: listText(config.conditions),
+      evidenceFocus: listText(config.evidenceFocus),
+      organizationContext: String(config.organizationContext || ""),
+      organizationRequest: String(config.organizationRequest || ""),
+      productionQuantity: String(production.quantity ?? ""),
+      productionUnit: String(production.unit ?? ""),
+      productionRate: String(production.rate ?? ""),
+      productionRateUnit: String(production.rateUnit ?? ""),
+      notifyOwner: targetText(config.notificationTargets?.owner),
+      notifyAdmin: targetText(config.notificationTargets?.admin),
+      notifyForeman: targetText(config.notificationTargets?.foreman),
+    },
+    ...projectAtlasSettingsAccessPolicyV1(snapshot),
+    stageChoices: snapshot.stages.map(item => ({
+      item,
+      selected: String(item.id) === String(stage?.id ?? ""),
+      progress: Number(item.progress) || 0,
+      disabled: input.creatingStage,
+    })),
+    sourceMaterials,
+    workbenchSourceLabel: stage?.workbenchSource === "persisted"
+      ? "sessões salvas no banco"
+      : stage?.workbenchSource === "worker-defaults"
+        ? "catálogo original do Worker · somente leitura até salvar"
+        : "estado do Worker indisponível",
+    tabs: [
+      { key: "materials", label: "Materiais", active: input.activeTab === "materials", count: materials.length + sourceMaterials.length },
+      { key: "activities", label: "Atividades esperadas", active: input.activeTab === "activities", count: sessions.length },
+      { key: "execution", label: "Execução", active: input.activeTab === "execution", count: null },
+    ],
+    usagePanelVisible: Boolean(input.usagePages.length && input.usageDensities.length && input.usageBusinessDefaults),
+  };
+}
+
 type SettingsState = SettingsSnapshot & {
   aiAgendaComprehension: AiAgendaComprehensionV1;
   usagePreferences: AtlasUsagePreferencesV1;
@@ -13956,7 +14430,7 @@ export class AtlasSettings extends AtlasHTMLElementBase {
   private skipRender = false;
   constructor() {
     super();
-    const initial: SettingsState = { stages: [], roles: [], keys: [], contact: null, actorRole: "", isNative: false, aiAgendaComprehension: normalizeAiAgendaComprehensionV1(), usagePreferences: { defaultPage: "map", density: "comfortable", reduceMotion: false, voiceEnabled: false }, usagePages: [], usageDensities: [], usageBusinessDefaults: null, integrationSettings: {}, loading: true, error: "", feedback: "", selectedStageId: "", activeTab: "materials", creatingStage: false, saving: false };
+    const initial: SettingsState = { stages: [], roles: [], keys: [], contact: null, actorRole: "", isNative: false, aiAgendaComprehension: normalizeAiAgendaComprehensionV1(), usagePreferences: { defaultPage: "control", density: "comfortable", reduceMotion: false, voiceEnabled: false }, usagePages: [], usageDensities: [], usageBusinessDefaults: null, integrationSettings: {}, loading: true, error: "", feedback: "", selectedStageId: "", activeTab: "materials", creatingStage: false, saving: false };
     function* state(value: SettingsState): Generator<SettingsState, never, SettingsSetter> { while (true) value = (yield value)(value); }
     const iterator = state(initial); iterator.next(); this.snapshot = initial;
     this.state = { next: setter => { this.snapshot = iterator.next(setter).value; if (!this.skipRender) this.render(); return this.snapshot; } };
@@ -14224,6 +14698,7 @@ export class AtlasLeads extends AtlasHTMLElementBase {
     this.innerHTML=`${leadsStyles}${leadsReservationStyles}<main class="atlas-leads-shell"><header><div><span class="atlas-eyebrow">ATENDIMENTO COMERCIAL · CAPTAÇÃO</span><h1>Leads</h1><p>Contatos e reservas reais recebidos pelos canais conectados.</p></div><div class="atlas-actions"><button type="button" data-open-public>Página pública</button><button type="button" data-leads-refresh>Atualizar leads</button></div></header><nav class="atlas-tabs" aria-label="Conteúdo comercial"><button type="button" data-leads-tab="leads" aria-selected="${s.tab==="leads"}">Leads e reservas <small>${all.length}</small></button><button type="button" data-leads-tab="instagram" aria-selected="${s.tab==="instagram"}">Instagram</button></nav>${s.tab==="leads"?`${reservationPanel}<section class="atlas-leads-toolbar"><label>Buscar contato, lote ou objetivo<input type="search" data-leads-query value="${e(s.query)}" placeholder="Nome, telefone, lote…"></label><span class="atlas-muted">${visible.length} de ${all.length} contatos · leitura ${e(s.records?.readAt||"pendente")}</span></section><div class="atlas-cards">${list}</div>${profile}`:instagram}</main>`;
   }
   connectedCallback(): void {
+    this.classList.add("atlas-leads");
     this.render();
     this.addEventListener("input", event=>{const target=event.target;if(target instanceof HTMLInputElement&&target.matches("[data-leads-query]")){const cursor=target.selectionStart;this.state.next(s=>({...s,query:target.value}));const next=this.querySelector<HTMLInputElement>("[data-leads-query]");next?.focus();if(cursor!==null)next?.setSelectionRange(cursor,cursor);return;}if(target instanceof HTMLTextAreaElement&&target.matches("[data-reply-draft]"))this.state.next(s=>({...s,replyDraft:target.value}));});
     this.addEventListener("click", event=>{
@@ -15917,6 +16392,7 @@ interface AtlasActivityMapSceneV1 extends HTMLElement {
 interface AtlasActivityMapStoreV1 { get?: () => unknown; subscribe?: (listener: () => void) => unknown }
 type AtlasActivityMapOverlayServicesV1 = import("./program.js").AtlasActivityMapOverlayServicesV1;
 
+const ACTIVITY_MAP_STATUSES_V1 = Object.freeze(activityMapStatusesData);
 const ATLAS_ACTIVITY_MAP_OVERLAY_SERVICES_DEFAULT_V1: AtlasActivityMapOverlayServicesV1 = {
   statuses: ACTIVITY_MAP_STATUSES_V1,
   leadGroups: projectAtlasActivityMapLeadGroupsV1,
@@ -16515,12 +16991,15 @@ interface AtlasFloatingWidgetLayerConstructorV1 {
 /** Own floating-card drag behavior while keeping saved layout in the app store. */
 export function installAtlasFloatingWidgetLayoutV1(
   ViewLayer: AtlasFloatingWidgetLayerConstructorV1,
-  dependencies: { appStore: AtlasApplicationStore<AtlasApplicationStoreState> },
+  dependencies: {
+    appStore: Pick<AtlasApplicationStore<AtlasApplicationStoreState>, 'get'>;
+    saveLayout(key: string, position: { left: number; top: number }): void;
+  },
 ): void {
   const prototype = ViewLayer.prototype;
   if (prototype.__atlasFloatingWidgetLayoutTsV1) return;
   prototype.__atlasFloatingWidgetLayoutTsV1 = true;
-  const { appStore } = dependencies;
+  const { appStore, saveLayout } = dependencies;
 
   prototype.bindFloatingWidgets = function (this: AtlasFloatingWidgetLayerV1): void {
     const view = appStore.get().view;
@@ -16577,13 +17056,10 @@ export function installAtlasFloatingWidgetLayoutV1(
           handle.removeEventListener("pointermove", move);
           handle.removeEventListener("pointerup", stop);
           const finalRect = card.getBoundingClientRect();
-          appStore.update((state) => ({
-            ...state,
-            widgetLayouts: updateAtlasFloatingWidgetLayoutV1(state.widgetLayouts, key, {
-              left: finalRect.left - parent.left,
-              top: finalRect.top - parent.top,
-            }),
-          }));
+          saveLayout(key, {
+            left: finalRect.left - parent.left,
+            top: finalRect.top - parent.top,
+          });
         };
 
         handle.addEventListener("pointermove", move);
@@ -16599,6 +17075,57 @@ interface AtlasDataTableRowV1 extends HTMLElement {
 
 interface AtlasDataTableLayerV1 extends HTMLElement {
   render(...args: any[]): unknown;
+}
+
+interface AtlasDataTablePageProjectionV1<T> {
+  matching: T[];
+  visible: T[];
+  page: number;
+  pages: number;
+  start: number;
+  end: number;
+}
+
+/** Keep table category controls localized and derived from the rows being displayed. */
+function projectAtlasDataTableCategoriesV1<T>(
+  rows: readonly T[],
+  categoryOf: (row: T) => string | null | undefined,
+): string[] {
+  return [...new Set(rows.map(categoryOf).filter((value): value is string => Boolean(value)))]
+    .sort((left, right) => left.localeCompare(right, "pt-BR"));
+}
+
+/** Own view-only table search and paging alongside the controls that consume them. */
+function projectAtlasDataTablePageV1<T>(input: {
+  rows: readonly T[];
+  page: number;
+  pageSize: number | "all";
+  query: string;
+  category: string;
+  textOf: (row: T) => string | null | undefined;
+  categoryOf: (row: T) => string | null | undefined;
+}): AtlasDataTablePageProjectionV1<T> {
+  const normalizedQuery = input.query.trim().toLocaleLowerCase("pt-BR");
+  const matching = input.rows.filter((row) => {
+    const text = String(input.textOf(row) || "").toLocaleLowerCase("pt-BR");
+    return (!normalizedQuery || text.includes(normalizedQuery))
+      && (!input.category || input.categoryOf(row) === input.category);
+  });
+  const pageSize = input.pageSize === "all"
+    ? Math.max(matching.length, 1)
+    : Math.max(1, Math.floor(Number(input.pageSize) || 1));
+  const pages = Math.max(1, Math.ceil(matching.length / pageSize));
+  const page = Math.max(0, Math.min(Math.floor(Number(input.page) || 0), pages - 1));
+  const start = matching.length ? page * pageSize + 1 : 0;
+  const end = Math.min((page + 1) * pageSize, matching.length);
+  return {
+    matching,
+    visible: matching.slice(page * pageSize, (page + 1) * pageSize),
+    page,
+    pages,
+    start,
+    end,
+  };
 }
 
 /** Add typed search, category, pagination, and CSV controls to admin data tables. */
@@ -17608,6 +18135,7 @@ interface AtlasStaticSatelliteGestureElement extends HTMLElement {
   isAdminPublicMapV1?: () => boolean;
   syncSatelliteLotContextWidgetScaleV1?: (zoom: number) => void;
   fitStaticSatelliteMasterplanV1?: () => boolean;
+  focusStaticSatelliteLotV1?: (lotId: string) => boolean;
 }
 
 interface AtlasStaticSatelliteGestureDrag {
@@ -17698,6 +18226,33 @@ export function installAtlasStaticSatelliteGestures(
         this.dataset.staticMapInitialFit = "masterplan-centered-with-margin";
         this.dataset.staticMapFitMargin = `${Math.round((1 - policy.fitScale) * 100)}%`;
         publishStaticView();
+        return true;
+      };
+      this.focusStaticSatelliteLotV1 = (lotId: string): boolean => {
+        const wanted = String(lotId || "").trim();
+        const marker = [...this.querySelectorAll<HTMLElement>(".satellite-lot-plan-marker[data-lot]")]
+          .find(node => node.dataset.lot === wanted);
+        if (!marker) return false;
+        const mapRect = this.getBoundingClientRect();
+        const markerRect = marker.getBoundingClientRect();
+        if (!mapRect.width || !mapRect.height || !markerRect.width || !markerRect.height) return false;
+        const markerX = markerRect.left + markerRect.width / 2;
+        const markerY = markerRect.top + markerRect.height / 2;
+        const targetZoom = Math.min(policy.maximumZoom, Math.max(zoom, policy.markerRevealZoom + 1.05, 2.6));
+        applyView(targetZoom, markerX, markerY);
+        const pan = createAtlasStaticSatellitePanCommand({
+          panX,
+          panY,
+          deltaX: mapRect.left + mapRect.width / 2 - markerX,
+          deltaY: mapRect.top + mapRect.height / 2 - markerY,
+          zoom,
+          width: mapRect.width,
+          height: mapRect.height,
+        });
+        panX = pan.panX;
+        panY = pan.panY;
+        publishStaticView();
+        this.dataset.staticMapFocusedLot = wanted;
         return true;
       };
       this.addEventListener("wheel", eventValue => {
@@ -17838,22 +18393,37 @@ interface AtlasMapLoadingSceneElement extends HTMLElement {
   preparePublicStaticBaseV1: (state?: string) => boolean;
   waitForPublicStaticBaseV1: () => Promise<boolean>;
   updateMap3DLoadingScreenV1: (phase?: unknown, extra?: Record<string, unknown>) => void;
-  persist3dBootPhaseV5367: (phase: string, extra?: Record<string, unknown>) => Record<string, unknown>;
+  begin3dBootStateV5367: (initial: Record<string, unknown>) => Record<string, unknown>;
+  update3dBootStateV5367: (patch: Record<string, unknown>) => Record<string, unknown>;
+  record3dBootPhaseV5367: (phase: string, extra?: Record<string, unknown>) => Record<string, unknown>;
 }
 
 type AtlasMapLoadingBrowser = typeof globalThis & { Capacitor?: { isNativePlatform?: () => boolean; getPlatform?: () => string } };
-type AtlasMapLoadingGlobal = typeof globalThis & { __BELAVISTA_ADMIN_MODEL_STATE__?: Record<string, unknown> };
 
 /** Install the typed loading surface and static-image fallback shared by both map routes. */
 export function installAtlasMapLoadingScreen(
   MapScene: CustomElementConstructor,
-  dependencies: { GENERATED_AERIAL_ASSET: string; browser?: AtlasMapLoadingBrowser; globalRef?: AtlasMapLoadingGlobal },
+  dependencies: {
+    GENERATED_AERIAL_ASSET: string;
+    browser: AtlasMapLoadingBrowser;
+    beginBootStateV5367: (initial: Record<string, unknown>) => Record<string, unknown>;
+    updateBootStateV5367: (patch: Record<string, unknown>) => Record<string, unknown>;
+    persistBootPhaseV5367: (phase: string, extra: Record<string, unknown>) => Record<string, unknown>;
+  },
 ): CustomElementConstructor {
   if (typeof (MapScene as unknown) !== "function" || !(MapScene as any).prototype)
     throw new TypeError("Map loading screen requires the existing MapScene constructor.");
   if (typeof dependencies.GENERATED_AERIAL_ASSET !== "string" || !dependencies.GENERATED_AERIAL_ASSET)
     throw new TypeError("Map loading screen requires GENERATED_AERIAL_ASSET.");
-  const browser = dependencies.browser || globalThis as AtlasMapLoadingBrowser;
+  for (const [name, port] of Object.entries({
+    beginBootStateV5367: dependencies.beginBootStateV5367,
+    updateBootStateV5367: dependencies.updateBootStateV5367,
+    persistBootPhaseV5367: dependencies.persistBootPhaseV5367,
+  })) {
+    if (typeof port !== "function")
+      throw new TypeError(`Map loading screen requires its TypeScript ${name} program port.`);
+  }
+  const browser = dependencies.browser;
   const documentRef = browser.document;
   const timerHost = browser.window || browser as unknown as Window;
   const setTimeoutRef = typeof browser.setTimeout === "function"
@@ -17862,7 +18432,6 @@ export function installAtlasMapLoadingScreen(
   const clearTimeoutRef = typeof browser.clearTimeout === "function"
     ? browser.clearTimeout.bind(browser)
     : timerHost.clearTimeout.bind(timerHost);
-  const globalRef = dependencies.globalRef || globalThis as AtlasMapLoadingGlobal;
   if (!documentRef || !browser.window || typeof browser.Image !== "function")
     throw new TypeError("Map loading screen requires browser Image, document and window services.");
   const captureSource = (scene: AtlasMapLoadingSceneElement): string => {
@@ -17970,19 +18539,17 @@ export function installAtlasMapLoadingScreen(
       if (snapshot.hidden) screen.setAttribute("hidden", "");
       else screen.removeAttribute("hidden");
     },
-    persist3dBootPhaseV5367(this: AtlasMapLoadingSceneElement, phase: string, extra: Record<string, unknown> = {}): Record<string, unknown> {
-      const { version, storageKey } = projectAtlasMapLoadingBootStateConfig();
-      const state = globalRef.__BELAVISTA_ADMIN_MODEL_STATE__ ??= { version, startedAt: browser.performance.now() };
-      state.version = version;
-      state.phase = phase;
-      Object.assign(state, extra);
-      globalRef.__BELAVISTA_ADMIN_MODEL_STATE__ = state;
+    begin3dBootStateV5367(this: AtlasMapLoadingSceneElement, initial: Record<string, unknown>): Record<string, unknown> {
+      return dependencies.beginBootStateV5367(initial);
+    },
+    update3dBootStateV5367(this: AtlasMapLoadingSceneElement, patch: Record<string, unknown>): Record<string, unknown> {
+      return dependencies.updateBootStateV5367(patch);
+    },
+    record3dBootPhaseV5367(this: AtlasMapLoadingSceneElement, phase: string, extra: Record<string, unknown> = {}): Record<string, unknown> {
+      const state = dependencies.persistBootPhaseV5367(phase, extra);
       this.dataset.modelBootPhase = phase;
-      this.dataset.modelBootVersion = version;
+      this.dataset.modelBootVersion = String(state.version || "");
       this.updateMap3DLoadingScreenV1(phase, extra);
-      try {
-        browser.localStorage?.setItem(storageKey, JSON.stringify({ version, phase, wallClock: new browser.Date().toISOString(), ...extra }));
-      } catch {}
       return state;
     },
   };
@@ -18407,7 +18974,7 @@ interface AtlasMapViewPersistenceElement extends HTMLElement {
 }
 
 interface AtlasMapViewPersistenceDependencies {
-  appStore: { update: (updater: (state: Record<string, unknown>) => Record<string, unknown>) => unknown };
+  commands: Pick<AtlasMapSceneStateCommandsV1, 'saveMapView'>;
   config: {
     MAP_SCENE_STATE_VERSION: number;
     ADMIN_REFERENCE_AERIAL_VIEW_VERSION: number;
@@ -18421,9 +18988,9 @@ interface AtlasMapViewPersistenceDependencies {
 export function installAtlasMapSceneViewPersistence(MapScene: CustomElementConstructor, dependencies: AtlasMapViewPersistenceDependencies): CustomElementConstructor {
   if (typeof MapScene !== "function" || !MapScene.prototype)
     throw new TypeError("Scene state persistence requires the existing MapScene constructor.");
-  if (typeof dependencies.appStore?.update !== "function")
-    throw new TypeError("Scene state persistence requires appStore.update().");
-  const { config, browser, appStore } = dependencies;
+  if (typeof dependencies.commands?.saveMapView !== "function")
+    throw new TypeError("Scene state persistence requires the typed saveMapView command.");
+  const { config, browser, commands } = dependencies;
   if (!Number.isFinite(config?.MAP_SCENE_STATE_VERSION)
     || !Number.isFinite(config?.ADMIN_REFERENCE_AERIAL_VIEW_VERSION)
     || !Number.isFinite(config?.ADMIN_FIXED_MAP_ROTATION_DEG)
@@ -18447,7 +19014,7 @@ export function installAtlasMapSceneViewPersistence(MapScene: CustomElementConst
           pan: this.sceneManualPan,
           tiltAdjust: this.sceneTiltAdjust,
         });
-        appStore.update(state => ({ ...state, mapView }));
+        commands.saveMapView(mapView);
       }, 120);
     },
   };
@@ -20607,7 +21174,7 @@ interface AtlasMapMasterplanLoaderDependenciesV1 {
   dwgPlanHeadingDeg: number;
   dwgPlanHeadingRad: number;
   sceneModelBaseZ: number;
-  browserRef?: Record<string, any>;
+  browserRef: Record<string, any>;
 }
 
 /** Own GLB request orchestration, world-frame placement, progressive GPU handoff, and status. */
@@ -20621,7 +21188,7 @@ export function installAtlasMapMasterplanLoaderV1(
   for (const [name, value] of Object.entries(dependencies)) {
     if (value === undefined) throw new TypeError(`Masterplan loading requires ${name}.`);
   }
-  const browser = dependencies.browserRef || globalThis as unknown as Record<string, any>;
+  const browser = dependencies.browserRef;
   const prototype = MapScene.prototype as unknown as AtlasMapThreeInitializationElement;
   prototype.loadMasterplan = function(
     this: AtlasMapThreeInitializationElement,
@@ -20630,21 +21197,19 @@ export function installAtlasMapMasterplanLoaderV1(
   ): void {
     if (this._modelLoadStarted) return;
     this._modelLoadStarted = true;
-    const perf: Record<string, any> = browser.__BELAVISTA_ADMIN_MODEL_STATE__ = {
-      version: '5.3.67',
+    const bootState = this.begin3dBootStateV5367({
       phase: 'network',
-      startedAt: browser.performance.now(),
       progress: 0,
       meshCount: 0,
       processedMeshes: 0,
       operationalGeometry: 'deferred',
-    };
+    });
+    const startedAt = Number(bootState.startedAt);
+    const bootVersion = String(bootState.version);
     const mark = (phase: string, extra: Record<string, unknown> = {}): void => {
-      perf.phase = phase;
-      Object.assign(perf, extra);
       this.dataset.modelBootPhase = phase;
-      this.dataset.modelBootVersion = '5.3.67';
-      this.persist3dBootPhaseV5367(phase, extra);
+      this.dataset.modelBootVersion = bootVersion;
+      this.record3dBootPhaseV5367(phase, extra);
     };
     const loader = new GLTFLoader();
     const modelUrl = runtimeRouteV1(
@@ -20664,7 +21229,7 @@ export function installAtlasMapMasterplanLoaderV1(
           this.dataset.modelProgress = '42';
           mark('parsed', {
             parsedAt: browser.performance.now(),
-            downloadAndParseMs: Math.round(browser.performance.now() - perf.startedAt),
+            downloadAndParseMs: Math.round(browser.performance.now() - startedAt),
           });
           const sourceModel = gltf.scene;
           const sourceBox = new THREE.Box3().setFromObject(sourceModel);
@@ -20731,8 +21296,6 @@ export function installAtlasMapMasterplanLoaderV1(
             meshes.push(node);
           });
           meshes.sort((a, b) => (a.userData.__v5367Triangles || 0) - (b.userData.__v5367Triangles || 0));
-          perf.meshCount = meshes.length;
-          perf.triangleEstimate = triangleEstimate;
           this.dataset.modelMeshCount = String(meshes.length);
           this.dataset.modelTriangleEstimate = String(triangleEstimate);
           this.modelGroup.add(model);
@@ -20746,7 +21309,7 @@ export function installAtlasMapMasterplanLoaderV1(
           this.classList.remove('model-ready');
           mark('gpu-staging', { meshCount: meshes.length, triangleEstimate });
           this.renderer?.render(this.scene, this.camera);
-          this.stageMasterplanGpuV5367(THREE, model, meshes, perf, mark).catch((error: unknown) => {
+          this.stageMasterplanGpuV5367(THREE, model, meshes, startedAt, mark).catch((error: unknown) => {
             const failure = error as { message?: unknown } | null;
             mark('gpu-stage-error', { error: String(failure?.message || error) });
             this.dataset.modelError = 'gpu-stage-failed';
@@ -20764,7 +21327,7 @@ export function installAtlasMapMasterplanLoaderV1(
         if (progress.total) {
           const percent = Math.round(((progress.loaded || 0) / progress.total) * 100);
           this.dataset.modelProgress = String(percent);
-          perf.progress = percent;
+          this.update3dBootStateV5367({ progress: percent });
           this.updateMap3DLoadingScreenV1('download', { progress: percent });
         }
       },
@@ -20788,10 +21351,10 @@ export function installAtlasMapMasterplanGpuEnrichmentV1(
 ): CustomElementConstructor {
   if (!MapScene?.prototype) throw new TypeError("Model enrichment requires MapScene.prototype.");
   const { PUBLIC_SOCIAL_GREEN_LIFT_V1, appStore, publishMapPreview, syncCompactMapMirrors } = dependencies;
-  for (const [name, value] of Object.entries({ PUBLIC_SOCIAL_GREEN_LIFT_V1, appStore, publishMapPreview, syncCompactMapMirrors })) {
+  for (const [name, value] of Object.entries({ PUBLIC_SOCIAL_GREEN_LIFT_V1, appStore, publishMapPreview, syncCompactMapMirrors, browserRef: dependencies.browserRef })) {
     if (value === undefined) throw new TypeError(`Model enrichment requires ${name}.`);
   }
-  const browser = dependencies.browserRef || globalThis as unknown as Record<string, any>;
+  const browser = dependencies.browserRef;
   if (typeof browser?.requestAnimationFrame !== "function" || typeof browser?.setTimeout !== "function" || typeof browser?.performance?.now !== "function") {
     throw new TypeError("Model enrichment requires requestAnimationFrame, setTimeout, and performance.now().");
   }
@@ -20799,7 +21362,7 @@ export function installAtlasMapMasterplanGpuEnrichmentV1(
   const setTimeout = browser.setTimeout.bind(browser);
   const performance = { now: () => browser.performance.now() };
   const methods: Record<string, (...args: any[]) => any> = {
-  stageMasterplanGpuV5367: async function(this: any, THREE: any, model: any, meshes: any[], perf: any, mark: (phase: string, extra?: any) => void) {
+  stageMasterplanGpuV5367: async function(this: any, THREE: any, model: any, meshes: any[], startedAt: number, mark: (phase: string, extra?: any) => void) {
     if (this._modelGpuStagePromiseV5367) return this._modelGpuStagePromiseV5367;
 
     const nextFrame = () =>
@@ -20856,7 +21419,7 @@ export function installAtlasMapMasterplanGpuEnrichmentV1(
         this.renderer?.render(this.scene, this.camera);
         const renderMs = performance.now() - started;
 
-        perf.stagedMeshes = index + 1;
+        this.update3dBootStateV5367({ stagedMeshes: index + 1 });
         this.dataset.modelProcessedMeshes = `${index + 1}/${total}`;
         // O staging é trabalho real de geometria/GPU. Ele alimenta a mesma
         // barra de carregamento que antes só recebia bytes da rede.
@@ -20893,7 +21456,7 @@ export function installAtlasMapMasterplanGpuEnrichmentV1(
 
       await nextFrame();
 
-      return this.enrichMasterplanProgressively(THREE, model, meshes, perf);
+      return this.enrichMasterplanProgressively(THREE, model, meshes, startedAt);
     };
 
     this._modelGpuStagePromiseV5367 = run().finally(() => {
@@ -20902,7 +21465,7 @@ export function installAtlasMapMasterplanGpuEnrichmentV1(
 
     return this._modelGpuStagePromiseV5367;
   },
-  enrichMasterplanProgressively: async function(this: any, THREE: any, model: any, meshes: any[], perf: any) {
+  enrichMasterplanProgressively: async function(this: any, THREE: any, model: any, meshes: any[], startedAt: number) {
     if (this._modelEnrichmentPromise) return this._modelEnrichmentPromise;
 
     const nextFrame = () =>
@@ -20918,7 +21481,7 @@ export function installAtlasMapMasterplanGpuEnrichmentV1(
       const chunkSize = 18;
 
       this.dataset.modelEnrichment = "classifying";
-      perf.phase = "classifying";
+      this.update3dBootStateV5367({ phase: "classifying" });
 
       for (let cursor = 0; cursor < meshes.length; cursor += chunkSize) {
         const end = Math.min(meshes.length, cursor + chunkSize);
@@ -21057,7 +21620,7 @@ export function installAtlasMapMasterplanGpuEnrichmentV1(
           if (isSocial) leisureNodes.push(node);
         }
 
-        perf.processedMeshes = end;
+        this.update3dBootStateV5367({ processedMeshes: end });
         this.dataset.modelProcessedMeshes = `${end}/${meshes.length}`;
         const enrichedProgress =
           78 + Math.round((end / Math.max(1, meshes.length)) * 17);
@@ -21117,12 +21680,14 @@ export function installAtlasMapMasterplanGpuEnrichmentV1(
       this.paintProgressAreaSelectionV1(
         appStore.get().mapProgressSelection || [],
       );
-      perf.phase = "ready";
-      perf.readyAt = performance.now();
-      perf.readyMs = Math.round(performance.now() - perf.startedAt);
-      perf.lots = lots.length;
-      perf.streets = streets.length;
-      perf.other = other.length;
+      this.update3dBootStateV5367({
+        phase: "ready",
+        readyAt: performance.now(),
+        readyMs: Math.round(performance.now() - startedAt),
+        lots: lots.length,
+        streets: streets.length,
+        other: other.length,
+      });
 
       this._modelGpuReady = true;
       this.dataset.modelGpuReady = "true";
@@ -21131,7 +21696,7 @@ export function installAtlasMapMasterplanGpuEnrichmentV1(
       // O GLB do loteamento termina primeiro. Árvores, relevo e entorno são
       // enriquecimento visual e entram depois do primeiro enquadramento.
       this.schedulePublicEnvironmentLoadingV1();
-      this.persist3dBootPhaseV5367("gpu-ready", {
+      this.record3dBootPhaseV5367("gpu-ready", {
         meshCount: meshes.length,
         processedMeshes: meshes.length,
         lots: lots.length,
@@ -25439,7 +26004,7 @@ export class AtlasMapLotSvgRenderer extends AtlasHTMLElementBase {
           input.usesNativeMasterplanPolygons,
           input.projectedBounds,
         ),
-        label: `Consultar ${lotId.replace("_", " ")}`,
+        label: `Consultar ${input.lotLabel(lotId)}`,
         interactive: input.masterplanOverlay,
       });
       if (input.masterplanOverlay && input.bindLotActivation) {
@@ -25705,8 +26270,10 @@ export class AtlasMapLotSvgRenderer extends AtlasHTMLElementBase {
       const path = target?.closest<SVGPathElement>(".satellite-lot-hit-area") || null;
       const lotId = String(detail.lotId || path?.dataset.lot || "");
       if (!path || !lotId || mapHost.classList.contains("is-admin-masterplan-editing")) return;
-      const number = String(lotId.match(/\d+/g)?.at(-1) || "").padStart(3, "0");
-      const label = String(detail.label || `Lote ${number}`);
+      const pdfNumber = Number(input.greenMappingByLot.get(lotId)?.number);
+      const label = String(detail.label || `Lote ${Number.isFinite(pdfNumber) && pdfNumber > 0
+        ? String(pdfNumber).padStart(2, "0")
+        : String(lotId.match(/\d+/g)?.at(-1) || "").padStart(3, "0")}`);
       const projectedLot = input.projectedLots.find(row => row.lotId === lotId);
       const position = publicMapLotSelectionWidgetPosition({
         greenMapping: input.greenMappingByLot.get(lotId) || null,
@@ -26108,7 +26675,7 @@ export class AtlasMapAdjustmentToolbar extends AtlasHTMLElementBase {
       this.setState({ editing, mode, status });
       if (!editing) console.info("[Aliança Park] calibração do mapa", {
         frame: publicMapFrameFromOverrides({ left: 0, top: 0, width: 0.25, height: 0.3, rotation: 0 }, scene.dataset.adminMasterplanFrame),
-        markers: publicMapCalibrationStorage.readMarkers(adminMapMarkerOverridesStorageKey),
+        markers: readPublicMapCalibrationMarkers(adminMapMarkerOverridesStorageKey),
       });
     };
     this.addEventListener("atlas:map-adjustment-toggle", event => {
@@ -26125,7 +26692,7 @@ export class AtlasMapAdjustmentToolbar extends AtlasHTMLElementBase {
     });
     this.addEventListener("atlas:map-adjustment-reset", event => {
       event.stopPropagation();
-      publicMapCalibrationStorage.removeMarkers(adminMapMarkerOverridesStorageKey);
+      resetPublicMapCalibrationMarkers(adminMapMarkerOverridesStorageKey);
       scene.querySelectorAll<HTMLElement>(".satellite-lot-plan-marker[data-map-adjust-u]").forEach(marker => {
         delete marker.dataset.mapAdjustU;
         delete marker.dataset.mapAdjustV;
@@ -26396,9 +26963,10 @@ export function installAtlasAdminMasterplanOverlayV1(
 
     const legacyAspect = artwork.legacyHeight / artwork.legacyWidth;
     const paint = (): boolean => {
-      if (!image.naturalWidth || !canvas) return false;
-      const width = Math.min(atlasAdminMasterplanOverlayPolicy.canvasMaxWidth, image.naturalWidth);
-      const height = Math.round(width * image.naturalHeight / image.naturalWidth);
+      if (!canvas) return false;
+      const raster = projectAtlasAdminMasterplanRasterSizeV1({ naturalWidth: image.naturalWidth, naturalHeight: image.naturalHeight });
+      if (!raster) return false;
+      const { width, height } = raster;
       if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
       const context = canvas.getContext("2d", { alpha: true });
       if (!context) return false;
@@ -26414,12 +26982,15 @@ export function installAtlasAdminMasterplanOverlayV1(
     this.paintMasterplanLotLabelsV1 = (entries): boolean => {
       labels = Array.isArray(entries) ? entries : [];
       const designWidth = atlasAdminMasterplanOverlayPolicy.svgDesignWidth;
-      const legacy = projectAtlasMasterplanPdfImageRectV3(artwork.legacyWidth, artwork.legacyHeight);
-      if (legacy.width > 0 && legacy.height > 0) {
-        const groups = labels.map(label => {
-          const x = ((label.u * artwork.legacyWidth - legacy.left) / legacy.width) * designWidth;
-          const y = ((label.v * artwork.legacyHeight - legacy.top) / legacy.height) * designWidth * legacyAspect;
-          if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > designWidth || y < 0 || y > designWidth * legacyAspect) return null;
+      const placements = projectAtlasMasterplanPdfLotLabelPlacementsV1({
+        labels,
+        legacyWidth: artwork.legacyWidth,
+        legacyHeight: artwork.legacyHeight,
+        designWidth,
+      });
+      if (placements) {
+        const groups = placements.map(label => {
+          const { x, y } = label;
           const group = documentRef.createElementNS("http://www.w3.org/2000/svg", "g");
           group.classList.add("admin-masterplan-lot-label-group");
           if (label.lotId) group.setAttribute("data-lot-id", String(label.lotId));
@@ -26456,7 +27027,7 @@ export function installAtlasAdminMasterplanOverlayV1(
             group.append(area);
           }
           return group;
-        }).filter((group): group is SVGGElement => group !== null);
+        });
         labelsLayer.replaceChildren(...groups);
       }
       return paint();
@@ -26464,27 +27035,31 @@ export function installAtlasAdminMasterplanOverlayV1(
 
     const defaultFrame = { ...input.defaultFrame };
     const frameStorageKey = atlasAdminMasterplanOverlayPolicy.frameStorageKey;
-    const savedFrame = publicMapCalibrationStorage.readFrame(frameStorageKey, defaultFrame);
+    const savedFrame = readPublicMapCalibrationFrame({ storageKey: frameStorageKey, baseFrame: defaultFrame });
     this.dataset.adminMasterplanFrame = JSON.stringify(savedFrame);
     const readFrame = (): import("./program.js").PublicMapFrame =>
       publicMapFrameFromOverrides(defaultFrame, this.dataset.adminMasterplanFrame || "{}");
     const sync = (): void => {
       const rect = this.getBoundingClientRect();
-      if (!fit || !rect.width || !rect.height) return;
-      const side = Math.max(rect.width, rect.height);
-      fit.style.width = `${side}px`;
-      fit.style.height = `${side}px`;
+      if (!fit) return;
+      const layout = projectAtlasAdminMasterplanOverlayLayoutV1({
+        width: rect.width,
+        height: rect.height,
+        frame: readFrame(),
+      });
+      if (!layout) return;
+      fit.style.width = `${layout.fit.width}px`;
+      fit.style.height = `${layout.fit.height}px`;
       fit.style.maxWidth = "none";
       fit.style.maxHeight = "none";
-      fit.style.left = `${(rect.width - side) / 2}px`;
-      fit.style.top = `${(rect.height - side) / 2}px`;
-      const frame = readFrame();
-      fit.style.setProperty("--masterplan-left", `${frame.left * 100}%`);
-      fit.style.setProperty("--masterplan-top", `${frame.top * 100}%`);
-      fit.style.setProperty("--masterplan-width", `${frame.width * 100}%`);
-      fit.style.setProperty("--masterplan-height", `${frame.height * 100}%`);
-      fit.style.setProperty("--masterplan-rotation", `${Number(frame.rotation || 0)}deg`);
-      const imageRect = projectAtlasMasterplanPdfImageRectV3(side * frame.width, side * frame.height);
+      fit.style.left = `${layout.fit.left}px`;
+      fit.style.top = `${layout.fit.top}px`;
+      fit.style.setProperty("--masterplan-left", `${layout.transform.leftPercent}%`);
+      fit.style.setProperty("--masterplan-top", `${layout.transform.topPercent}%`);
+      fit.style.setProperty("--masterplan-width", `${layout.transform.widthPercent}%`);
+      fit.style.setProperty("--masterplan-height", `${layout.transform.heightPercent}%`);
+      fit.style.setProperty("--masterplan-rotation", `${layout.transform.rotationDegrees}deg`);
+      const imageRect = layout.artwork;
       Object.assign(canvas.style, { inset: "auto", left: `${imageRect.left}px`, top: `${imageRect.top}px`, width: `${imageRect.width}px`, height: `${imageRect.height}px` });
       Object.assign(labelsLayer.style, { left: `${imageRect.left}px`, top: `${imageRect.top}px`, width: `${imageRect.width}px`, height: `${imageRect.height}px` });
     };
@@ -26596,7 +27171,7 @@ export function installAtlasAdminMasterplanAdjustmentV1(
     const setFrame = (patch: Record<string, unknown> = {}): Record<string, unknown> => {
       const next = publicMapFramePatch(args.readFrame(), patch);
       this.dataset.adminMasterplanFrame = JSON.stringify(next);
-      publicMapCalibrationStorage.saveFrame(args.frameStorageKey, next);
+      commitPublicMapCalibrationFrame({ storageKey: args.frameStorageKey, frame: next });
       args.sync();
       this.syncAdminMasterplanLotMarkersV1?.();
       return describe();
@@ -26629,7 +27204,7 @@ export function installAtlasAdminMasterplanAdjustmentV1(
       return describe();
     };
     const resetFrame = (): Record<string, unknown> => {
-      publicMapCalibrationStorage.removeFrame(args.frameStorageKey);
+      resetPublicMapCalibrationFrame(args.frameStorageKey);
       delete this.dataset.adminMasterplanFrame;
       args.sync();
       this.syncAdminMasterplanLotMarkersV1?.();
@@ -26645,7 +27220,7 @@ export function installAtlasAdminMasterplanAdjustmentV1(
       setOverlay,
       setBase,
       setEditing,
-      markerOverrides: () => publicMapCalibrationStorage.readMarkers(adminMapMarkerOverridesStorageKey),
+      markerOverrides: () => readPublicMapCalibrationMarkers(adminMapMarkerOverridesStorageKey),
       resetMarkerOverrides,
       map: this,
       overlay: args.layer,
@@ -27656,6 +28231,68 @@ atlas-project-documents{display:block;min-width:0;color:#20283a}atlas-project-do
 
 type ProjectDocumentsSelection = { type: "cell" | "row" | "column"; id: string; field: string };
 type ProjectDocumentsState = { documents: ProjectDocument[] | null; columns: ProjectDocumentColumn[]; query: string; category: string; fileFilter: string; hiddenColumns: string[]; editId: string; selectedCell: {id:string;field:string}|null; sheetSelection: ProjectDocumentsSelection | null; legacyCount: number; loading: boolean; saving: boolean; error: string; feedback: string };
+
+/** Keep archive search, column visibility, and sheet selection beside its renderer. */
+function projectAtlasProjectDocumentsPageV1(input: {
+  documents: ProjectDocument[] | null;
+  columns: ProjectDocumentColumn[];
+  query: string;
+  category: string;
+  fileFilter: string;
+  hiddenColumns: string[];
+  editId: string;
+  selectedCell: { id: string; field: string } | null;
+  sheetSelection: ProjectDocumentsSelection | null;
+  baseFields: Array<[keyof ProjectDocument, string]>;
+}) {
+  const documents = input.documents || [];
+  const query = input.query.toLocaleLowerCase("pt-BR");
+  const visibleDocuments = documents.filter(row =>
+    (input.category === "all" || row.category === input.category)
+    && (input.fileFilter === "all" || (input.fileFilter === "attached" ? Boolean(row.fileName) : !row.fileName))
+    && (!query || [row.title, row.category, row.code, row.issuer, row.description, row.fileName, ...Object.values(row.properties || {})]
+      .some(value => String(value || "").toLocaleLowerCase("pt-BR").includes(query))));
+  const columns = [...input.baseFields.map(([id, label]) => ({ id, label })), ...input.columns]
+    .filter(column => !input.hiddenColumns.includes(column.id));
+  const editing = documents.find(row => row.id === input.editId);
+  const selection = input.sheetSelection;
+  const selectedDocument = selection && selection.type !== "column"
+    ? documents.find(row => row.id === selection.id)
+    : undefined;
+  const selectedColumn = selection?.type === "column" ? columns.find(column => column.id === selection.field) : undefined;
+  const selectedCellRow = input.selectedCell ? documents.find(row => row.id === input.selectedCell?.id) : undefined;
+  const selectedCellField = input.selectedCell?.field || "";
+  const selectedCellLabel = columns.find(column => column.id === selectedCellField)?.label || selectedCellField;
+  const selectedCellEditor = selectedCellRow && selectedCellField
+    ? { row: selectedCellRow, field: selectedCellField, label: selectedCellLabel, value: projectAtlasDocumentFieldValueV1(selectedCellRow, selectedCellField) }
+    : null;
+  const selectionLabel = selection?.type === "row"
+    ? `Linha: ${selectedDocument?.title || selection.id}`
+    : selection?.type === "column"
+      ? `Coluna: ${selectedColumn?.label || selection.field}`
+      : selection?.type === "cell"
+        ? `${selectedDocument?.title || selection.id} · ${selectedCellLabel}`
+        : "Selecione uma célula · Enter edita · Delete limpa · setas navegam";
+  const clearable = selection?.type === "cell" && !["title", "category", "createdAt", "updatedAt", "fileName"].includes(selection.field);
+  const canOpen = selection?.type === "cell" && selection.field === "fileName" && Boolean(selectedDocument?.fileName);
+  const canEdit = selection?.type === "row" || selection?.type === "cell";
+  const canDeleteRow = selection?.type === "row" && Boolean(selectedDocument && !isAtlasProjectDocumentProtectedV1(selectedDocument));
+  return {
+    documents,
+    visibleDocuments,
+    editing,
+    columns,
+    categoryCount: new Set(documents.map(row => row.category)).size,
+    selectionLabel,
+    clearable,
+    canOpen,
+    canEdit,
+    canDeleteRow,
+    selectedDocument,
+    selectedColumn,
+    selectedCellEditor,
+  };
+}
 
 /** Complete project archive surface; only temporary interaction lives in this element. */
 export class AtlasProjectDocuments extends AtlasHTMLElementBase {
@@ -30039,210 +30676,6 @@ export function installAtlasAdminPdfMasterplanPipelineV1(
     return true;
   }
 
-  loadMasterplan(THREE: any, GLTFLoader: any) {
-    if (this._modelLoadStarted) return;
-    this._modelLoadStarted = true;
-
-    const perf: Record<string, any> = ((globalThis as any).__BELAVISTA_ADMIN_MODEL_STATE__ = {
-      version: "5.3.67",
-      phase: "network",
-      startedAt: performance.now(),
-      progress: 0,
-      meshCount: 0,
-      processedMeshes: 0,
-      operationalGeometry: "deferred",
-    });
-
-    const mark = (phase: any, extra: any = {}) => {
-      perf.phase = phase;
-      Object.assign(perf, extra);
-      this.dataset.modelBootPhase = phase;
-      this.dataset.modelBootVersion = "5.3.67";
-      this.persist3dBootPhaseV5367(phase, extra);
-    };
-
-    const loader = new GLTFLoader();
-    const modelUrl = runtimeRouteV1(
-      "/assets/model/alianca_park_masterplan_preview.glb",
-      "v=gpu-staged-5367",
-    );
-    this.dataset.modelSource = "loaded-glb";
-    this.dataset.modelRender = "webgl-live-glb";
-    this.dataset.modelRasterized = "false";
-    // Nem todos os proxies informam Content-Length. Um progresso inicial e
-    // fases internas evitam que a abertura fique congelada em 38% mesmo
-    // quando o GLB esteja sendo transferido normalmente em chunked encoding.
-    this.dataset.modelProgress = "2";
-
-    loadGlbWithClientCacheV14(
-      loader,
-      modelUrl,
-      (gltf: any) => {
-        try {
-          this.dataset.modelProgress = "42";
-          mark("parsed", {
-            parsedAt: performance.now(),
-            downloadAndParseMs: Math.round(performance.now() - perf.startedAt),
-          });
-
-          const sourceModel = gltf.scene;
-          const sourceBox = new THREE.Box3().setFromObject(sourceModel);
-          const size = sourceBox.getSize(new THREE.Vector3());
-          const sourceCenter = sourceBox.getCenter(new THREE.Vector3());
-
-          sourceModel.position.set(
-            -sourceCenter.x,
-            -sourceBox.min.y,
-            -sourceCenter.z,
-          );
-
-          const model = new THREE.Group();
-          model.name = "MasterplanFrame";
-          model.add(sourceModel);
-
-          const largest = Math.max(size.x, size.y, size.z) || 1;
-          const factor = 145 / largest;
-
-          model.scale.set(factor, factor * MODEL_VERTICAL_EXAGGERATION, factor);
-          model.rotation.set(Math.PI / 2, 0, DWG_PLAN_HEADING_RAD);
-          model.updateMatrixWorld(true);
-
-          const rawOrientedBox = new THREE.Box3().setFromObject(model);
-          const baseLift =
-            Math.max(0, -rawOrientedBox.min.z) + SCENE_MODEL_BASE_Z;
-          model.position.z += baseLift;
-          model.updateMatrixWorld(true);
-
-          const orientedBox = new THREE.Box3().setFromObject(model);
-          const groundedCenter = orientedBox.getCenter(new THREE.Vector3());
-          const orientedSize = orientedBox.getSize(new THREE.Vector3());
-
-          model.userData.baseScale = factor;
-          model.userData.verticalExaggeration = MODEL_VERTICAL_EXAGGERATION;
-          model.userData.sourceSize = size;
-          model.userData.alignedToMapPlane = true;
-          model.userData.planHeadingRad = DWG_PLAN_HEADING_RAD;
-          model.userData.planHeadingDeg = DWG_PLAN_HEADING_DEG;
-          model.userData.aerialGuideAlignment =
-            "DWG affine heading · visual road-guide fit";
-          model.userData.mapBaseZ = SCENE_MODEL_BASE_Z;
-          model.userData.mapBaseLift = baseLift;
-          model.userData.sourceBoundsCenter = sourceCenter.clone();
-          model.userData.centeredBoundsCenter = groundedCenter.clone();
-          model.userData.canonicalReference =
-            "PDF-derived GLB checked against DWG lot geometry";
-
-          this.modelSourceFootprint = {
-            x: orientedSize.x,
-            y: orientedSize.y,
-            scale: factor,
-          };
-          this.masterplanModel = model;
-          this.loadAdminPdfMasterplanUnderlayV1();
-          this._solarShadowBounds = orientedBox.clone();
-          this.configureSolarShadows(this._solarShadowBounds);
-          this.masterplanLargest = largest;
-          this.dataset.modelHeight = `${MODEL_VERTICAL_EXAGGERATION.toFixed(2)}x vertical · base no plano do mapa`;
-          this.dataset.modelBaseZ = String(SCENE_MODEL_BASE_Z);
-          this.dataset.modelBaseLift = baseLift.toFixed(3);
-          this.dataset.modelLocalOrigin = `centered GLB frame · ${groundedCenter.x.toFixed(3)},${groundedCenter.y.toFixed(3)},${groundedCenter.z.toFixed(3)}`;
-          this.dataset.modelAxis =
-            "source Y → world +Z · footprint Y corrigido";
-          this.dataset.modelPlanHeading =
-            DWG_PLAN_HEADING_DEG.toFixed(3) + "° · DWG affine";
-          this.dataset.modelAerialGuide =
-            "lateral + superior · transformação geográfica aplicada";
-
-          // v5.3.67: nenhum mesh toca a GPU em massa.
-          const meshes: any[] = [];
-          let triangleEstimate = 0;
-          model.traverse((node: any) => {
-            if (!node.isMesh) return;
-            const geometry = node.geometry;
-            const triangles = geometry?.index
-              ? Math.floor((geometry.index.count || 0) / 3)
-              : Math.floor(
-                  (geometry?.getAttribute?.("position")?.count || 0) / 3,
-                );
-            node.userData.__v5367Triangles = Number(triangles) || 0;
-            node.castShadow = true;
-            node.receiveShadow = true;
-            triangleEstimate += node.userData.__v5367Triangles;
-            node.visible = false;
-            node.frustumCulled = true;
-            meshes.push(node);
-          });
-
-          meshes.sort(
-            (a: any, b: any) =>
-              (a.userData.__v5367Triangles || 0) -
-              (b.userData.__v5367Triangles || 0),
-          );
-
-          perf.meshCount = meshes.length;
-          perf.triangleEstimate = triangleEstimate;
-          this.dataset.modelMeshCount = String(meshes.length);
-          this.dataset.modelTriangleEstimate = String(triangleEstimate);
-
-          this.modelGroup.add(model);
-          this.modelGroup.visible = true;
-
-          this.modelReady = false;
-          this._modelGpuReady = false;
-          this.dataset.modelReady = "false";
-          this.dataset.modelGpuReady = "false";
-          this.dataset.modelRender = "webgl-staging";
-          this.dataset.modelParts = "staging GPU";
-          this.classList.remove("model-ready");
-
-          mark("gpu-staging", {
-            meshCount: meshes.length,
-            triangleEstimate,
-          });
-
-          // Primeiro render = cena sem nenhum mesh do GLB visível.
-          this.renderer?.render(this.scene, this.camera);
-
-          this.stageMasterplanGpuV5367(THREE, model, meshes, perf, mark).catch(
-            (error: any) => {
-              mark("gpu-stage-error", {
-                error: String(error?.message || error),
-              });
-              this.dataset.modelError = "gpu-stage-failed";
-              console.error(
-                "[Aliança Park 3D v5.3.67] staging GPU falhou.",
-                error,
-              );
-            },
-          );
-        } catch (error: any) {
-          mark("processing-error", { error: String(error?.message || error) });
-          this.dataset.modelError = "processamento-falhou";
-          this.dataset.modelRender = "fallback";
-          console.warn(
-            "Modelo GLB carregado mas não pôde ser processado.",
-            error,
-          );
-        }
-      },
-      (progress: any) => {
-        if (progress.total) {
-          const percent = Math.round((progress.loaded / progress.total) * 100);
-          this.dataset.modelProgress = percent;
-          perf.progress = percent;
-          this.updateMap3DLoadingScreenV1("download", { progress: percent });
-        }
-      },
-      (err: any) => {
-        mark("network-error", { error: String(err?.message || err) });
-        this.dataset.modelError = "arquivo-indisponivel";
-        this.dataset.modelRender = "fallback";
-        console.warn("Modelo GLB indisponível, mantendo mapa 2D.", err);
-      },
-    );
-  }
-
-  // GPU staging and semantic model enrichment are installed from model-gpu-enrichment-v5367.mjs.
   }
   for (const name of Object.getOwnPropertyNames(AtlasAdminPdfMasterplanPipelineV1.prototype)) {
     if (name === "constructor") continue;
@@ -30291,12 +30724,155 @@ export function readAtlasProposalImageAsDataUrlV1(file: File | null | undefined)
 }
 
 export const projectAtlasContractStatusClassV1 = (status: unknown): string => String(status || "").toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "-");
+export interface AtlasContractsLedgerRenderInputV1 {
+  scope: AtlasCommercialScopeV1;
+  projection: ReturnType<typeof projectAtlasContractsPageV1>;
+  esc(value: unknown): string;
+  ico(name: string): string;
+  formatBRL(value: number): string;
+}
+
+/** Render the contract ledger from the program-owned projection. */
+export function renderAtlasContractsLedgerV1(input: AtlasContractsLedgerRenderInputV1): string {
+  const { scope, projection, esc, ico, formatBRL } = input;
+  const { deals, visible: shown, filters } = projection;
+  const rows = shown.map((deal) => `<tr data-contract-row="${esc(deal.id)}">
+        <td><span class="contract-table-id-v1">${esc(deal.id)}</span><small>${esc(deal.date || "Data não informada")}</small></td>
+        <td><b>${esc(deal.client || "Cliente não informado")}</b><small>${esc(deal.lot || "Lote a definir")}</small></td>
+        <td><span class="deal-status ${projectAtlasContractStatusClassV1(deal.status)}">${esc(deal.status)}</span><small>${esc(deal.stage || "Em acompanhamento")}</small></td>
+        <td><b>${esc(deal.payment || "Sem recibo lançado")}</b><small>Condição registrada no contrato</small></td>
+        <td><b>${esc(deal.value || "R$ 0,00")}</b><small>${esc(deal.commission || "Sem comissão")}</small></td>
+        <td class="contract-table-actions-v1"><button type="button" data-contract-open="${esc(deal.id)}">Abrir</button><button type="button" data-contract-edit="${esc(deal.id)}">Editar</button><button type="button" data-contract-confirm="${esc(deal.id)}" ${deal.status === "Compra confirmada" ? "disabled" : ""}>${deal.status === "Compra confirmada" ? "Compra confirmada" : "Confirmar compra"}</button></td>
+      </tr>`).join("");
+  const statusOptions = projection.statuses.map((status) =>
+    `<option value="${esc(status)}" ${filters.status === status ? "selected" : ""}>${esc(status)}</option>`,
+  ).join("");
+  return `<section class="contracts-page-v2"><header class="contracts-page-head-v2"><div><span class="activity-kind">OPERAÇÃO COMERCIAL · CONTRATOS</span><h1>Contratos</h1><p>Acompanhe recibos, valores, condições e confirmação de compra em uma lista única.</p></div><span class="contracts-identity-v2">${ico(scope.profile ? "shield-check" : "briefcase-business")} ${esc(scope.elevated ? "Visão consolidada da operação" : scope.profile ? scope.profile.name : "Carteira comercial")}</span></header><div class="data-page-toolbar contracts-toolbar-v2" aria-label="Controles de contratos"><div class="toolbar-context"><span class="activity-kind">CONTRATOS / RECIBOS</span><b>${shown.length} contratos visíveis</b><small>Valores derivados dos lançamentos comerciais.</small></div><div class="toolbar-controls"><label class="toolbar-search">Buscar<input type="search" value="${esc(filters.query)}" placeholder="Contrato, cliente ou lote" data-contract-filter="query"></label><label>Status<select data-contract-filter="status"><option value="all" ${filters.status === "all" ? "selected" : ""}>Todos os status</option>${statusOptions}</select></label><button type="button" class="toolbar-action" data-contract-filter-clear>${ico("filter-x")} Limpar</button><button type="button" class="toolbar-action" data-contract-export>${ico("download")} Exportar</button><button type="button" class="toolbar-primary" data-contract-new>${ico("plus")} Novo contrato</button></div></div><section class="contracts-kpis-v2"><article><small>CONTRATOS</small><b>${deals.length}</b><span>na carteira comercial</span></article><article><small>VALOR VISÍVEL</small><b>${formatBRL(projection.totalValue)}</b><span>conforme o filtro atual</span></article><article><small>COMPRA CONFIRMADA</small><b>${projection.confirmedCount}</b><span>retornos validados</span></article><article><small>RECIBOS / CONDIÇÕES</small><b>${projection.paymentCount}</b><span>com informação financeira</span></article></section><section class="contracts-table-card-v2"><header><div><span class="activity-kind">01 · VISUALIZAÇÃO PADRÃO</span><h2>Recibos e valores</h2><p>Abra o contrato, edite os dados ou confirme a compra sem perder a listagem.</p></div><small>${shown.length} linha(s)</small></header><div class="contracts-table-wrap-v2"><table><thead><tr><th>Contrato</th><th>Cliente / lote</th><th>Status</th><th>Recibo / condição</th><th>Valor</th><th>Ações</th></tr></thead><tbody>${rows || '<tr><td colspan="6" class="contracts-empty-v2">Nenhum contrato corresponde aos filtros atuais.</td></tr>'}</tbody></table></div></section></section>`;
+}
+
+export interface AtlasContractsLedgerBindingDependenciesV1 {
+  readState(): AtlasApplicationStoreState;
+  onStatePatch(patch: Partial<AtlasApplicationStoreState>): unknown;
+  commercialScopeV1(): AtlasCommercialScopeV1;
+  brlToNumber(value: unknown): number;
+  notify(message: string, tone?: string): void;
+  documentRef: Pick<Document, "createElement">;
+  BlobCtor: typeof Blob;
+  URLRef: Pick<typeof URL, "createObjectURL" | "revokeObjectURL">;
+  schedule(callback: () => void, delay?: number): unknown;
+}
+
+/** Bind search, filters, contract actions, and export to a rendered ledger component. */
+export function bindAtlasContractsLedgerV1(
+  page: HTMLElement,
+  dependencies: AtlasContractsLedgerBindingDependenciesV1,
+): boolean {
+  if (page.dataset.contractsTableBound === "true") return false;
+  page.dataset.contractsTableBound = "true";
+  const { readState, onStatePatch, commercialScopeV1, brlToNumber, notify, documentRef, BlobCtor, URLRef, schedule } = dependencies;
+  const dispatch = (command: Parameters<typeof createAtlasContractsPageCommandV1>[0]["command"]) => {
+    const result = createAtlasContractsPageCommandV1({ state: readState(), command });
+    if (!result) return false;
+    onStatePatch(result.patch);
+    if (result.notification) notify(result.notification.message, result.notification.tone);
+    return true;
+  };
+  const findDeal = (id: string) => projectAtlasContractsPageV1({
+    scope: commercialScopeV1(), state: readState(), brlToNumber,
+  }).deals.find(item => item.id === id);
+  const setFilter = (name: "query" | "status", value: string) =>
+    dispatch({ type: "filter", name, value });
+
+  page.querySelectorAll<HTMLInputElement | HTMLSelectElement>("[data-contract-filter]").forEach(control => {
+    const name = control.dataset.contractFilter;
+    if (name !== "query" && name !== "status") return;
+    control.addEventListener("change", () => setFilter(name, control.value));
+    if (control.matches('input[type="search"]')) control.addEventListener("keydown", event => {
+      const keyboardEvent = event as KeyboardEvent;
+      if (keyboardEvent.key !== "Enter") return;
+      keyboardEvent.preventDefault();
+      setFilter(name, control.value);
+    });
+  });
+  page.querySelector("[data-contract-filter-clear]")?.addEventListener("click", () => dispatch({ type: "clear-filters" }));
+  page.querySelector("[data-contract-new]")?.addEventListener("click", () => dispatch({ type: "new" }));
+  page.querySelectorAll<HTMLButtonElement>("[data-contract-open]").forEach(button =>
+    button.addEventListener("click", () => dispatch({ type: "open", contractId: button.dataset.contractOpen || "" })),
+  );
+    page.querySelectorAll<HTMLTableRowElement>("[data-contract-row]").forEach(row => {
+    row.tabIndex = 0;
+    row.setAttribute("role", "button");
+    row.setAttribute("aria-label", `Editar contrato ${row.dataset.contractRow}`);
+    const openForm = (event: Event) => {
+      if ((event.target as Element | null)?.closest("button,a,input,select")) return;
+      const deal = findDeal(row.dataset.contractRow || "");
+      if (deal) dispatch({ type: "edit", deal, source: "row" });
+    };
+    row.addEventListener("click", openForm);
+    row.addEventListener("keydown", (event: KeyboardEvent) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      openForm(event);
+    });
+  });
+  page.querySelectorAll<HTMLButtonElement>("[data-contract-edit]").forEach(button =>
+    button.addEventListener("click", () => {
+      const deal = findDeal(button.dataset.contractEdit || "");
+      if (!deal) return;
+      dispatch({ type: "edit", deal });
+    }),
+  );
+  page.querySelectorAll<HTMLButtonElement>("[data-contract-confirm]").forEach(button =>
+    button.addEventListener("click", () => {
+      const id = button.dataset.contractConfirm || "";
+      const deal = findDeal(id);
+      if (!deal) return;
+      dispatch({ type: "confirm-purchase", deal });
+    }),
+  );
+  page.querySelector("[data-contract-export]")?.addEventListener("click", () => {
+    const current = readState();
+    const { visible: deals } = projectAtlasContractsPageV1({
+      scope: commercialScopeV1(), state: current, brlToNumber,
+    });
+    const csv = [
+      ["Contrato", "Cliente", "Lote", "Status", "Recibo / condição", "Valor"],
+      ...deals.map(deal => [deal.id, deal.client || "", deal.lot || "", deal.status || "", deal.payment || "", deal.value || ""]),
+    ].map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(";")).join("\n");
+    const url = URLRef.createObjectURL(new BlobCtor(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }));
+    const link = documentRef.createElement("a");
+    link.href = url;
+    link.download = "contratos-recibos.csv";
+    link.click();
+    schedule(() => URLRef.revokeObjectURL(url), 0);
+    notify("Lista de contratos exportada em CSV.", "success");
+    dispatch({ type: "export" });
+  });
+  return true;
+}
+
+
+export interface AtlasProposalFormRenderInputV1 {
+  scope: AtlasCommercialScopeV1;
+  esc(value: unknown): string;
+  ico(name: string): string;
+}
+
+/** Render the commercial proposal editor as a component from its portfolio projection. */
+export function renderAtlasProposalFormV1(input: AtlasProposalFormRenderInputV1): string {
+  const { scope, esc, ico } = input;
+
+  const selected = scope.profile?.id || scope.profiles[0]?.id || "";
+  return `<section class="my-proposal-page-v1"><header class="my-proposal-head-v1"><div><span class="activity-kind">NOVO DOCUMENTO · PROPOSTA COMERCIAL</span><h1>Proposta / contrato de venda de lote</h1><p>Registre o lote vendedor, o cliente e o corretor em uma única proposta. Os anexos ficam registrados na pasta do negócio.</p></div><button type="button" class="toolbar-action" data-proposal-form-back>${ico("arrow-left")} Voltar para minha carteira</button></header><form class="my-proposal-form-v1" data-my-proposal-form enctype="multipart/form-data"><section><header><span>01</span><div><h2>Lote vendedor</h2><p>Identifique o proprietário/vendedor e o imóvel que será negociado.</p></div></header><div class="my-proposal-fields-v1"><label>Vendedor / proprietário<input name="seller" required placeholder="Nome ou razão social"></label><label>CPF / CNPJ do vendedor<input name="sellerDocument" placeholder="Documento do vendedor"></label><label>Quadra / lote<input name="lot" required placeholder="Q12-L54"></label><label>Descrição da quadra<input name="quadra" required placeholder="Quadra 12 · lote 54"></label><label>Área do lote (m²)<input name="lotArea" type="number" min="0" step="0.01" placeholder="250,00"></label><label>Valor proposto<input name="value" required inputmode="decimal" placeholder="480000,00"></label><label>Taxa de comissão (%)<input name="rate" type="number" min="0" max="100" step=".1" value="6" required></label><label class="wide">Condição de pagamento<textarea name="payment" required placeholder="Sinal, financiamento e parcelas"></textarea></label></div></section><section><header><span>02</span><div><h2>Corretor responsável</h2><p>A identidade autenticada define o escopo da carteira.</p></div></header><label>Corretor<select name="profile" ${scope.profile ? "disabled" : ""}>${scope.profiles.map((item: any) => `<option value="${item.id}" ${item.id === selected ? "selected" : ""}>${esc(item.name)} · ${esc(item.creci)}</option>`).join("")}</select></label></section><section><header><span>03</span><div><h2>Cliente comprador</h2><p>Use somente dados necessários para a análise comercial.</p></div></header><div class="my-proposal-fields-v1"><label>Nome completo<input name="client" required></label><label>CPF / CNPJ<input name="cpf" placeholder="Documento do comprador"></label><label>E-mail<input name="email" type="email"></label><label>WhatsApp<input name="phone" inputmode="tel"></label><label>Finalidade<select name="purpose"><option>Moradia</option><option>Investimento</option><option>Veraneio</option></select></label></div></section><section><header><span>04</span><div><h2>Anexos da proposta</h2><p>Identidade, comprovante e documentos comerciais aceitos em PDF ou imagem.</p></div></header><label class="my-proposal-upload-v1">${ico("paperclip")}<span><b>Selecionar anexos</b><small>PDF, JPG ou PNG · até 12 MB por arquivo</small></span><input type="file" name="attachments" multiple accept="application/pdf,image/*"></label><div class="my-proposal-attachment-list-v1" data-proposal-attachments>Nenhum anexo selecionado.</div></section><footer><span data-proposal-form-status>Confira os dados antes de salvar a minuta.</span><button type="submit" class="toolbar-primary">${ico("save")} Salvar proposta</button></footer></form></section>`;
+}
+
 export interface AtlasContractsPageDependenciesV1 extends Record<string, any> {
-  readState?(): Record<string, any>;
+  readState?(): AtlasApplicationStoreState;
   onStatePatch?(patch: Partial<AtlasApplicationStoreState>): unknown;
+  commercialScopeV1(): AtlasCommercialScopeV1;
   /** Compatibility port for the still-present MJS registration fallback. */
   appStore?: {
-    get(): Record<string, any>;
+    get(): AtlasApplicationStoreState;
     set(patch: Partial<AtlasApplicationStoreState>): unknown;
   };
 }
@@ -30314,14 +30890,13 @@ export function installAtlasContractsPageV1(ViewLayer: any, dependencies: AtlasC
   const {
     normalizeOperationalRole, commissionProfiles, commissionDeals,
     esc, ico, notify, commercialScopeV1, brlToNumber, formatBRL,
-    readProposalImageAsDataUrl, PROPOSAL_VISION_PROMPT,
-    parseProposalVisionPayload, saveOperationalProposal,
+    readProposalImageAsDataUrl, proposalVisionPrompt, parseProposalVisionPayload, saveOperationalProposal,
     fetch: fetcher, document: documentRef,
     HTMLSelectElement: HTMLSelectElementCtor, Option: OptionCtor,
     Event: EventCtor, FormData: FormDataCtor, Blob: BlobCtor,
     URL: URLRef, setTimeout: schedule,
   } = dependencies;
-  for (const [name, value] of Object.entries({ readState, onStatePatch, normalizeOperationalRole, commissionProfiles, commissionDeals, esc, ico, notify, commercialScopeV1, brlToNumber, formatBRL, readProposalImageAsDataUrl, PROPOSAL_VISION_PROMPT, parseProposalVisionPayload, saveOperationalProposal, fetcher, documentRef, HTMLSelectElementCtor, OptionCtor, EventCtor, FormDataCtor, BlobCtor, URLRef, schedule }))
+  for (const [name, value] of Object.entries({ readState, onStatePatch, normalizeOperationalRole, commissionProfiles, commissionDeals, esc, ico, notify, commercialScopeV1, brlToNumber, formatBRL, readProposalImageAsDataUrl, proposalVisionPrompt, parseProposalVisionPayload, saveOperationalProposal, fetcher, documentRef, HTMLSelectElementCtor, OptionCtor, EventCtor, FormDataCtor, BlobCtor, URLRef, schedule }))
     if (value == null) throw new TypeError(`Contracts page requires injected dependency ${name}.`);
 
 const viewLayerRenderAccessV1 = ViewLayer.prototype.render;
@@ -30333,7 +30908,8 @@ ViewLayer.prototype.render = function (this: any, ...args: any) {
     role = normalizeOperationalRole(state.currentActor?.role || "owner"),
     brokerOnly = ["sales", "commercial", "broker", "corretor"].includes(role),
     privileged = ["owner", "admin", "developer"].includes(role);
-  if (brokerOnly && !["map", "contracts", "proposals"].includes(state.view)) {
+  const requestedView = String(state.view || "map");
+  if (brokerOnly && !["map", "contracts", "proposals"].includes(requestedView)) {
     onStatePatch({
       view: "map",
       activityDedicated: false,
@@ -30353,7 +30929,7 @@ ViewLayer.prototype.render = function (this: any, ...args: any) {
     });
     return;
   }
-  if (!privileged && ["commissions", "brokers"].includes(state.view)) {
+  if (!privileged && ["commissions", "brokers"].includes(requestedView)) {
     onStatePatch({
       view: "contracts",
       selectedCommissionProfile: null,
@@ -30430,7 +31006,7 @@ ViewLayer.prototype.bind = function (this: any, ...args: any) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: PROPOSAL_VISION_PROMPT,
+          message: proposalVisionPrompt,
           view: "contracts",
           context: {
             purpose: "proposta de reserva de lote",
@@ -30524,65 +31100,22 @@ ViewLayer.prototype.bind = function (this: any, ...args: any) {
     });
   form?.addEventListener("submit", (event: any) => {
     event.preventDefault();
-    const values = Object.fromEntries(new FormDataCtor(form).entries()),
-      scope = commercialScopeV1(),
-      profile =
-        scope.profiles.find((item: any) => item.id === values.profile) ||
-        scope.profile,
-      files = [...(form.querySelector('[name="attachments"]')?.files || [])];
-    if (!profile) {
-      form.querySelector("[data-proposal-form-status]").textContent =
-        "Associe este login a um perfil comercial antes de criar propostas.";
-      return;
-    }
-    if (files.some((file: any) => file.size > 12 * 1024 * 1024)) {
-      form.querySelector("[data-proposal-form-status]").textContent =
-        "Cada anexo deve ter no máximo 12 MB.";
-      return;
-    }
-    const value = brlToNumber(values.value),
-      rate = Number(values.rate) || 0,
-      editing = readState().contractEditing,
-      id = editing?.id || `PROP-LOCAL-${Date.now().toString().slice(-6)}`,
-      entry = {
-        id,
-        profile: profile.id,
-        seller:
-          values.seller || "Aliança Park Desenvolvimento Imobiliário Ltda.",
-        sellerDocument: values.sellerDocument || "",
-        lot: String(values.lot || "").toUpperCase(),
-        lotArea: values.lotArea || "",
-        quadra: values.quadra,
-        client: values.client,
-        cpf: values.cpf || "Não informado",
-        email: values.email || "",
-        phone: values.phone || "",
-        purpose: values.purpose || "Moradia",
-        status: editing?.status || "Proposta",
-        value: formatBRL(value),
-        commission: formatBRL((value * rate) / 100),
-        rate: `${rate.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}%`,
-        date: new Date().toLocaleDateString("pt-BR"),
-        payment: values.payment,
-        stage: "Proposta cadastrada",
-        attachments: files.map((file: any) => ({
-          name: file.name,
-          type: file.type,
-          size: file.size,
-        })),
-        inference: form._proposalInference || null,
-        createdBy: readState().currentActor?.uid || "",
-      };
-    const existingEntries = (readState().commissionEntries || []).filter(
-      (item: any) => item.id !== id,
-    );
-    onStatePatch({
-      commissionEntries: [entry, ...existingEntries],
-      proposalFormOpen: false,
-      contractEditing: null,
-      lastAction: `Salvou proposta ${id}`,
+    const result = createAtlasProposalFormSubmissionV1({
+      state: readState(),
+      scope: commercialScopeV1(),
+      values: Object.fromEntries(new FormDataCtor(form).entries()),
+      files: [...(form.querySelector('[name="attachments"]')?.files || [])],
+      inference: form._proposalInference || null,
+      brlToNumber,
+      formatBRL,
     });
-    notify("Proposta salva na carteira individual.", "success");
+    if (!result.accepted) {
+      const status = form.querySelector("[data-proposal-form-status]") as HTMLElement | null;
+      if (status) status.textContent = result.message;
+      return;
+    }
+    onStatePatch(result.patch);
+    notify(result.notification.message, result.notification.tone);
   });
   form?.addEventListener("submit", async (event: any) => {
     const values = Object.fromEntries(
@@ -30640,37 +31173,15 @@ ViewLayer.prototype.bind = function (this: any, ...args: any) {
 };
 
 
-ViewLayer.prototype.proposalFormV1 = function (this: any, scope: any) {
-  const selected = scope.profile?.id || scope.profiles[0]?.id || "";
-  return `<section class="my-proposal-page-v1"><header class="my-proposal-head-v1"><div><span class="activity-kind">NOVO DOCUMENTO · PROPOSTA COMERCIAL</span><h1>Proposta / contrato de venda de lote</h1><p>Registre o lote vendedor, o cliente e o corretor em uma única proposta. Os anexos ficam registrados na pasta do negócio.</p></div><button type="button" class="toolbar-action" data-proposal-form-back>${ico("arrow-left")} Voltar para minha carteira</button></header><form class="my-proposal-form-v1" data-my-proposal-form enctype="multipart/form-data"><section><header><span>01</span><div><h2>Lote vendedor</h2><p>Identifique o proprietário/vendedor e o imóvel que será negociado.</p></div></header><div class="my-proposal-fields-v1"><label>Vendedor / proprietário<input name="seller" required placeholder="Nome ou razão social"></label><label>CPF / CNPJ do vendedor<input name="sellerDocument" placeholder="Documento do vendedor"></label><label>Quadra / lote<input name="lot" required placeholder="Q12-L54"></label><label>Descrição da quadra<input name="quadra" required placeholder="Quadra 12 · lote 54"></label><label>Área do lote (m²)<input name="lotArea" type="number" min="0" step="0.01" placeholder="250,00"></label><label>Valor proposto<input name="value" required inputmode="decimal" placeholder="480000,00"></label><label>Taxa de comissão (%)<input name="rate" type="number" min="0" max="100" step=".1" value="6" required></label><label class="wide">Condição de pagamento<textarea name="payment" required placeholder="Sinal, financiamento e parcelas"></textarea></label></div></section><section><header><span>02</span><div><h2>Corretor responsável</h2><p>A identidade autenticada define o escopo da carteira.</p></div></header><label>Corretor<select name="profile" ${scope.profile ? "disabled" : ""}>${scope.profiles.map((item: any) => `<option value="${item.id}" ${item.id === selected ? "selected" : ""}>${esc(item.name)} · ${esc(item.creci)}</option>`).join("")}</select></label></section><section><header><span>03</span><div><h2>Cliente comprador</h2><p>Use somente dados necessários para a análise comercial.</p></div></header><div class="my-proposal-fields-v1"><label>Nome completo<input name="client" required></label><label>CPF / CNPJ<input name="cpf" placeholder="Documento do comprador"></label><label>E-mail<input name="email" type="email"></label><label>WhatsApp<input name="phone" inputmode="tel"></label><label>Finalidade<select name="purpose"><option>Moradia</option><option>Investimento</option><option>Veraneio</option></select></label></div></section><section><header><span>04</span><div><h2>Anexos da proposta</h2><p>Identidade, comprovante e documentos comerciais aceitos em PDF ou imagem.</p></div></header><label class="my-proposal-upload-v1">${ico("paperclip")}<span><b>Selecionar anexos</b><small>PDF, JPG ou PNG · até 12 MB por arquivo</small></span><input type="file" name="attachments" multiple accept="application/pdf,image/*"></label><div class="my-proposal-attachment-list-v1" data-proposal-attachments>Nenhum anexo selecionado.</div></section><footer><span data-proposal-form-status>Confira os dados antes de salvar a minuta.</span><button type="submit" class="toolbar-primary">${ico("save")} Salvar proposta</button></footer></form></section>`;
-};
-// CONTRACTS_TABLE_V1: a carteira de contratos começa pela leitura tabular.
-// O formulário só aparece por Novo ou Editar; confirmar uma compra retorna à
-// tabela para manter o recibo, a condição e o valor no mesmo contexto.
-const contractDealsV1 = (scope: any, state: any) => {
-  const hidden = new Set(state.commissionHiddenIds || []);
-  const overrides = state.contractStatusOverrides || {};
-  const local = new Map(
-    (state.commissionEntries || []).map((item: any) => [item.id, item]),
-  );
-  const merged = new Map(
-    scope.deals
-      .filter((item: any) => !hidden.has(item.id))
-      .map((item: any) => [item.id, { ...item, ...(local.get(item.id) || {}) }]),
-  );
-  (state.commissionEntries || []).forEach((item: any) => {
-    if (!hidden.has(item.id) && !merged.has(item.id)) merged.set(item.id, item);
-  });
-  return [...merged.values()].map((item: any) => ({
-    ...item,
-    status: overrides[item.id] || item.status || "Proposta",
-  }));
+ViewLayer.prototype.proposalFormV1 = function (this: any, scope: AtlasCommercialScopeV1) {
+  return renderAtlasProposalFormV1({ scope, esc, ico });
 };
 
 ViewLayer.prototype.contracts = function (this: any) {
   const state = readState();
   const scope = commercialScopeV1();
-  const deals = contractDealsV1(scope, state);
+  const projection = projectAtlasContractsPageV1({ scope, state, brlToNumber });
+  const deals = projection.deals;
   if (state.proposalFormOpen) return this.proposalFormV1(scope);
   if (state.selectedCommissionProposal) {
     const deal = deals.find(
@@ -30684,36 +31195,7 @@ ViewLayer.prototype.contracts = function (this: any) {
     );
     return deal ? this.commissionContract(deal) : this.contracts();
   }
-  const filters = {
-    query: "",
-    status: "all",
-    ...(state.contractFilters || {}),
-  };
-  const shown = deals.filter((deal: any) => {
-    const haystack = JSON.stringify(deal).toLocaleLowerCase();
-    return (
-      (!filters.query ||
-        haystack.includes(filters.query.toLocaleLowerCase())) &&
-      (filters.status === "all" || deal.status === filters.status)
-    );
-  });
-  const total = shown.reduce((sum: any, item: any) => sum + brlToNumber(item.value), 0);
-  const confirmed = shown.filter(
-    (item: any) => item.status === "Compra confirmada",
-  ).length;
-  const rows = shown
-    .map(
-      (deal: any) => `<tr data-contract-row="${esc(deal.id)}">
-        <td><span class="contract-table-id-v1">${esc(deal.id)}</span><small>${esc(deal.date || "Data não informada")}</small></td>
-        <td><b>${esc(deal.client || "Cliente não informado")}</b><small>${esc(deal.lot || "Lote a definir")}</small></td>
-        <td><span class="deal-status ${projectAtlasContractStatusClassV1(deal.status)}">${esc(deal.status)}</span><small>${esc(deal.stage || "Em acompanhamento")}</small></td>
-        <td><b>${esc(deal.payment || "Sem recibo lançado")}</b><small>Condição registrada no contrato</small></td>
-        <td><b>${esc(deal.value || "R$ 0,00")}</b><small>${esc(deal.commission || "Sem comissão")}</small></td>
-        <td class="contract-table-actions-v1"><button type="button" data-contract-open="${esc(deal.id)}">Abrir</button><button type="button" data-contract-edit="${esc(deal.id)}">Editar</button><button type="button" data-contract-confirm="${esc(deal.id)}" ${deal.status === "Compra confirmada" ? "disabled" : ""}>${deal.status === "Compra confirmada" ? "Compra confirmada" : "Confirmar compra"}</button></td>
-      </tr>`,
-    )
-    .join("");
-  return `<section class="contracts-page-v2"><header class="contracts-page-head-v2"><div><span class="activity-kind">OPERAÇÃO COMERCIAL · CONTRATOS</span><h1>Contratos</h1><p>Acompanhe recibos, valores, condições e confirmação de compra em uma lista única.</p></div><span class="contracts-identity-v2">${ico(scope.profile ? "shield-check" : "briefcase-business")} ${esc(scope.elevated ? "Visão consolidada da operação" : scope.profile ? scope.profile.name : "Carteira comercial")}</span></header><div class="data-page-toolbar contracts-toolbar-v2" aria-label="Controles de contratos"><div class="toolbar-context"><span class="activity-kind">CONTRATOS / RECIBOS</span><b>${shown.length} contratos visíveis</b><small>Valores derivados dos lançamentos comerciais.</small></div><div class="toolbar-controls"><label class="toolbar-search">Buscar<input type="search" value="${esc(filters.query)}" placeholder="Contrato, cliente ou lote" data-contract-filter="query"></label><label>Status<select data-contract-filter="status"><option value="all" ${filters.status === "all" ? "selected" : ""}>Todos os status</option>${["Reserva", "Em análise", "Proposta", "Assinado", "Compra confirmada"].map((status: any) => `<option value="${status}" ${filters.status === status ? "selected" : ""}>${status}</option>`).join("")}</select></label><button type="button" class="toolbar-action" data-contract-filter-clear>${ico("filter-x")} Limpar</button><button type="button" class="toolbar-action" data-contract-export>${ico("download")} Exportar</button><button type="button" class="toolbar-primary" data-contract-new>${ico("plus")} Novo contrato</button></div></div><section class="contracts-kpis-v2"><article><small>CONTRATOS</small><b>${deals.length}</b><span>na carteira comercial</span></article><article><small>VALOR VISÍVEL</small><b>${formatBRL(total)}</b><span>conforme o filtro atual</span></article><article><small>COMPRA CONFIRMADA</small><b>${confirmed}</b><span>retornos validados</span></article><article><small>RECIBOS / CONDIÇÕES</small><b>${shown.filter((item: any) => item.payment).length}</b><span>com informação financeira</span></article></section><section class="contracts-table-card-v2"><header><div><span class="activity-kind">01 · VISUALIZAÇÃO PADRÃO</span><h2>Recibos e valores</h2><p>Abra o contrato, edite os dados ou confirme a compra sem perder a listagem.</p></div><small>${shown.length} linha(s)</small></header><div class="contracts-table-wrap-v2"><table><thead><tr><th>Contrato</th><th>Cliente / lote</th><th>Status</th><th>Recibo / condição</th><th>Valor</th><th>Ações</th></tr></thead><tbody>${rows || '<tr><td colspan="6" class="contracts-empty-v2">Nenhum contrato corresponde aos filtros atuais.</td></tr>'}</tbody></table></div></section></section>`;
+  return renderAtlasContractsLedgerV1({ scope, projection, esc, ico, formatBRL });
 };
 
 // Mantém links antigos funcionando, mas a entrada pública passa a ser sempre
@@ -30786,174 +31268,17 @@ ViewLayer.prototype.bind = function (this: any, ...args: any) {
     }
   }
 
-  if (!page || page.dataset.contractsTableBound === "true") return result;
-  page.dataset.contractsTableBound = "true";
-  const findDeal = (id: any) =>
-    contractDealsV1(commercialScopeV1(), readState()).find(
-      (item: any) => item.id === id,
-    );
-  const setFilter = (name: any, value: any) =>
-    onStatePatch({
-      contractFilters: {
-        ...(readState().contractFilters || {}),
-        [name]: value,
-      },
-      lastAction: `Filtrou contratos por ${name}`,
-    });
-
-  page.querySelectorAll("[data-contract-filter]").forEach((control: any) => {
-    control.addEventListener("change", () =>
-      setFilter(control.dataset.contractFilter, control.value),
-    );
-    if (control.matches('input[type="search"]'))
-      control.addEventListener("keydown", (event: any) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          setFilter(control.dataset.contractFilter, control.value);
-        }
-      });
+  if (page) bindAtlasContractsLedgerV1(page, {
+    readState,
+    onStatePatch,
+    commercialScopeV1,
+    brlToNumber,
+    notify,
+    documentRef,
+    BlobCtor,
+    URLRef,
+    schedule,
   });
-  page
-    .querySelector("[data-contract-filter-clear]")
-    ?.addEventListener("click", () =>
-      onStatePatch({
-        contractFilters: { query: "", status: "all" },
-        lastAction: "Limpou filtros de contratos",
-      }),
-    );
-  page.querySelector("[data-contract-new]")?.addEventListener("click", () =>
-    onStatePatch({
-      view: "contracts",
-      proposalFormOpen: true,
-      contractEditing: null,
-      selectedCommissionProposal: null,
-      selectedCommissionContract: null,
-      lastAction: "Abriu novo contrato",
-    }),
-  );
-  page.querySelectorAll("[data-contract-open]").forEach((button: any) =>
-    button.addEventListener("click", () =>
-      onStatePatch({
-        view: "contracts",
-        proposalFormOpen: false,
-        contractEditing: null,
-        selectedCommissionProposal: null,
-        selectedCommissionContract: button.dataset.contractOpen,
-        lastAction: `Abriu contrato ${button.dataset.contractOpen}`,
-      }),
-    ),
-  );
-  page.querySelectorAll("[data-contract-row]").forEach((row: any) => {
-    row.tabIndex = 0;
-    row.setAttribute("role", "button");
-    row.setAttribute("aria-label", `Editar contrato ${row.dataset.contractRow}`);
-    const openForm = (event: any) => {
-      if (event.target.closest("button,a,input,select")) return;
-      const deal = findDeal(row.dataset.contractRow);
-      if (deal) onStatePatch({
-        view: "contracts", proposalFormOpen: true, contractEditing: deal,
-        selectedCommissionProposal: null, selectedCommissionContract: null,
-        lastAction: `Abriu formulário do contrato ${deal.id}`,
-      });
-    };
-    row.addEventListener("click", openForm);
-    row.addEventListener("keydown", (event: any) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        openForm(event);
-      }
-    });
-  });
-  page.querySelectorAll("[data-contract-edit]").forEach((button: any) =>
-    button.addEventListener("click", () => {
-      const deal = findDeal(button.dataset.contractEdit);
-      if (!deal) return;
-      onStatePatch({
-        view: "contracts",
-        proposalFormOpen: true,
-        contractEditing: deal,
-        selectedCommissionProposal: null,
-        selectedCommissionContract: null,
-        lastAction: `Editou contrato ${deal.id}`,
-      });
-    }),
-  );
-  page.querySelectorAll("[data-contract-confirm]").forEach((button: any) =>
-    button.addEventListener("click", () => {
-      const id = button.dataset.contractConfirm,
-        deal = findDeal(id);
-      if (!deal || deal.status === "Compra confirmada") return;
-      const current = readState();
-      onStatePatch({
-        view: "contracts",
-        proposalFormOpen: false,
-        contractEditing: null,
-        selectedCommissionProposal: null,
-        selectedCommissionContract: null,
-        contractStatusOverrides: {
-          ...(current.contractStatusOverrides || {}),
-          [id]: "Compra confirmada",
-        },
-        lastAction: `Confirmou compra ${id}`,
-      });
-      notify(
-        `Compra ${id} confirmada. O contrato voltou para a listagem.`,
-        "success",
-      );
-    }),
-  );
-  page
-    .querySelector("[data-contract-export]")
-    ?.addEventListener("click", () => {
-      const current = readState(),
-        filters = {
-          query: "",
-          status: "all",
-          ...(current.contractFilters || {}),
-        },
-        deals = contractDealsV1(commercialScopeV1(), current).filter((deal: any) => {
-          const haystack = JSON.stringify(deal).toLocaleLowerCase();
-          return (
-            (!filters.query ||
-              haystack.includes(filters.query.toLocaleLowerCase())) &&
-            (filters.status === "all" || deal.status === filters.status)
-          );
-        }),
-        csv = [
-          [
-            "Contrato",
-            "Cliente",
-            "Lote",
-            "Status",
-            "Recibo / condição",
-            "Valor",
-          ],
-          ...deals.map((deal: any) => [
-            deal.id,
-            deal.client || "",
-            deal.lot || "",
-            deal.status || "",
-            deal.payment || "",
-            deal.value || "",
-          ]),
-        ]
-          .map((row: any) =>
-            row
-              .map((value: any) => `"${String(value).replace(/"/g, '""')}"`)
-              .join(";"),
-          )
-          .join("\n"),
-        url = URLRef.createObjectURL(
-          new BlobCtor(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }),
-        ),
-        link = documentRef.createElement("a");
-      link.href = url;
-      link.download = "contratos-recibos.csv";
-      link.click();
-      schedule(() => URLRef.revokeObjectURL(url), 0);
-      notify("Lista de contratos exportada em CSV.", "success");
-      onStatePatch({ lastAction: "Exportou contratos e recibos" });
-    });
   return result;
 };
   return true;
@@ -30970,7 +31295,7 @@ export interface AtlasCommercialContractsRegistrationInputV1 {
   esc(value: unknown): string;
   ico(name: string): string;
   notify(message: string, tone?: string): void;
-  commercialScopeV1: unknown;
+  commercialScopeV1(): AtlasCommercialScopeV1;
   brlToNumber(value: unknown): number;
   formatBRL(value: unknown): string;
   readProposalImageAsDataUrl: unknown;
@@ -30996,7 +31321,7 @@ export function installAtlasCommercialContractsPageV1(input: AtlasCommercialCont
     brlToNumber: input.brlToNumber,
     formatBRL: input.formatBRL,
     readProposalImageAsDataUrl: input.readProposalImageAsDataUrl,
-    PROPOSAL_VISION_PROMPT: input.proposalVisionPrompt,
+    proposalVisionPrompt: input.proposalVisionPrompt,
     parseProposalVisionPayload: input.parseProposalVisionPayload,
     saveOperationalProposal: input.saveOperationalProposal,
     fetch: host.fetch.bind(host),
@@ -36507,24 +36832,13 @@ export const installAtlasAdminRoadGeometryV1 = (MapScene: AtlasPublicMapSceneCon
 
 // BEGIN INSTALLATLASADMINSTANDALONESTARTUPV1_TS_V1 — source owner migrated as a complete unit.
 /** Installs the complete administrative Three.js map startup flow on MapScene. */
-export function installAtlasAdminStandaloneStartupV1(MapScene: AtlasAdminStandaloneMapTargetV1, dependencies: AtlasAdminStandaloneStartupDependenciesV1 = {} as AtlasAdminStandaloneStartupDependenciesV1) {
-    const { ADMIN_REFERENCE_AERIAL_GEO_WARP_VERSION_V1, ADMIN_REFERENCE_AERIAL_ASSET_V1, ADMIN_REFERENCE_AERIAL_LOT_TRACE_URL_V1, ADMIN_REFERENCE_AERIAL_ROAD_TRACE_URL_V1, ADMIN_GEO_MODEL_FINE_ROTATION_DEG, ADMIN_GEO_MODEL_FINE_SHIFT_X, ADMIN_GEO_MODEL_FINE_SHIFT_Y, ADMIN_STANDALONE_MODEL_ALIGNMENT_V1, ADMIN_STANDALONE_MODEL_TURN_DEG_V1, MAP_GEOREFERENCE_FALLBACK, MODEL_EXTRA_Y_ROTATION_RAD, MODEL_VERTICAL_EXAGGERATION, SCENE_MAP_Z, TILT_DRAG_SENSITIVITY, ZOOM_DRAG_SENSITIVITY, DateRef = Date, consoleRef = console, localStorageRef = {
-        setItem: (...args: any[]) => (globalThis as any).localStorage.setItem(...args),
-    }, requestAnimationFrameRef = (globalThis as any).requestAnimationFrame, windowRef = (globalThis as any).window, readMapStartupState, loadAdminDwgGeoreferenceV1, loadGlbWithClientCacheV14, importThree, importGltfLoader, runtimeRouteV1, solarStateForHour, warpAdminGlbToFixedAerialV1, } = dependencies;
+export function installAtlasAdminStandaloneStartupV1(MapScene: AtlasAdminStandaloneMapTargetV1, dependencies: AtlasAdminStandaloneStartupDependenciesV1) {
+    const { ADMIN_REFERENCE_AERIAL_GEO_WARP_VERSION_V1, ADMIN_REFERENCE_AERIAL_ASSET_V1, ADMIN_GEO_MODEL_FINE_ROTATION_DEG, ADMIN_GEO_MODEL_FINE_SHIFT_X, ADMIN_GEO_MODEL_FINE_SHIFT_Y, ADMIN_STANDALONE_MODEL_ALIGNMENT_V1, ADMIN_STANDALONE_MODEL_TURN_DEG_V1, MAP_GEOREFERENCE_FALLBACK, MODEL_EXTRA_Y_ROTATION_RAD, MODEL_VERTICAL_EXAGGERATION, SCENE_MAP_Z, TILT_DRAG_SENSITIVITY, ZOOM_DRAG_SENSITIVITY, consoleRef = console, requestAnimationFrameRef = (globalThis as any).requestAnimationFrame, windowRef = (globalThis as any).window, readMapStartupState, loadAdminStandaloneAerialAssetsV1, validateAdminStandaloneAerialAssetsV1, persistAdminStandalonePhaseV5370, loadGlbWithClientCacheV14, importThree, importGltfLoader, runtimeRouteV1, solarStateForHour, warpAdminGlbToFixedAerialV1, } = dependencies;
     MapScene.prototype.persistAdminStandalonePhaseV5370 = function (this: any, phase: any, extra: any = {}) {
-        const payload = {
-            version: "5.3.70",
-            phase,
-            at: new DateRef().toISOString(),
-            ...extra,
-        };
+        const payload = persistAdminStandalonePhaseV5370(phase, extra);
         (globalThis as any).__BELAVISTA_ADMIN_STANDALONE_3D_V5370 = payload;
         this.dataset.adminStandalonePhase = phase;
         this.updateMap3DLoadingScreenV1(phase, extra);
-        try {
-            localStorageRef.setItem("belavista.3d.boot.last.v5370", JSON.stringify(payload));
-        }
-        catch { }
         return payload;
     };
     MapScene.prototype.mountAdminStandalone3DV5370 = function (this: any) {
@@ -36627,13 +36941,7 @@ export function installAtlasAdminStandaloneStartupV1(MapScene: AtlasAdminStandal
         requestAnimationFrameRef(() => requestAnimationFrameRef(() => {
             windowRef.setTimeout(() => start(), 350);
         }));
-        try {
-            localStorageRef.setItem("belavista.3d.boot.last.v5370", JSON.stringify({
-                version: "5.3.70",
-                phase: "static-ready",
-                at: new DateRef().toISOString(),
-            }));
-        }
+        try { persistAdminStandalonePhaseV5370("static-ready"); }
         catch { }
     };
     MapScene.prototype.startAdminStandalone3DV5370 = async function (this: any) {
@@ -36819,18 +37127,10 @@ export function installAtlasAdminStandaloneStartupV1(MapScene: AtlasAdminStandal
             let source = gltf.scene;
             let adminFixedAerialGeoWarp = null;
             try {
-                const georef = await loadAdminDwgGeoreferenceV1();
-                const [traceResponse, roadTraceResponse] = await Promise.all([
-                    fetch(ADMIN_REFERENCE_AERIAL_LOT_TRACE_URL_V1),
-                    fetch(ADMIN_REFERENCE_AERIAL_ROAD_TRACE_URL_V1),
-                ]);
-                const trace = traceResponse.ok ? await traceResponse.json() : null;
-                const roadTrace = roadTraceResponse.ok ? await roadTraceResponse.json() : null;
-                this._adminStandaloneRoadTraceV1 = roadTrace;
-                if (trace?.lotCount !== 298 || !Array.isArray(trace?.grid))
-                    throw new Error("Traçado aéreo dos 298 lotes indisponível ou inválido");
-                if (!Array.isArray(roadTrace?.roads) || !roadTrace.roads.length)
-                    throw new Error("Contorno aéreo das ruas indisponível ou inválido");
+                const aerialAssets = await loadAdminStandaloneAerialAssetsV1();
+                const georef = aerialAssets.georeference;
+                this._adminStandaloneRoadTraceV1 = aerialAssets.roadTrace;
+                const { trace, roadTrace } = validateAdminStandaloneAerialAssetsV1(aerialAssets);
                 const warped = warpAdminGlbToFixedAerialV1({
                     THREE,
                     source,
@@ -38210,7 +38510,7 @@ export function installAtlasAdminStandaloneCameraV1(MapScene: AtlasAdminStandalo
 // BEGIN INSTALLATLASSATELLITELOTPLANOVERLAYV1_TS_V1 — source owner migrated as a complete unit.
 /** Installs the complete PDF/satellite lot overlay behavior on MapScene. */
 export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStandaloneMapTargetV1, dependencies: AtlasSatelliteLotPlanOverlayDependenciesV1) {
-    const { ADMIN_MASTERPLAN_LOT_POLYGONS_URL_V2, ADMIN_MASTERPLAN_SATELLITE_FRAME_V1, ADMIN_REFERENCE_AERIAL_LOT_TRACE_URL_V1, CANONICAL_LOT_TRACE_OVERLAY_ALIGNMENT_V1, DWG_GEOREFERENCE_URL, INVALID_MASTERPLAN_LOT_IDS_V1, MASTERPLAN_COMMON_AREA_LABEL_V1, MASTERPLAN_COMMON_AREA_SOURCE_IDS_V1, MASTERPLAN_PDF_GEOMETRY_REPAIR_LOT_IDS_V1, PDF_LOT_GREEN_MAPPING_URL_V1, PDF_LOT_LABELS_URL_V1, PDF_LOT_TRACE_SATELLITE_ALIGNMENT_V1, REPASSE_PRICE_CATALOG, readLotStatuses, subscribeLotStatuses, commands, loadPublicMapGeometryAssets: loadGeometryAssetsV1, esc, ico, polygonCentroidV1, prepareAssistantLotStatusPromptV1, prepareAssistantMapAreaPromptV1, projectCanonicalLotTraceToMasterplanOverlayUvV1, } = dependencies;
+    const { ADMIN_MASTERPLAN_LOT_POLYGONS_URL_V2, ADMIN_MASTERPLAN_SATELLITE_FRAME_V1, ADMIN_REFERENCE_AERIAL_LOT_TRACE_URL_V1, CANONICAL_LOT_TRACE_OVERLAY_ALIGNMENT_V1, DWG_GEOREFERENCE_URL, INVALID_MASTERPLAN_LOT_IDS_V1, MASTERPLAN_COMMON_AREA_LABEL_V1, MASTERPLAN_COMMON_AREA_SOURCE_IDS_V1, MASTERPLAN_PDF_GEOMETRY_REPAIR_LOT_IDS_V1, PDF_LOT_GREEN_MAPPING_URL_V1, PDF_LOT_LABELS_URL_V1, PDF_LOT_TRACE_SATELLITE_ALIGNMENT_V1, REPASSE_PRICE_CATALOG, loadMarkerOverridesV1, readLotStatuses, subscribeLotStatuses, commands, loadPublicMapGeometryAssets: loadGeometryAssetsV1, esc, ico, polygonCentroidV1, prepareAssistantLotStatusPromptV1, prepareAssistantMapAreaPromptV1, projectCanonicalLotTraceToMasterplanOverlayUvV1, } = dependencies;
     const projectPublicLotMarkerStatusV1 = dependencies.projectPublicLotMarkerStatusV1 || publicMapLotMarkerStatus;
     const projectPublicLotMarkerStatusesV1 = dependencies.projectPublicLotMarkerStatusesV1 || publicMapLotMarkerStatuses;
     const projectPublicMapLotWidgetContextV1 = dependencies.projectPublicMapLotWidgetContextV1 || projectPublicMapLotWidgetContext;
@@ -38290,9 +38590,8 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
             }
         }
         try {
-            type GeometryAssetsV1 = Awaited<ReturnType<typeof loadPublicMapGeometryAssets>>;
-            let trace: GeometryAssetsV1['trace'] | null = null;
-            let geo: GeometryAssetsV1['georeference'] | null = null;
+            let trace: PublicMapGeometryAssetBundle['trace'] | null = null;
+            let geo: PublicMapGeometryAssetBundle['georeference'] | null = null;
             let masterplanPolygonAsset: unknown = null;
             let pdfLotLabelsAsset: unknown = null;
             let pdfLotGreenMappingAsset: unknown = null;
@@ -38303,37 +38602,8 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
                 lotLabels: PDF_LOT_LABELS_URL_V1,
                 greenMapping: PDF_LOT_GREEN_MAPPING_URL_V1,
             };
-            const legacyGeometryLoaderV1 = (globalThis as typeof globalThis & {
-                belavistaLoadPublicMapGeometryAssets?: typeof loadPublicMapGeometryAssets;
-            }).belavistaLoadPublicMapGeometryAssets;
-            const loadGeometryV1 = loadGeometryAssetsV1 || legacyGeometryLoaderV1;
-            if (typeof loadGeometryV1 === "function") {
-                const assets = await loadGeometryV1(geometryUrls);
-                ({ trace, georeference: geo, masterplanPolygons: masterplanPolygonAsset, lotLabels: pdfLotLabelsAsset, greenMapping: pdfLotGreenMappingAsset } = assets);
-            }
-            else {
-                // Older shells retain the previous loader until the TS program is present.
-                const [traceResponse, geoResponse, masterplanPolygonResponse, pdfLotLabelsResponse, pdfLotGreenMappingResponse] = await Promise.all([
-                    fetch(ADMIN_REFERENCE_AERIAL_LOT_TRACE_URL_V1, { cache: "no-store" }),
-                    fetch(DWG_GEOREFERENCE_URL, { cache: "no-store" }),
-                    fetch(ADMIN_MASTERPLAN_LOT_POLYGONS_URL_V2, { cache: "no-store" }),
-                    fetch(PDF_LOT_LABELS_URL_V1, { cache: "no-store" }),
-                    fetch(PDF_LOT_GREEN_MAPPING_URL_V1, { cache: "no-store" }),
-                ]);
-                if (!traceResponse.ok || !geoResponse.ok)
-                    throw new Error("Traçado de lotes ou georreferência indisponível");
-                const [traceValue, geoValue, polygonValue, labelsValue, greenMappingValue] = await Promise.all([
-                    traceResponse.json(), geoResponse.json(),
-                    masterplanPolygonResponse.ok ? masterplanPolygonResponse.json().catch(() => null) : Promise.resolve(null),
-                    pdfLotLabelsResponse.ok ? pdfLotLabelsResponse.json().catch(() => null) : Promise.resolve(null),
-                    pdfLotGreenMappingResponse.ok ? pdfLotGreenMappingResponse.json().catch(() => null) : Promise.resolve(null),
-                ]) as [unknown, unknown, unknown, unknown, unknown];
-                trace = traceValue as GeometryAssetsV1['trace'];
-                geo = geoValue as GeometryAssetsV1['georeference'];
-                masterplanPolygonAsset = polygonValue;
-                pdfLotLabelsAsset = labelsValue;
-                pdfLotGreenMappingAsset = greenMappingValue;
-            }
+            const assets = await loadGeometryAssetsV1(geometryUrls);
+            ({ trace, georeference: geo, masterplanPolygons: masterplanPolygonAsset, lotLabels: pdfLotLabelsAsset, greenMapping: pdfLotGreenMappingAsset } = assets);
             const lots = trace?.lots;
             if (!lots || typeof lots !== "object")
                 throw new Error("Prancha PDF sem polígonos de lote");
@@ -38824,12 +39094,7 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
             const imageSize = trace.imageSize || [1672, 941];
             const masterplanOverlay = surface.querySelector("[data-admin-masterplan-overlay]") as any;
             const renderDomMarkers = (isPublicLeadsMap || !masterplanOverlay) && Boolean(markers || this._satelliteLotPlanRequestedMarkersV1);
-            let markerOverrides: any = {};
-            try {
-                const stored = JSON.parse(localStorage.getItem("belavista.map.lot-marker-overrides.v1") || "{}");
-                markerOverrides = stored && typeof stored === "object" ? stored : {};
-            }
-            catch { }
+            const markerOverrides = loadMarkerOverridesV1();
             const projectionInput = {
                 traceLots: lots,
                 imageSize,
@@ -38844,6 +39109,13 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
             };
             const projection = projectPublicSatelliteLots(projectionInput);
             const { masterplanLots, usesNativeMasterplanPolygons, officialMarkerByLot, greenMappingByLot, canonicalTraceMarkerByLot, usesGreenLotMapping, usesCanonicalTraceMarkers, hasOfficialPdfLabels, canRepairPdfGeometry, projectedLots, commonAreaPolygons, projectedBounds, masterplanMarkerPosition, } = projection;
+            const pdfLotIdentityFor = (lotId: any) => projectPublicMapLotMarkerIdentityV1?.(
+                String(lotId),
+                greenMappingByLot.get(String(lotId))?.number,
+            ) || {
+                lotNumber: String(lotId).match(/\d+/g)?.at(-1)?.padStart(3, "0") || "",
+                label: `Lote ${String(lotId).match(/\d+/g)?.at(-1)?.padStart(3, "0") || String(lotId).replace(/^Lote_?/, "")}`,
+            };
             const projectedSvgPath = (points: any) => projectPublicMapProjectedSvgPathV1(points)
                 ?? `${points.map((point: any, index: any) => `${index ? "L" : "M"}${(point.u * 1000).toFixed(2)} ${(point.v * 1000).toFixed(2)}`).join(" ")} Z`;
             const projectedFrameSvgPath = (points: any, frame: any) => projectPublicMapFrameSvgPathV1(points, frame)
@@ -38913,10 +39185,10 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
                     };
                 }));
             }
-            layer.dataset.pdfLotEnumerationV1 = usesCanonicalTraceMarkers
-                ? String(canonicalTraceMarkerByLot.size)
-                : usesGreenLotMapping
-                    ? String(greenMappingByLot.size)
+            layer.dataset.pdfLotEnumerationV1 = usesGreenLotMapping
+                ? String(greenMappingByLot.size)
+                : usesCanonicalTraceMarkers
+                    ? String(canonicalTraceMarkerByLot.size)
                     : hasOfficialPdfLabels
                         ? String(officialMarkerByLot.size)
                         : "fallback";
@@ -39101,7 +39373,7 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
                 masterplanOverlay: Boolean(masterplanOverlay),
                 commonAreaLabel: MASTERPLAN_COMMON_AREA_LABEL_V1,
                 bindLotActivation: overlayInteractionsOwned || !arePublicMapMarkerActionsInstalledV1(),
-                lotLabel: (lotId: any) => projectPublicMapLotMarkerIdentityV1?.(lotId)?.label || `Lote ${lotNumberFor(lotId)}`,
+                lotLabel: (lotId: any) => pdfLotIdentityFor(lotId).label,
             };
             const publicOverlayHitAreas = publicSurface?.renderPublicSatelliteOverlayHitAreas?.(hitAreaInput)
                 ?? lotSvgRenderer?.renderProjectedHitAreas?.(hitAreaInput);
@@ -39148,7 +39420,7 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
                     const lotId = String(detail.lotId || path?.dataset.lot || "");
                     if (!path || !lotId || this.classList.contains("is-admin-masterplan-editing"))
                         return;
-                    const label = String(detail.label || projectPublicMapLotMarkerIdentityV1?.(lotId)?.label || `Lote ${lotNumberFor(lotId)}`);
+                    const label = String(detail.label || pdfLotIdentityFor(lotId).label);
                     const projectedLot = projectedLots.find((row: any) => row.lotId === lotId);
                     const positionPlan = projectPublicMapLotSelectionWidgetPositionV1?.({
                         greenMapping: greenMappingByLot.get(lotId) || null,
@@ -39208,7 +39480,7 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
                         lotId,
                         pathData: projectedSvgPath(projected),
                         relativePolygon,
-                        label: `Consultar ${lotId.replace('_', ' ')}`,
+                        label: `Consultar ${pdfLotIdentityFor(lotId).label}`,
                         interactive: Boolean(masterplanOverlay),
                     }) ?? document.createElementNS("http://www.w3.org/2000/svg", "path");
                     if (!lotSvgRenderer) {
@@ -39225,7 +39497,7 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
                             path.style.pointerEvents = "auto";
                             path.setAttribute("tabindex", "0");
                             path.setAttribute("role", "button");
-                            path.setAttribute("aria-label", `Consultar ${lotId.replace('_', ' ')}`);
+                            path.setAttribute("aria-label", `Consultar ${pdfLotIdentityFor(lotId).label}`);
                         }
                         // A associação PDF -> área verde já foi revisada no arquivo de
                         // mapeamento. Portanto a área preenchida real do lote é clicável;
@@ -39234,7 +39506,7 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
                         if (publicOverlayInteractionsOwned || !arePublicMapMarkerActionsInstalledV1()) {
                             const detail = {
                                 lotId,
-                                label: projectPublicMapLotMarkerIdentityV1?.(lotId)?.label || `Lote ${lotNumberFor(lotId)}`,
+                                label: pdfLotIdentityFor(lotId).label,
                                 selectionSource: "pdf-uv-hit-area",
                             };
                             if (typeof lotSvgRenderer?.bindHitAreaActivation === "function") {
@@ -39309,7 +39581,7 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
                     }
                     let markerU = center.u;
                     let markerV = center.v;
-                    const markerIdentity = markerRenderModel || projectPublicMapLotMarkerIdentityV1?.(lotId)
+                    const markerIdentity = markerRenderModel || pdfLotIdentityFor(lotId)
                         || { lotNumber: String(lotId.match(/\d+/g)?.at(-1) || "").padStart(3, "0"), label: `Lote ${String(lotId.match(/\d+/g)?.at(-1) || "").padStart(3, "0") || lotId.replace(/^Lote_?/, "")}` };
                     const { lotNumber, label } = markerIdentity;
                     const markerSource = markerRenderModel?.source || (greenMapping
@@ -39405,12 +39677,13 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
                         : projectPublicMapFallbackLotMarkerModelV1?.({
                             lotId,
                             relativePosition: relative,
+                            pdfNumber: greenMappingByLot.get(lotId)?.number,
                             frame: masterplanFrame,
                             fallbackIndex,
                             usesGreenLotMapping,
                             manualPosition,
                         });
-                    const markerIdentity = fallbackMarkerModel || projectPublicMapLotMarkerIdentityV1?.(lotId)
+                    const markerIdentity = fallbackMarkerModel || pdfLotIdentityFor(lotId)
                         || { lotNumber: String(lotId.match(/\d+/g)?.at(-1) || "").padStart(3, "0"), label: `Lote ${String(lotId.match(/\d+/g)?.at(-1) || "").padStart(3, "0") || lotId.replace(/^Lote_?/, "")}` };
                     const { lotNumber, label } = markerIdentity;
                     const markerSource = fallbackMarkerModel?.source || (usesGreenLotMapping ? "pdf-circle-only" : "canonical-trace-fallback");
@@ -39419,11 +39692,11 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
                     const legacyManual = fallbackMarkerModel ? null : manualPosition;
                     const positioned = fallbackMarkerModel?.position || masterplanMarkerPosition(relative.u, relative.v, masterplanFrame);
                     const markerPosition = fallbackMarkerModel?.position || {
-                        u: Number.isFinite(Number(legacyManual?.u)) ? Number(legacyManual.u) : positioned.u,
-                        v: Number.isFinite(Number(legacyManual?.v)) ? Number(legacyManual.v) : positioned.v,
+                        u: Number.isFinite(Number(legacyManual?.u)) ? Number(legacyManual?.u) : positioned.u,
+                        v: Number.isFinite(Number(legacyManual?.v)) ? Number(legacyManual?.v) : positioned.v,
                         zIndex: 720 - fallbackIndex,
                         manualPosition: Number.isFinite(Number(legacyManual?.u)) && Number.isFinite(Number(legacyManual?.v))
-                            ? { u: Number(legacyManual.u), v: Number(legacyManual.v) }
+                            ? { u: Number(legacyManual?.u), v: Number(legacyManual?.v) }
                             : null,
                     };
                     const marker = appendLotMarker({
@@ -41571,6 +41844,47 @@ export interface AtlasAiChatAttachmentV1 {
 }
 const atlasAiChatErrorMessageV1 = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
+
+interface AtlasAiChatContextualSuggestionV1 {
+  label: string;
+  title: string;
+  text: string;
+  actions: Array<[string, string]>;
+}
+
+interface AtlasAiChatContextualSuggestionDataV1 extends AtlasAiChatContextualSuggestionV1 {}
+
+const ATLAS_AI_CHAT_CONTEXTUAL_SUGGESTIONS_V1 = aiChatContextualSuggestionsData as unknown as
+  Record<string, AtlasAiChatContextualSuggestionDataV1>;
+
+/** Resolve the chat's display copy for the active view and current operational values. */
+function projectAtlasAiChatContextualSuggestionV1(input: {
+  state: Record<string, any>;
+  activities: Array<Record<string, any>>;
+  metrics: Record<string, any>;
+}): AtlasAiChatContextualSuggestionV1 {
+  const { state, activities, metrics } = input;
+  const stage = activities.find(item => item.id === state.selectedStage) || activities[1];
+  const values: Record<string, unknown> = {
+    delayed: metrics.delayed,
+    criticalPurchases: metrics.criticalPurchases,
+    stageName: stage?.name || 'a etapa selecionada',
+    stageProgress: stage?.progress || 0,
+    leads: metrics.leads,
+    lotsWithInterest: metrics.lotsWithInterest,
+    reportFamily: state.reportFamily || 'Financeiro',
+  };
+  const replaceValues = (text: string): string => text.replace(/\{\{([\w]+)\}\}/g, (_match, key: string) =>
+    String(values[key]));
+  const suggestion = ATLAS_AI_CHAT_CONTEXTUAL_SUGGESTIONS_V1[String(state.view)] ||
+    ATLAS_AI_CHAT_CONTEXTUAL_SUGGESTIONS_V1.assistant;
+  return {
+    label: replaceValues(suggestion.label),
+    title: replaceValues(suggestion.title),
+    text: replaceValues(suggestion.text),
+    actions: suggestion.actions.map(([label, message]) => [replaceValues(label), replaceValues(message)]),
+  };
+}
 
 /** Create the administrative AI chat element from validated application and browser ports. */
 export function createAtlasAiChatV1(input: AtlasAiChatComponentInputV1): CustomElementConstructor {
@@ -47886,21 +48200,7 @@ export function createAtlasLegacyViewLayerV1(
         this.dataset.view = sidebarPage.view;
         this.dataset.role = sidebarPage.role;
         if (sidebarPage.recoverRestrictedRoute) {
-          queueMicrotask(() => {
-            const current = appStore.get();
-            if (
-              isLimitedOperationalActor(current.currentActor) &&
-              !actorCanOpenView(current.currentActor, current.view)
-            ) {
-              appStore.set({
-                view: "records",
-                activityDedicated: false,
-                stageActivityDedicatedV9: false,
-                selectedActivity: null,
-                lastAction: "Área indisponível para este perfil",
-              });
-            }
-          });
+          queueMicrotask(() => dependencies.recoverRestrictedRoute());
         }
         const content = this[sidebarPage.view]?.() || this.assistant();
         this.innerHTML = renderAtlasSidebarPageShell?.({
@@ -47925,21 +48225,7 @@ export function createAtlasLegacyViewLayerV1(
       this.dataset.view = view;
       this.dataset.role = role;
       if (view !== requestedView) {
-        queueMicrotask(() => {
-          const current = appStore.get();
-          if (
-            isLimitedOperationalActor(current.currentActor) &&
-            !actorCanOpenView(current.currentActor, current.view)
-          ) {
-            appStore.set({
-              view: "records",
-              activityDedicated: false,
-              stageActivityDedicatedV9: false,
-              selectedActivity: null,
-              lastAction: "Área indisponível para este perfil",
-            });
-          }
-        });
+        queueMicrotask(() => dependencies.recoverRestrictedRoute());
       }
       const labels: Record<string, string[]> = {
         assistant: ["Execução atual", "Panorama operacional"],
@@ -47964,7 +48250,7 @@ export function createAtlasLegacyViewLayerV1(
         ],
         purchases: ["Compras", "Compromissos, prazos e fornecedores"],
         inventory: ["Inventário", "Materiais, reservas e consumo"],
-        materials: ["Materiais", "Alocação por etapa e catálogo geral"],
+        materials: ["Notas", "Alocação por etapa e catálogo geral"],
         documents: ["Documentos do loteamento", "Projetos, plantas, memoriais e licenças do Aliança Park"],
         leads: ["Leads", "Captação pública e intenção de compra"],
         contracts: [
@@ -48530,9 +48816,7 @@ export function installAtlasActivityInstallationSessionV1(
 }
 
 export interface AtlasStageDedicatedSubpagesEventsDependenciesV1 {
-  appStore: AtlasApplicationStore<AtlasApplicationStoreState>;
-  demoData: { activities: Array<Record<string, any>> };
-  executionModel: { stages: Array<Record<string, any>> };
+  dispatchNavigation(command: AtlasStageDedicatedPageNavigationCommandV1): void;
   bindBase?: (...args: any[]) => any;
 }
 
@@ -48541,7 +48825,7 @@ export function installAtlasStageDedicatedSubpagesEventsV1(
   ViewLayer: { prototype: HTMLElement & Record<string, any> },
   dependencies: AtlasStageDedicatedSubpagesEventsDependenciesV1,
 ): boolean {
-  const { appStore, demoData, executionModel } = dependencies;
+  const { dispatchNavigation } = dependencies;
   const prototype = ViewLayer.prototype;
   const bindBase = dependencies.bindBase || prototype.bind;
   prototype.bind = function (...args: any[]): any {
@@ -48551,13 +48835,6 @@ export function installAtlasStageDedicatedSubpagesEventsV1(
     if (this.dataset.stageDedicatedSubpagesBound === "true") return result;
     this.dataset.stageDedicatedSubpagesBound = "true";
 
-    const stageContext = (key: unknown): Record<string, string> => {
-      const stage = executionModel.stages.find(item => String(item.key) === String(key)) || executionModel.stages[0];
-      const activity = demoData.activities.find(item => item.name === stage?.name)
-        || demoData.activities.find(item => item.id === stage?.key);
-      return { selectedStageV9: String(stage?.key || ""), selectedStage: String(activity?.id || stage?.key || "") };
-    };
-
     this.addEventListener("click", (event: Event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
@@ -48565,14 +48842,10 @@ export function installAtlasStageDedicatedSubpagesEventsV1(
       if (stageButton && this.contains(stageButton)) {
         event.preventDefault();
         event.stopImmediatePropagation();
-        const context = stageContext(stageButton.dataset.stageV9);
-        appStore.set({
-          ...context,
-          view: "stages",
-          activityDedicated: true,
-          stageActivityDedicatedV9: false,
-          selectedStageDetailTab: "andamento",
-          lastAction: `Abriu a etapa ${stageButton.textContent?.trim() || ""}`,
+        dispatchNavigation({
+          type: "open-stage-v9",
+          stageKey: stageButton.dataset.stageV9,
+          label: stageButton.textContent?.trim() || "",
         });
         return;
       }
@@ -48585,24 +48858,12 @@ export function installAtlasStageDedicatedSubpagesEventsV1(
       const key = String(tab.dataset.stageDetailTab || "");
       dedicated?.querySelectorAll<HTMLElement>("[data-stage-detail-tab]")
         .forEach(item => item.classList.toggle("active", item === tab));
-      const state = appStore.get();
-      const context = stageContext(state.selectedStageV9 || state.selectedStage);
       const label = key === "diario" ? "Registros" : tab.textContent?.trim() || "";
-      if (key === "agenda" || key === "diario") {
-        appStore.set({
-          ...context,
-          view: key === "agenda" ? "agenda" : "records",
-          activityDedicated: false,
-          stageActivityDedicatedV9: false,
-          selectedStageDetailTab: key,
-          lastAction: `Abriu ${label} da etapa`,
-        });
-        return;
-      }
-      appStore.set({
-        ...context,
-        selectedStageDetailTab: key,
-        lastAction: `Abriu a aba ${label} da etapa`,
+      dispatchNavigation({
+        type: "open-stage-v9-tab",
+        stageKey: dedicated?.dataset.stageKey,
+        key,
+        label,
       });
       const targets: Record<string, string> = {
         andamento: ".stage-v9-status-lines",
@@ -48796,7 +49057,7 @@ export function installAtlasStageDedicatedWorkspaceV1(
 }
 
 export interface AtlasWorkflowCanvasConnectionsDependenciesV1 {
-  appStore: { set(patch: Record<string, unknown>): void };
+  onAction(action: AtlasWorkflowCanvasActionV1): void;
   activityCatalog: Array<Record<string, any>>;
   esc(value: unknown): string;
   notify(message: string, tone?: string): void;
@@ -48809,7 +49070,7 @@ export function installAtlasWorkflowCanvasConnectionsV1(
   ViewLayer: { prototype: HTMLElement & Record<string, any> },
   dependencies: AtlasWorkflowCanvasConnectionsDependenciesV1,
 ): boolean {
-  const { appStore, activityCatalog, esc, notify } = dependencies;
+  const { onAction, activityCatalog, esc, notify } = dependencies;
   const documentRef = dependencies.documentRef || globalThis.document;
   const windowRef = dependencies.windowRef || globalThis.window;
   const prototype = ViewLayer.prototype;
@@ -48830,7 +49091,7 @@ export function installAtlasWorkflowCanvasConnectionsV1(
         tree.querySelector<HTMLElement>(".detail-close")?.addEventListener("click", () => tree.remove());
         tree.querySelector<HTMLElement>(".tree-save")?.addEventListener("click", () => {
           notify(`${item.name}: preenchimento salvo.`, "success");
-          appStore.set({ lastAction: `Preencheu ${item.name}` });
+          onAction({ kind: 'field-tree-saved', activityName: String(item.name || '') });
           tree.remove();
         });
       });
@@ -49212,7 +49473,8 @@ export function installAtlasWorkflowCanvasConnectionsV1(
 }
 
 export interface AtlasStageActivityCanvasDependenciesV1 {
-  appStore: { get(): Record<string, any>; set(patch: Record<string, unknown>): void };
+  appStore: { get(): Record<string, any> };
+  onAction(action: AtlasWorkflowCanvasActionV1): void;
   demoData: { activities: Array<Record<string, any>> };
   activityCatalog: Array<Record<string, any>>;
   esc(value: unknown): string;
@@ -49228,7 +49490,7 @@ export function installAtlasStageActivityCanvasV1(
   ViewLayer: { prototype: HTMLElement & Record<string, any> },
   dependencies: AtlasStageActivityCanvasDependenciesV1,
 ): boolean {
-  const { appStore, demoData, activityCatalog, esc, notify } = dependencies;
+  const { appStore, onAction, demoData, activityCatalog, esc, notify } = dependencies;
   const documentRef = dependencies.documentRef || globalThis.document;
   const windowRef = dependencies.windowRef || globalThis.window;
   const promptRef = dependencies.promptRef || ((message: string, defaultValue?: string) => globalThis.prompt(message, defaultValue));
@@ -49493,7 +49755,7 @@ export function installAtlasStageActivityCanvasV1(
           if (moved) {
             node.dataset.dragged = "true";
             globalThis.setTimeout(() => { delete node.dataset.dragged; }, 120);
-            appStore.set({ lastAction: "Reposicionou atividade " + (node.querySelector("strong")?.textContent || "") });
+            onAction({ kind: 'activity-repositioned', activityName: node.querySelector("strong")?.textContent || "" });
           }
         };
         node.setPointerCapture?.(event.pointerId);

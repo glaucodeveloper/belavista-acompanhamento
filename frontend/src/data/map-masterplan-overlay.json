@@ -3,7 +3,7 @@
   "markerOverridesStorageKey": "belavista.map.lot-marker-overrides.v1",
   "detailZoomThreshold": 1.82,
   "labelOpacityStart": 1.06,
-  "labelOpacityEnd": 1.82,
+  "labelOpacityEnd": 1.55,
   "areaOpacityStart": 1.9,
   "areaOpacityEnd": 2.45,
   "canvasMaxWidth": 8192,

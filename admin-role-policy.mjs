@@ -121,7 +121,7 @@ export const navigationItemsForRole = (role, items = []) => {
   const normalized = normalizeOperationalRole(role);
   const visibleItems = items.filter(([id]) => !REMOVED_ADMIN_VIEW_SET.has(id));
   if (BROKER_ROLES.has(normalized)) {
-    return visibleItems.filter(([id]) => LIMITED_OPERATIONAL_VIEWS.includes(id));
+    return visibleItems.filter(([id]) => id !== "agenda" && LIMITED_OPERATIONAL_VIEWS.includes(id));
   }
   return visibleItems;
 };
@@ -129,12 +129,11 @@ export const navigationItemsForRole = (role, items = []) => {
 export const navigationItemsForActor = (actor = {}, items = []) => {
   if (actor.mode === "delegated-foreman-key" && actor.delegatedRoleId && Array.isArray(actor.delegatedViews)) {
     const labels = new Map([["map", ["map", "house", "Mapa"]], ["agenda", ["agenda", "calendar-range", "Agenda"]], ["records", ["records", "clipboard-list", "Registros"]], ["stages", ["stages", "calendar-range", "Linha do tempo do cronograma"]]]);
-    return actor.delegatedViews.map((view) => labels.get(view)).filter(Boolean);
+    return actor.delegatedViews.filter((view) => view !== "agenda").map((view) => labels.get(view)).filter(Boolean);
   }
   if (isLimitedOperationalActor(actor)) {
     return [
       ["map", "house", "Mapa"],
-      ["agenda", "calendar-range", "Agenda"],
       ["records", "clipboard-list", "Registros"],
       ["stages", "calendar-range", "Linha do tempo do cronograma"],
     ];

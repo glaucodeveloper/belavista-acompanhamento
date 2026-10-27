@@ -8,6 +8,7 @@ try{
   desktopRuntime=await globalThis.aliancaDesktop?.runtime?.()||null;
 }catch{}
 const desktopDemoMode=desktopRuntime?.mode==='local'&&new URLSearchParams(location.search).get('demo')==='1';
+const mobileDemoMode=mobile&&globalThis.BELAVISTA_MOBILE_DEMO_MODE===true;
 let nativeVaultPromise;
 const nativeVault=()=>nativeVaultPromise||=(async()=>{
   if(!mobile)throw new Error('Armazenamento seguro disponível apenas no aplicativo Android.');
@@ -36,7 +37,7 @@ try{
     documentRef:document,
     windowRef:window,
     mobile,
-    desktopDemoMode,
+    desktopDemoMode:desktopDemoMode||mobileDemoMode,
     desktopMode:desktopRuntime?.mode,
     desktopAvailableModes:desktopRuntime?.availableModes,
     desktopEnvironment:globalThis.aliancaDesktop?.runtime&&globalThis.aliancaDesktop?.switchEnvironment

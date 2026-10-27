@@ -9,6 +9,7 @@ const webDir = join(root, 'mobile', 'capacitor', 'www');
 const androidWebAssets = join(root, 'mobile', 'capacitor', 'android', 'app', 'src', 'main', 'assets', 'public');
 const capacitorRoot = join(root, 'mobile', 'capacitor');
 const workerBase = 'https://belavista-cloudflare-worker.icaroglaucooliveira.workers.dev';
+const mobileDemoMode = process.env.BELAVISTA_MOBILE_DEMO_MODE === '1';
 
 const run = (command, args) => new Promise((resolveRun, rejectRun) => {
   const child = spawn(command, args, {
@@ -26,8 +27,8 @@ await mkdir(webDir, { recursive: true });
 await cp(publicBuild, webDir, { recursive: true });
 
 // The application is intentionally served as native ES modules without a
-// bundler. Copy the Capacitor notification plugin and its small core module
-// into the APK assets, then resolve their package imports through importmap.
+// bundler. Copy the Capacitor plugins and their small core module into the APK
+// assets, then resolve their package imports through importmap.
 const capacitorVendor = join(webDir, 'vendor');
 await mkdir(capacitorVendor, { recursive: true });
 await cp(
@@ -45,6 +46,19 @@ for (const name of ['index.js', 'definitions.js', 'web.js']) {
     .replaceAll('"./web"', '"./web.js"')
     .replaceAll('"./definitions"', '"./definitions.js"');
   await writeFile(join(notificationTarget, name), source);
+}
+
+const cameraSource = join(capacitorRoot, 'node_modules', '@capacitor', 'camera', 'dist', 'esm');
+const cameraTarget = join(capacitorVendor, 'camera');
+await mkdir(cameraTarget, { recursive: true });
+for (const name of ['index.js', 'definitions.js', 'web.js']) {
+  let source = await readFile(join(cameraSource, name), 'utf8');
+  source = source
+    .replaceAll("'./web'", "'./web.js'")
+    .replaceAll("'./definitions'", "'./definitions.js'")
+    .replaceAll('"./web"', '"./web.js"')
+    .replaceAll('"./definitions"', '"./definitions.js"');
+  await writeFile(join(cameraTarget, name), source);
 }
 
 // O aplicativo mobile usa exclusivamente o mapa estático com marcadores.
@@ -84,6 +98,7 @@ await Promise.all([webDir, androidWebAssets].flatMap((root) =>
 const bootstrap = `/* Gerado pelo build Capacitor: não editar em www. */
 (() => {
   globalThis.BELAVISTA_CAPACITOR_NATIVE = true;
+  globalThis.BELAVISTA_MOBILE_DEMO_MODE = ${mobileDemoMode};
   globalThis.BELAVISTA_API_BASE = ${JSON.stringify(workerBase)};
   globalThis.BELAVISTA_AI_BASE = ${JSON.stringify(workerBase)};
   globalThis.BELAVISTA_DISABLE_SERVICE_WORKER = true;
@@ -101,6 +116,7 @@ const importMap = JSON.parse(importMapTag[1]);
 importMap.imports ??= {};
 importMap.imports['@capacitor/core'] = './vendor/capacitor-core.js';
 importMap.imports['@capacitor/local-notifications'] = './vendor/local-notifications/index.js';
+importMap.imports['@capacitor/camera'] = './vendor/camera/index.js';
 index = index.replace(importMapTag[0], `<script type="importmap">${JSON.stringify(importMap)}</script>`);
 await writeFile(indexPath, index.replace(marker, `  <script src="./capacitor-mobile-bootstrap.js"></script>\n${marker}`));
 

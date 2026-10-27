@@ -1,7 +1,7 @@
 import {
   SIDEBAR_REPORT_ICONS_V1,
   SIDEBAR_STAGE_EXTENSION_ITEMS_V1,
-} from "./sidebar-navigation-catalog-v1.mjs?v=sidebar-navigation-catalog-v1";
+} from "./sidebar-navigation-catalog-v1.mjs?v=sidebar-navigation-catalog-v2";
 import { renderSidebarNavigation as renderSidebarNavigationTsV1 } from "../../dist/frontend/components.js";
 
 /** Renders role-aware primary, stage-extension, report, and mobile navigation items. */
@@ -33,16 +33,16 @@ const renderSidebarNavigationLegacyV1 = ({
               ...SIDEBAR_STAGE_EXTENSION_ITEMS_V1,
             ],
             hasStageContext = Boolean(state.stageSelected || state.activityDedicated || state.stageActivityDedicatedV9),
-            visibleSub = foremanSurface
+          visibleSub = (foremanSurface
               ? sub.filter(([subId]) => FOREMAN_EXTENSION_VIEWS.includes(subId))
-              : sub;
+              : sub).filter(([subId]) => subId !== "agenda");
           return `<div class="nav-group">${button}${hasStageContext && visibleSub.length ? `<div class="nav-subitems" aria-label="Extensões da etapa selecionada">${visibleSub.map(([subId, subIcon, subLabel]) => `<button class="nav-subitem ${subId === "agenda" ? "stage-agenda-nav-subitem" : ""} ${view === subId ? "active" : ""}" data-view="${subId}">${ico(subIcon)}<span>${subLabel}</span></button>`).join("")}</div>` : ""}</div>`;
         }
         if (id === "reports")
           return `<div class="nav-group">${button}<div class="nav-subitems report-subitems" aria-label="Subitens de relatórios">${reportFamilies.map((family) => `<button class="nav-subitem ${view === "reports" && state.reportFamily === family ? "active" : ""}" data-view="reports" data-report-family="${esc(family)}">${ico(SIDEBAR_REPORT_ICONS_V1[family] || "file-chart-column")}<span>${esc(family)}</span></button>`).join("")}</div></div>`;
         return button;
       },
-    visibleItems = items.filter(([id]) => id !== "finance" && (id !== "records" || foremanSurface)),
+    visibleItems = items.filter(([id]) => id !== "finance" && id !== "agenda" && (id !== "records" || foremanSurface)),
     operationsIds = new Set(["records", "materials", "messages"]),
     groups = [
       ["WORKSPACE", visibleItems.filter(([id]) => !operationsIds.has(id))],
