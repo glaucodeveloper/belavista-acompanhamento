@@ -1,69 +1,40 @@
-import { createOperationalIntelligenceCompositionV1 } from "./operational-intelligence-composition-v1.mjs?v=operational-intelligence-composition-v1";
-import { createProgressPageV1 } from "./progress-page-v1.mjs?v=progress-page-v1";
-import { installDashboardCardDragV1 } from "./dashboard-card-drag-v1.mjs?v=dashboard-card-drag-v1";
-import { installStageExtensionEventsV1 } from "./stage-extension-events-v1.mjs?v=stage-extension-events-v1";
-import { installStageBindCompositionV1 } from "./stage-bind-composition-v1.mjs?v=stage-bind-composition-v1";
-import {
-  createStageContextResolverV1,
-  createStageViewTabsMarkupV1,
-} from "./stage-context-chrome-v1.mjs?v=stage-context-chrome-v7";
 
-/** Install the stage/planning page composition while preserving bootstrap order. */
-export const installStageApplicationCompositionV1 = ({
-  ViewLayer,
-  appStore,
-  demoData,
-  executionModel,
-  activityCatalog,
-  esc,
-  ico,
-  notify,
-  runtimeRouteV1,
-  apiFetch,
-  operationalHeaders,
-  windowRef = globalThis.window,
-  globalRef = globalThis,
-  installLeadsPages,
-} = {}) => {
-  const stageContextV1 = createStageContextResolverV1({ appStore, executionModel, demoData });
-  const stageViewTabs = createStageViewTabsMarkupV1({ stageContextV1, demoData, esc, ico });
-  const extensionStage = () => stageContextV1().record || demoData.activities[1];
-
-  const intelligence = createOperationalIntelligenceCompositionV1({
-    ViewLayer,
-    appStore,
-    demoData,
-    extensionStage,
-    esc,
-    ico,
-    notify,
-    browser: globalRef,
-  });
-  ViewLayer.prototype.progress = createProgressPageV1({
-    appStore,
-    demoData,
-    extensionStage,
-    esc,
-    ico,
-    DateCtor: globalRef.Date,
-  });
-
-  installLeadsPages?.();
-  installDashboardCardDragV1(ViewLayer, { notify, windowRef });
-  installStageExtensionEventsV1(ViewLayer, {
-    appStore,
-    notify,
-    activityCatalog,
-    demoData,
-    esc,
-    ico,
-    extensionStage,
-    runtimeRouteV1,
-    apiFetch: (...args) => apiFetch(...args),
-    operationalHeaders: (...args) => operationalHeaders(...args),
-    window: windowRef,
-  });
-  installStageBindCompositionV1(ViewLayer);
-
-  return Object.freeze({ stageContextV1, stageViewTabs, extensionStage, ...intelligence });
+const loadProgressPageV1 = async (...args) => {
+  const { createProgressPageV1 } = await import("./progress-page-v1.mjs?v=ts-progress-page-recovery-lazy-v1");
+  return createProgressPageV1(...args);
 };
+const loadDashboardCardDragV1 = async (...args) => {
+  const { installDashboardCardDragV1 } = await import("./dashboard-card-drag-v1.mjs?v=ts-dashboard-card-drag-recovery-lazy-v1");
+  return installDashboardCardDragV1(...args);
+};
+const loadStageExtensionEventsV1 = async (...args) => {
+  const { installStageExtensionEventsV1 } = await import("./stage-extension-events-v1.mjs?v=ts-stage-extension-events-recovery-lazy-v1");
+  return installStageExtensionEventsV1(...args);
+};
+const loadStageBindCompositionV1 = async (...args) => {
+  const { installStageBindCompositionV1 } = await import("./stage-bind-composition-v1.mjs?v=ts-stage-bind-composition-recovery-lazy-v1");
+  return installStageBindCompositionV1(...args);
+};
+const loadStageActivityCanvasV1 = async (...args) => {
+  const { installStageActivityCanvasV1 } = await import("./stage-activity-canvas-v1.mjs?v=ts-stage-activity-canvas-recovery-lazy-v2");
+  return installStageActivityCanvasV1(...args);
+};
+const loadStageDedicatedWorkspaceV1 = async (...args) => {
+  const { installStageDedicatedWorkspaceV1 } = await import("./stage-dedicated-workspace-v1.mjs?v=ts-stage-dedicated-workspace-recovery-lazy-v1");
+  return installStageDedicatedWorkspaceV1(...args);
+};
+const loadWorkflowCanvasConnectionsV1 = async (...args) => {
+  const { installWorkflowCanvasConnectionsV1 } = await import("../map/workflow-canvas-connections-v1.mjs?v=ts-workflow-canvas-recovery-lazy-v2");
+  return installWorkflowCanvasConnectionsV1(...args);
+};
+
+/** Expose MJS recovery leaves; route composition and normal installers belong to program.ts. */
+export const STAGE_APPLICATION_INSTALLERS_V1 = Object.freeze({
+  createProgressPageV1: loadProgressPageV1,
+  installDashboardCardDragLegacyV1: loadDashboardCardDragV1,
+  installStageExtensionEventsLegacyV1: loadStageExtensionEventsV1,
+  installStageBindCompositionLegacyV1: loadStageBindCompositionV1,
+  installStageDedicatedWorkspaceLegacyV1: loadStageDedicatedWorkspaceV1,
+  installStageActivityCanvasLegacyV1: loadStageActivityCanvasV1,
+  installWorkflowCanvasConnectionsLegacyV1: loadWorkflowCanvasConnectionsV1,
+});

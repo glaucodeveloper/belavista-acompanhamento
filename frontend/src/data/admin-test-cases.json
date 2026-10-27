@@ -1,0 +1,38 @@
+[
+  {
+    "label": "Entradas",
+    "items": [
+      { "id": "input.record", "label": "Registro incompleto" },
+      { "id": "input.production", "label": "Medição de produção" },
+      { "id": "input.material", "label": "Material pendente" },
+      { "id": "input.cash", "label": "Mudança no caixa" },
+      { "id": "input.lead", "label": "Mensagem de lead" },
+      { "id": "input.reserve", "label": "Pedido de reserva" },
+      { "id": "input.payment", "label": "Pagamento recebido" }
+    ]
+  },
+  {
+    "label": "Gerações",
+    "items": [
+      { "id": "generation.readiness", "label": "Prontidão operacional" },
+      { "id": "generation.agenda", "label": "Agenda e cronograma" },
+      { "id": "generation.report", "label": "Repasse mensal" }
+    ]
+  },
+  {
+    "label": "Notificações",
+    "items": [
+      { "id": "notification.cash", "label": "Risco de caixa" },
+      { "id": "notification.material", "label": "Alerta de material" },
+      { "id": "notification.coelba", "label": "Prazo Coelba" }
+    ]
+  },
+  {
+    "label": "Propagações",
+    "items": [
+      { "id": "propagation.calibration", "label": "Recalcular dependências" },
+      { "id": "propagation.release", "label": "Liberar próxima frente" },
+      { "id": "propagation.lead", "label": "Propagar CRM" }
+    ]
+  }
+]

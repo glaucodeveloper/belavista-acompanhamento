@@ -1,4 +1,9 @@
+import * as atlasComponents from "../../dist/frontend/components.js";
+
 export const installSceneStatePersistenceV1 = (MapScene, dependencies = {}) => {
+  if (typeof atlasComponents.installAtlasMapSceneViewPersistence === "function")
+    return atlasComponents.installAtlasMapSceneViewPersistence(MapScene, dependencies);
+
   if (typeof MapScene !== "function" || !MapScene.prototype)
     throw new TypeError("Scene state persistence requires the existing MapScene constructor.");
   for (const method of ["update"])

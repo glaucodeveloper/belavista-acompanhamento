@@ -1,0 +1,52 @@
+{
+  "stages": [
+    {
+      "stage": "Projeto executivo",
+      "key": "project",
+      "unit": "projeto",
+      "activities": [["Compatibilizar projetos e memoriais", "conjunto"], ["Conferir locação, cotas e liberações", "conjunto"], ["Liberar frentes de execução", "liberação"]]
+    },
+    {
+      "stage": "Terraplanagem",
+      "key": "earthwork",
+      "unit": "viagens internas",
+      "activities": [["Medir caçambas em viagem interna", "viagem"], ["Executar corte e aterro", "m³"], ["Regularizar o leito das vias", "m²"], ["Umidificar e compactar subleito", "m²"]]
+    },
+    {
+      "stage": "Drenagem Pluvial",
+      "key": "drainage",
+      "unit": "m",
+      "activities": [["Escavar e regularizar valas", "m"], ["Assentar manilhas por trecho", "m"], ["Executar caixas e bocas de lobo", "un"], ["Reaterrar e compactar", "m"]]
+    },
+    {
+      "stage": "Rede de Água",
+      "key": "water",
+      "unit": "lotes",
+      "activities": [["Assentar tubos PEAD", "m"], ["Executar ramais por lote", "ramal"], ["Instalar cavaletes", "un"], ["Testar pressão e liberar setor", "setor"]]
+    },
+    {
+      "stage": "Meio-fio",
+      "key": "curbs",
+      "unit": "m",
+      "activities": [["Preparar base e alinhamento", "m"], ["Assentar meio-fio ao redor das quadras", "m"], ["Executar juntas e arremates", "m"]]
+    },
+    {
+      "stage": "Rede Elétrica",
+      "key": "electrical",
+      "unit": "postes",
+      "activities": [["Locar postes e caixas", "un"], ["Instalar postes, cabos e conectores", "poste"], ["Preparar documentação da Coelba", "conjunto"], ["Registrar vistoria e ligação", "protocolo"]]
+    },
+    {
+      "stage": "Pavimentação",
+      "key": "paving",
+      "unit": "m²",
+      "activities": [["Preparar base liberada", "m²"], ["Assentar paralelepípedos por trecho", "m²"], ["Rejuntar e compactar vias", "m²"], ["Liberar trecho concluído", "trecho"]]
+    },
+    {
+      "stage": "Sinalização",
+      "key": "signage",
+      "unit": "conjunto",
+      "activities": [["Implantar sinalização das vias", "un"], ["Conferir entrega e as built", "conjunto"]]
+    }
+  ]
+}

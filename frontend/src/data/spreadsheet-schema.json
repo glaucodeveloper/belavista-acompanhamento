@@ -1,0 +1,37 @@
+{
+  "months": 48,
+  "sheets": [
+    "Lançamentos",
+    "Resumo Mensal",
+    "Orçamento",
+    "Indicadores",
+    "Como Usar"
+  ],
+  "fields": [
+    "Mês",
+    "Data",
+    "Etapa",
+    "Subetapa/Descrição",
+    "Fornecedor",
+    "Documento",
+    "Quantidade",
+    "Unidade",
+    "Valor Unitário (R$)",
+    "Valor Total (R$)",
+    "Forma de Pagamento",
+    "Status"
+  ],
+  "stages": [
+    "Projeto executivo",
+    "Terraplanagem",
+    "Drenagem",
+    "Rede de Água",
+    "Meio-fio",
+    "Rede Elétrica",
+    "Pavimentação",
+    "Sinalização",
+    "Praça e Lazer",
+    "Arborização",
+    "Outros"
+  ]
+}

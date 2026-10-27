@@ -1,0 +1,34 @@
+{
+  "settingsStorageKey": "belavista.integrations.v1",
+  "pix": {
+    "gui": "BR.GOV.BCB.PIX",
+    "merchantCategoryCode": "0000",
+    "currency": "986",
+    "country": "BR",
+    "defaultReceiver": "ALIANCA PARK",
+    "defaultCity": "SENADOR CANEDO",
+    "defaultSignalAmount": 1000,
+    "transactionIdPrefix": "RES",
+    "transactionIdFallback": "***"
+  },
+  "ocr": {
+    "tesseractLibraryUrl": "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js",
+    "language": "por",
+    "minimumNameTokenLength": 3,
+    "minimumMatchingNameTokens": 2
+  },
+  "reviewResultCodes": {
+    "humanReview": "revisao-humana",
+    "compatible": "dados-compativeis",
+    "inconclusive": "divergencia-ou-leitura-inconclusiva",
+    "ocrUnavailable": "ocr-indisponivel-revisao-humana"
+  },
+  "reservationStatuses": {
+    "pendingDocumentValidation": "Aguardando validação documental"
+  },
+  "submission": {
+    "brokerLabel": "Site público",
+    "notesTemplate": "Triagem: {reviewResult}; CPF final {cpfLastFour}; Pix {pixTxid}",
+    "missingPixTxid": "não gerado"
+  }
+}

@@ -1,5 +1,7 @@
+import { applyAtlasMapSceneCoverLayout } from "../../dist/frontend/components.js";
+
 /** Applies the existing full-inset cover policy to a MapScene and its layers. */
-export const applyMapSceneCoverLayoutV1 = (scene) => {
+const applyLegacyMapSceneCoverLayoutV1 = (scene) => {
   scene.style.position = scene.style.position || "relative";
   scene.style.overflow = "hidden";
   scene.style.minWidth = "0";
@@ -29,3 +31,7 @@ export const applyMapSceneCoverLayoutV1 = (scene) => {
   scene.dataset.mapCoverLayoutV9 = "full-inset";
   scene.dataset.mapCoverPolicyV9 = "aerial-cover + pan-clamp + resize-lock";
 };
+
+export const applyMapSceneCoverLayoutV1 = scene => typeof applyAtlasMapSceneCoverLayout === "function"
+  ? applyAtlasMapSceneCoverLayout(scene)
+  : applyLegacyMapSceneCoverLayoutV1(scene);

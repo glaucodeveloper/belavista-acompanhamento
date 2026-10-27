@@ -1,8 +1,13 @@
+import * as atlasComponents from "../../dist/frontend/components.js";
+
 /** Installs commercial status and filtering behavior for canonical lot meshes. */
 export const installPublicLotStatusControllerV1 = (
   MapScene,
   { CustomEventImpl = globalThis.CustomEvent } = {},
 ) => {
+  if (typeof atlasComponents.installAtlasPublicLotStatusController === "function")
+    return atlasComponents.installAtlasPublicLotStatusController(MapScene, { CustomEventImpl });
+
   if (!MapScene?.prototype)
     throw new TypeError("Public lot status requires the MapScene class.");
 

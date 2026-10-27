@@ -3,7 +3,10 @@
   "hosting": {
     "public": "dist-pages",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "headers": [{"source": "**/*.@(js|mjs|css)", "headers": [{"key": "Cache-Control", "value": "public,max-age=3600"}]}],
+    "headers": [
+      {"source": "**/*.@(js|mjs|css)", "headers": [{"key": "Cache-Control", "value": "public,max-age=3600"}]},
+      {"source": "dist/frontend/*.js", "headers": [{"key": "Cache-Control", "value": "public,max-age=0,must-revalidate"}]}
+    ],
     "rewrites": [
       {"source": "/leads", "destination": "/public-leads.html"},
       {"source": "/leads/**", "destination": "/public-leads.html"},

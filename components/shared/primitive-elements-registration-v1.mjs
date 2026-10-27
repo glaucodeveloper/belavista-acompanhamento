@@ -1,15 +1,10 @@
-import { GlassCard, StatPill } from "./primitive-elements.mjs";
+import * as atlasPrimitiveComponentsV1 from "../../dist/frontend/components.js";
+import { registerPrimitiveElementsV1 as registerLegacyPrimitiveElementsV1 } from "./primitive-elements-registration-legacy-v1.mjs?v=primitive-elements-recovery-v1";
 
-/** Register shared presentational elements without replacing existing owners. */
-export const registerPrimitiveElementsV1 = ({
-  customElementsRef = globalThis.customElements,
-} = {}) => {
-  if (typeof customElementsRef?.get !== "function" ||
-      typeof customElementsRef?.define !== "function")
-    throw new TypeError("Primitive element registration requires CustomElementRegistry.");
-  if (!customElementsRef.get("glass-card"))
-    customElementsRef.define("glass-card", GlassCard);
-  if (!customElementsRef.get("stat-pill"))
-    customElementsRef.define("stat-pill", StatPill);
-  return Object.freeze({ GlassCard, StatPill });
+/** Keep the existing MJS registration API while preferring the TypeScript owner. */
+export const registerPrimitiveElementsV1 = ({ customElementsRef = globalThis.customElements } = {}) => {
+  const registerTyped = atlasPrimitiveComponentsV1.registerAtlasPrimitiveElementsV1;
+  if (globalThis.BELAVISTA_USE_LEGACY_PRIMITIVE_ELEMENTS_V1 !== true && typeof registerTyped === "function")
+    return registerTyped(customElementsRef);
+  return registerLegacyPrimitiveElementsV1({ customElementsRef });
 };

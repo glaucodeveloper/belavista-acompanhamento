@@ -3,6 +3,10 @@ const form = $('#setup-form');
 const status = $('#setup-status');
 const openInstagram = $('#open-instagram');
 const openAdmin = $('#open-admin');
+const environmentSwitch = $('#environment-switch');
+const environmentLabel = $('#environment-label');
+const environmentDescription = $('#environment-description');
+const environmentToggle = $('#environment-toggle');
 
 async function api(path, init = {}) {
   const response = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init.headers || {}) } });
@@ -31,6 +35,17 @@ async function hydrate() {
   } catch (error) {
     setStatus(error.message, 'error');
   }
+  try {
+    const runtime = await window.aliancaDesktop?.runtime?.();
+    if (!runtime?.availableModes?.includes('router') || !runtime.availableModes.includes('local')) return;
+    environmentSwitch.hidden = false;
+    environmentLabel.textContent = runtime.mode === 'local' ? 'Ambiente de teste local' : 'Ambiente conectado ao Router';
+    environmentDescription.textContent = runtime.mode === 'local'
+      ? 'Gravações ficam isoladas neste computador.'
+      : 'Usa os dados compartilhados pelo Router.';
+    environmentToggle.textContent = runtime.mode === 'local' ? 'Usar Router remoto' : 'Usar teste local';
+    environmentToggle.dataset.nextMode = runtime.mode === 'local' ? 'router' : 'local';
+  } catch { /* O seletor existe só no aplicativo Electron configurado. */ }
 }
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -61,5 +76,17 @@ openInstagram.addEventListener('click', async () => {
 openAdmin.addEventListener('click', () => {
   if (window.aliancaDesktop?.goAdmin) window.aliancaDesktop.goAdmin();
   else window.location.assign('/admin?desktop=ready');
+});
+environmentToggle.addEventListener('click', async () => {
+  const nextMode = environmentToggle.dataset.nextMode;
+  if (!nextMode || !window.aliancaDesktop?.switchEnvironment) return;
+  environmentToggle.disabled = true;
+  setStatus(nextMode === 'local' ? 'Conectando ao ambiente de teste local…' : 'Conectando ao Router…');
+  try {
+    await window.aliancaDesktop.switchEnvironment(nextMode);
+  } catch (error) {
+    setStatus(error.message || 'Não foi possível alternar o ambiente.', 'error');
+    environmentToggle.disabled = false;
+  }
 });
 hydrate();

@@ -19,6 +19,7 @@ export const installStageHomeRecordResourcesApplicationV1 = ({
   demoData,
   stageRecordServices = {},
   installLotDevelopmentRenderGuardV1,
+  useTypescriptRouteV1 = false,
   installers = STAGE_HOME_RECORD_INSTALLERS_V1,
   globalRef = globalThis,
 } = {}) => {
@@ -27,7 +28,7 @@ export const installStageHomeRecordResourcesApplicationV1 = ({
     Node: globalRef.Node,
   });
 
-  installers.installStageHomeRecordResourcesEventsV1(ViewLayer, {
+  if (!useTypescriptRouteV1) installers.installStageHomeRecordResourcesEventsV1(ViewLayer, {
     appStore,
     demoData,
     stageRecordStagesV1: stageRecordServices.stageRecordStagesV1,
@@ -47,12 +48,14 @@ export const installStageHomeRecordResourcesApplicationV1 = ({
     windowRef: globalRef.window,
   });
 
-  installers.installStageHomeRecordResourcesPageV1(ViewLayer, {
-    appStore,
-    documentRef: globalRef.document,
-    stageHomeRecordResourcesMarkupV1: stageRecordServices.stageHomeRecordResourcesMarkupV1,
-  });
-  installers.installStageRecordsNavigationV1(ViewLayer, { appStore });
+  if (!useTypescriptRouteV1) {
+    installers.installStageHomeRecordResourcesPageV1(ViewLayer, {
+      appStore,
+      documentRef: globalRef.document,
+      stageHomeRecordResourcesMarkupV1: stageRecordServices.stageHomeRecordResourcesMarkupV1,
+    });
+    installers.installStageRecordsNavigationV1(ViewLayer, { appStore });
+  }
 
   return Object.freeze({});
 };

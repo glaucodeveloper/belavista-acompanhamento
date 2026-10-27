@@ -1,4 +1,4 @@
-import { createBrokerWorkspaceStatsV1, createCommercialDealsForWorkspaceV1 } from "./commercial-scope-v1.mjs?v=commercial-scope-v2";
+import { createBrokerWorkspaceStatsV1, createCommercialDealsForWorkspaceV1 } from "./commercial-scope-v1.mjs?v=ts-commercial-workspace-projections-v1";
 import { createSalesHistoryPageV1, installCommercialHistoryPageEventsV1 } from "./sales-history-page-v1.mjs?v=sales-history-page-v1";
 import { createBrokerDetailPageV1 } from "./broker-detail-page-v1.mjs?v=broker-detail-page-v1";
 import { installSettingsCommercialWorkspaceV1 } from "./settings-commercial-workspace-v1.mjs?v=dynamic-access-roles-v1";

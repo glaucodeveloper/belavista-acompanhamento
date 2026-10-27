@@ -1,10 +1,13 @@
 import { initializeMapSceneStateV1 } from "./map-scene-state-initializer-v1.mjs";
+import { initializeAtlasMapSceneState, installAtlasMapSceneConnection } from "../../dist/frontend/components.js";
 import { createMapSceneShellMarkupV1 } from "./map-scene-shell-markup-v1.mjs";
 import { applyMapSceneCoverLayoutV1 } from "./map-scene-cover-layout-v1.mjs";
 import { activateMapSceneV1 } from "./map-scene-activation-v1.mjs";
 
 /** Installs the full MapScene connection lifecycle on the custom element. */
 export const installMapSceneConnectionV1 = (MapScene, dependencies = {}) => {
+  if (typeof installAtlasMapSceneConnection === "function")
+    return installAtlasMapSceneConnection(MapScene, dependencies);
   const {
     ADMIN_FIXED_MAP_ROTATION_DEG,
     ADMIN_REFERENCE_AERIAL_INITIAL_SCENE_ZOOM,
@@ -35,7 +38,7 @@ export const installMapSceneConnectionV1 = (MapScene, dependencies = {}) => {
     this.selectedLotIds = new Set();
     this.mapSelectionMode = null;
     this.progressSelectionParts = [];
-    initializeMapSceneStateV1(this, {
+    const mapSceneStateDependencies = {
       ADMIN_FIXED_MAP_ROTATION_DEG,
       ADMIN_REFERENCE_AERIAL_INITIAL_SCENE_ZOOM,
       ADMIN_REFERENCE_AERIAL_VIEW_VERSION,
@@ -47,7 +50,9 @@ export const installMapSceneConnectionV1 = (MapScene, dependencies = {}) => {
       appStore,
       demoData,
       stageOverlayKey,
-    });
+    };
+    if (typeof initializeAtlasMapSceneState === "function") initializeAtlasMapSceneState(this, mapSceneStateDependencies);
+    else initializeMapSceneStateV1(this, mapSceneStateDependencies);
     if (this.hasAttribute("compact")) {
       const full3d = true;
       if (!full3d) {

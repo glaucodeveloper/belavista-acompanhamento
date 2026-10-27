@@ -1,5 +1,15 @@
-/** Bridges map selections to the existing worker-chat context actions. */
-export const createMapAssistantContextActionsV1 = ({
+import * as atlasMapProgramTsV1 from "../../dist/frontend/program.js";
+
+/** Keep the compositor API while the TypeScript program owns assistant context actions. */
+export const createMapAssistantContextActionsV1 = (input = {}) => {
+  const owner = atlasMapProgramTsV1.createPublicMapAssistantContextActions;
+  return typeof owner === "function"
+    ? owner(input)
+    : createMapAssistantContextActionsFallbackV1(input);
+};
+
+/** Legacy behavior stays available until the authenticated MapScene path is revalidated. */
+export const createMapAssistantContextActionsFallbackV1 = ({
   host,
   documentRef,
   commonAreaLabel,

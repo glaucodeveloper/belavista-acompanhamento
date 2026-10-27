@@ -1,0 +1,27 @@
+{
+  "preferenceKey": "belavista.usage-preferences.v1",
+  "defaults": {
+    "defaultPage": "map",
+    "density": "comfortable",
+    "reduceMotion": false,
+    "voiceEnabled": false
+  },
+  "pages": [
+    { "id": "map", "label": "Mapa" },
+    { "id": "control", "label": "Dashboard" },
+    { "id": "stages", "label": "Etapas e Cronograma" },
+    { "id": "materials", "label": "Materiais" },
+    { "id": "documents", "label": "Documentos" },
+    { "id": "leads", "label": "Leads" },
+    { "id": "reports", "label": "Relatórios" }
+  ],
+  "densities": [
+    { "id": "comfortable", "label": "Confortável" },
+    { "id": "compact", "label": "Compacta" }
+  ],
+  "businessDefaults": {
+    "signalAmount": 1000,
+    "pixReceiver": "ALIANCA PARK",
+    "pixCity": "SENADOR CANEDO"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "objectives": ["Moradia", "Investimento", "Veraneio"],
+  "terms": ["24 horas", "48 horas", "7 dias"],
+  "defaultObjective": "Moradia",
+  "defaultTerm": "24 horas"
+}

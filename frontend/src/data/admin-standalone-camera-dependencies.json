@@ -1,0 +1,36 @@
+{
+  "configuration": [
+    "ADMIN_AERIAL_TILE_PREFETCH_RATIO_V2",
+    "ADMIN_AERIAL_TILE_SWAP_RATIO_V2",
+    "ADMIN_AERIAL_ZOOM_TILE_GRID_V1",
+    "ADMIN_AERIAL_ZOOM_TILE_PIXELS_V1",
+    "ADMIN_AERIAL_ZOOM_TILE_ROOT_V1",
+    "ADMIN_STANDALONE_BASE_TILT_DEG_V1",
+    "ADMIN_STANDALONE_DETILT_ZOOM_DELAY_MS_V11",
+    "ADMIN_STANDALONE_DETILT_ZOOM_EASE_MS_V11",
+    "ADMIN_STANDALONE_DETILT_ZOOM_FLOOR_DEG_V10",
+    "ADMIN_STANDALONE_DETILT_ZOOM_FLOOR_RATIO_V10",
+    "ADMIN_STANDALONE_DETILT_ZOOM_OUT_AUTO_USAGE_V12",
+    "ADMIN_STANDALONE_DETILT_ZOOM_OUT_RESERVE_RATIO_V12",
+    "ADMIN_STANDALONE_DETILT_ZOOM_SESSION_GAP_MS_V11",
+    "DASHBOARD_PAN_BOUNDING_SCREEN_RATIO",
+    "MAP_CAMERA_VIEW",
+    "MAX_SCENE_TILT",
+    "MAX_SCENE_ZOOM",
+    "MIN_SCENE_TILT",
+    "MIN_SCENE_ZOOM",
+    "SCENE_MAP_Z"
+  ],
+  "functions": [
+    "runtimeRouteV1",
+    "sceneTiltBoostForView",
+    "readCurrentView"
+  ],
+  "browserFunctions": [
+    "performanceNow",
+    "requestAnimationFrame",
+    "cancelAnimationFrame",
+    "setTimeout",
+    "clearTimeout"
+  ]
+}

@@ -1,51 +1,17 @@
-import './components.js?v=map-area-three-importmap-v1';
-import {apiFetch} from './api-client.mjs';
+let fallbackLoad = null;
 
-const app=document.querySelector('.field-records-app'),form=document.querySelector('.field-record-form'),steps=[...document.querySelectorAll('[data-record-step]')],photoInput=form.elements.photo,preview=document.querySelector('.field-preview'),captureStatus=document.querySelector('.capture-status'),submitStatus=document.querySelector('[data-submit-status]'),progress=form.elements.progress,progressOutput=document.querySelector('[data-progress-output]'),summary=document.querySelector('[data-evidence-summary]'),inferenceCard=document.querySelector('[data-inference-card]'),categoryFields=document.querySelector('[data-category-fields]');
-const inferenceCatalog={
-  'Drenagem Pluvial':{category:'Execução',progress:35,title:'Drenagem pluvial · execução',reason:'Trecho de drenagem identificado no mapa.',fields:[['Trecho executado (m)','trecho','42'],['Diâmetro / material','material','PEAD Ø600 mm'],['Cota de assentamento','cota','1,80 m']]},
-  'Pavimentação':{category:'Execução',progress:45,title:'Pavimentação · frente de serviço',reason:'Trecho viário identificado no mapa.',fields:[['Área executada (m²)','area','620'],['Camada aplicada','camada','Base graduada'],['Espessura (cm)','espessura','15']]},
-  'Terraplanagem':{category:'Execução',progress:55,title:'Terraplanagem · regularização',reason:'Conjunto de lotes identificado no mapa.',fields:[['Volume movimentado (m³)','volume','380'],['Equipamento principal','equipamento','Motoniveladora'],['Grau de compactação (%)','compactacao','98']]},
-  generic:{category:'Execução',progress:0,title:'Evidência de campo',reason:'Foto ou mensagem recebida; revise a classificação antes de confirmar.',fields:[['Unidade de medição','unidade','unidade'],['Quantidade medida','quantidade','0'],['Condição observada','condicao','Em verificação']]}
-};
-const stageIds={'Terraplanagem':'earthwork','Drenagem Pluvial':'drainage','Rede de Água':'water','Rede Elétrica':'electrical','Pavimentação':'paving','Praças / urbanização':'urbanizacao'};
-const parseMapArea=value=>{if(!value)return null;try{return typeof value==='string'?JSON.parse(value):value;}catch{return null;}};
-const mapAreaPartIds=area=>{const ids=Array.isArray(area)?area:Array.isArray(area?.partIds)?area.partIds:area?.partId?[area.partId]:[];return [...new Set(ids.map(value=>String(value||'').trim()).filter(Boolean))];};
-const fieldByName=name=>form?.querySelector?.(`[name="${name}"]`)||form?.elements?.namedItem?.(name);
-const setMapSelectionFields=area=>{const normalized=area&&typeof area==='object'?{...area,partIds:mapAreaPartIds(area)}:null;const mapAreaField=fieldByName('mapArea');const partIdsField=fieldByName('partIds');if(mapAreaField)mapAreaField.value=normalized?JSON.stringify(normalized):'';if(partIdsField)partIdsField.value=normalized?mapAreaPartIds(normalized).join(','):'';if(normalized)form.dataset.mapAreaSync='ready';else delete form.dataset.mapAreaSync;return normalized;};
-const clearMapSelectionFields=()=>setMapSelectionFields(null);
-const setNow=()=>{const now=new Date();form.elements.date.value=now.toISOString().slice(0,10);form.elements.time.value=now.toTimeString().slice(0,5);};
-const setStep=step=>{app.dataset.step=step;steps.forEach(panel=>panel.hidden=panel.dataset.recordStep!==step);window.scrollTo({top:0,behavior:'smooth'});};
-const setEvidence=(title,detail)=>{summary.innerHTML=`<b>${title}</b><span>${detail}</span>`;form.elements.details.value||=(form.elements.chatNote.value||'');};
-const applyInference=stage=>{const item=inferenceCatalog[stage]||inferenceCatalog.generic;form.elements.category.value=item.category;progress.value=String(item.progress);progressOutput.value=`${item.progress}%`;progressOutput.textContent=`${item.progress}%`;inferenceCard.innerHTML=`<span>✦ Inferência operacional</span><b>${item.title}</b><p>${item.reason} Revise os valores antes de confirmar.</p>`;categoryFields.innerHTML=item.fields.map(([label,name,value])=>`<label>${label}<input name="inferred_${name}" value="${value}" maxlength="120"></label>`).join('');form.dataset.inference=item.title;};
-setNow();
-progress.addEventListener('input',()=>{progressOutput.value=`${progress.value}%`;progressOutput.textContent=`${progress.value}%`;});
-document.querySelectorAll('[data-back]').forEach(button=>button.addEventListener('click',()=>setStep(button.dataset.back)));
-document.querySelector('[data-chat-send]')?.addEventListener('click',()=>{const note=form.elements.chatNote.value.trim();captureStatus.dataset.tone=note?'success':'warning';captureStatus.textContent=note?'Mensagem vinculada à evidência. Selecione a área ou foto para continuar.':'Escreva uma mensagem ou selecione uma área do mapa.';});
-document.querySelectorAll('[data-capture-tab]').forEach(tab=>tab.addEventListener('click',()=>{const name=tab.dataset.captureTab;document.querySelectorAll('[data-capture-tab]').forEach(item=>item.setAttribute('aria-selected',String(item===tab)));document.querySelectorAll('[data-capture-panel]').forEach(panel=>panel.hidden=panel.dataset.capturePanel!==name);}));
-const mapNatureToStage={Terraplanagem:'Terraplanagem',Drenagem:'Drenagem Pluvial',Pavimentação:'Pavimentação',Urbanização:'Praças / urbanização'};
-document.querySelector('[data-enable-map-paint]')?.addEventListener('click',()=>{const map=document.querySelector('[data-mobile-record-map]');if(!map?.setRecordPaintMode){captureStatus.dataset.tone='loading';captureStatus.textContent='Preparando a cena 3D…';return;}captureStatus.textContent='';map.setRecordPaintMode(true,area=>{const stage=mapNatureToStage[area.nature]||'Terraplanagem';const syncSelectedArea=()=>{const current=parseMapArea(map.dataset.recordPaintArea)||area;if(!fieldByName('mapArea')?.value)setMapSelectionFields(current);};setMapSelectionFields(area);form.elements.stage.value=stage;form.elements.activity.value=`Registro de progresso · ${area.label}`;applyInference(stage);setEvidence('Área vinculada',area.label);setStep('details');queueMicrotask(syncSelectedArea);setTimeout(syncSelectedArea,0);});captureStatus.dataset.tone='success';captureStatus.textContent='Modo de seleção ativo: toque em um lote, rua ou estrutura.';});
-photoInput.addEventListener('change',()=>{const file=photoInput.files?.[0];if(!file){preview.hidden=true;preview.removeAttribute('src');return;}if(!file.type.startsWith('image/')||file.size>12*1024*1024){photoInput.value='';preview.hidden=true;captureStatus.dataset.tone='warning';captureStatus.textContent='Use uma imagem de até 12 MB.';return;}preview.src=URL.createObjectURL(file);preview.hidden=false;captureStatus.textContent='';delete captureStatus.dataset.tone;const note=form.elements.chatNote.value.toLowerCase(),stage=note.includes('dren')?'Drenagem Pluvial':note.includes('pav')||note.includes('asfalt')?'Pavimentação':note.includes('terra')||note.includes('compact')?'Terraplanagem':'generic';if(stage!=='generic')form.elements.stage.value=stage;form.elements.activity.value||='Evidência fotográfica de campo';applyInference(stage);setEvidence('Fotografia vinculada',file.name);setStep('details');});
-form.addEventListener('submit',async event=>{
-  event.preventDefault();
-  const values=Object.fromEntries(new FormData(form));
-  const selectedArea=parseMapArea(values.mapArea)||parseMapArea(document.querySelector('[data-mobile-record-map]')?.dataset?.recordPaintArea);
-  const partIds=mapAreaPartIds(selectedArea||values.partIds?.split(','));
-  const inferred=[...categoryFields.querySelectorAll('input')].map(input=>`${input.previousSibling?.textContent||input.name}: ${input.value}`).join(' · ');
-  values.details=[values.details,form.dataset.inference?`Inferência: ${form.dataset.inference}.`:null,inferred].filter(Boolean).join('\n');
-  if(!values.activity?.trim()||!values.responsible?.trim()||!values.details?.trim()){submitStatus.dataset.tone='warning';submitStatus.textContent='Preencha atividade, responsável e descrição.';return;}
-  const submit=form.querySelector('[type="submit"]');
-  submit.disabled=true;
-  submitStatus.dataset.tone='loading';
-  submitStatus.textContent='Enviando registro e evidência…';
-  try{
-    const photoDataUrl=photoInput.files?.[0]?await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||''));reader.onerror=()=>reject(reader.error);reader.readAsDataURL(photoInput.files[0]);}):'';
-    const observedAt=`${values.date}T${values.time}:00`;
-    const normalizedMapArea=selectedArea?{...selectedArea,partIds}:null;
-    const response=await apiFetch('/api/records',{method:'POST',headers:{'Content-Type':'application/json','X-Belavista-Role':'foreman','X-Belavista-User':'public-records','X-Belavista-Name':'Registro de campo'},body:JSON.stringify({obra:'Aliança Park',etapa:values.stage,atividade:values.activity,responsavel:values.responsible,detalhes:values.details,data:values.date,hora:values.time,status:values.status||'Em andamento',evidenceUri:values.evidenceUri||'',stageId:stageIds[values.stage]||'earthwork',activity:values.activity,responsible:values.responsible,description:values.details,progress:Number(values.progress)||0,observedAt,photoDataUrl,mapArea:normalizedMapArea?JSON.stringify(normalizedMapArea):'',partIds})});
-    const record=await response.json();
-    if(!response.ok)throw new Error(record.error||'Não foi possível registrar a evidência operacional.');
-    form.reset();clearMapSelectionFields();setNow();progressOutput.value='0%';progressOutput.textContent='0%';preview.hidden=true;preview.removeAttribute('src');categoryFields.replaceChildren();setEvidence('Aguardando evidência','Selecione um segmento ou adicione uma fotografia.');submitStatus.dataset.tone='success';submitStatus.textContent=`Registro confirmado. Protocolo ${record.id} criado.`;
-  }catch(error){submitStatus.dataset.tone='warning';submitStatus.textContent=error?.message||'Não foi possível enviar agora. Verifique a conexão e tente novamente.';console.warn('Falha ao gravar registro de campo.',error);}finally{submit.disabled=false;}
+async function mountLegacyPage() {
+  if (document.documentElement.dataset.publicRecordsOwner === 'mjs-fallback') return;
+  const app = document.querySelector('atlas-public-field-records');
+  const template = document.querySelector<HTMLTemplateElement>('#public-records-legacy-template');
+  await import('./components.js?v=map-area-three-importmap-v1&ts-stage-agenda-application-program-owner-v1&ts-map-coordinate-policy-v1').catch(() => null);
+  if (app && template) app.replaceWith(template.content.cloneNode(true));
+  document.documentElement.dataset.publicRecordsOwner = 'mjs-fallback';
+  await import('./public-records-legacy.js?v=field-records-legacy-v1');
+}
+
+window.addEventListener('atlas:public-records-fallback-requested', () => {
+  fallbackLoad ||= mountLegacyPage().catch(error => {
+    console.error('Falha ao carregar a compatibilidade de Registros Públicos.', error);
+  });
 });
-if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('./sw.js').catch(console.warn);

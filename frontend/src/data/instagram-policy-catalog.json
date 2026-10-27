@@ -1,0 +1,31 @@
+{
+  "presets": {
+    "acolhedora": {
+      "label": "Acolhedora",
+      "tone": "acolhedor e objetivo",
+      "instructions": "Agradeça o comentário, responda somente com informações confirmadas do empreendimento e convide a pessoa a falar com a equipe para detalhes de lote e condições."
+    },
+    "comercial": {
+      "label": "Comercial",
+      "tone": "comercial e consultivo",
+      "instructions": "Reconheça a intenção, destaque a possibilidade de conhecer os lotes e peça apenas a informação necessária para encaminhar o atendimento comercial."
+    },
+    "institucional": {
+      "label": "Institucional",
+      "tone": "institucional e claro",
+      "instructions": "Responda com linguagem institucional, sem prometer preço, reserva, aprovação ou prazo, e direcione dúvidas específicas para a equipe responsável."
+    },
+    "visita": {
+      "label": "Visita",
+      "tone": "prático e convidativo",
+      "instructions": "Agradeça o interesse, convide para conhecer o empreendimento em Amargosa e peça o melhor canal ou horário para a equipe retornar."
+    }
+  },
+  "default": {
+    "preset": "acolhedora",
+    "tone": "acolhedor e objetivo",
+    "instructions": "Agradeça o comentário, responda somente com informações confirmadas do empreendimento e convide a pessoa a falar com a equipe para detalhes de lote e condições.",
+    "autoDraft": true,
+    "requireApproval": true
+  }
+}

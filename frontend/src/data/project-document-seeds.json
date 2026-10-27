@@ -1,0 +1,49 @@
+[
+  {
+    "id": "doc-proj-exec",
+    "title": "Projeto executivo",
+    "category": "Projeto e planta",
+    "code": "",
+    "issuer": "",
+    "documentDate": "",
+    "description": "Compatibilização geométrica e executiva das redes e vias.",
+    "sourceMaterialId": "proj-exec",
+    "fileName": "",
+    "fileSize": 0,
+    "fileType": "",
+    "createdAt": "",
+    "updatedAt": ""
+  },
+  {
+    "id": "doc-proj-licenses",
+    "title": "Liberações / licenças",
+    "category": "Licença e aprovação",
+    "code": "",
+    "issuer": "",
+    "documentDate": "",
+    "description": "Documentação anterior à abertura das frentes.",
+    "sourceMaterialId": "proj-licenses",
+    "fileName": "",
+    "fileSize": 0,
+    "fileType": "",
+    "createdAt": "",
+    "updatedAt": ""
+  },
+  {
+    "id": "doc-presentation-v3",
+    "title": "Apresentação do loteamento",
+    "category": "Institucional",
+    "code": "V3",
+    "issuer": "Aliança Park",
+    "documentDate": "",
+    "description": "Apresentação geral do empreendimento em PDF.",
+    "sourceMaterialId": "",
+    "fileName": "alianca-park-apresentacao-loteamento-v3.pdf",
+    "fileSize": 11334230,
+    "fileType": "application/pdf",
+    "sourceUrl": "/assets/public/alianca-park-apresentacao-loteamento-v3.pdf",
+    "builtIn": true,
+    "createdAt": "",
+    "updatedAt": ""
+  }
+]

@@ -26,10 +26,14 @@ export function applyUsagePreferences(preferences = readUsagePreferences()) {
   }
 }
 
-export function installUsageSettings({ViewLayer, appStore, readIntegrationSettings, integrationKey}) {
-  applyUsagePreferences();
+export function installUsageSettings({ViewLayer, appStore, readIntegrationSettings, integrationKey, readUsagePreferencesV1 = readUsagePreferences, applyUsagePreferencesV1 = applyUsagePreferences}) {
+  const activePreferences = readUsagePreferencesV1();
+  applyUsagePreferencesV1(activePreferences);
+  // Atlas Settings owns this route in TypeScript. Keep the renderer below only
+  // for hosts that have not registered the typed custom element.
+  if (globalThis.customElements?.get?.('atlas-settings')) return ViewLayer;
   ViewLayer.prototype.settings = function () {
-    const prefs = readUsagePreferences();
+    const prefs = activePreferences;
     const business = {...(readIntegrationSettings() || {}), ...(appStore.get().integrationSettings || {})};
     const field = (label, name, value, type='text', extra='') => `<label>${label}<input name="${name}" type="${type}" value="${esc(value)}" ${extra}></label>`;
     return `<section class="usage-settings-page"><header><span class="activity-kind">PREFERÊNCIAS E DADOS DO EMPREENDIMENTO</span><h1>Configurações de uso</h1><p>Personalize a interface e os dados usados no atendimento. As preferências são salvas neste navegador.</p></header><form data-usage-settings-form><fieldset><legend>Minha experiência</legend><label>Página ao abrir<select name="defaultPage">${Object.entries(pages).map(([id,label])=>`<option value="${id}" ${prefs.defaultPage===id?'selected':''}>${label}</option>`).join('')}</select></label><label>Densidade das tabelas<select name="density"><option value="comfortable" ${prefs.density==='comfortable'?'selected':''}>Confortável</option><option value="compact" ${prefs.density==='compact'?'selected':''}>Compacta</option></select></label><label class="usage-check"><input name="reduceMotion" type="checkbox" ${prefs.reduceMotion?'checked':''}>Reduzir animações</label><label class="usage-check"><input name="voiceEnabled" type="checkbox" ${prefs.voiceEnabled?'checked':''}>Ouvir respostas do assistente</label></fieldset><fieldset><legend>Contato e avisos</legend>${field('WhatsApp para atendimento','whatsappNumber',business.whatsappNumber || '', 'tel')}${field('Conta do Instagram','instagramAccount',business.instagramAccount || '')}<label class="usage-check"><input name="autoNotify" type="checkbox" ${business.autoNotify?'checked':''}>Receber avisos de caixa e materiais</label></fieldset><fieldset><legend>Reserva e recebimento</legend>${field('Chave Pix','pixKey',business.pixKey || '')}${field('Valor do sinal (R$)','signalAmount',business.signalAmount ?? 1000,'number','min="0" step="0.01" required')}${field('Nome do recebedor','pixReceiver',business.pixReceiver || 'ALIANCA PARK','text','maxlength="25" required')}${field('Cidade do recebedor','pixCity',business.pixCity || 'SENADOR CANEDO','text','maxlength="15" required')}</fieldset><footer><span role="status" data-usage-settings-status aria-live="polite"></span><button type="submit">Salvar preferências</button></footer></form></section>`;

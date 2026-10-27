@@ -1,4 +1,4 @@
-import {appStore,demoData,reportCatalog} from './state.js?v=site-materials-8';
+import {appStore,demoData,reportCatalog} from './state.js?v=site-materials-8&ts-state-catalogs-program-owner-v1';
 
 const AppSidebar=customElements.get('app-sidebar');
 const ViewLayer=customElements.get('view-layer');

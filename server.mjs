@@ -49,7 +49,11 @@ const {extractLocalRecordOcr}=await import('./local-record-ocr.mjs');
 const {buildRecordInterpretationV1}=await import('./record-stage-interpretation-v1.mjs');
 const {getCamofoxBridgeStatus,openInstagramInbox,fallbackInstagramDraft}=await import('./desktop/instagram-bridge.mjs');
 const {listInstagramFeed,replyInstagramComment,defaultInstagramAutomationPolicy}=await import('./worker/src/social.js');
-const {isLocalDevelopmentRequest,listStageMilestones,milestoneImage,startStageMilestoneRun}=await import('./dev-stage-milestones.mjs');
+const developmentMilestones=await import('./dev-stage-milestones.mjs').catch(()=>null);
+const isLocalDevelopmentRequest=developmentMilestones?.isLocalDevelopmentRequest||(()=>false);
+const listStageMilestones=developmentMilestones?.listStageMilestones||(()=>[]);
+const milestoneImage=developmentMilestones?.milestoneImage||(()=>null);
+const startStageMilestoneRun=developmentMilestones?.startStageMilestoneRun||(()=>null);
 
 // A mesma fonte legível pelo time fica incorporada ao prompt operacional. Isso
 // evita que a interface, o worker e o modelo mantenham ordens de execução
@@ -174,12 +178,12 @@ function inferredToolCalls(message){
   return calls.slice(0,4);
 }
 
-async function body(req,maxBytes=16_000_000){ let data='',size=0; for await (const chunk of req){size+=chunk.length;if(size>maxBytes){const error=new Error('Corpo da requisição excede o limite permitido.');error.statusCode=413;throw error;}data+=chunk;} return JSON.parse(data||'{}'); }
+async function body(req,maxBytes=16_000_000){ let data='',size=0,exceeded=false; for await (const chunk of req){size+=chunk.length;if(size>maxBytes){exceeded=true;continue;}if(!exceeded)data+=chunk;} if(exceeded){const error=new Error('Corpo da requisição excede o limite permitido.');error.statusCode=413;throw error;} return JSON.parse(data||'{}'); }
 async function rawBody(req,maxBytes=16_000_000){ const chunks=[]; let size=0; for await (const chunk of req){size+=chunk.length;if(size>maxBytes){const error=new Error('Corpo da requisição excede o limite permitido.');error.statusCode=413;throw error;}chunks.push(chunk);} return Buffer.concat(chunks); }
 const recordRoles=['owner','admin','foreman','sales','commercial','broker','corretor'];
 const limitedApiPublicPaths=new Set(['/api/health','/api/runtime','/api/ai/status','/api/inference/status','/api/ai/tools','/api/public/catalog','/api/auth/session']);
 async function authorizeApiSurface(req,pathname){
-  if(!pathname.startsWith('/api/')||limitedApiPublicPaths.has(pathname)||pathname.startsWith('/api/public/'))return;
+  if(!pathname.startsWith('/api/')||limitedApiPublicPaths.has(pathname)||pathname.startsWith('/api/public/')||(pathname==='/api/desktop/setup'&&isLoopbackRequest(req)))return;
   const actor=await requestActor(req);
   const url=new URL(req.url,'http://localhost');
   if(!limitedActorCanAccessApi(actor,pathname,req.method,url.search))throw Object.assign(new Error('Este perfil só pode acessar registros e a linha do tempo do cronograma.'),{statusCode:403});
@@ -189,7 +193,9 @@ async function githubAuthApi(req,res,pathname){
   const token=String(req.headers.authorization||'').match(/^Bearer\s+(.+)$/i)?.[1];
   if(pathname==='/api/auth/session'){
     if(req.method==='POST'){
-      const payload=await body(req,2048);
+      // PATs can be several kilobytes. Keep a bounded auth-specific limit,
+      // while allowing the complete credential to reach repository validation.
+      const payload=await body(req,64*1024);
       return send(res,201,await openGithubSession(payload.pat),{'Cache-Control':'no-store'});
     }
     if(req.method==='GET')return send(res,200,{actor:await actorFromGithubSession(token)},{'Cache-Control':'no-store'});

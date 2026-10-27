@@ -3,6 +3,7 @@ import {mkdirSync,writeFileSync,unlinkSync,existsSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import developmentSeedData from './data/development-seed.json' with {type:'json'};
+import stageDestinationsCatalogData from './frontend/src/data/stage-destinations.json' with {type:'json'};
 import {REPASSE_PRICE_CATALOG} from './repasse-price-catalog.mjs';
 
 const normalizedLotKey=value=>{const raw=String(value||'').trim().toLocaleUpperCase('pt-BR').replace(/\s+/g,'');const match=raw.match(/^([A-Z]+)-?(\d+)$/);return match?`${match[1]}-${Number(match[2])}`:raw;};
@@ -536,6 +537,26 @@ db.prepare(`INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES(8
 db.prepare(`INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES(9,?)`).run(new Date().toISOString());
 db.prepare(`INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES(3,?)`).run(new Date().toISOString());
 const now=()=>new Date().toISOString();
+const stageDestinations=Array.isArray(stageDestinationsCatalogData.destinations)?stageDestinationsCatalogData.destinations:[];
+const officeStageDestination=stageDestinations.find(item=>item?.key==='office'&&item?.name==='Escritório');
+function ensureOfficeStageDestinationV1(){
+  if(!officeStageDestination||!db.prepare(`SELECT 1 FROM projects WHERE id=?`).get(applicationProjectId))return null;
+  let stage=db.prepare(`SELECT id,name FROM stages WHERE project_id=? AND lower(name)=lower(?)`).get(applicationProjectId,officeStageDestination.name);
+  if(!stage){
+    const id=Number(db.prepare(`SELECT COALESCE(MAX(id),0)+1 AS id FROM stages`).get()?.id||1);
+    db.prepare(`INSERT INTO stages(id,project_id,name,status,progress,week,owner) VALUES(?,?,?,?,?,?,?)`).run(id,applicationProjectId,officeStageDestination.name,'planejado',0,'Apoio administrativo','Equipe administrativa');
+    stage={id,name:officeStageDestination.name};
+  }
+  const activityName='Nota / atividade administrativa';
+  const activityExists=db.prepare(`SELECT 1 FROM activities WHERE stage_id=? AND lower(name)=lower(?)`).get(stage.id,activityName);
+  if(!activityExists){
+    const activityId=`activity-office-${stage.id}-admin-note`;
+    db.prepare(`INSERT OR IGNORE INTO activities(id,name,stage_id,category,status,progress,owner_id) VALUES(?,?,?,?,?,?,?)`)
+      .run(activityId,activityName,stage.id,'Administrativa','planejado',0,null);
+  }
+  return stage;
+}
+ensureOfficeStageDestinationV1();
 const hasOperationalRows=()=>db.prepare(`
   SELECT name FROM sqlite_master
   WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name<>'schema_migrations'
@@ -580,6 +601,7 @@ const seed=()=>{
   db.prepare(`INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES(?,?)`).run(2,timestamp);
 };
 seed();
+    ensureOfficeStageDestinationV1();
     db.exec('COMMIT');
     return {status:'seeded',reason:'clean-development-database'};
   }catch(error){
@@ -654,15 +676,32 @@ export function listActivities(){
     LEFT JOIN stages s ON s.id=a.stage_id
     ORDER BY a.stage_id,a.name`).all().map(row=>({...row,properties:JSON.parse(row.propertiesJson||'{}')}));
 }
-for(const [column,definition] of [['notes',"TEXT NOT NULL DEFAULT ''"],['material_ids_json',"TEXT NOT NULL DEFAULT '[]'"]])
+for(const [column,definition] of [['notes',"TEXT NOT NULL DEFAULT ''"],['material_ids_json',"TEXT NOT NULL DEFAULT '[]'"],['agenda_metadata_json',"TEXT NOT NULL DEFAULT '{}'"]])
   try{db.exec(`ALTER TABLE agenda_events ADD COLUMN ${column} ${definition}`);}catch(error){if(!/duplicate column name/i.test(error.message))throw error;}
 const agendaSelect=`SELECT id,source_type AS sourceType,source_id AS sourceId,title,stage_key AS stageKey,
   stage_name AS stageName,activity_id AS activityId,activity_name AS activityName,owner,
   event_date AS date,start_time AS start,duration_hours AS durationHours,span_days AS spanDays,
-  status,related_from AS relatedFrom,notes,material_ids_json AS materialIdsJson,user_edited AS userEdited,hidden,updated_at AS updatedAt FROM agenda_events`;
+  status,related_from AS relatedFrom,notes,material_ids_json AS materialIdsJson,
+  agenda_metadata_json AS agendaMetadataJson,user_edited AS userEdited,hidden,updated_at AS updatedAt FROM agenda_events`;
 export function listAgendaEvents(){
   return db.prepare(`${agendaSelect} WHERE hidden=0 ORDER BY event_date,start_time,id`).all()
-    .map(({hidden,userEdited,materialIdsJson,...event})=>({...event,materialIds:JSON.parse(materialIdsJson||'[]'),userEdited:Boolean(userEdited)}));
+    .map(({hidden,userEdited,materialIdsJson,agendaMetadataJson,...event})=>{
+      let metadata={};
+      try{metadata=JSON.parse(agendaMetadataJson||'{}');}catch{}
+      return {...event,...(metadata&&typeof metadata==='object'&&!Array.isArray(metadata)?metadata:{}),materialIds:JSON.parse(materialIdsJson||'[]'),userEdited:Boolean(userEdited)};
+    });
+}
+function normalizeAgendaMetadata(input){
+  const list=value=>Array.isArray(value)?value.map(item=>asText(item).trim().slice(0,240)).filter(Boolean).slice(0,100):String(value||'').split(/\r?\n/).map(item=>item.trim().slice(0,240)).filter(Boolean).slice(0,100);
+  const offset=Number(input?.notificationOffsetMinutes??30);
+  return {
+    requirements:list(input?.requirements),materials:list(input?.materials),
+    customStatus:asText(input?.customStatus).slice(0,120),
+    cancellationReason:asText(input?.cancellationReason).slice(0,1000),
+    cancelledAt:asText(input?.cancelledAt).slice(0,40),
+    cancellationConfirmed:input?.cancellationConfirmed===true,
+    notificationOffsetMinutes:Number.isFinite(offset)?Math.max(0,Math.min(1440,Math.round(offset))):30,
+  };
 }
 export function saveAgendaSnapshot(events){
   if(!Array.isArray(events)||events.length>10000)throw Object.assign(new Error('Lista da agenda inválida.'),{statusCode:400});
@@ -671,22 +710,28 @@ export function saveAgendaSnapshot(events){
     const durationHours=Number(input?.durationHours??1),spanDays=Number(input?.spanDays??1);
     if(!/^[a-zA-Z0-9_-]+$/.test(id)||!title||!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(`${date}T00:00:00Z`))||!/^([01]\d|2[0-3]):[0-5]\d$/.test(start)||!Number.isFinite(durationHours)||durationHours<0.5||durationHours>24||!Number.isInteger(spanDays)||spanDays<1||spanDays>366)
       throw Object.assign(new Error('Compromisso inválido: título, data, horário e duração são obrigatórios.'),{statusCode:400});
-    return {id,title,stageKey:asText(input.stageKey).slice(0,160),stageName:asText(input.stageName).slice(0,160),activityId:asText(input.activityId).slice(0,160),activityName:asText(input.activityName).slice(0,240),owner:asText(input.owner).slice(0,160),date,start,durationHours,spanDays,status:asText(input.status,'Planejado').slice(0,80),relatedFrom:asText(input.relatedFrom).slice(0,160),notes:asText(input.notes).slice(0,2000),materialIdsJson:JSON.stringify(Array.isArray(input.materialIds)?input.materialIds.map(value=>asText(value).slice(0,160)).slice(0,100):[])};
+    return {id,title,stageKey:asText(input.stageKey).slice(0,160),stageName:asText(input.stageName).slice(0,160),activityId:asText(input.activityId).slice(0,160),activityName:asText(input.activityName).slice(0,240),owner:asText(input.owner).slice(0,160),date,start,durationHours,spanDays,status:asText(input.status,'Planejado').slice(0,80),relatedFrom:asText(input.relatedFrom).slice(0,160),notes:asText(input.notes).slice(0,2000),materialIdsJson:JSON.stringify(Array.isArray(input.materialIds)?input.materialIds.map(value=>asText(value).slice(0,160)).slice(0,100):[]),agendaMetadataJson:JSON.stringify(normalizeAgendaMetadata(input))};
   });
   if(new Set(normalized.map(item=>item.id)).size!==normalized.length)throw Object.assign(new Error('IDs duplicados na agenda.'),{statusCode:400});
-  const current=db.prepare(`${agendaSelect}`).all(),byId=new Map(current.map(item=>[item.id,item]));
+  const current=db.prepare(`${agendaSelect}`).all(),byId=new Map(current.map(item=>[item.id,item])),inputById=new Map(events.map(input=>[asText(input?.id).slice(0,160),input]));
   db.exec('BEGIN IMMEDIATE');
   try{
     for(const item of normalized){
       const previous=byId.get(item.id);
       if(previous){
+        let previousMetadata={},nextMetadata=JSON.parse(item.agendaMetadataJson||'{}');
+        try{previousMetadata=JSON.parse(previous.agendaMetadataJson||'{}');}catch{}
+        const raw=inputById.get(item.id)||{};
+        for(const key of ['requirements','materials','customStatus','cancellationReason','cancelledAt','cancellationConfirmed','notificationOffsetMinutes'])
+          if(!Object.prototype.hasOwnProperty.call(raw,key)&&Object.prototype.hasOwnProperty.call(previousMetadata,key))nextMetadata[key]=previousMetadata[key];
+        item.agendaMetadataJson=JSON.stringify(nextMetadata);
         if(!previous.hidden&&Object.entries(item).every(([key,value])=>previous[key]===value))continue;
-        db.prepare(`UPDATE agenda_events SET title=?,stage_key=?,stage_name=?,activity_id=?,activity_name=?,owner=?,event_date=?,start_time=?,duration_hours=?,span_days=?,status=?,related_from=?,notes=?,material_ids_json=?,user_edited=1,hidden=0,updated_at=? WHERE id=?`)
-          .run(item.title,item.stageKey,item.stageName,item.activityId,item.activityName,item.owner,item.date,item.start,item.durationHours,item.spanDays,item.status,item.relatedFrom,item.notes,item.materialIdsJson,now(),item.id);
+        db.prepare(`UPDATE agenda_events SET title=?,stage_key=?,stage_name=?,activity_id=?,activity_name=?,owner=?,event_date=?,start_time=?,duration_hours=?,span_days=?,status=?,related_from=?,notes=?,material_ids_json=?,agenda_metadata_json=?,user_edited=1,hidden=0,updated_at=? WHERE id=?`)
+          .run(item.title,item.stageKey,item.stageName,item.activityId,item.activityName,item.owner,item.date,item.start,item.durationHours,item.spanDays,item.status,item.relatedFrom,item.notes,item.materialIdsJson,item.agendaMetadataJson,now(),item.id);
         audit.run('agenda_events',item.id,'updated',JSON.stringify(item),now());
       }else{
-        db.prepare(`INSERT INTO agenda_events(id,source_type,title,stage_key,stage_name,activity_id,activity_name,owner,event_date,start_time,duration_hours,span_days,status,related_from,notes,material_ids_json,user_edited,updated_at) VALUES(?,'manual',?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?)`)
-          .run(item.id,item.title,item.stageKey,item.stageName,item.activityId,item.activityName,item.owner,item.date,item.start,item.durationHours,item.spanDays,item.status,item.relatedFrom,item.notes,item.materialIdsJson,now());
+        db.prepare(`INSERT INTO agenda_events(id,source_type,title,stage_key,stage_name,activity_id,activity_name,owner,event_date,start_time,duration_hours,span_days,status,related_from,notes,material_ids_json,agenda_metadata_json,user_edited,updated_at) VALUES(?,'manual',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?)`)
+          .run(item.id,item.title,item.stageKey,item.stageName,item.activityId,item.activityName,item.owner,item.date,item.start,item.durationHours,item.spanDays,item.status,item.relatedFrom,item.notes,item.materialIdsJson,item.agendaMetadataJson,now());
         audit.run('agenda_events',item.id,'created',JSON.stringify(item),now());
       }
     }
@@ -1129,6 +1174,7 @@ export function createCashFlowEntry(input={}){
   const id=asText(input.id)||`CX-${Date.now().toString(36).toUpperCase()}`,timestamp=now(),kind=asText(input.kind,'saida')==='entrada'?'entrada':'saida';
   const amountCents=Math.max(0,Math.round(Number(input.amountCents)||0));
   let lotKey=asText(input.lotKey).trim();
+  let stageName=asText(input.stage).trim();
   const saleId=asText(input.saleId).trim(),brokerName=asText(input.brokerName).trim(),repasseReasonId=asText(input.repasseReasonId).trim();
   const catalogLot=priceCatalogLot(lotKey);
   if(lotKey&&(!catalogLot||kind!=='entrada'))throw Object.assign(new Error('A entrada deve estar vinculada a um lote válido da tabela de preços.'),{statusCode:400});
@@ -1143,6 +1189,10 @@ export function createCashFlowEntry(input={}){
     if(!rule||!rule.active)throw Object.assign(new Error('Configure uma regra ativa de comissão para o corretor antes de registrar o repasse.'),{statusCode:400});
     const reason=db.prepare(`SELECT active FROM commission_reasons WHERE id=?`).get(repasseReasonId);
     if(!reason||!reason.active)throw Object.assign(new Error('Selecione uma razão de repasse ativa.'),{statusCode:400});
+    stageName=stageName||officeStageDestination?.name||'';
+    const stage=db.prepare(`SELECT name FROM stages WHERE project_id=? AND lower(name)=lower(?)`).get(applicationProjectId,stageName);
+    if(!stage)throw Object.assign(new Error('Selecione uma etapa de destino cadastrada para o repasse.'),{statusCode:400});
+    stageName=stage.name;
   }
   if(!Number.isSafeInteger(amountCents)||amountCents<=0)throw Object.assign(new Error('Informe um valor de caixa maior que zero.'),{statusCode:400});
   const attachment=parseCashAttachment(input);
@@ -1152,7 +1202,7 @@ export function createCashFlowEntry(input={}){
   const fiscalIssuer=asText(input.fiscalIssuer);
   const fiscalIssueDate=asText(input.fiscalIssueDate);
   if(fiscalStatus==='conferido'&&(!fiscalDocumentType||!fiscalDocumentNumber||!fiscalIssuer||!fiscalIssueDate||!attachment))throw Object.assign(new Error('Conferência fiscal exige tipo, número, emitente, data e documento anexado.'),{statusCode:400});
-  db.prepare(`INSERT INTO cash_flow_entries(id,entry_date,kind,lot_key,category,stage,description,amount_cents,sale_id,broker_name,repasse_reason_id,fiscal_document_type,fiscal_document_number,fiscal_issuer,fiscal_issue_date,fiscal_status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,asText(input.date,new Date().toISOString().slice(0,10)),kind,lotKey,asText(input.category),asText(input.stage),asText(input.description),amountCents,saleId,brokerName,repasseReasonId,fiscalDocumentType,fiscalDocumentNumber,fiscalIssuer,fiscalIssueDate,fiscalStatus,timestamp);
+  db.prepare(`INSERT INTO cash_flow_entries(id,entry_date,kind,lot_key,category,stage,description,amount_cents,sale_id,broker_name,repasse_reason_id,fiscal_document_type,fiscal_document_number,fiscal_issuer,fiscal_issue_date,fiscal_status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,asText(input.date,new Date().toISOString().slice(0,10)),kind,lotKey,asText(input.category),stageName,asText(input.description),amountCents,saleId,brokerName,repasseReasonId,fiscalDocumentType,fiscalDocumentNumber,fiscalIssuer,fiscalIssueDate,fiscalStatus,timestamp);
   if(attachment){
     const ext=attachment.ext,base=attachment.fileName.toLowerCase().endsWith(ext)?attachment.fileName:`${attachment.fileName}${ext}`,storagePath=join(cashFlowAttachmentsRoot,`${id}-${base}`),attachmentId=`CXA-${Date.now().toString(36).toUpperCase()}`;
     try{
@@ -1164,11 +1214,11 @@ export function createCashFlowEntry(input={}){
       throw error;
     }
   }
-  audit.run('cash_flow_entries',id,'created',JSON.stringify({kind,lotKey,amountCents,stage:asText(input.stage),fiscalStatus,fiscalDocumentType,fiscalDocumentNumber}),timestamp);
+  audit.run('cash_flow_entries',id,'created',JSON.stringify({kind,lotKey,amountCents,stage:stageName,fiscalStatus,fiscalDocumentType,fiscalDocumentNumber}),timestamp);
   return listCashFlowEntries().find(row=>row.id===id);
 }
 export function updateRepasseEntryV1(id,input={}){
-  const entryId=asText(id),current=db.prepare(`SELECT id,sale_id AS saleId FROM cash_flow_entries WHERE id=? AND sale_id<>''`).get(entryId);
+  const entryId=asText(id),current=db.prepare(`SELECT id,sale_id AS saleId,stage FROM cash_flow_entries WHERE id=? AND sale_id<>''`).get(entryId);
   if(!current)throw Object.assign(new Error('Entrada de repasse não encontrada.'),{statusCode:404});
   const sale=db.prepare(`SELECT id,lot,broker FROM commercial_sales WHERE id=?`).get(current.saleId);
   const lot=priceCatalogLot(input.lotKey),brokerName=asText(input.brokerName).trim(),reasonId=asText(input.repasseReasonId).trim(),amountCents=Math.round(Number(input.amountCents)||0),date=asText(input.date);
@@ -1181,9 +1231,12 @@ export function updateRepasseEntryV1(id,input={}){
   if(!Number.isSafeInteger(amountCents)||amountCents<=0)throw Object.assign(new Error('Informe um valor recebido maior que zero.'),{statusCode:400});
   const parsedDate=/^\d{4}-\d{2}-\d{2}$/.test(date)?new Date(`${date}T12:00:00Z`):null;
   if(!parsedDate||Number.isNaN(parsedDate.valueOf())||parsedDate.toISOString().slice(0,10)!==date)throw Object.assign(new Error('Informe uma data de recebimento válida.'),{statusCode:400});
+  const requestedStage=asText(input.stage,current.stage||officeStageDestination?.name||'').trim();
+  const destinationStage=db.prepare(`SELECT name FROM stages WHERE project_id=? AND lower(name)=lower(?)`).get(applicationProjectId,requestedStage);
+  if(!destinationStage)throw Object.assign(new Error('Selecione uma etapa de destino cadastrada para o repasse.'),{statusCode:400});
   const timestamp=now();
-  db.prepare(`UPDATE cash_flow_entries SET entry_date=?,lot_key=?,category='Repasse',description=?,amount_cents=?,broker_name=?,repasse_reason_id=? WHERE id=?`).run(date,lot.label,asText(input.description),amountCents,brokerName,reasonId,entryId);
-  audit.run('cash_flow_entries',entryId,'repasse-updated',JSON.stringify({saleId:sale.id,lotKey:lot.label,brokerName,repasseReasonId:reasonId,amountCents}),timestamp);
+  db.prepare(`UPDATE cash_flow_entries SET entry_date=?,lot_key=?,stage=?,category='Repasse',description=?,amount_cents=?,broker_name=?,repasse_reason_id=? WHERE id=?`).run(date,lot.label,destinationStage.name,asText(input.description),amountCents,brokerName,reasonId,entryId);
+  audit.run('cash_flow_entries',entryId,'repasse-updated',JSON.stringify({saleId:sale.id,lotKey:lot.label,stage:destinationStage.name,brokerName,repasseReasonId:reasonId,amountCents}),timestamp);
   return listCashFlowEntries().find(row=>row.id===entryId);
 }
 export function deleteRepasseEntryV1(id){
@@ -1231,7 +1284,7 @@ export function updateCommissionReason(id,input={}){
 const repassePlanSelect=`SELECT sale_id AS saleId,contract_price_cents AS contractPriceCents,annual_interest_percent AS annualInterestPercent,monthly_installments AS monthlyInstallments,semiannual_installments AS semiannualInstallments,semiannual_principal_percent AS semiannualPrincipalPercent,monthly_first_due_date AS monthlyFirstDueDate,semiannual_first_due_date AS semiannualFirstDueDate,updated_at AS updatedAt FROM repasse_sale_plans`;
 export function listRepasseOperationsV1(){
   const entries=listCashFlowEntries(),sales=listCommercialSales(),brokerRules=db.prepare(`SELECT broker_name AS brokerName,lot_key AS lotKey,commission_percent AS commissionPercent,active,updated_at AS updatedAt FROM repasse_broker_rules ORDER BY broker_name COLLATE NOCASE,lot_key COLLATE NOCASE`).all().map(row=>({...row,active:Boolean(row.active)})),plans=db.prepare(`${repassePlanSelect} ORDER BY sale_id`).all();
-  return {sales:sales.map(sale=>({...sale,tablePrice:priceCatalogLot(sale.lot),plan:plans.find(plan=>plan.saleId===sale.id)||null,brokerRule:brokerRules.find(rule=>rule.brokerName.toLocaleLowerCase('pt-BR')===String(sale.broker||'').toLocaleLowerCase('pt-BR')&&normalizedLotKey(rule.lotKey)===normalizedLotKey(sale.lot))||null,receipts:entries.filter(entry=>entry.saleId===sale.id&&entry.kind==='entrada')})),entries:entries.filter(entry=>entry.saleId),brokerRules,reasons:listCommissionReasons()};
+  return {sales:sales.map(sale=>({...sale,tablePrice:priceCatalogLot(sale.lot),plan:plans.find(plan=>plan.saleId===sale.id)||null,brokerRule:brokerRules.find(rule=>rule.brokerName.toLocaleLowerCase('pt-BR')===String(sale.broker||'').toLocaleLowerCase('pt-BR')&&normalizedLotKey(rule.lotKey)===normalizedLotKey(sale.lot))||null,receipts:entries.filter(entry=>entry.saleId===sale.id&&entry.kind==='entrada')})),entries:entries.filter(entry=>entry.saleId),brokerRules,reasons:listCommissionReasons(),stages:listStagesAdmin().map(stage=>({id:stage.id,name:stage.name}))};
 }
 export function saveRepasseBrokerRuleV1(input={}){
   const brokerName=asText(input.brokerName).trim(),lotKey=asText(input.lotKey).trim(),commissionPercent=Number(input.commissionPercent);

@@ -1,8 +1,10 @@
 .tokensave
 .env
+desktop-runtime-config.json
 node_modules/
 dist/
 dist-pages/
+desktop-release/
 .firebase/
 .belavista-backup/
 .belavista-probe/

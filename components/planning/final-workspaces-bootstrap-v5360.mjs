@@ -1,83 +1,39 @@
-import { installDashboardFinalWorkspaceEventsV1 } from "./dashboard-final-workspaces-events-v1.mjs?v=dashboard-final-workspaces-events-v1";
-import { createFinalStageCalendarPageV5360 } from "./final-stage-calendar-page-v5360.mjs?v=final-stage-calendar-page-v5360";
-import { createFinalOperationalRecordsPageV5360 } from "../records/final-operational-records-page-v5360.mjs?v=final-operational-records-page-v5360";
-import {
-  recordStageV5360,
-  activityPeriodV5360,
-  toneV5360,
-} from "../shared/final-workspace-formatters-v5360.mjs?v=final-workspace-formatters-v5360";
+// TS-first registration adapter for the final stage calendar workspace.
+const program = await import('../../dist/frontend/program.js').catch(() => null);
+const useTypeScript = typeof program?.installAtlasFinalWorkspacesV5360 === 'function';
+const legacy = useTypeScript ? null : await import('./final-workspaces-bootstrap-legacy-v5360.mjs?v=final-workspaces-recovery-v1').catch(() => null);
 
-/** Register the final workspace owner for execution after deferred extensions. */
-export const installBelavistaFinalWorkspacesBootstrapV5360 = ({
-  globalRef,
-  ViewLayer,
-  appStore,
-  demoData,
-  commissionDeals,
-  esc,
-  ico,
-  apiFetch,
-  operationalHeaders,
-  notify,
-  windowRef = globalRef.window,
-  DateCtor = globalRef.Date,
-} = {}) => {
-  globalRef.installBelavistaFinalWorkspacesV5360 = () => {
-    if (ViewLayer.prototype.__belavistaFinalWorkspacesV5360Installed) return;
-    ViewLayer.prototype.__belavistaFinalWorkspacesV5360Installed = true;
-
-    // Capture bind only after every deferred extension has loaded.
-    const baseBind = ViewLayer.prototype.bind;
-    const parseBrDateV5360 = (value) => {
-      const text = String(value || "");
-      const match = text.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-      if (match) return Date.parse(`${match[3]}-${match[2]}-${match[1]}`) || 0;
-      return Date.parse(text) || 0;
-    };
-    const latestDealForV5360 = (profileId) =>
-      commissionDeals
-        .filter((item) => item.profile === profileId)
-        .slice()
-        .sort((a, b) => parseBrDateV5360(b.date) - parseBrDateV5360(a.date))[0] ||
-      null;
-    ViewLayer.prototype.stages = createFinalStageCalendarPageV5360({
-      demoData,
-      esc,
-      tone: toneV5360,
-      activityPeriod: activityPeriodV5360,
-    });
-
-    ViewLayer.prototype.records = createFinalOperationalRecordsPageV5360({
-      appStore,
-      demoData,
-      esc,
-      ico,
-      recordStage: recordStageV5360,
-      tone: toneV5360,
-    });
-
-    installDashboardFinalWorkspaceEventsV1(ViewLayer, {
-      appStore,
-      demoData,
-      latestDealForV5360,
-      apiFetch,
-      operationalHeaders,
-      notify,
-      baseBind,
-      windowRef,
-      DateCtor,
-    });
-
-    globalRef.__BELAVISTA_FINAL_WORKSPACES_V5360 = {
-      version: "5.3.60",
-      installedAt: new DateCtor().toISOString(),
-      owner: "final-after-deferred",
-    };
-
+export const installBelavistaFinalWorkspacesBootstrapV5360 = (input = {}) => {
+  const globalRef = input.globalRef || globalThis;
+  if (useTypeScript) {
     try {
-      appStore.set({ lastAction: "Workspaces finais v5.3.60 aplicados" });
-    } catch {}
-  };
-
-  return globalRef.installBelavistaFinalWorkspacesV5360;
+      const controller = program.installAtlasFinalWorkspacesV5360({
+        ViewLayer: input.ViewLayer,
+        appStore: input.appStore,
+        demoData: input.demoData,
+        esc: input.esc,
+        document: input.document || globalRef.document,
+        window: input.windowRef || globalRef.window,
+        globalRef,
+        DateCtor: input.DateCtor || globalRef.Date,
+      });
+      globalRef.__atlasFinalWorkspacesControllerV5360 = controller;
+      globalRef.__atlasFinalWorkspacesOwnerV5360 = 'typescript';
+      return globalRef.installBelavistaFinalWorkspacesV5360;
+    } catch (error) {
+      globalRef.console?.warn?.('[final-workspaces] owner TypeScript indisponível.', error);
+      void import('./final-workspaces-bootstrap-legacy-v5360.mjs?v=final-workspaces-recovery-v1')
+        .then(module => {
+          if (typeof globalRef.installBelavistaFinalWorkspacesV5360 === 'function') return;
+          module.installBelavistaFinalWorkspacesBootstrapV5360({ ...input, globalRef });
+          globalRef.__atlasFinalWorkspacesOwnerV5360 = 'legacy-recovery';
+        })
+        .catch(recoveryError => globalRef.console?.error?.('[final-workspaces] fallback indisponível.', recoveryError));
+    }
+  }
+  if (legacy?.installBelavistaFinalWorkspacesBootstrapV5360) {
+    globalRef.__atlasFinalWorkspacesOwnerV5360 = 'legacy-recovery';
+    return legacy.installBelavistaFinalWorkspacesBootstrapV5360({ ...input, globalRef });
+  }
+  return undefined;
 };

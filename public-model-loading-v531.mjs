@@ -244,7 +244,7 @@ function detectPhase(map,elapsed){
   return {state:'boot',label:'Bem-vindo ao Aliança Park',detail:'Sua visita começa em instantes.',target:7};
 }
 
-async function attach(){
+async function attachLegacy(){
   if(document.querySelector('[data-model-loading]')) return;
   let map=null;
   for(let i=0;i<160&&!map;i++){
@@ -356,6 +356,16 @@ async function attach(){
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
+}
+
+async function attach(){
+  try{
+    const typed=await import('./dist/frontend/components.js');
+    if(typeof typed.installAtlasPublicModelLoadingV1==='function'&&await typed.installAtlasPublicModelLoadingV1())return;
+  }catch(error){
+    console.warn('[Aliança Park loader] owner TypeScript indisponível; ativando fallback MJS.',error);
+  }
+  await attachLegacy();
 }
 
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',attach,{once:true});

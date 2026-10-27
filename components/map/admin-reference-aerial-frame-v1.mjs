@@ -2,7 +2,7 @@ import {
   ADMIN_REFERENCE_AERIAL_GEO_QUAD_UV_V1,
   ADMIN_REFERENCE_AERIAL_SITE_FRAME_V1,
   ADMIN_REFERENCE_AERIAL_SITE_FRAME_V2,
-} from "./georeference.mjs?v=admin-map-georeference-v1";
+} from "./georeference.mjs?v=admin-map-georeference-v2-map-projection-json&ts-admin-georeference-bindings-owner-v1";
 
 /** Supplies the canonical aerial map frame shared by scene and masterplan services. */
 export const installAdminReferenceAerialFrameV1 = (MapScene) => {

@@ -1,14 +1,12 @@
-import { installBrokersPageV1 } from "./brokers-page.mjs?v=brokers-page-v7";
-import { installContractsPageV1 } from "./contracts-page-v1.mjs?v=contracts-page-v1";
+import { installContractsPageV1 } from "./contracts-page-v1.mjs?v=contracts-page-ts-first-v1";
+import { installAtlasContractsPageV1 } from "../../dist/frontend/components.js";
 
-/** Install the broker directory and contract/proposal routes in source order. */
+/** Install the contract/proposal route; the broker directory is owned by the TS sidebar program. */
 export const installCommercialDirectoryContractsRegistrationV1 = ({
   ViewLayer,
   appStore,
   commissionProfiles,
   commissionDeals,
-  commercialDealsForWorkspaceV1,
-  brokerWorkspaceStatsV1,
   normalizeOperationalRole,
   esc,
   ico,
@@ -22,18 +20,7 @@ export const installCommercialDirectoryContractsRegistrationV1 = ({
   saveOperationalProposal,
   host = globalThis,
 } = {}) => {
-  installBrokersPageV1(ViewLayer, {
-    appStore,
-    commissionProfiles,
-    commercialDealsForWorkspaceV1,
-    brokerWorkspaceStatsV1,
-    brlToNumber,
-    formatBRL,
-    esc,
-    ico,
-  });
-
-  installContractsPageV1(ViewLayer, {
+  const contractPageDependencies = {
     appStore,
     normalizeOperationalRole,
     commissionProfiles,
@@ -57,5 +44,8 @@ export const installCommercialDirectoryContractsRegistrationV1 = ({
     Blob: host.Blob,
     URL: host.URL,
     setTimeout: host.setTimeout.bind(host),
-  });
+  };
+  if (typeof installAtlasContractsPageV1 === "function")
+    installAtlasContractsPageV1(ViewLayer, contractPageDependencies);
+  else installContractsPageV1(ViewLayer, contractPageDependencies);
 };

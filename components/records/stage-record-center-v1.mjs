@@ -246,12 +246,15 @@ export const installStageRecordCenterV1 = (ViewLayer, {
   stageRecordEstimateMatchesV1,
   stageRecordEstimateNumberV1,
   stageRecordMaterialRowsV1,
+  stageRecordServiceRowsV1,
   stageRecordNormalizeV1,
   stageRecordProgressV1,
   stageRecordPropertiesV1,
   stageRecordStageForV1,
   stageRecordStagesV1,
   stageRecordStatusLabelV1,
+  stageMaterialReportDialogV1,
+  stageMaterialReportBindV1,
   stageViewTabs,
   document: documentRef = globalThis.document,
 }) => {
@@ -327,31 +330,6 @@ export const installStageRecordCenterV1 = (ViewLayer, {
     return `<section class="stage-record-estimate-board" data-stage-center-estimates><header class="stage-record-estimate-head"><div><span class="activity-kind">04 · ESTIMATIVAS A PARTIR DOS ESCANEAMENTOS</span><h2>Equipamentos e materiais restantes</h2><p>Quadros derivados dos itens OCR da lista e da base relacionada de cada etapa. A base não adiciona itens à lista do assistente; serve apenas para estimar o saldo.</p></div><span class="stage-record-estimate-note">${rows.length} relação(ões) calculada(s)</span></header><div class="stage-record-estimate-kpis">${cards.map(([label, value, note]) => `<article><small>${label}</small><b>${esc(value)}</b><span>${note}</span></article>`).join("")}</div>${table("04A · EQUIPAMENTOS", "equipment", equipment)}${table("04B · MATERIAIS", "material", materials)}</section>`;
   };
   
-  const stageRecordServiceRowsV1 = (state) =>
-    stageRecordStagesV1().flatMap((stage) => {
-      const allocatedRows = (Array.isArray(state.records) ? state.records : [])
-        .filter((record) => {
-          const target = record.allocationTarget || record.properties?.find?.((item) => item.id === "allocation_target")?.value;
-          return isAssistantVisualAdditionV1(record) && String(target || "").toLocaleLowerCase("pt-BR").includes("serv") && stageRecordStageForV1(record, [stage]) === stage;
-        })
-        .map((record) => ({
-          id: `record:${record.id}`,
-          recordId: record.id,
-          stageKey: stage.key,
-          stageName: stage.name,
-          name: record.activityName || record.atividade || record.activity || "Serviço lido no chat",
-          detail: record.detalhes || "Registro visual alocado pelo assistente.",
-          trigger: "Leitura OCR do assistente · revisão humana",
-          unit: record.unit || stage.production?.unit || "registro",
-          responsible: record.responsavel || "Assistente operacional",
-          progress: Number(record.progresso || 0),
-          status: record.status || "Pendente",
-          properties: record.properties || [],
-          attachments: stageRecordAttachmentsV1(record),
-        }));
-      return allocatedRows;
-    });
-  
   const stageRecordCenterTabsV1 = (active, counts) =>
     [
       ["materials", "Materiais", counts.materials],
@@ -365,284 +343,6 @@ export const installStageRecordCenterV1 = (ViewLayer, {
   
   const stageRecordCenterModeSwitchV1 = (kind, active) =>
     `<div class="stage-center-mode-switch" role="group" aria-label="Modo de visualização"><button type="button" data-stage-center-view-mode="${kind}" data-stage-center-mode="table" aria-pressed="${active === "table"}">Tabela</button><button type="button" data-stage-center-view-mode="${kind}" data-stage-center-mode="proofs" aria-pressed="${active === "proofs"}">${ico("paperclip")} Comprovantes</button>${kind === "materials" ? `<button type="button" class="stage-material-report-open" data-stage-material-report-open aria-haspopup="dialog">${ico("chart-no-axes-column-increasing")} Relatórios</button>` : ""}</div>`;
-  
-  const stageMaterialReportPropertyEntriesV1 = (item) => {
-    const properties = item?.properties;
-    if (Array.isArray(properties)) return properties;
-    if (properties && typeof properties === "object") {
-      return Object.entries(properties).map(([key, value]) => ({id: key, label: key, value}));
-    }
-    return [];
-  };
-  
-  const stageMaterialReportTextV1 = (value) => {
-    if (value == null || value === "") return "—";
-    if (Array.isArray(value)) return value.map(stageMaterialReportTextV1).join(", ");
-    if (typeof value === "object") {
-      return Object.entries(value).map(([key, item]) => key + ": " + stageMaterialReportTextV1(item)).join(" · ");
-    }
-    return String(value);
-  };
-  
-  const stageMaterialReportFieldsV1 = (rows) => {
-    const fields = [
-      {key: "stage", label: "Etapa", read: (item) => item.stageName || item.etapa || "Sem etapa"},
-      {key: "activity", label: "Atividade", read: (item) => item.activityName || item.activity || item.atividade || item.title || "Sem atividade vinculada"},
-      {key: "name", label: "Material / equipamento", read: (item) => item.name || item.materialName || "Material sem nome"},
-      {key: "scope", label: "Descrição / uso", read: (item) => item.scope || item.detail || item.description || item.detalhes || "—"},
-      {key: "quantity", label: "Quantidade", read: (item) => item.quantity ?? item.quantidade ?? "—"},
-      {key: "unit", label: "Unidade", read: (item) => item.unit || item.unidade || "un."},
-      {key: "status", label: "Status", read: (item) => item.status || "Planejado"},
-      {key: "responsible", label: "Responsável", read: (item) => item.responsible || item.responsavel || item.owner || "—"},
-      {key: "source", label: "Origem do registro", read: (item) => item.source === "chat-visual" ? "OCR do assistente" : item.source || "Adição do assistente"},
-      {key: "date", label: "Data do registro", read: (item) => item.createdAt || item.updatedAt || item.date || item.data || "—"},
-      {key: "attachments", label: "Comprovantes", read: (item) => stageRecordAttachmentsV1(item).map((attachment) => attachment.label).join(", ") || "Sem anexo"},
-    ];
-    const custom = new Map();
-    rows.forEach((item) => stageMaterialReportPropertyEntriesV1(item).forEach((property) => {
-      const identity = String(property?.id || property?.key || property?.name || property?.label || "").trim();
-      if (!identity) return;
-      const key = identity.toLocaleLowerCase("pt-BR");
-      if (!custom.has(key)) custom.set(key, {key: identity, label: String(property.label || property.name || property.key || identity)});
-    }));
-    return fields.concat([...custom.values()].map((property) => ({
-      key: "property:" + property.key,
-      label: property.label,
-      read: (item) => {
-        const found = stageMaterialReportPropertyEntriesV1(item).find((entry) =>
-          String(entry?.id || entry?.key || entry?.name || entry?.label || "").toLocaleLowerCase("pt-BR") === property.key.toLocaleLowerCase("pt-BR"),
-        );
-        return found?.value ?? "—";
-      },
-    })));
-  };
-  
-  const stageMaterialReportIdV1 = (item, index) => String(item?.id ?? item?.sourceRecordId ?? "material-" + index);
-  
-  const stageMaterialReportGroupsMarkupV1 = (rows, fields, groupKeys, sortKey, direction, selectedIds = new Set(), allFields = fields) => {
-    const byKey = new Map(allFields.map((field) => [field.key, field])),
-      groups = new Map(),
-      compare = (left, right) => {
-        const result = stageRecordNormalizeV1(stageMaterialReportTextV1(left)).localeCompare(
-          stageRecordNormalizeV1(stageMaterialReportTextV1(right)), "pt-BR", {numeric: true, sensitivity: "base"},
-        );
-        return direction === "desc" ? -result : result;
-      },
-      orderedRows = [...rows].sort((left, right) => {
-        for (const key of groupKeys) {
-          const field = byKey.get(key);
-          if (field) {
-            const result = compare(field.read(left), field.read(right));
-            if (result) return result;
-          }
-        }
-        const field = byKey.get(sortKey);
-        return field ? compare(field.read(left), field.read(right)) : 0;
-      });
-    orderedRows.forEach((item, index) => {
-      const values = groupKeys.map((key) => {
-        const field = byKey.get(key);
-        return field ? stageMaterialReportTextV1(field.read(item)) : "";
-      });
-      const label = values.length ? values.join(" · ") : "Todos os materiais",
-        key = JSON.stringify(values);
-      if (!groups.has(key)) groups.set(key, {label, rows: []});
-      groups.get(key).rows.push({item, index});
-    });
-    if (!groups.size) return '<p class="stage-material-report-empty">Nenhum material corresponde aos filtros deste relatório.</p>';
-    return [...groups.values()].map((group) => {
-      const rowsMarkup = group.rows.map(({item, index}) => {
-        const identity = stageMaterialReportIdV1(item, index);
-        return '<tr><td class="stage-material-report-select-column"><input type="checkbox" aria-label="Selecionar ' +
-          esc(item.name || "material") + '" data-material-report-row-select value="' + esc(identity) +
-          '"' + (selectedIds.has(identity) ? " checked" : "") + '></td>' +
-          fields.map((field) => '<td>' + esc(stageMaterialReportTextV1(field.read(item))) + '</td>').join("") + '</tr>';
-      }).join("");
-      return '<section class="stage-material-report-group"><h3>' + esc(group.label) +
-        '</h3><div class="stage-material-report-table-wrap"><table class="stage-material-report-table"><thead><tr>' +
-        '<th class="stage-material-report-select-column">Selecionar</th>' +
-        fields.map((field) => '<th>' + esc(field.label) + '</th>').join("") +
-        '</tr></thead><tbody>' + rowsMarkup + '</tbody></table></div></section>';
-    }).join("");
-  };
-  
-  const stageMaterialReportDialogV1 = (rows, stages) => {
-    const fields = stageMaterialReportFieldsV1(rows),
-      defaultColumns = new Set(["stage", "activity", "name", "scope", "quantity", "unit", "status"]),
-      defaultGroups = new Set(["stage", "activity"]),
-      stageOptions = stages.map((stage) => '<option value="' + esc(stage.key) + '">' + esc(stage.name) + '</option>').join(""),
-      fieldOptions = fields.map((field) => '<option value="' + esc(field.key) + '">' + esc(field.label) + '</option>').join(""),
-      columns = fields.map((field) => '<label><input type="checkbox" data-material-report-column="' + esc(field.key) +
-        '"' + (defaultColumns.has(field.key) ? " checked" : "") + '><span>' + esc(field.label) + '</span></label>').join(""),
-      groups = fields.map((field) => '<label><input type="checkbox" data-material-report-group-field="' + esc(field.key) +
-        '"' + (defaultGroups.has(field.key) ? " checked" : "") + '><span>' + esc(field.label) + '</span></label>').join(""),
-      groupKeys = [...defaultGroups],
-      defaultFields = fields.filter((field) => defaultColumns.has(field.key)),
-      initialRows = stageMaterialReportGroupsMarkupV1(rows, defaultFields, groupKeys, "stage", "asc");
-    return '<dialog class="stage-material-report-dialog" data-stage-material-report-dialog aria-labelledby="stage-material-report-title">' +
-      '<header class="stage-material-report-dialog-head"><div><span class="activity-kind">CENTRAL OPERACIONAL · MATERIAIS</span>' +
-      '<h2 id="stage-material-report-title">Relatório de materiais</h2><p>Selecione propriedades, ordene e agrupe os itens por etapa, atividade ou outros campos.</p></div>' +
-      '<button type="button" class="stage-record-dialog-close" data-material-report-close aria-label="Fechar relatório">' + ico("x") + '</button></header>' +
-      '<div class="stage-material-report-dialog-body"><div class="stage-material-report-filters">' +
-      '<label>Pesquisar<input type="search" data-material-report-search placeholder="Material, etapa, atividade…"></label>' +
-      '<label>Etapa<select data-material-report-stage><option value="">Todas as etapas</option>' + stageOptions + '</select></label>' +
-      '<label>Status<select data-material-report-status><option value="">Todos os status</option>' +
-      [...new Set(rows.map((item) => item.status).filter(Boolean))].map((status) => '<option>' + esc(status) + '</option>').join("") + '</select></label></div>' +
-      '<div class="stage-material-report-config"><fieldset><legend>Propriedades no relatório</legend><div class="stage-material-report-options">' + columns + '</div></fieldset>' +
-      '<fieldset><legend>Agrupar por propriedades</legend><div class="stage-material-report-options stage-material-report-group-options">' + groups + '</div></fieldset>' +
-      '<div class="stage-material-report-sort"><label>Ordenar por<select data-material-report-sort>' + fieldOptions + '</select></label>' +
-      '<label>Ordem<select data-material-report-direction><option value="asc">Crescente</option><option value="desc">Decrescente</option></select></label></div></div>' +
-      '<div class="stage-material-report-selection-toolbar"><span data-material-report-selection-count aria-live="polite">0 selecionados</span>' +
-      '<button type="button" data-material-report-select-all>Selecionar itens filtrados</button><button type="button" data-material-report-clear-selection>Limpar seleção</button>' +
-      '<button type="button" class="primary" data-material-report-print-all>Imprimir relatório</button><button type="button" data-material-report-print-selected disabled>Imprimir selecionados</button></div>' +
-      '<div class="stage-material-report-results" data-material-report-results><header><div><span>ALIANÇA PARK · RELATÓRIO OPERACIONAL</span><h2>Materiais e equipamentos</h2>' +
-      '<p>Lista de itens adicionados pelo assistente, com os vínculos e propriedades selecionados.</p></div><small data-material-report-print-date></small></header>' +
-      '<div data-material-report-groups>' + initialRows + '</div></div></div></dialog>';
-  };
-  
-  const stageMaterialReportBindV1 = (root, rows) => {
-    let dialog = root.querySelector("[data-stage-material-report-dialog]");
-    if (!dialog) return;
-    const previousDialog = globalThis.__BELAVISTA_STAGE_MATERIAL_REPORT_DIALOG_V1__,
-      keepOpen = Boolean(globalThis.__BELAVISTA_STAGE_MATERIAL_REPORT_OPEN_V1__ || previousDialog?.open);
-    // Keep the native dialog outside ViewLayer: the app re-renders that subtree
-    // on live state updates, which otherwise destroys an open report mid-edit.
-    if (previousDialog && previousDialog !== dialog) previousDialog.remove();
-    document.body.append(dialog);
-    globalThis.__BELAVISTA_STAGE_MATERIAL_REPORT_DIALOG_V1__ = dialog;
-    if (keepOpen) globalThis.__BELAVISTA_STAGE_MATERIAL_REPORT_OPEN_V1__ = true;
-    if (!globalThis.__BELAVISTA_STAGE_MATERIAL_REPORT_CLEANUP_V1__) {
-      globalThis.__BELAVISTA_STAGE_MATERIAL_REPORT_CLEANUP_V1__ = true;
-      appStore.subscribe((state) => {
-        if (state.view === "stages") return;
-        const activeDialog = globalThis.__BELAVISTA_STAGE_MATERIAL_REPORT_DIALOG_V1__;
-        globalThis.__BELAVISTA_STAGE_MATERIAL_REPORT_OPEN_V1__ = false;
-        if (activeDialog?.open) activeDialog.close();
-        activeDialog?.remove();
-        globalThis.__BELAVISTA_STAGE_MATERIAL_REPORT_DIALOG_V1__ = null;
-      });
-    }
-    const allRows = Array.isArray(rows) ? rows : [],
-      uiState = globalThis.__BELAVISTA_STAGE_MATERIAL_REPORT_UI_V1__ || (globalThis.__BELAVISTA_STAGE_MATERIAL_REPORT_UI_V1__ = Object.create(null)),
-      normalizeId = (item, index) => stageMaterialReportIdV1(item, index),
-      uiKey = allRows.map((item, index) => normalizeId(item, index)).sort().join("|") || "empty",
-      savedUi = uiState[uiKey] || {},
-      selectedIds = new Set(savedUi.selectedIds || []),
-      groupsHost = dialog.querySelector("[data-material-report-groups]"),
-      count = dialog.querySelector("[data-material-report-selection-count]"),
-      printSelected = dialog.querySelector("[data-material-report-print-selected]"),
-      persist = () => {
-        uiState[uiKey] = {
-          selectedIds: [...selectedIds],
-          search: dialog.querySelector("[data-material-report-search]")?.value || "",
-          stage: dialog.querySelector("[data-material-report-stage]")?.value || "",
-          status: dialog.querySelector("[data-material-report-status]")?.value || "",
-          sort: dialog.querySelector("[data-material-report-sort]")?.value || "stage",
-          direction: dialog.querySelector("[data-material-report-direction]")?.value || "asc",
-          columns: [...dialog.querySelectorAll("[data-material-report-column]:checked")].map((input) => input.dataset.materialReportColumn),
-          groups: [...dialog.querySelectorAll("[data-material-report-group-field]:checked")].map((input) => input.dataset.materialReportGroupField),
-        };
-      },
-      filteredRows = () => {
-        const query = stageRecordNormalizeV1(dialog.querySelector("[data-material-report-search]")?.value),
-          stage = String(dialog.querySelector("[data-material-report-stage]")?.value || ""),
-          status = stageRecordNormalizeV1(dialog.querySelector("[data-material-report-status]")?.value);
-        return allRows.filter((item) =>
-          (!query || stageRecordNormalizeV1([
-            item.stageName, item.activityName, item.name, item.scope, item.status,
-            ...stageMaterialReportPropertyEntriesV1(item).map((property) => property.value),
-          ].join(" ")).includes(query)) &&
-          (!stage || String(item.stageKey || "") === stage) &&
-          (!status || stageRecordNormalizeV1(item.status || "Planejado") === status),
-        );
-      },
-      refresh = () => {
-        const availableFields = stageMaterialReportFieldsV1(allRows),
-          selectedColumns = [...dialog.querySelectorAll("[data-material-report-column]:checked")].map((input) => input.dataset.materialReportColumn),
-          fields = availableFields.filter((field) => selectedColumns.includes(field.key)),
-          visibleFields = fields.length ? fields : availableFields.slice(0, 1),
-          groupKeys = [...dialog.querySelectorAll("[data-material-report-group-field]:checked")].map((input) => input.dataset.materialReportGroupField),
-          direction = dialog.querySelector("[data-material-report-direction]")?.value || "asc",
-          sortKey = dialog.querySelector("[data-material-report-sort]")?.value || "stage",
-          visible = filteredRows();
-        if (groupsHost) groupsHost.innerHTML = stageMaterialReportGroupsMarkupV1(visible, visibleFields, groupKeys, sortKey, direction, selectedIds, availableFields);
-        const selectedVisible = visible.filter((item, index) => selectedIds.has(normalizeId(item, index))).length;
-        if (count) count.textContent = selectedVisible + " selecionado(s) de " + visible.length + " visível(is)";
-        if (printSelected) printSelected.disabled = selectedIds.size === 0;
-        const dateNode = dialog.querySelector("[data-material-report-print-date]");
-        if (dateNode) dateNode.textContent = new Date().toLocaleDateString("pt-BR");
-        persist();
-      },
-      print = (selectedOnly) => {
-        const availableFields = stageMaterialReportFieldsV1(allRows),
-          selectedColumns = [...dialog.querySelectorAll("[data-material-report-column]:checked")].map((input) => input.dataset.materialReportColumn),
-          fields = availableFields.filter((field) => selectedColumns.includes(field.key)),
-          visibleFields = fields.length ? fields : availableFields.slice(0, 1),
-          groupKeys = [...dialog.querySelectorAll("[data-material-report-group-field]:checked")].map((input) => input.dataset.materialReportGroupField),
-          items = selectedOnly ? allRows.filter((item, index) => selectedIds.has(normalizeId(item, index))) : filteredRows();
-        if (groupsHost) groupsHost.innerHTML = stageMaterialReportGroupsMarkupV1(items, visibleFields, groupKeys, dialog.querySelector("[data-material-report-sort]")?.value || "stage", dialog.querySelector("[data-material-report-direction]")?.value || "asc", selectedIds, availableFields);
-        const printRoot = document.createElement("main");
-        printRoot.className = "stage-material-report-print-root";
-        printRoot.innerHTML = dialog.querySelector("[data-material-report-results]")?.outerHTML || "";
-        document.body.append(printRoot);
-        document.body.classList.add("stage-material-report-printing");
-        window.addEventListener("afterprint", () => {
-          document.body.classList.remove("stage-material-report-printing");
-          printRoot.remove();
-          refresh();
-        }, {once: true});
-        window.print();
-      };
-    if (savedUi.search) dialog.querySelector("[data-material-report-search]").value = savedUi.search;
-    if (savedUi.stage) dialog.querySelector("[data-material-report-stage]").value = savedUi.stage;
-    if (savedUi.status) dialog.querySelector("[data-material-report-status]").value = savedUi.status;
-    if (savedUi.sort) dialog.querySelector("[data-material-report-sort]").value = savedUi.sort;
-    if (savedUi.direction) dialog.querySelector("[data-material-report-direction]").value = savedUi.direction;
-    if (Array.isArray(savedUi.columns)) dialog.querySelectorAll("[data-material-report-column]").forEach((input) => { input.checked = savedUi.columns.includes(input.dataset.materialReportColumn); });
-    if (Array.isArray(savedUi.groups)) dialog.querySelectorAll("[data-material-report-group-field]").forEach((input) => { input.checked = savedUi.groups.includes(input.dataset.materialReportGroupField); });
-    root.querySelector("[data-stage-material-report-open]")?.addEventListener("click", () => {
-      globalThis.__BELAVISTA_STAGE_MATERIAL_REPORT_OPEN_V1__ = true;
-      if (!dialog.open) dialog.showModal();
-      refresh();
-    });
-    const closeReport = () => {
-      globalThis.__BELAVISTA_STAGE_MATERIAL_REPORT_OPEN_V1__ = false;
-      if (dialog.open) dialog.close();
-    };
-    dialog.querySelector("[data-material-report-close]")?.addEventListener("click", closeReport);
-    dialog.addEventListener("close", () => {
-      // Re-rendering the view detaches the old dialog and fires `close`; only an
-      // explicit close on the live dialog should clear the open state.
-      if (dialog.isConnected) globalThis.__BELAVISTA_STAGE_MATERIAL_REPORT_OPEN_V1__ = false;
-    });
-    dialog.addEventListener("click", (event) => {
-      if (event.target === dialog) closeReport();
-      const input = event.target.closest("[data-material-report-row-select]");
-      if (input) {
-        if (input.checked) selectedIds.add(input.value);
-        else selectedIds.delete(input.value);
-        refresh();
-      }
-    });
-    dialog.addEventListener("change", (event) => {
-      if (event.target.matches("[data-material-report-column], [data-material-report-group-field], [data-material-report-sort], [data-material-report-direction], [data-material-report-stage], [data-material-report-status]")) refresh();
-    });
-    dialog.querySelector("[data-material-report-search]")?.addEventListener("input", refresh);
-    dialog.querySelector("[data-material-report-select-all]")?.addEventListener("click", () => {
-      filteredRows().forEach((item, index) => selectedIds.add(normalizeId(item, index)));
-      refresh();
-    });
-    dialog.querySelector("[data-material-report-clear-selection]")?.addEventListener("click", () => {
-      selectedIds.clear();
-      refresh();
-    });
-    dialog.querySelector("[data-material-report-print-all]")?.addEventListener("click", () => print(false));
-    printSelected?.addEventListener("click", () => print(true));
-    refresh();
-    if (globalThis.__BELAVISTA_STAGE_MATERIAL_REPORT_OPEN_V1__) {
-      try { if (!dialog.open) dialog.showModal(); } catch { dialog.setAttribute("open", ""); }
-    }
-  };
   
   const stageRecordProofListV1 = (record) => {
     const attachments = stageRecordAttachmentsV1(record);
@@ -935,10 +635,15 @@ export const installStageRecordCenterV1 = (ViewLayer, {
     });
   }
   
+  const useLegacyDashboardRecordCenterV1 = () =>
+    globalThis.BELAVISTA_USE_LEGACY_DASHBOARD_RECORD_CENTER_V1 === true;
+
   globalThis.installStageRecordCenterV1 = () => {
+    if (!useLegacyDashboardRecordCenterV1()) return false;
     ViewLayer.prototype.control = function () {
       return stageRecordCenterMarkupV2(appStore.get());
     };
+    return true;
   };
   globalThis.installStageRecordCenterV1();
   
@@ -957,10 +662,11 @@ export const installStageRecordCenterV1 = (ViewLayer, {
   
   const stageRecordDashboardControlBaseV1 = ViewLayer.prototype.control;
   ViewLayer.prototype.control = function (...args) {
-    return stageRecordDashboardControlBaseV1.apply(this, args).replace(
+    const html = stageRecordDashboardControlBaseV1.apply(this, args);
+    return useLegacyDashboardRecordCenterV1() ? html.replace(
       /<section class="stage-dashboard-quick-capture"[\s\S]*?<\/section>/,
       stageRecordDashboardQuickEntryMarkupV1(),
-    );
+    ) : html;
   };
   
   // The control view may be replaced by later render/bind decorators. Delegate
@@ -1229,4 +935,3 @@ export const installStageRecordCenterV1 = (ViewLayer, {
   };
   return { stageRecordServiceRowsV1, stageMaterialReportDialogV1, stageMaterialReportBindV1, stageRecordCenterItemModalMarkupV1, stageHomeRecordResourcesMarkupV1, stageHomePageMarkupV1, stageRecordDashboardActionWorkspaceMarkupV1 };
 };
-

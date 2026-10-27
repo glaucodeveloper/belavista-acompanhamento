@@ -1,5 +1,7 @@
-/** Installs the original map and lot-marker adjustment tools on MapScene. */
-export const installAdminMasterplanAdjustmentV1 = (MapScene, {
+import { atlasAdminMasterplanOverlayPolicy, installAtlasAdminMasterplanAdjustmentV1 } from "../../dist/frontend/components.js";
+
+/** Installs the legacy map and lot-marker adjustment tools as a fallback. */
+export const installAdminMasterplanAdjustmentLegacyV1 = (MapScene, {
   document: documentRef = globalThis.document,
   getComputedStyle: getComputedStyleRef = globalThis.getComputedStyle,
   localStorage: localStorageRef = globalThis.localStorage,
@@ -13,28 +15,36 @@ export const installAdminMasterplanAdjustmentV1 = (MapScene, {
   class AdminMasterplanAdjustmentV1 {
   installAdminMasterplanDevToolsV1({ layer, fit, transform, defaultFrame, frameStorageKey, readFrame, sync }) {
     const frameKeys = ["left", "top", "width", "height", "rotation"];
-    const markerOverrideStorageKey = "belavista.map.lot-marker-overrides.v1";
+    const markerOverrideStorageKey = atlasAdminMasterplanOverlayPolicy.markerOverridesStorageKey;
+    const calibrationStorage = globalThis.belavistaPublicMapCalibrationStorage;
     const readMarkerOverrides = () => {
+      if (calibrationStorage?.readMarkers) return calibrationStorage.readMarkers(markerOverrideStorageKey);
       try {
         const value = JSON.parse(localStorage.getItem(markerOverrideStorageKey) || "{}");
-        return value && typeof value === "object" ? value : {};
+        return globalThis.belavistaPublicMapMarkerOverrides?.(value)
+          ?? (value && typeof value === "object" ? value : {});
       } catch {
         return {};
       }
     };
     const writeMarkerOverrides = (value) => {
+      if (calibrationStorage?.saveMarkers) return calibrationStorage.saveMarkers(markerOverrideStorageKey, value);
       try {
         localStorage.setItem(markerOverrideStorageKey, JSON.stringify(value));
       } catch {}
     };
-    const toolbar = document.createElement("div");
+    const toolbar = document.createElement(customElements.get("atlas-map-adjustment-toolbar") ? "atlas-map-adjustment-toolbar" : "div");
     toolbar.className = "map-marker-adjust-toolbar";
     toolbar.dataset.mapMarkerAdjustToolbar = "true";
-    toolbar.innerHTML = `<button type="button" data-map-marker-adjust-toggle aria-pressed="false">Ajustar círculos</button><button type="button" data-map-frame-adjust-toggle aria-pressed="false">Ajustar mapa</button><button type="button" data-map-marker-adjust-reset hidden>Redefinir círculos</button><span data-map-marker-adjust-status>Escolha um modo de ajuste.</span>`;
+    if (typeof toolbar.setState === "function") toolbar.setState({ editing: false, mode: "markers", status: "Escolha um modo de ajuste." });
+    else toolbar.innerHTML = `<button type="button" data-map-marker-adjust-toggle aria-pressed="false">Ajustar círculos</button><button type="button" data-map-frame-adjust-toggle aria-pressed="false">Ajustar mapa</button><button type="button" data-map-marker-adjust-reset hidden>Redefinir círculos</button><span data-map-marker-adjust-status>Escolha um modo de ajuste.</span>`;
     // A ferramenta fica na cena, acima da camada visual passiva. Assim o
     // botão continua clicável e os dois alvos (planta e círculos) recebem
     // pointer events em desktop e mobile.
     this.append(toolbar);
+    const typedPointerControllerActive =
+      typeof toolbar.installPointerController === "function" &&
+      toolbar.installPointerController(this, defaultFrame) === true;
     const toggleButton = toolbar.querySelector("[data-map-marker-adjust-toggle]");
     const resetButton = toolbar.querySelector("[data-map-marker-adjust-reset]");
     const status = toolbar.querySelector("[data-map-marker-adjust-status]");
@@ -55,22 +65,22 @@ export const installAdminMasterplanAdjustmentV1 = (MapScene, {
       },
     });
     const setFrame = (patch = {}) => {
-      const next = { ...readFrame() };
-      for (const key of frameKeys) {
-        if (!(key in patch)) continue;
-        const value = Number(patch[key]);
-        if (!Number.isFinite(value)) {
-          throw new TypeError(`Frame '${key}' precisa ser um número finito.`);
+      let next;
+      if (globalThis.belavistaPublicMapFramePatch) {
+        next = globalThis.belavistaPublicMapFramePatch(readFrame(), patch);
+      } else {
+        next = { ...readFrame() };
+        for (const key of frameKeys) {
+          if (!(key in patch)) continue;
+          const value = Number(patch[key]);
+          if (!Number.isFinite(value)) throw new TypeError(`Frame '${key}' precisa ser um número finito.`);
+          if ((key === "width" || key === "height") && value <= 0) throw new RangeError(`Frame '${key}' precisa ser maior que zero.`);
+          next[key] = value;
         }
-        if ((key === "width" || key === "height") && value <= 0) {
-          throw new RangeError(`Frame '${key}' precisa ser maior que zero.`);
-        }
-        next[key] = value;
       }
       this.dataset.adminMasterplanFrame = JSON.stringify(next);
-      try {
-        localStorage.setItem(frameStorageKey, JSON.stringify(next));
-      } catch {}
+      if (calibrationStorage?.saveFrame) calibrationStorage.saveFrame(frameStorageKey, next);
+      else try { localStorage.setItem(frameStorageKey, JSON.stringify(next)); } catch {}
       sync();
       this.syncAdminMasterplanLotMarkersV1?.();
       return describe();
@@ -105,27 +115,28 @@ export const installAdminMasterplanAdjustmentV1 = (MapScene, {
       if (transform) transform.style.pointerEvents = editing ? "auto" : "none";
       const image = transform?.querySelector("img");
       if (image) image.style.pointerEvents = editing ? "auto" : "none";
-      toggleButton?.setAttribute("aria-pressed", String(editing));
-      toggleButton.textContent = editing ? "Concluir ajuste" : "Ajustar marcações";
-      if (resetButton) resetButton.hidden = !editing;
-      if (status) status.textContent = editing
-        ? "Arraste a planta ou um círculo; as posições ficam salvas neste navegador."
+      const mode = this.dataset.adminMasterplanEditMode === "map" ? "map" : "markers";
+      const statusText = editing
+        ? mode === "map"
+          ? "Arraste a planta para ajustar posição; Ctrl + Shift + arrastar gira; use as laterais para escalar."
+          : "Clique na planta para posicionar um número ou arraste um círculo; Ctrl move a planta e Ctrl + Shift gira."
         : "Ajuste concluído. Coordenadas registradas no console.";
+      if (typeof toolbar.setState === "function") toolbar.setState({ editing, mode, status: statusText });
+      else {
+        toggleButton?.setAttribute("aria-pressed", String(editing));
+        toggleButton.textContent = editing ? "Concluir ajuste" : "Ajustar marcações";
+        if (resetButton) resetButton.hidden = !editing;
+        if (status) status.textContent = statusText;
+      }
       if (!editing) {
         const overrides = readMarkerOverrides();
         console.info("[Aliança Park] posições ajustadas dos marcadores", overrides);
       }
       return describe();
     };
-    toggleButton?.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      setEditing();
-    });
-    resetButton?.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      localStorage.removeItem(markerOverrideStorageKey);
+    const resetMarkerOverrides = () => {
+      if (calibrationStorage?.removeMarkers) calibrationStorage.removeMarkers(markerOverrideStorageKey);
+      else localStorage.removeItem(markerOverrideStorageKey);
       this.querySelectorAll(".satellite-lot-plan-marker[data-map-adjust-u]").forEach((marker) => {
         delete marker.dataset.mapAdjustU;
         delete marker.dataset.mapAdjustV;
@@ -133,8 +144,20 @@ export const installAdminMasterplanAdjustmentV1 = (MapScene, {
       this.syncAdminMasterplanLotMarkersV1?.();
       if (status) status.textContent = "Círculos restaurados para as coordenadas da planta.";
       console.info("[Aliança Park] ajustes de círculos restaurados.");
-    });
-    if (!this._adminMasterplanFrameDragBoundV1) {
+    };
+    if (typeof toolbar.setState !== "function") {
+      toggleButton?.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setEditing();
+      });
+      resetButton?.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        resetMarkerOverrides();
+      });
+    }
+    if (!typedPointerControllerActive && !this._adminMasterplanFrameDragBoundV1) {
       this._adminMasterplanFrameDragBoundV1 = true;
       this.addEventListener("pointerdown", (event) => {
         if (this.dataset.adminMasterplanEditing !== "true") return;
@@ -160,7 +183,7 @@ export const installAdminMasterplanAdjustmentV1 = (MapScene, {
         window.addEventListener("pointerup", finish, true);
       }, true);
     }
-    if (!this._adminMasterplanMarkerDragBoundV1) {
+    if (!typedPointerControllerActive && !this._adminMasterplanMarkerDragBoundV1) {
       this._adminMasterplanMarkerDragBoundV1 = true;
       this.addEventListener("pointerdown", (event) => {
         if (this.dataset.adminMasterplanEditing !== "true") return;
@@ -173,13 +196,24 @@ export const installAdminMasterplanAdjustmentV1 = (MapScene, {
         event.stopImmediatePropagation();
         const place = (pointerEvent) => {
           const rect = markerLayer.getBoundingClientRect();
-          if (!rect.width || !rect.height) return null;
-          const u = Math.max(0, Math.min(1, (pointerEvent.clientX - rect.left) / rect.width));
-          const v = Math.max(0, Math.min(1, (pointerEvent.clientY - rect.top) / rect.height));
+          const point = globalThis.belavistaPublicMapDragPosition?.(
+            pointerEvent.clientX,
+            pointerEvent.clientY,
+            rect,
+          ) ?? (rect.width && rect.height ? {
+            u: Math.max(0, Math.min(1, (pointerEvent.clientX - rect.left) / rect.width)),
+            v: Math.max(0, Math.min(1, (pointerEvent.clientY - rect.top) / rect.height)),
+          } : null);
+          if (!point) return null;
+          const { u, v } = point;
           marker.dataset.mapAdjustU = String(u);
           marker.dataset.mapAdjustV = String(v);
-          marker.style.left = `${(u * 100).toFixed(4)}%`;
-          marker.style.top = `${(v * 100).toFixed(4)}%`;
+          if (typeof marker.setMapPosition === "function") {
+            marker.setMapPosition({ u, v, zIndex: Number(marker.style.zIndex) || 0, manualPosition: { u, v } });
+          } else {
+            marker.style.left = `${(u * 100).toFixed(4)}%`;
+            marker.style.top = `${(v * 100).toFixed(4)}%`;
+          }
           return { u, v };
         };
         let moved = false;
@@ -210,7 +244,8 @@ export const installAdminMasterplanAdjustmentV1 = (MapScene, {
       get: describe,
       setFrame,
       resetFrame: () => {
-        try { localStorage.removeItem(frameStorageKey); } catch {}
+        if (calibrationStorage?.removeFrame) calibrationStorage.removeFrame(frameStorageKey);
+        else try { localStorage.removeItem(frameStorageKey); } catch {}
         delete this.dataset.adminMasterplanFrame;
         sync();
         this.syncAdminMasterplanLotMarkersV1?.();
@@ -233,3 +268,9 @@ export const installAdminMasterplanAdjustmentV1 = (MapScene, {
   }
   Object.defineProperty(MapScene.prototype, "installAdminMasterplanDevToolsV1", Object.getOwnPropertyDescriptor(AdminMasterplanAdjustmentV1.prototype, "installAdminMasterplanDevToolsV1"));
 };
+
+/** Prefer the TypeScript owner; retain the original installer as a compatibility fallback. */
+export const installAdminMasterplanAdjustmentV1 = (MapScene, options = {}) =>
+  installAtlasAdminMasterplanAdjustmentV1?.(MapScene, options) === true
+    ? true
+    : installAdminMasterplanAdjustmentLegacyV1(MapScene, options);

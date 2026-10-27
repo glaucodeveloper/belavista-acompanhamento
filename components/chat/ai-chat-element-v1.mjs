@@ -1,4 +1,4 @@
-import { createBelavistaAiChatV1 } from "./belavista-ai-chat-composition-v1.mjs?v=mobile-focus-v1";
+import { createBelavistaAiChatV1 } from "./belavista-ai-chat-composition-v1.mjs?v=ts-project-documents-chat-navigation-v1&ts-settings-ai-agenda-v1&ts-ai-chat-component-owner-v1&ts-stage-record-center-owner-v1&ts-ai-chat-program-composition-owner-v1";
 
 /** Register the composed assistant as the application's chat custom element. */
 export const registerBelavistaAiChatElementV1 = ({

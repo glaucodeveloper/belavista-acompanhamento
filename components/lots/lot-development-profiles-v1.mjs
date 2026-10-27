@@ -1,5 +1,8 @@
 /** Canonical lot-development profile projection and assistant upsert bridge. */
-export const createLotDevelopmentProfilesV1 = ({
+import * as atlasProgramTsV1 from "../../dist/frontend/program.js";
+import lotDevelopmentCommonAreasData from "../../dist/frontend/data/lot-development-common-areas.json" with { type: "json" };
+
+export const createLotDevelopmentProfilesLegacyV1 = ({
   appStore,
   REPASSE_PRICE_CATALOG,
   host = globalThis,
@@ -13,12 +16,7 @@ export const createLotDevelopmentProfilesV1 = ({
 // LOT_DEVELOPMENT_PROFILES_V1: perfis comerciais e operacionais para a
 // totalidade do loteamento. A origem é a tabela de lotes; inclusões do chat
 // ficam como sobreposições persistidas, sem alterar o catálogo financeiro.
-const LOT_DEVELOPMENT_COMMON_AREAS_V1 = [
-  { id: "common:portaria", kind: "common-area", title: "Portaria e acesso", status: "Em planejamento", description: "Acesso principal, controle de visitantes e apoio à chegada." },
-  { id: "common:praca", kind: "common-area", title: "Praça e convivência", status: "Em planejamento", description: "Área de convivência, paisagismo e mobiliário urbano." },
-  { id: "common:lazer", kind: "common-area", title: "Lazer e equipamentos", status: "Em planejamento", description: "Espaços de apoio coletivo e equipamentos do empreendimento." },
-  { id: "common:viario", kind: "common-area", title: "Sistema viário", status: "Em acompanhamento", description: "Vias, calçadas, drenagem superficial e sinalização interna." },
-];
+const LOT_DEVELOPMENT_COMMON_AREAS_V1 = lotDevelopmentCommonAreasData;
 
 const normalizeLotDevelopmentTextV1 = (value) => String(value || "").trim().toLocaleLowerCase("pt-BR");
 const lotDevelopmentBaseProfilesV1 = (state = appStore.get()) => {
@@ -94,3 +92,17 @@ host.__BELAVISTA_UPSERT_LOT_DEVELOPMENT_PROFILE_V1 = upsertLotDevelopmentProfile
     upsertLotDevelopmentProfileV1,
   });
 };
+
+/** TypeScript owns the profile projection; this module remains its MJS fallback. */
+export const createLotDevelopmentProfilesV1 = (dependencies = {}) => {
+  const typedFactory = atlasProgramTsV1.createAtlasLotDevelopmentProfilesV1;
+  if (typeof typedFactory === "function") return typedFactory({
+    appStore: dependencies.appStore,
+    REPASSE_PRICE_CATALOG: dependencies.REPASSE_PRICE_CATALOG,
+    host: dependencies.host || globalThis,
+  });
+  return createLotDevelopmentProfilesLegacyV1(dependencies);
+};
+
+export const hasAtlasLotDevelopmentProfilesOwnerV1 =
+  typeof atlasProgramTsV1.createAtlasLotDevelopmentProfilesV1 === "function";

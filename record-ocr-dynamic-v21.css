@@ -4,6 +4,7 @@
 /* O mesmo OCR cabe no drawer da Central e no dialog do chat. */
 .control-record-drawer-v2 .record-ocr-items-v21 article{grid-template-columns:repeat(2,minmax(0,1fr))}
 .control-record-drawer-v2 .record-ocr-properties-v21 input{width:100%;min-width:0;box-sizing:border-box}
+.record-ocr-items-v21 select,.control-record-drawer-v2 .record-ocr-properties-v21 select{width:100%;min-width:0;box-sizing:border-box}
 .control-record-drawer-v2 .record-ocr-properties-v21>header{flex-wrap:wrap}
 .control-record-drawer-v2 .record-ocr-properties-v21>header>div{display:grid;gap:4px}
 @media(max-width:600px){.control-record-drawer-v2 .record-ocr-items-v21 article{grid-template-columns:minmax(0,1fr)}}

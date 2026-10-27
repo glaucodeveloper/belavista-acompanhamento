@@ -23,6 +23,7 @@
     proto.setScenePan=function(x,y,animate=false){
       const isPublic=this.matches?.('map-scene[data-public-map],map-scene[data-public-presentation]');
       if(!isPublic)return previousSetScenePan.call(this,x,y,animate);
+      if(this.dataset.publicPanTsOwner==='true')return previousSetScenePan.call(this,x,y,animate);
 
       const canvas=this.querySelector('.three-overlay');
       const width=Math.max(1,canvas?.clientWidth||this.clientWidth||innerWidth);

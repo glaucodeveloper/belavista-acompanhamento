@@ -36,6 +36,7 @@
   }
 
   function ensureBrand(){
+    if(document.querySelector('public-leads-surface')?.dataset.publicBrandTsOwner==='true')return null;
     let host=document.querySelector('[data-public-alianca-brand-v5346]');
     if(host)return host;
 
@@ -92,6 +93,7 @@
 
   function updateBrand(){
     const host=ensureBrand();
+    if(!host)return;
     const full=host.querySelector('[data-brand-full]');
     const mark=host.querySelector('[data-brand-mark]');
     const {top,fadeEnd,end}=storyMetrics();
@@ -285,6 +287,10 @@
 
   function onScroll(){
     updateBrand();
+    if(document.querySelector('public-leads-surface')?.dataset.publicReturnResetTsOwner==='true'){
+      state.lastY=window.scrollY;
+      return;
+    }
 
     const y=window.scrollY;
     const {armAt,resetAt}=storyMetrics();
@@ -316,7 +322,7 @@
       onScroll();
     },{passive:true});
 
-    document.body.dataset.publicReturnResetReady='v5346';
+    document.body.dataset.publicReturnResetReady=document.querySelector('public-leads-surface')?.dataset.publicReturnResetTsOwner==='true'?'typescript':'v5346';
   }
 
   if(document.readyState==='loading'){

@@ -1,0 +1,92 @@
+{
+  "filters": [
+    ["execution", "Execução Atual", "activity", "drenagem"],
+    ["collaborators", "Colaboradores", "users", "terraplanagem"],
+    ["schedule", "Cronograma", "calendar-clock", "pavimentacao"],
+    ["leads", "Leads", "users-round", "urbanizacao"],
+    ["materials", "Materiais", "boxes", "rede-agua"],
+    ["risks", "Riscos", "triangle-alert", "rede-eletrica"],
+    ["progress", "Progresso", "chart-no-axes-combined", "progress"]
+  ],
+  "modes": {
+    "tracking": [
+      ["execution", "Execução Atual", "activity", "drenagem"],
+      ["collaborators", "Colaboradores", "users", "terraplanagem"],
+      ["schedule", "Cronograma", "calendar-clock", "pavimentacao"],
+      ["leads", "Leads", "users-round", "urbanizacao"],
+      ["materials", "Materiais", "boxes", "rede-agua"],
+      ["risks", "Riscos", "triangle-alert", "rede-eletrica"],
+      ["progress", "Progresso", "chart-no-axes-combined", "progress"]
+    ],
+    "commercial": [
+      ["commercial-leads", "Leads", "users-round", "commercial"],
+      ["commercial-contracts", "Contratos", "file-signature", "commercial"],
+      ["commercial-lots", "Lotes", "map-pinned", "commercial"],
+      ["commercial-reservations", "Reservas", "calendar-check", "commercial"],
+      ["commercial-installments", "Prestações / sinais", "wallet-cards", "commercial"],
+      ["commercial-paid", "Quitados", "badge-check", "commercial"]
+    ],
+    "social": [
+      ["social-instagram", "Instagram", "instagram", "social"],
+      ["social-personal", "Pessoal", "messages-square", "social"],
+      ["social-clients", "Clientes", "user-round", "social"],
+      ["social-brokers", "Corretores", "badge-dollar-sign", "social"],
+      ["social-staff-operating", "Operando", "hard-hat", "social"],
+      ["social-staff-services", "Serviços", "briefcase-business", "social"],
+      ["social-staff-planned", "Planejados", "calendar-clock", "social"]
+    ]
+  },
+  "socialContacts": [
+    ["social-instagram", "Instagram"],
+    ["social-personal", "Pessoal"],
+    ["social-clients", "Cliente"],
+    ["social-brokers", "Corretor"],
+    ["social-staff-operating", "Encarregado · operando"],
+    ["social-staff-services", "Serviços"],
+    ["social-staff-planned", "Planejados"]
+  ],
+  "highlights": {
+    "execution": {"eyebrow":"EXECUÇÃO ATUAL","title":"Drenagem pluvial","progress":42,"status":"Em andamento","priority":"Alta","detail":"Frente ativa com medição e liberação parcial de trechos.","next":"Validar medição e liberar o próximo trecho.","view":"stages"},
+    "collaborators": {"eyebrow":"EQUIPE EM CAMPO","title":"Terraplanagem","progress":68,"status":"Equipe alocada","priority":"Operacional","detail":"Frente com operador, encarregado e máquina em atividade.","next":"Confirmar produção por hora de máquina.","view":"stages"},
+    "schedule": {"eyebrow":"CRONOGRAMA","title":"Pavimentação","progress":0,"status":"Bloqueada","priority":"Dependência","detail":"Só inicia após as redes e liberações de infraestrutura.","next":"Acompanhar a liberação da rede de água.","view":"stages"},
+    "leads": {"eyebrow":"INTERESSE COMERCIAL","title":"Quadras e áreas verdes","progress":63,"status":"Em visualização","priority":"Comercial","detail":"Destaque territorial para leitura de lotes e demanda.","next":"Responder leads com lote e condição disponíveis.","view":"leads"},
+    "materials": {"eyebrow":"MATERIAIS","title":"Rede de água","progress":12,"status":"Aguardando insumos","priority":"Antes da pavimentação","detail":"Tubos PEAD, cavaletes e ramais vinculados aos 298 lotes.","next":"Conferir entrega e apontar consumo por frente.","view":"stages"},
+    "risks": {"eyebrow":"RISCO E DEPENDÊNCIA","title":"Rede elétrica","progress":8,"status":"Aguardando Coelba","priority":"Última frente","detail":"Ligação depende do prazo externo e dos requisitos de material.","next":"Confirmar prazo da Coelba e lista de materiais.","view":"stages"},
+    "progress": {"eyebrow":"PROGRESSO FÍSICO","title":"Avanço das etapas","progress":63,"status":"Leitura consolidada","priority":"Visão geral","detail":"Selecione uma área do loteamento para visualizar e registrar o avanço físico.","next":"Abrir o mapa completo e selecionar uma área de progresso.","view":"map"},
+    "commercial-leads": {"eyebrow":"LEADS NO MAPA","title":"Demanda por lote","progress":63,"status":"Captação ativa","priority":"Comercial","detail":"Lotes com interesse recebido na página pública e nos canais de atendimento.","next":"Abrir Leads para distribuir o próximo contato.","view":"leads"},
+    "commercial-contracts": {"eyebrow":"CONTRATOS E LOTES","title":"Negociações vinculadas","progress":78,"status":"Em acompanhamento","priority":"Documentos","detail":"Contratos, propostas e lotes vinculados formam a carteira comercial rastreável.","next":"Abrir propostas e contratos para revisar documentos.","view":"proposals"},
+    "commercial-lots": {"eyebrow":"DISPONIBILIDADE","title":"Lotes do empreendimento","progress":54,"status":"Leitura territorial","priority":"Mapa comercial","detail":"A distribuição territorial conecta interesse, disponibilidade e valor por lote.","next":"Abrir o resumo de lotes sobre o mapa.","view":"leads"},
+    "commercial-reservations": {"eyebrow":"RESERVAS","title":"Lotes reservados","progress":42,"status":"Reserva ativa","priority":"Atenção comercial","detail":"O amarelo identifica reservas abertas que aguardam evolução documental.","next":"Abrir a carteira comercial e conferir os próximos contatos.","view":"proposals"},
+    "commercial-installments": {"eyebrow":"PRESTAÇÕES E SINAIS","title":"Carteira parcelada","progress":68,"status":"Fluxo financeiro","priority":"Recebimentos","detail":"Lotes com entrada, sinal ou parcelas exigem acompanhamento do vínculo comercial.","next":"Abrir a carteira para revisar o plano de pagamento.","view":"proposals"},
+    "commercial-paid": {"eyebrow":"QUITADOS","title":"Lotes concluídos","progress":100,"status":"Quitado","priority":"Carteira consolidada","detail":"Verde identifica negócios quitados e prontos para consulta histórica.","next":"Abrir contratos para consultar a documentação final.","view":"proposals"},
+    "social-instagram": {"eyebrow":"COMUNICAÇÃO · INSTAGRAM","title":"Leads do Instagram","progress":61,"status":"Conversas abertas","priority":"Entrada social","detail":"O destaque roxo acompanha os lotes associados a conversas recebidas pelo Instagram.","next":"Abrir Mensagens e continuar o atendimento do lead.","view":"map"},
+    "social-personal": {"eyebrow":"COMUNICAÇÃO · PESSOAL","title":"Conversas internas","progress":74,"status":"Equipe conectada","priority":"Canal interno","detail":"O destaque ciano acompanha o contexto de conversas com a equipe do empreendimento.","next":"Abrir a central de Mensagens para responder.","view":"map"},
+    "social-clients": {"eyebrow":"CONTATOS · CLIENTES","title":"Clientes e lotes","progress":72,"status":"Vínculo comercial","priority":"Relacionamento","detail":"Clientes são lidos junto ao status comercial do lote: reserva, parcelas, sinal ou quitado.","next":"Abrir Leads e contratos para revisar o vínculo.","view":"leads"},
+    "social-brokers": {"eyebrow":"CONTATOS · CORRETORES","title":"Carteiras de corretores","progress":68,"status":"Atendimento","priority":"Venda e reserva","detail":"Corretores recebem a cor do status comercial dos lotes que acompanham.","next":"Abrir Comissões para consultar carteira e contratos.","view":"brokers"},
+    "social-staff-operating": {"eyebrow":"EQUIPE · OPERANDO","title":"Encarregados em operação","progress":82,"status":"Operando","priority":"Campo","detail":"Verde forte identifica responsáveis operando em frentes e lotes ativos.","next":"Abrir Encarregados para consultar presença e alocação.","view":"personnel"},
+    "social-staff-services": {"eyebrow":"EQUIPE · SERVIÇOS","title":"Serviços em campo","progress":56,"status":"Serviços","priority":"Execução","detail":"Azul identifica equipes vinculadas a serviços, medições e entregas em campo.","next":"Abrir Encarregados para acompanhar os serviços.","view":"personnel"},
+    "social-staff-planned": {"eyebrow":"EQUIPE · PLANEJADOS","title":"Serviços planejados","progress":28,"status":"Planejados","priority":"Próximos passos","detail":"Âmbar identifica equipes e contatos previstos para as próximas frentes.","next":"Abrir o cronograma para conferir a programação.","view":"stages"}
+  },
+  "metrics": {
+    "execution": [["Avanço","42%","Drenagem pluvial"],["Status","Em andamento","Medição parcial"],["Registros",{"source":"records.count","fallback":"1"},"No diário"]],
+    "collaborators": [["Pessoas",{"source":"demoData.metrics.collaborators","fallback":"0"},"cadastro operacional"],["Em campo","4","responsáveis ativos"],["Alertas","2","a confirmar"]],
+    "schedule": [["Atividades","28","unidades de produção"],["Hoje","3","compromissos"],["Atrasos","2","dependências"]],
+    "leads": [["Leads",{"source":"leads.count-or-demo-leads","fallback":"0"},"recebidos"],["Lotes","96","com interesse"],["Conversão","8,4%","lead → proposta"]],
+    "materials": [["Pedidos","12","em aberto"],["Críticos","3","prioridade de compra"],["No prazo","78%","últimos 90 dias"]],
+    "risks": [["Riscos","7","abertos"],["Críticos","2","alto impacto"],["Notificações",{"source":"notifications.count-or-three","fallback":"3"},"no canal"]],
+    "progress": [["Avanço","63%","consolidado"],["Etapas",{"source":"demoData.activities.count","fallback":"0"},"frentes relacionais"],["Modo","Área","seleção no mapa"]],
+    "commercial-leads": [["Leads",{"source":"leads.count-or-demo-leads","fallback":"0"},"recebidos"],["Lotes","96","com interesse"],["Qualificados","37","prioridade de atendimento"]],
+    "commercial-contracts": [["Contratos","7","carteira vinculada"],["Propostas","12","em negociação"],["Documentos","18","anexos rastreáveis"]],
+    "commercial-lots": [["Lotes","298","na base"],["Disponíveis","202","sem vínculo"],["Valor médio","R$ 468k","faixa observada"]],
+    "commercial-reservations": [["Reservas","12","em aberto"],["Sinais","8","aguardando confirmação"],["Conversão","42%","reserva → contrato"]],
+    "commercial-installments": [["Parcelados","31","planos ativos"],["Sinais","8","no ciclo atual"],["Receber","R$ 1,24M","próximos 90 dias"]],
+    "commercial-paid": [["Quitados","24","contratos encerrados"],["Documentos","24","completos"],["Carteira","R$ 8,4M","valor consolidado"]],
+    "social-instagram": [["Conversas","24","últimos 7 dias"],["Lotes","18","com interesse"],["Resposta","92%","dentro do SLA"]],
+    "social-personal": [["Conversas internas","18","em andamento"],["Equipe","12","contatos ativos"],["Pendências","3","aguardando retorno"]],
+    "social-clients": [["Clientes","61","em atendimento"],["Lotes","37","com vínculo"],["Status","4","categorias comerciais"]],
+    "social-brokers": [["Corretores","8","carteiras ativas"],["Reservas","12","acompanhadas"],["Contratos","7","vinculados"]],
+    "social-staff-operating": [["Operando","14","agora"],["Frentes","6","em campo"],["Presença","94%","na janela atual"]],
+    "social-staff-services": [["Serviços","9","em execução"],["Registros","28","no diário"],["Medições","6","pendentes"]],
+    "social-staff-planned": [["Planejados","11","próximos"],["Janelas","4","esta semana"],["Dependências","2","a liberar"]]
+  }
+}

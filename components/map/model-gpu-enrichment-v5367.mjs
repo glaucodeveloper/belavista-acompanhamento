@@ -1,4 +1,6 @@
 /** Installs the GPU staging and semantic model-enrichment pipeline on MapScene. */
+import * as atlasComponents from "../../dist/frontend/components.js";
+
 export const installMapModelGpuEnrichmentV5367 = (MapScene, {
   PUBLIC_SOCIAL_GREEN_LIFT_V1,
   appStore,
@@ -7,6 +9,16 @@ export const installMapModelGpuEnrichmentV5367 = (MapScene, {
   browser = globalThis,
 } = {}) => {
   if (!MapScene?.prototype) throw new TypeError("Model enrichment requires MapScene.prototype.");
+  const installTypeScriptOwner = atlasComponents.installAtlasMapMasterplanGpuEnrichmentV1;
+  if (typeof installTypeScriptOwner === "function") {
+    return installTypeScriptOwner(MapScene, {
+      PUBLIC_SOCIAL_GREEN_LIFT_V1,
+      appStore,
+      publishMapPreview,
+      syncCompactMapMirrors,
+      browserRef: browser,
+    });
+  }
   for (const [name, value] of Object.entries({ PUBLIC_SOCIAL_GREEN_LIFT_V1, appStore, publishMapPreview, syncCompactMapMirrors })) {
     if (value === undefined) throw new TypeError(`Model enrichment requires ${name}.`);
   }

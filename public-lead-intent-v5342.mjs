@@ -1,5 +1,6 @@
 // BELAVISTA_LEAD_SYSTEM_REALTIME_V5342
 (() => {
+  if(globalThis.__BELAVISTA_PUBLIC_LEAD_REGISTRATION_INSTALLED)return;
   if(globalThis.__belavistaLeadSystemRealtimeV5342)return;
   globalThis.__belavistaLeadSystemRealtimeV5342=true;
 
@@ -12,6 +13,7 @@
   const instagramHandle=value=>{const handle=String(value||'').trim().replace(/^@+/,'');return /^[a-z0-9._]{1,30}$/i.test(handle)?'@'+handle:'';};
 
   function detectIntent(message,selection={}){
+    if(typeof globalThis.belavistaDetectPublicLeadIntent==='function')return globalThis.belavistaDetectPublicLeadIntent(message,selection);
     const text=normalize(message);
     if(!text)return false;
     const strong=[
@@ -155,9 +157,11 @@
     const form=event.currentTarget,modal=form.closest('[data-public-lead-intent-modal-v5342]');
     const status=modal.querySelector('[data-lead-intent-status]'),submit=form.querySelector('[type="submit"]');
     const values=Object.fromEntries(new FormData(form)),ctx=pending||{message:'',selection:currentSelection(),memory:currentMemory()};
-    const name=String(values.name||'').trim(),whatsapp=String(values.whatsapp||'').trim(),instagram=instagramHandle(values.instagramHandle);
-    const documentType=String(values.documentType||'CPF').toUpperCase(),documentValue=String(values.document||'').trim();
+    const validation=globalThis.belavistaValidatePublicLeadRegistration?.({name:values.name,whatsapp:values.whatsapp,instagramHandle:values.instagramHandle,documentType:values.documentType,document:values.document,consent:values.consent});
+    const name=validation?.ok?validation.name:String(values.name||'').trim(),whatsapp=validation?.ok?validation.whatsapp:String(values.whatsapp||'').trim(),instagram=validation?.ok?validation.instagramHandle:instagramHandle(values.instagramHandle);
+    const documentType=validation?.ok?validation.documentType:String(values.documentType||'CPF').toUpperCase(),documentValue=validation?.ok?validation.documentValue:String(values.document||'').trim();
     status.classList.remove('error');
+    if(validation&&!validation.ok){status.textContent=validation.error||'Confira os dados informados.';status.classList.add('error');return;}
     if(name.length<2){status.textContent='Informe o nome.';status.classList.add('error');return;}
     if(digits(whatsapp).length<10){status.textContent='Informe um WhatsApp válido.';status.classList.add('error');return;}
     if(!validDocument(documentType,documentValue)){status.textContent=`${documentType} inválido.`;status.classList.add('error');return;}

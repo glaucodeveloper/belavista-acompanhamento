@@ -14,10 +14,12 @@
     "deps:install:wails": "go -C desktop/wails mod download",
     "deps:install:all": "npm run deps:install && npm run deps:install:capacitor && npm run deps:install:firebase && npm run deps:install:wails",
     "start": "npm run build:frontend && node server.mjs",
+    "proxy:local": "node scripts/local-port-proxy.mjs",
     "desktop:start": "npm run build:frontend && electron .",
-    "desktop:check": "node --check electron/main.mjs && node --check electron/preload.mjs && node --check desktop/instagram-bridge.mjs",
-    "desktop:package": "electron-builder --linux AppImage",
-    "desktop:package:win": "electron-builder --win nsis --x64 --publish never",
+    "desktop:check": "node --check electron/main.mjs && node --check electron/preload.cjs && node --check desktop/instagram-bridge.mjs",
+    "desktop:gateway:cloudflare": "node scripts/start-desktop-cloudflare-gateway.mjs",
+    "desktop:package": "npm run build:frontend && electron-builder --linux AppImage --config.directories.output=desktop-release",
+    "desktop:package:win": "npm run build:frontend && node scripts/package-desktop-win.mjs",
     "test:desktop": "node --test --test-concurrency=1 tests/desktop/*.test.mjs",
     "instagram:bridge": "npx @askjo/camofox-browser",
     "build:frontend": "tsc -p frontend/tsconfig.json",
@@ -107,12 +109,42 @@
     "appId": "br.com.aliancapark.desktop",
     "productName": "Aliança Park Desktop",
     "icon": "assets/public/alianca-park-logo-full-letter-cutouts-v555.png",
-    "asar": true,
+    "asar": false,
     "files": [
       "**/*",
+      "!**/.env*",
+      "!**/.git",
+      "!**/.git/**/*",
+      "!**/.belavista-*",
+      "!**/.belavista-*/**/*",
+      "!**/.tokensave",
+      "!**/.tokensave/**/*",
+      "!**/.gemini",
+      "!**/.gemini/**/*",
+      "!**/.agents",
+      "!**/.agents/**/*",
+      "!**/.codex",
+      "!**/.codex/**/*",
+      "!backups/**/*",
       "!data/**/*",
+      "!desktop-release/**/*",
+      "!docs/**/*",
+      "!mobile/**/*",
       "!output/**/*",
-      "!test-results/**/*"
+      "!dist-pages/**/*",
+      "!test-results/**/*",
+      "!tests/**/*",
+      "!**/test/**/*",
+      "!**/tests/**/*",
+      "!tmp/**/*",
+      "!video/**/*",
+      "!**/*.log",
+      "!**/*.sqlite*",
+      "!dist/**/*",
+      "dist/frontend/**/*",
+      "docs/ai-construction-operational-playbook.md",
+      "data/development-seed.json",
+      "data/ocr-models/**/*"
     ],
     "linux": {
       "target": [
@@ -141,17 +173,26 @@
       "uninstallDisplayName": "Aliança Park Desktop",
       "deleteAppDataOnUninstall": false
     },
-    "artifactName": "${productName}-${version}-${arch}.${ext}"
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "extraResources": [
+      {
+        "from": "desktop-runtime-config.json",
+        "to": "desktop-runtime-config.json"
+      }
+    ]
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
+    "@types/three": "^0.186.0",
     "electron": "^44.2.0",
     "electron-builder": "^26.15.3",
     "hyperframes": "^0.8.31",
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@capacitor/local-notifications": "^8.3.1",
     "firebase-admin": "^14.3.0",
-    "tesseract.js": "^7.0.0"
+    "tesseract.js": "^7.0.0",
+    "three": "^0.186.1"
   }
 }

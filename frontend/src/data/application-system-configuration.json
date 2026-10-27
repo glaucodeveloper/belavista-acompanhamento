@@ -1,0 +1,13 @@
+{
+  "initialTheme": "dark",
+  "initialMapMode": "overview",
+  "sidebarCollapsed": false,
+  "activityDedicated": false,
+  "proposalFormOpen": false,
+  "contractEditing": null,
+  "stageActivityRefreshDelays": [0, 500, 1800, 4200],
+  "deferredModuleActivationDelay": 900,
+  "mapWarmupDelay": 120,
+  "mobileRecordsBreakpointPx": 760,
+  "serviceWorkerScript": "./sw.js?v=ts-admin-deferred-loader-v1&ts-admin-runtime-owner-v1&ts-admin-shell-lifecycle-v1"
+}

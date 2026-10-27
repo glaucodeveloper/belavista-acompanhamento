@@ -1,0 +1,22 @@
+{
+  "columns": [
+    ["id", "ID"],
+    ["name", "Material"],
+    ["stageId", "Etapa"],
+    ["activityName", "Atividade"],
+    ["plannedQuantity", "Previsto"],
+    ["receivedQuantity", "Recebido"],
+    ["usedQuantity", "Usado"],
+    ["unit", "Unidade"],
+    ["status", "Situação"],
+    ["scope", "Descrição"]
+  ],
+  "statusLabels": {
+    "bom": "Adequado",
+    "atencao": "Atenção",
+    "critico": "Crítico",
+    "planejado": "Planejado",
+    "andamento": "Em andamento",
+    "concluido": "Concluído"
+  }
+}

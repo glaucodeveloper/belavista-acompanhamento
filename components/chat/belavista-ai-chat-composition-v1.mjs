@@ -1,6 +1,8 @@
-import { createAiChat } from "./ai-chat.mjs?v=mobile-focus-v1";
+import { createAiChat } from "./ai-chat.mjs?v=ts-project-documents-chat-navigation-v1&ts-settings-ai-agenda-v1&ts-ai-chat-component-owner-v1&ts-stage-record-center-owner-v1&ts-ai-chat-recovery-bridge-v2";
 import { createAiChatBrowserAdapter } from "./ai-chat-browser-adapter.mjs?v=chat-browser-adapter-v4";
 import { createAiChatDependenciesV1 } from "./ai-chat-dependencies-v1.mjs?v=ai-chat-dependencies-v6";
+import * as atlasAiChatProgramV1 from "../../dist/frontend/program.js";
+import * as atlasAiChatComponentsV1 from "../../dist/frontend/components.js";
 import {
   aiChatValueProviderV1,
   createAiChatServiceContainerV1,
@@ -52,12 +54,25 @@ export const createBelavistaAiChatDependenciesV1 = ({ host, services = {}, overr
   });
   const ports = Object.fromEntries([...knownGroups].map((group) => [group, container.resolve(group)]));
 
-  return createAiChatDependenciesV1({
+  const dependencies = {
     browser: createAiChatBrowserAdapter(host),
     ports,
-  });
+  };
+  return typeof atlasAiChatProgramV1.createAtlasAiChatDependenciesV1 === "function"
+    ? atlasAiChatProgramV1.createAtlasAiChatDependenciesV1(dependencies)
+    : createAiChatDependenciesV1(dependencies);
 };
 
-/** Compose concrete app services once; the widget receives only validated ports. */
-export const createBelavistaAiChatV1 = (options = {}) =>
-  createAiChat(createBelavistaAiChatDependenciesV1(options));
+/** Prefer the TypeScript program composition; retain the MJS graph as fallback. */
+export const createBelavistaAiChatV1 = (options = {}) => {
+  if (typeof atlasAiChatProgramV1.createAtlasAiChatApplicationV1 === "function")
+    return atlasAiChatProgramV1.createAtlasAiChatApplicationV1(options);
+  const dependencies = createBelavistaAiChatDependenciesV1(options);
+  if (typeof atlasAiChatComponentsV1.createAtlasAiChatV1 === "function")
+    return atlasAiChatComponentsV1.createAtlasAiChatV1({
+      ...dependencies,
+      aiAgendaInstructionV1: atlasAiChatProgramV1.aiAgendaInstructionV1,
+      normalizeAiAgendaComprehensionV1: atlasAiChatProgramV1.normalizeAiAgendaComprehensionV1,
+    });
+  return createAiChat(dependencies);
+};

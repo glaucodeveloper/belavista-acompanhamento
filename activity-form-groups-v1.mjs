@@ -42,4 +42,18 @@ export const ActivityFormGroups=({props={},children=[]}={})=>({
   }
 });
 
-export const renderActivityFormGroupsV1=props=>ActivityFormGroups({props}).next().value;
+const renderActivityFormGroupsLegacyV1=props=>ActivityFormGroups({props}).next().value;
+
+let atlasActivityFormGroupsRendererV1=null;
+
+/** Register the typed renderer after the host loads the component monolith. */
+export const setActivityFormGroupsRendererV1=renderer=>{
+  atlasActivityFormGroupsRendererV1=typeof renderer==='function'?renderer:null;
+  return atlasActivityFormGroupsRendererV1!==null;
+};
+
+/** Prefer the registered typed renderer; retain the local implementation as fallback. */
+export const renderActivityFormGroupsV1=props=>
+  typeof atlasActivityFormGroupsRendererV1==='function'
+    ? atlasActivityFormGroupsRendererV1(props||{})
+    : renderActivityFormGroupsLegacyV1(props);

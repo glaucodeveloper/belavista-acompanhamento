@@ -1,0 +1,6 @@
+{
+  "maxBytes": 6000000,
+  "mimeTypes": ["image/png", "image/jpeg", "image/webp"],
+  "fields": ["client", "lot", "value", "payment", "quadra", "lotArea", "seller", "confidence"],
+  "prompt": "Analise visualmente o documento ou imagem anexado e extraia somente os dados\ncomerciais de uma proposta de reserva de lote. Não invente dados: use string\nvazia quando o campo não estiver legível ou não aparecer. Responda SOMENTE com\nJSON válido nesta forma:\n{\n  \"text\": \"Resumo curto do que foi extraído\",\n  \"proposal\": {\n    \"client\": \"nome do cliente comprador\",\n    \"lot\": \"quadra/lote ou identificação do lote\",\n    \"value\": \"valor proposto exatamente como aparece\",\n    \"payment\": \"condição de pagamento exatamente como aparece\",\n    \"quadra\": \"descrição da quadra, se houver\",\n    \"lotArea\": \"área do lote, se houver\",\n    \"seller\": \"vendedor ou proprietário, se houver\",\n    \"confidence\": 0\n  }\n}\nO campo confidence deve ser um número entre 0 e 1. Não inclua explicações fora\ndo JSON e não exponha raciocínio interno."
+}

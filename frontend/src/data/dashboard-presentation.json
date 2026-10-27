@@ -1,0 +1,25 @@
+{
+  "reportActions": [
+    { "kind": "records", "title": "Registros de campo", "description": "Registros persistidos do diário operacional." },
+    { "kind": "agenda", "title": "Agenda por estado", "description": "Compromissos persistidos ordenados por estado e horário." }
+  ],
+  "widgets": [
+    { "view": "map", "label": "Mapa", "icon": "◈" },
+    { "view": "progress", "label": "Registros", "icon": "✎" },
+    { "view": "agenda", "label": "Agenda", "icon": "▦" },
+    { "view": "activities", "label": "Atividades", "icon": "☷" },
+    { "view": "materials", "label": "Materiais", "icon": "◇" },
+    { "view": "brokers-board", "label": "Corretores", "icon": "♧" },
+    { "view": "repasses", "label": "Repasses", "icon": "¤" },
+    { "view": "settings", "label": "Configurações", "icon": "⚙" }
+  ],
+  "settingsOptions": [
+    { "key": "propagateRelations", "label": "Propagar relações", "group": "automation" },
+    { "key": "generateSchedule", "label": "Gerar cronograma", "group": "automation" },
+    { "key": "generateResources", "label": "Recalcular materiais e equipe", "group": "automation" },
+    { "key": "notifyWorker", "label": "Avisar o Worker", "group": "automation" },
+    { "key": "productionModeEnabled", "label": "Programar por produção", "group": "programming" },
+    { "key": "mapLocation", "label": "Vincular localização 3D", "group": "programming" },
+    { "key": "requireAcceptance", "label": "Exigir aceite do requisito", "group": "programming" }
+  ]
+}

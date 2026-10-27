@@ -1,0 +1,28 @@
+{
+  "eyebrow": "INTENÇÃO COMERCIAL IDENTIFICADA",
+  "title": "Registrar interesse",
+  "description": "Os dados ficam ligados ao lote e ao contexto desta conversa para continuidade pelo comercial.",
+  "closeLabel": "×",
+  "closeAriaLabel": "Fechar",
+  "initialLotLabel": "Lote: —",
+  "lotLabelTemplate": "Lote de interesse: {lot}",
+  "fields": {
+    "name": { "label": "Nome completo", "autocomplete": "name", "maxLength": 120 },
+    "whatsapp": { "label": "WhatsApp", "autocomplete": "tel", "maxLength": 24 },
+    "instagram": { "label": "Instagram @", "optionalLabel": "opcional", "autocomplete": "off", "maxLength": 31, "placeholder": "@seuusuario" },
+    "documentType": { "label": "Documento" },
+    "document": { "label": "Número do documento", "autocomplete": "off", "maxLength": 32 }
+  },
+  "consent": "Autorizo o registro dos dados e do contexto comercial desta conversa para continuidade da negociação.",
+  "actions": {
+    "defer": "Agora não",
+    "submit": "Registrar interesse",
+    "submitting": "Registrando no sistema…"
+  },
+  "status": {
+    "expiredConversation": "A conversa expirou. Envie novamente seu interesse.",
+    "unknownError": "erro desconhecido",
+    "serviceErrorTemplate": "Não foi possível registrar: {error}",
+    "successTemplate": "Registrado · protocolo {leadId}"
+  }
+}

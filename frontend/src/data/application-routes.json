@@ -1,0 +1,36 @@
+{
+  "aliases": {
+    "stages": "agenda",
+    "lotes": "brokers-board",
+    "repasse": "repasses",
+    "finance": "control",
+    "contracts": "control",
+    "proposals": "control",
+    "commission-deal": "control",
+    "actions": "activities"
+  },
+  "directViews": [
+    "map",
+    "control",
+    "lot-development",
+    "lot-profile",
+    "stages",
+    "materials",
+    "agenda",
+    "activities",
+    "progress",
+    "records",
+    "foremen",
+    "messages",
+    "leads",
+    "documents",
+    "brokers",
+    "broker-detail",
+    "sales-history",
+    "brokers-board",
+    "cash-record",
+    "repasses",
+    "settings",
+    "activity-installation"
+  ]
+}

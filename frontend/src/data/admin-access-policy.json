@@ -1,0 +1,76 @@
+{
+  "adminLoginRoles": [
+    "admin",
+    "owner",
+    "developer",
+    "sales",
+    "commercial",
+    "broker",
+    "corretor"
+  ],
+  "foremanNavViews": [
+    "map",
+    "agenda",
+    "records",
+    "stages"
+  ],
+  "foremanExtensionViews": [],
+  "limitedOperationalViews": [
+    "map",
+    "agenda",
+    "records",
+    "stages"
+  ],
+  "removedAdminViews": [
+    "personnel",
+    "reports"
+  ],
+  "brokerRoles": [
+    "sales",
+    "commercial",
+    "broker",
+    "corretor"
+  ],
+  "privilegedRoles": [
+    "owner",
+    "admin",
+    "developer"
+  ],
+  "roleAliases": {
+    "dono": "owner",
+    "proprietário": "owner",
+    "proprietario": "owner",
+    "administrador": "admin",
+    "desenvolvimento": "developer",
+    "desenvolvedor": "developer",
+    "ti": "developer",
+    "dev": "developer",
+    "encarregado": "foreman",
+    "corretora": "corretor",
+    "vendedor": "sales",
+    "vendedora": "sales",
+    "comercial": "commercial"
+  },
+  "delegatedNavigationLabels": {
+    "map": [
+      "map",
+      "house",
+      "Mapa"
+    ],
+    "agenda": [
+      "agenda",
+      "calendar-range",
+      "Agenda"
+    ],
+    "records": [
+      "records",
+      "clipboard-list",
+      "Registros"
+    ],
+    "stages": [
+      "stages",
+      "calendar-range",
+      "Linha do tempo do cronograma"
+    ]
+  }
+}

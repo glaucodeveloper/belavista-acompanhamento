@@ -1,0 +1,20 @@
+{
+  "recenterViews": ["records", "agenda", "activities", "progress"],
+  "progressMapViews": ["assistant", "map"],
+  "recordPolygonSelectionViews": ["records"],
+  "stageOverlayViews": ["assistant", "map"],
+  "clearStageOverlayViews": ["records"],
+  "interactiveMapViews": ["assistant", "map", "records", "leads"],
+  "solarControlViews": ["assistant", "map", "records", "leads"],
+  "categorySwitcherViews": ["assistant", "map", "records", "leads"],
+  "gestureLegendViews": ["assistant", "map", "records", "leads"],
+  "badgeViews": ["assistant", "map", "records", "leads"],
+  "badgeLabels": {
+    "records": "Pintura de progresso · use o formulário do registro",
+    "leads": "Mapa comercial · OpenStreet + lotes 3D",
+    "assistant": "Consulta de status · arraste para selecionar",
+    "map": "Consulta de status · arraste para selecionar",
+    "default": "Mapa contextual"
+  },
+  "sharedMapContract": "public-scene · administrative-extensions"
+}

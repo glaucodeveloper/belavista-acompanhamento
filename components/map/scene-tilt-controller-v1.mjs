@@ -1,3 +1,5 @@
+import * as atlasComponents from "../../dist/frontend/components.js";
+
 const SCENE_TILT_CONFIG_V1 = Object.freeze([
   "ADMIN_STANDALONE_BASE_TILT_DEG_V1",
   "DEFAULT_SCENE_ZOOM",
@@ -8,6 +10,8 @@ const SCENE_TILT_CONFIG_V1 = Object.freeze([
 ]);
 
 export const assertSceneTiltControllerDependenciesV1 = (MapScene, dependencies) => {
+  if (typeof atlasComponents.assertAtlasMapSceneTiltDependencies === "function")
+    return atlasComponents.assertAtlasMapSceneTiltDependencies(MapScene, dependencies);
   if (typeof MapScene !== "function" || !MapScene.prototype)
     throw new TypeError("Scene tilt requires the existing MapScene constructor.");
   if (!dependencies || typeof dependencies !== "object")
@@ -32,6 +36,8 @@ export const assertSceneTiltControllerDependenciesV1 = (MapScene, dependencies) 
 /** Install the effective tilt controller after navigation methods on MapScene. */
 export const installSceneTiltControllerV1 = (MapScene, dependencies) => {
   assertSceneTiltControllerDependenciesV1(MapScene, dependencies);
+  if (typeof atlasComponents.installAtlasMapSceneTiltController === "function")
+    return atlasComponents.installAtlasMapSceneTiltController(MapScene, dependencies);
   const {
     ADMIN_STANDALONE_BASE_TILT_DEG_V1,
     DEFAULT_SCENE_ZOOM,

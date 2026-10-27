@@ -1,9 +1,11 @@
+import { createAtlasLiveReportBuilders } from "../../dist/frontend/program.js";
+
 /**
  * Builds live report projections from the same operational state used by the
  * finance and records workspaces. The catalog remains owned by the app shell;
  * domain readers are injected so this module does not depend on components.js.
  */
-export const createLiveReportBuildersV1 = ({
+const createLegacyLiveReportBuildersV1 = ({
   reportCatalog,
   formatBRL,
   stageRecordStagesV1,
@@ -237,3 +239,10 @@ export const createLiveReportBuildersV1 = ({
     syncLiveSystemReportV1,
   });
 };
+
+
+/** Use the legacy projections only when the TS reports route is explicitly disabled. */
+export const createLiveReportBuildersV1 = (input) =>
+  globalThis.BELAVISTA_USE_LEGACY_REPORTS_V1 === true
+    ? createLegacyLiveReportBuildersV1(input)
+    : createAtlasLiveReportBuilders(input);

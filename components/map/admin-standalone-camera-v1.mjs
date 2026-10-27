@@ -787,12 +787,12 @@ export const installAdminStandaloneCameraV1 = (MapScene, dependencies) => {
         return;
       }
   
-      const now = now(),
+      const timestamp = now(),
         existing = this._adminDetiltZoomSessionV11,
         canContinueSession =
           existing &&
           !existing.animating &&
-          now - Number(existing.lastInputAt || 0) <=
+          timestamp - Number(existing.lastInputAt || 0) <=
             ADMIN_STANDALONE_DETILT_ZOOM_SESSION_GAP_MS_V11 &&
           from <= Number(existing.baseTilt || from) + 0.25;
   
@@ -1139,4 +1139,3 @@ export const installAdminStandaloneCameraV1 = (MapScene, dependencies) => {
     );
   }
 };
-

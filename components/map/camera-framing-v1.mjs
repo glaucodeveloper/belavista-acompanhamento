@@ -1,7 +1,11 @@
+import * as atlasComponents from "../../dist/frontend/components.js";
+
 const CAMERA_FRAMING_METHODS_V1 = Object.freeze(["updatePublicFocusFrame","fitPublicGapView","fitSceneView"]);
 const CAMERA_FRAMING_CONFIG_V1 = Object.freeze(["ADMIN_FIXED_MAP_ROTATION_DEG","DEFAULT_SCENE_ZOOM","MAP_CAMERA_VIEW"]);
 
 export const assertCameraFramingDependenciesV1 = (MapScene, dependencies) => {
+  if (typeof atlasComponents.assertAtlasMapSceneCameraFramingDependencies === "function")
+    return atlasComponents.assertAtlasMapSceneCameraFramingDependencies(MapScene, dependencies);
   if (typeof MapScene !== 'function' || !MapScene.prototype) throw new TypeError('Camera framing requires MapScene.');
   if (!dependencies || typeof dependencies !== 'object') throw new TypeError('Camera framing requires injected dependencies.');
   for (const key of CAMERA_FRAMING_CONFIG_V1) {
@@ -15,6 +19,8 @@ export const assertCameraFramingDependenciesV1 = (MapScene, dependencies) => {
 
 export const installCameraFramingV1 = (MapScene, dependencies) => {
   assertCameraFramingDependenciesV1(MapScene, dependencies);
+  if (typeof atlasComponents.installAtlasMapSceneCameraFraming === "function")
+    return atlasComponents.installAtlasMapSceneCameraFraming(MapScene, dependencies);
   const { config, browser } = dependencies;
   const { ADMIN_FIXED_MAP_ROTATION_DEG, DEFAULT_SCENE_ZOOM, MAP_CAMERA_VIEW } = config;
   const { document: documentRef, window: windowRef, getComputedStyle: getComputedStyleFn, setTimeout: schedule } = browser;

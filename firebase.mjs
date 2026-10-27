@@ -13,19 +13,21 @@ const FIREBASE_CONFIG={
 };
 
 let runtimePromise;
+let legacyRuntimePromiseV1;
 const DEVICE_INSTALLATION_KEY='belavista.device.installation.v1';
 const DEVICE_CHANNEL_UID_KEY='belavista.device.channel.uid.v1';
 const DEVICE_CHANNEL_ROLE_KEY='belavista.device.channel.role.v1';
 const SETTINGS_KEY='belavista.integrations.v1';
 const DEFAULT_PROJECT_ID='project-alianca-park';
-const loadRuntime=()=>runtimePromise||(runtimePromise=(async()=>{
+const loadRuntimeLegacyV1=()=>legacyRuntimePromiseV1||(legacyRuntimePromiseV1=(async()=>{
   const [appSdk,databaseSdk,authSdk,storageSdk]=await Promise.all([
     import(/* @vite-ignore */ `https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-app.js`),
     import(/* @vite-ignore */ `https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-database.js`),
     import(/* @vite-ignore */ `https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-auth.js`),
     import(/* @vite-ignore */ `https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-storage.js`)
   ]);
-  const app=appSdk.initializeApp(FIREBASE_CONFIG);
+  const apps=typeof appSdk.getApps==='function'?appSdk.getApps():[];
+  const app=apps.length&&typeof appSdk.getApp==='function'?appSdk.getApp():appSdk.initializeApp(FIREBASE_CONFIG);
   // Prefer RTDB WebSocket in browser/TWA. Firebase long-polling creates a
   // cross-origin hidden iframe that Chrome reports as an unload policy violation.
   if(typeof globalThis.WebSocket==='function'&&typeof databaseSdk.forceWebSockets==='function'){
@@ -49,10 +51,92 @@ const loadRuntime=()=>runtimePromise||(runtimePromise=(async()=>{
   import(/* @vite-ignore */ `https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-analytics.js`).then(sdk=>{try{sdk.getAnalytics(app);}catch(error){console.info('Firebase Analytics indisponível neste contexto.',error);}}).catch(()=>{});
   const db=databaseSdk.getDatabase(app);
   return {app,auth,db,storage:storageSdk.getStorage(app),...authSdk,...storageSdk,...databaseSdk,ref:databaseSdk.ref,storageRef:storageSdk.ref};
+})().catch(error=>{legacyRuntimePromiseV1=null;throw error;}));
+const loadRuntime=()=>runtimePromise||(runtimePromise=(async()=>{
+  try{
+    const program=await import('./dist/frontend/program.js');
+    if(typeof program.loadAtlasFirebaseSdkRuntimeV1==='function')return await program.loadAtlasFirebaseSdkRuntimeV1();
+  }catch(error){
+    console.info('Owner TypeScript do runtime Firebase indisponível; usando SDK MJS de recuperação.',error);
+  }
+  return loadRuntimeLegacyV1();
 })().catch(error=>{runtimePromise=null;throw error;}));
+export const loadLegacyFirebaseSdkRuntimeV1=()=>loadRuntimeLegacyV1();
 
 const text=(value,max=240)=>String(value??'').trim().slice(0,max);
 const digitsOnly=value=>String(value??'').replace(/\D/g,'');
+const legacyPublicSalesPersistenceV1=Object.freeze({
+  async savePublicLead(input={}){
+    const runtime=await loadRuntime(),leadRef=runtime.push(runtime.ref(runtime.db,'publicLeads'));
+    await runtime.set(leadRef,{
+      name:text(input.name,120),whatsapp:text(input.whatsapp,40),instagramHandle:text(input.instagramHandle||input.instagram,60),email:text(input.email,160).toLowerCase(),
+      objective:text(input.objective,60),sun:text(input.sun,30),altitude:text(input.altitude,40),terrain:text(input.terrain,40),budget:text(input.budget,60),
+      notes:text(input.notes||input.chatIntent,500),conversation:text(input.chatIntent,500),source:'belavista-public-lead',createdAt:runtime.serverTimestamp(),updatedAt:runtime.serverTimestamp()
+    });
+    return leadRef.key;
+  },
+  async savePublicReservation(input={},files={}){
+    const runtime=await loadRuntime(),reservationRef=runtime.push(runtime.ref(runtime.db,'publicReservations')),reservationId=reservationRef.key,documents={};
+    for(const [kind,file] of Object.entries(files||{})){
+      if(!new Set(['identityFront','identityBack','addressProof','paymentProof']).has(kind)||!file)continue;
+      const allowed=String(file.type||'').startsWith('image/')||String(file.type||'')==='application/pdf';
+      if(!allowed||file.size>12*1024*1024)throw new Error('Cada documento deve ser uma imagem ou PDF de até 12 MB.');
+      const safeName=String(file.name||`${kind}.bin`).replace(/[^a-z0-9._-]/gi,'-').slice(-96),storageRef=runtime.storageRef(runtime.storage,`publicReservations/${reservationId}/${kind}-${Date.now()}-${safeName}`);
+      await runtime.uploadBytes(storageRef,file,{contentType:file.type||'application/octet-stream'});
+      documents[kind]={name:text(file.name,120),contentType:text(file.type,80),size:Number(file.size)||0,storagePath:storageRef.fullPath,url:await runtime.getDownloadURL(storageRef)};
+    }
+    const cpf=digitsOnly(input.cpf),payload={
+      fullName:text(input.fullName||input.name,120),cpfLast4:cpf.slice(-4),birthDate:text(input.birthDate,20),lot:text(input.lot,60),whatsapp:text(input.whatsapp,40),
+      email:text(input.email,160).toLowerCase(),objective:text(input.objective,60),status:text(input.status||'Documentos em análise',60),reviewResult:text(input.reviewResult,80),
+      lastInteraction:'Documentos enviados para conferência cadastral',pixTxid:text(input.pixTxid,25),pixPayload:text(input.pixPayload,700),documents,consent:true,
+      source:'belavista-public-reservation',createdAt:runtime.serverTimestamp(),updatedAt:runtime.serverTimestamp()
+    };
+    await runtime.set(reservationRef,payload);
+    return reservationId;
+  },
+  async savePublicFieldRecord(input={},photoFile=null){
+    const runtime=await loadRuntime();
+    if(photoFile&&(!String(photoFile.type||'').startsWith('image/')||photoFile.size>12*1024*1024))throw new Error('A foto deve ser uma imagem de até 12 MB.');
+    const recordRef=runtime.push(runtime.ref(runtime.db,'publicFieldRecords')),recordId=recordRef.key;
+    let photo=null;
+    if(photoFile){
+      const safeName=String(photoFile.name||'evidencia.jpg').replace(/[^a-z0-9._-]/gi,'-').slice(-96),storageRef=runtime.storageRef(runtime.storage,`publicFieldRecords/${recordId}/${Date.now()}-${safeName}`);
+      await runtime.uploadBytes(storageRef,photoFile,{contentType:photoFile.type||'image/jpeg'});
+      photo={name:text(photoFile.name,120),contentType:text(photoFile.type,80),size:Number(photoFile.size)||0,storagePath:storageRef.fullPath,url:await runtime.getDownloadURL(storageRef)};
+    }
+    await runtime.set(recordRef,{
+      project:text(input.project,100),stage:text(input.stage,100),activity:text(input.activity,140),category:text(input.category,100),responsible:text(input.responsible,120),
+      date:text(input.date,20),time:text(input.time,12),progress:Math.max(0,Math.min(100,Number(input.progress)||0)),status:text(input.status,40),details:text(input.details,1200),photo,
+      source:'belavista-twa-field-record',createdAt:runtime.serverTimestamp(),updatedAt:runtime.serverTimestamp()
+    });
+    return recordId;
+  },
+  async saveFieldConfirmation(input={}){
+    const runtime=await loadRuntime(),services=Array.isArray(input.servicos)?input.servicos.map(item=>text(item,120)).filter(Boolean).slice(0,12):[];
+    if(!input.confirmed||!services.length)throw new Error('Confirme o serviço e selecione os itens conferidos.');
+    const ref=runtime.push(runtime.ref(runtime.db,'fieldConfirmations')),stage=text(input.etapa,100),stageKey=stage.toLocaleLowerCase('pt-BR');
+    const propagated=[{type:'record',message:'Registro auditável encaminhado ao painel operacional.'}];
+    if(stageKey.includes('água')||stageKey.includes('agua')||stageKey.includes('drenagem'))propagated.push({type:'dependency',message:'Checagem de liberação antes da pavimentação foi solicitada.'});
+    if(stageKey.includes('elétrica')||stageKey.includes('eletrica'))propagated.push({type:'dependency',message:'Requisitos e prazo de ligação Coelba foram sinalizados.'});
+    const {evidence:evidenceFile,...safeInput}=input;
+    const payload={...safeInput,responsavel:text(input.responsavel,120),etapa:stage,atividade:text(input.atividade,140),detalhes:text(input.detalhes,1200),servicos,
+      progresso:Math.max(0,Math.min(100,Number(input.progresso)||0)),source:'belavista-github-field-portal',propagated,createdAt:runtime.serverTimestamp(),updatedAt:runtime.serverTimestamp()};
+    delete payload.evidenceUri;
+    await runtime.set(ref,payload);
+    return {record:{id:ref.key},propagated};
+  }
+});
+let publicSalesPersistencePromise;
+const loadPublicSalesPersistenceV1=()=>publicSalesPersistencePromise||(publicSalesPersistencePromise=(async()=>{
+  try{
+    const program=await import('./dist/frontend/program.js');
+    if(typeof program.createAtlasFirebasePublicSalesPersistenceV1==='function')
+      return program.createAtlasFirebasePublicSalesPersistenceV1({loadRuntime,text});
+  }catch(error){
+    console.warn('[Belavista] Owner TypeScript de persistência pública indisponível; usando recuperação MJS.',error);
+  }
+  return legacyPublicSalesPersistenceV1;
+})());
 const slug=value=>text(value,160).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9/_-]+/g,'-').replace(/^-+|-+$/g,'');
 const readIntegrationSettings=()=>{
   try{return JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}');}
@@ -114,26 +198,7 @@ const resolveChannelUid=(actor={},settings={},installationId='')=>{
 };
 
 export async function savePublicLead(input={}){
-  const runtime=await loadRuntime();
-  const leadRef=runtime.push(runtime.ref(runtime.db,'publicLeads'));
-  const payload={
-    name:text(input.name,120),
-    whatsapp:text(input.whatsapp,40),
-    instagramHandle:text(input.instagramHandle||input.instagram,60),
-    email:text(input.email,160).toLowerCase(),
-    objective:text(input.objective,60),
-    sun:text(input.sun,30),
-    altitude:text(input.altitude,40),
-    terrain:text(input.terrain,40),
-    budget:text(input.budget,60),
-    notes:text(input.notes||input.chatIntent,500),
-    conversation:text(input.chatIntent,500),
-    source:'belavista-public-lead',
-    createdAt:runtime.serverTimestamp(),
-    updatedAt:runtime.serverTimestamp()
-  };
-  await runtime.set(leadRef,payload);
-  return leadRef.key;
+  return (await loadPublicSalesPersistenceV1()).savePublicLead(input);
 }
 
 export async function askLeadAssistant(message,context={}){
@@ -143,88 +208,18 @@ export async function askLeadAssistant(message,context={}){
   return response.json();
 }
 
-const reservationFileKinds=new Set(['identityFront','identityBack','addressProof','paymentProof']);
-
 export async function savePublicReservation(input={},files={}){
-  const runtime=await loadRuntime();
-  const reservationRef=runtime.push(runtime.ref(runtime.db,'publicReservations'));
-  const reservationId=reservationRef.key;
-  const documents={};
-  for(const [kind,file] of Object.entries(files||{})){
-    if(!reservationFileKinds.has(kind)||!file)continue;
-    const allowed=String(file.type||'').startsWith('image/')||String(file.type||'')==='application/pdf';
-    if(!allowed||file.size>12*1024*1024)throw new Error('Cada documento deve ser uma imagem ou PDF de até 12 MB.');
-    const safeName=String(file.name||`${kind}.bin`).replace(/[^a-z0-9._-]/gi,'-').slice(-96);
-    const storageRef=runtime.storageRef(runtime.storage,`publicReservations/${reservationId}/${kind}-${Date.now()}-${safeName}`);
-    await runtime.uploadBytes(storageRef,file,{contentType:file.type||'application/octet-stream'});
-    documents[kind]={name:text(file.name,120),contentType:text(file.type,80),size:Number(file.size)||0,storagePath:storageRef.fullPath,url:await runtime.getDownloadURL(storageRef)};
-  }
-  const cpf=digitsOnly(input.cpf);
-  const payload={
-    fullName:text(input.fullName||input.name,120),
-    cpfLast4:cpf.slice(-4),
-    birthDate:text(input.birthDate,20),
-    lot:text(input.lot,60),
-    whatsapp:text(input.whatsapp,40),
-    email:text(input.email,160).toLowerCase(),
-    objective:text(input.objective,60),
-    status:text(input.status||'Documentos em análise',60),
-    reviewResult:text(input.reviewResult,80),
-    lastInteraction:'Documentos enviados para conferência cadastral',
-    pixTxid:text(input.pixTxid,25),
-    pixPayload:text(input.pixPayload,700),
-    documents,
-    consent:true,
-    source:'belavista-public-reservation',
-    createdAt:runtime.serverTimestamp(),
-    updatedAt:runtime.serverTimestamp()
-  };
-  await runtime.set(reservationRef,payload);
-  return reservationId;
+  return (await loadPublicSalesPersistenceV1()).savePublicReservation(input,files);
 }
 
 export async function savePublicFieldRecord(input={},photoFile=null){
-  const runtime=await loadRuntime();
-  if(photoFile && (!String(photoFile.type||'').startsWith('image/') || photoFile.size>12*1024*1024)){
-    throw new Error('A foto deve ser uma imagem de até 12 MB.');
-  }
-  const recordRef=runtime.push(runtime.ref(runtime.db,'publicFieldRecords'));
-  const recordId=recordRef.key;
-  let photo=null;
-  if(photoFile){
-    const safeName=String(photoFile.name||'evidencia.jpg').replace(/[^a-z0-9._-]/gi,'-').slice(-96);
-    const storageRef=runtime.storageRef(runtime.storage,`publicFieldRecords/${recordId}/${Date.now()}-${safeName}`);
-    await runtime.uploadBytes(storageRef,photoFile,{contentType:photoFile.type||'image/jpeg'});
-    photo={
-      name:text(photoFile.name,120),
-      contentType:text(photoFile.type,80),
-      size:Number(photoFile.size)||0,
-      storagePath:storageRef.fullPath,
-      url:await runtime.getDownloadURL(storageRef)
-    };
-  }
-  const payload={
-    project:text(input.project,100),
-    stage:text(input.stage,100),
-    activity:text(input.activity,140),
-    category:text(input.category,100),
-    responsible:text(input.responsible,120),
-    date:text(input.date,20),
-    time:text(input.time,12),
-    progress:Math.max(0,Math.min(100,Number(input.progress)||0)),
-    status:text(input.status,40),
-    details:text(input.details,1200),
-    photo,
-    source:'belavista-twa-field-record',
-    createdAt:runtime.serverTimestamp(),
-    updatedAt:runtime.serverTimestamp()
-  };
-  await runtime.set(recordRef,payload);
-  return recordId;
+  return (await loadPublicSalesPersistenceV1()).savePublicFieldRecord(input,photoFile);
 }
 
 // BELAVISTA_OPERATIONAL_PROPOSAL_STORAGE_V1
 export async function saveOperationalProposal(input={},files=[],actor={}){
+  const owner=await loadOperationalProposalOwnerV1();
+  if(owner)return owner.save(input,files,actor);
   const runtime=await loadRuntime(),proposalRef=runtime.push(runtime.ref(runtime.db,'operationalProposals')),proposalId=proposalRef.key,attachments=[];
   for(const file of files||[]){
     if(!file||file.size>12*1024*1024)throw new Error('Cada anexo deve ter no máximo 12 MB.');
@@ -238,22 +233,12 @@ const payload={...input,uid:String(actor.uid||''),profile:String(input.profile||
 }
 
 export async function saveFieldConfirmation(input={}){
-  const runtime=await loadRuntime();
-  const services=Array.isArray(input.servicos)?input.servicos.map(item=>text(item,120)).filter(Boolean).slice(0,12):[];
-  if(!input.confirmed||!services.length)throw new Error('Confirme o serviço e selecione os itens conferidos.');
-  const ref=runtime.push(runtime.ref(runtime.db,'fieldConfirmations'));
-  const stage=text(input.etapa,100),stageKey=stage.toLocaleLowerCase('pt-BR');
-  const propagated=[{type:'record',message:'Registro auditável encaminhado ao painel operacional.'}];
-  if(stageKey.includes('água')||stageKey.includes('agua')||stageKey.includes('drenagem'))propagated.push({type:'dependency',message:'Checagem de liberação antes da pavimentação foi solicitada.'});
-  if(stageKey.includes('elétrica')||stageKey.includes('eletrica'))propagated.push({type:'dependency',message:'Requisitos e prazo de ligação Coelba foram sinalizados.'});
-  const {evidence:evidenceFile,...safeInput}=input;
-  const payload={...safeInput,responsavel:text(input.responsavel,120),etapa:stage,atividade:text(input.atividade,140),detalhes:text(input.detalhes,1200),servicos,progresso:Math.max(0,Math.min(100,Number(input.progresso)||0)),source:'belavista-github-field-portal',propagated,createdAt:runtime.serverTimestamp(),updatedAt:runtime.serverTimestamp()};
-  delete payload.evidenceUri;
-  await runtime.set(ref,payload);
-  return {record:{id:ref.key},propagated};
+  return (await loadPublicSalesPersistenceV1()).saveFieldConfirmation(input);
 }
 
 export async function subscribePublicLeads(onChange){
+  const owner=await loadPublicLeadFilesOwnerV1();
+  if(owner)return owner.subscribePublicLeads(onChange);
   const runtime=await loadRuntime();
   if(!runtime?.db||typeof runtime.ref!=='function'||typeof runtime.onValue!=='function'){
     console.info('Firebase Realtime Database indisponível; leads em tempo real desativados.');
@@ -269,6 +254,8 @@ export async function subscribePublicReservations(onChange){
 
 export async function registerOperationalDevice(actor={}){
   if(!('serviceWorker' in navigator))throw new Error('Este navegador não oferece Service Worker.');
+  const owner=await loadOperationalCommunicationsOwnerV1();
+  if(owner)return owner.registerDevice(actor);
   const runtime=await loadRuntime(),registration=await navigator.serviceWorker.ready;
   let fcmToken='',permission=typeof Notification==='undefined'?'unsupported':Notification.permission;
   if(typeof Notification!=='undefined'&&permission!=='granted')permission=await Notification.requestPermission();
@@ -364,6 +351,8 @@ export async function signOutOperationalUser(){
 
 // BELAVISTA_TWA_COMMERCIAL_NOTIFICATIONS_V5342
 export async function subscribeOperationalNotifications(actor={},onChange=()=>{}){
+  const owner=await loadOperationalCommunicationsOwnerV1();
+  if(owner)return owner.subscribeNotifications(actor,onChange);
   const runtime=await loadRuntime();
   if(!runtime?.db||typeof runtime.ref!=='function'||typeof runtime.onValue!=='function'){
     console.info('Firebase Realtime Database indisponível; notificações em tempo real desativadas.');
@@ -385,7 +374,54 @@ export async function subscribeOperationalNotifications(actor={},onChange=()=>{}
 const conversationKey=(left,right)=>[slug(left).replaceAll('/','-'),slug(right).replaceAll('/','-')].filter(Boolean).sort().join('__');
 export function operationalConversationKey(left,right){return conversationKey(left,right);}
 
+let operationalCommunicationsOwnerPromiseV1;
+const loadOperationalCommunicationsOwnerV1=()=>operationalCommunicationsOwnerPromiseV1||(operationalCommunicationsOwnerPromiseV1=(async()=>{
+  try{
+    const program=await import('./dist/frontend/program.js');
+    if(typeof program.createAtlasFirebaseOperationalCommunicationsV1!=='function')return null;
+    return program.createAtlasFirebaseOperationalCommunicationsV1({
+      loadRuntime,text,slug,readIntegrationSettings,ensureInstallationId,defaultProjectId:DEFAULT_PROJECT_ID,
+      readStoredChannelUid:()=>localStorage.getItem(DEVICE_CHANNEL_UID_KEY)||'',
+      readStoredChannelRole:()=>localStorage.getItem(DEVICE_CHANNEL_ROLE_KEY)||'',
+      rememberOperationalChannel,
+      navigatorRef:globalThis.navigator,
+      notificationApi:typeof globalThis.Notification==='undefined'?null:globalThis.Notification,
+      firebaseMessagingVapidKey,
+      loadMessagingSdk:()=>import(`https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-messaging.js`),
+    });
+  }catch(error){
+    console.info('Owner TypeScript de comunicações não disponível; usando recuperação Firebase MJS.',error);
+    return null;
+  }
+})());
+
+let publicLeadFilesOwnerPromiseV1;
+const loadPublicLeadFilesOwnerV1=()=>publicLeadFilesOwnerPromiseV1||(publicLeadFilesOwnerPromiseV1=(async()=>{
+  try{
+    const program=await import('./dist/frontend/program.js');
+    if(typeof program.createAtlasFirebasePublicLeadFilesV1!=='function')return null;
+    return program.createAtlasFirebasePublicLeadFilesV1({loadRuntime,text});
+  }catch(error){
+    console.info('Owner TypeScript de arquivos/leads não disponível; usando recuperação Firebase MJS.',error);
+    return null;
+  }
+})());
+
+let operationalProposalOwnerPromiseV1;
+const loadOperationalProposalOwnerV1=()=>operationalProposalOwnerPromiseV1||(operationalProposalOwnerPromiseV1=(async()=>{
+  try{
+    const program=await import('./dist/frontend/program.js');
+    if(typeof program.createAtlasOperationalProposalPersistenceV1!=='function')return null;
+    return program.createAtlasOperationalProposalPersistenceV1({loadRuntime,text});
+  }catch(error){
+    console.info('Owner TypeScript de propostas não disponível; usando recuperação Firebase MJS.',error);
+    return null;
+  }
+})());
+
 export async function subscribeOperationalContacts(actor={},onChange=()=>{}){
+  const owner=await loadOperationalCommunicationsOwnerV1();
+  if(owner)return owner.subscribeContacts(actor,onChange);
   const runtime=await loadRuntime();
   if(!runtime?.db||typeof runtime.ref!=='function'||typeof runtime.onValue!=='function'){
     console.info('Firebase Realtime Database sem runtime de referência; contatos em tempo real desativados.');
@@ -402,6 +438,8 @@ export async function subscribeOperationalContacts(actor={},onChange=()=>{}){
 }
 
 export async function subscribeOperationalConversation(actor={},contact={},onChange=()=>{}){
+  const owner=await loadOperationalCommunicationsOwnerV1();
+  if(owner)return owner.subscribeConversation(actor,contact,onChange);
   const runtime=await loadRuntime();
   const ownUid=text(actor.uid,160),contactUid=text(contact.uid,160);
   if(!ownUid||!contactUid)throw new Error('Remetente e contato são obrigatórios.');
@@ -419,6 +457,8 @@ export async function subscribeOperationalConversation(actor={},contact={},onCha
 }
 
 export async function sendOperationalMessage(actor={},contact={},message=''){
+  const owner=await loadOperationalCommunicationsOwnerV1();
+  if(owner)return owner.sendMessage(actor,contact,message);
   const runtime=await loadRuntime();
   const ownUid=text(actor.uid,160),contactUid=text(contact.uid,160),body=text(message,2000);
   if(!ownUid||!contactUid)throw new Error('Selecione um contato autenticado.');
@@ -440,6 +480,8 @@ export async function sendOperationalMessage(actor={},contact={},message=''){
 // cliente não executa comandos vindos do RTDB: apenas entrega o último estado
 // recebido à interface para que a confirmação e a edição continuem humanas.
 export async function subscribeOperationalControlCenter(actor={},onChange=()=>{}){
+  const owner=await loadOperationalCommunicationsOwnerV1();
+  if(owner)return owner.subscribeControlCenter(actor,onChange);
   const runtime=await loadRuntime();
   const projectId=text(actor.projectId||DEFAULT_PROJECT_ID,120);
   let snapshot=null,events={};
@@ -451,6 +493,8 @@ export async function subscribeOperationalControlCenter(actor={},onChange=()=>{}
 }
 
 export async function publishOperationalRealtime(actor={},payload={},context={}){
+  const owner=await loadOperationalCommunicationsOwnerV1();
+  if(owner)return owner.publishRealtime(actor,payload,context);
   const runtime=await loadRuntime();
   const settings=readIntegrationSettings();
   const installationId=ensureInstallationId();
@@ -529,6 +573,8 @@ export async function publishOperationalRealtime(actor={},payload={},context={})
 }
 
 export async function publishOperationalEvent(event={}){
+  const owner=await loadOperationalCommunicationsOwnerV1();
+  if(owner)return owner.publishEvent(event);
   const runtime=await loadRuntime();
   const settings=readIntegrationSettings();
   const channelUid=resolveChannelUid(event.actor||{},settings,ensureInstallationId());
@@ -558,6 +604,8 @@ export const firebaseProjectId=FIREBASE_CONFIG.projectId;
 // PUBLIC_LEAD_FILES_V42: upload bruto para Firebase Storage.
 // A racionalidade da reserva continua no Worker/NVIDIA; esta função só armazena os arquivos.
 export async function uploadPublicLeadFiles(sessionId,files={},options={}){
+  const owner=await loadPublicLeadFilesOwnerV1();
+  if(owner)return owner.uploadPublicLeadFiles(sessionId,files,options);
   const runtime=await loadRuntime();
   const scope=text(options.scope||'documents',40);
   const id=text(sessionId||`session-${Date.now()}`,120);

@@ -1,0 +1,24 @@
+{
+  "defaultColor": 3327449,
+  "statusColors": {
+    "lead": 4557311,
+    "reserved": 15843867,
+    "installments": 15764269,
+    "paid": 4374117
+  },
+  "rules": {
+    "commercial-leads": { "statuses": ["lead"], "color": 4557311 },
+    "commercial-contracts": { "statuses": ["reserved", "installments", "paid"] },
+    "commercial-lots": { "statuses": ["lead", "reserved", "installments", "paid"] },
+    "commercial-reservations": { "statuses": ["reserved"], "color": 15843867 },
+    "commercial-installments": { "statuses": ["installments"], "color": 15764269 },
+    "commercial-paid": { "statuses": ["paid"], "color": 4374117 },
+    "social-instagram": { "statuses": ["lead"], "color": 10190079 },
+    "social-personal": { "statuses": ["lead", "reserved", "installments", "paid"] },
+    "social-clients": { "statuses": ["reserved", "installments", "paid"] },
+    "social-brokers": { "statuses": ["lead", "reserved"] },
+    "social-staff-operating": { "staffStatus": "operating", "color": 2400584 },
+    "social-staff-services": { "staffStatus": "services", "color": 4557311 },
+    "social-staff-planned": { "staffStatus": "planned", "color": 15843867 }
+  }
+}

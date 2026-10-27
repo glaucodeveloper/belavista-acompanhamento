@@ -1,0 +1,12 @@
+{
+  "statuses": [
+    { "label": "Disponível", "aliases": ["available", "disponivel"], "committed": false },
+    { "label": "Reservado", "aliases": ["reserved", "reservado"], "committed": true },
+    { "label": "Em negociação", "aliases": ["negotiation", "em negociacao"], "committed": true },
+    { "label": "Vendido", "aliases": ["sold", "vendido"], "committed": true },
+    { "label": "Repasse programado", "aliases": ["repasse programado"], "committed": true },
+    { "label": "Quitado", "aliases": ["paid", "quitado"], "committed": true },
+    { "label": "Bloqueado", "aliases": ["blocked", "bloqueado"], "committed": false }
+  ],
+  "valueByBlockLimit": 8
+}

@@ -1,12 +1,2 @@
-export const INTEGRATION_SETTINGS_KEY = "belavista.integrations.v1";
-
-/** Read shared UI integration preferences through an injected storage boundary. */
-export const createIntegrationSettingsReaderV1 = ({
-  getStorage = () => globalThis.localStorage,
-} = {}) => () => {
-  try {
-    return JSON.parse(getStorage().getItem(INTEGRATION_SETTINGS_KEY) || "{}");
-  } catch {
-    return {};
-  }
-};
+// TS-backed compatibility entry: no legacy implementation or fallback.
+export { INTEGRATION_SETTINGS_KEY, createIntegrationSettingsReaderV1 } from "../../dist/frontend/program.js";

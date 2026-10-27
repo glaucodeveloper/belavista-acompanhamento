@@ -1,0 +1,27 @@
+[
+  {
+    "key": "entry",
+    "label": "Registro inicial",
+    "detail": "Defina a natureza, a etapa e o contrato mínimo da atividade."
+  },
+  {
+    "key": "materials",
+    "label": "Materiais predefinidos",
+    "detail": "Parta da composição conhecida da etapa e confirme o que será usado."
+  },
+  {
+    "key": "edit",
+    "label": "Edição",
+    "detail": "Ajuste quantidade, unidade, descrição e responsável antes da análise."
+  },
+  {
+    "key": "rationalize",
+    "label": "Racionalização IA",
+    "detail": "Leia conflitos, duplicidades, dependências e lacunas antes de aceitar."
+  },
+  {
+    "key": "cards",
+    "label": "Organizar em cards",
+    "detail": "Converta a proposta aprovada em cards do organizador operacional."
+  }
+]

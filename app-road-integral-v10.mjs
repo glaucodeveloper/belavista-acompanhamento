@@ -1,8 +1,8 @@
 // BELAVISTA_ADMIN_PUBLIC_MAP_SURFACE_V5352
 // v5.3.51 deferred after shell: import './admin-runtime-v11.js?v=admin-runtime-v11';
-// v5.3.51 deferred after shell: import './admin-lots-canvas-v1.js?v=admin-lots-canvas-v1';
-import './components.js?road-integral-asphalt-slices-v13';
-import {appStore, persistUiState, restoreUiState, viewThemes} from './state.js?v=system-metrics-v1-20260919';
+// v5.3.51 deferred after shell: import './admin-lots-canvas-v1.js?v=admin-lots-canvas-ts-owner-v1';
+import './components.js?road-integral-asphalt-slices-v13&ts-map-coordinate-policy-v1';
+import {appStore, persistUiState, restoreUiState, viewThemes} from './state.js?v=system-metrics-v1-20260919&ts-state-catalogs-program-owner-v1';
 import {apiFetch} from './api-client.mjs?v=github-pat-gateway-v1';
 import {normalizeOperationalRole, roleCanOpenView} from './admin-role-policy.mjs?v=admin-role-policy-v1';
 
@@ -16,21 +16,20 @@ document.addEventListener('click',event=>{
 // v5.3.51 deferred after shell: import './stage-admin-v10.js?v=stage-admin-v10-primary';
 // BELAVISTA_ORIGINAL_ADMIN_BOOT_RESCUE_V5351
 const ADMIN_DEFERRED_MODULES_V5351=[
-  "./admin-runtime-v11.js?v=admin-runtime-v11",
-  "./admin-lots-canvas-v1.js?v=admin-lots-canvas-v1",
+  "./admin-runtime-v11.js?v=admin-map-context-ts-owner-v1",
+  "./admin-lots-canvas-v1.js?v=admin-lots-canvas-ts-owner-v1",
   "./stage-admin-v10.js?v=stage-admin-v10-primary",
-  "./execution-planning-v8.js?v=navigation-state-v22",
-  "./map-page-widgets-v5.js?v=widget-blue-smoke-v1",
-  "./dashboard-map-tabs-v3.js?v=map-tabs-v3",
+  "./execution-planning-v8.js?v=execution-planning-ts-first-owner-v1",
+  "./dashboard-map-tabs-v3.js?v=dashboard-map-tabs-ts-first-v1",
   "./admin-public-map-surface-v5352.mjs?v=5.3.54",
-  "./public-leads-map-v50.mjs?v=admin-public-map-fixed-180-v1",
+  "./public-leads-map-v50.mjs?v=admin-public-map-materials-ts-owner-v1",
   "./admin-public-map-3d-status-v5353.mjs?v=5.3.53",
-  "./finance-mobile-cash-v5358.mjs?v=5.3.58",
-  "./chat-tab-widget-ghost-v5359.mjs?v=5.3.59",
-  "./final-workspaces-v5360.mjs?v=5.3.60",
-  "./stages-landing-v5361.mjs?v=5.3.61",
+  "./finance-mobile-cash-v5358.mjs?v=finance-mobile-cash-ts-first-v1",
+  "./chat-tab-widget-ghost-v5359.mjs?v=chat-tab-widget-ts-first-v1",
+  "./final-workspaces-v5360.mjs?v=final-workspaces-ts-owner-v1",
+  "./stages-landing-v5361.mjs?v=stages-landing-ts-owner-v1",
   "./belavista-final-ui-v5362.mjs?v=5.3.62",
-  "./records-activity-drill-in-v5377.mjs?v=control-stage-unified-form-v3-20260915"
+  "./records-activity-drill-in-v5377.mjs?v=control-stage-unified-form-v3-20260915&ts-records-drill-route-install-program-owner-v1"
 ];
 
 // O mapa administrativo abre primeiro como fotografia aérea estática. Os
@@ -38,10 +37,9 @@ const ADMIN_DEFERRED_MODULES_V5351=[
 // rAF ou ponte de câmera própria. Carregá-los nessa rota reintroduz trabalho
 // concorrente enquanto a cena ainda está sem 3D e pode travar o Chromium.
 const ADMIN_STATIC_FIRST_MAP_MODULES_V5370=new Set([
-  "./map-page-widgets-v5.js?v=widget-blue-smoke-v1",
-  "./dashboard-map-tabs-v3.js?v=map-tabs-v3",
+  "./dashboard-map-tabs-v3.js?v=dashboard-map-tabs-ts-first-v1",
   "./admin-public-map-surface-v5352.mjs?v=5.3.54",
-  "./public-leads-map-v50.mjs?v=admin-public-map-fixed-180-v1",
+  "./public-leads-map-v50.mjs?v=admin-public-map-materials-ts-owner-v1",
   "./admin-public-map-3d-status-v5353.mjs?v=5.3.53"
 ]);
 

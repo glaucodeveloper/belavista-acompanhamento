@@ -1,5 +1,6 @@
-import { createMapFilterRail } from "./filter-rail.mjs?v=focused-event-generators-v2";
-import { createDashboardFilterCatalogV1 } from "./dashboard-filter-catalog-v1.mjs?v=dashboard-filter-catalog-v1";
+import { createMapFilterRail } from "./filter-rail.mjs?v=focused-event-generators-v3-ts-catalog";
+import { createDashboardFilterCatalogV1 } from "./dashboard-filter-catalog-v1.mjs?v=dashboard-filter-catalog-v2-json";
+import { installAtlasMapFilterRail as installAtlasMapFilterRailTsV1 } from "../../dist/frontend/components.js";
 
 /** Compose the map filter catalog and its custom element at the map boundary. */
 export const installMapFilterRailCompositionV1 = ({
@@ -14,6 +15,19 @@ export const installMapFilterRailCompositionV1 = ({
   globalRef = globalThis,
   customElementsRef = globalThis.customElements,
 } = {}) => {
+  if (installAtlasMapFilterRailTsV1)
+    return installAtlasMapFilterRailTsV1({
+      appStore,
+      dashboardModeKeyV1,
+      dashboardModes,
+      demoData,
+      esc,
+      ico,
+      documentRef,
+      windowRef,
+      customElementsRef,
+    });
+
   const catalog = createDashboardFilterCatalogV1({
     demoData,
     dashboardModeKeyV1,

@@ -1,0 +1,480 @@
+{
+  "sourceNotes": {
+    "earthwork": {
+      "cutM3": 18142.35,
+      "fillM3": 1764.29,
+      "balanceM3": 16378.06
+    },
+    "drainage": {
+      "linearM": 800,
+      "inlets": 49,
+      "diametersMm": [
+        600,
+        800,
+        1000
+      ]
+    },
+    "curbs": {
+      "linearM": 8000
+    },
+    "water": {
+      "targetLots": 298
+    },
+    "electrical": {
+      "poles": 120
+    },
+    "paving": {
+      "areaM2": 32000
+    }
+  },
+  "assumptions": {
+    "note": "Premissas iniciais sugeridas a partir das anotações de campo; todas são editáveis na interface.",
+    "dumpTruck": {
+      "unit": "viagens internas/dia",
+      "rate": 32,
+      "capacityM3": 12
+    },
+    "drainage": {
+      "unit": "m/dia",
+      "rate": 25
+    },
+    "waterLots": {
+      "unit": "ramais/dia",
+      "rate": 12
+    },
+    "electricalPoles": {
+      "unit": "postes/dia",
+      "rate": 8
+    },
+    "curbs": {
+      "unit": "m/dia",
+      "rate": 180
+    },
+    "paving": {
+      "unit": "m²/dia",
+      "rate": 600
+    }
+  },
+  "stages": [
+    {
+      "key": "project",
+      "name": "Projeto executivo",
+      "priority": 100,
+      "dependsOn": [],
+      "production": {
+        "quantity": 1,
+        "unit": "projeto",
+        "rate": 1,
+        "rateUnit": "projeto/dia"
+      },
+      "materials": [
+        "Projeto executivo",
+        "Compatibilização",
+        "Licenças e liberações"
+      ],
+      "cashWeight": 0.05,
+      "executionProfile": {
+        "typicalDescription": "Compatibiliza geometria, cotas, redes, liberações legais e marcos de início. O planejamento precisa considerar pendências documentais, interfaces entre disciplinas e aprovações anteriores à abertura das frentes.",
+        "requestHints": [
+          "Priorizar liberações que destravam terraplanagem, drenagem e concessionárias.",
+          "Cruzar agenda de aprovações com compras de mobilização e serviços topográficos."
+        ],
+        "evidenceFocus": [
+          "versão aprovada do projeto",
+          "ART/RRT e licenças",
+          "pendências de compatibilização"
+        ],
+        "procurementFocus": [
+          "projetistas e topografia",
+          "taxas e licenças",
+          "levantamentos complementares"
+        ],
+        "notificationTargets": {
+          "owner": [
+            "desktop-owner",
+            "rtdb/owner"
+          ],
+          "admin": [
+            "desktop-admin",
+            "rtdb/admin"
+          ],
+          "foreman": [
+            "mobile-foreman",
+            "rtdb/foreman"
+          ]
+        }
+      }
+    },
+    {
+      "key": "earthwork",
+      "name": "Terraplanagem",
+      "priority": 95,
+      "dependsOn": [
+        "project"
+      ],
+      "production": {
+        "quantity": 1365,
+        "unit": "viagens internas",
+        "rate": 32,
+        "rateUnit": "viagens/dia",
+        "volumePerTripM3": 12,
+        "sourceVolumeM3": 16378.06
+      },
+      "materials": [
+        "Pá carregadeira",
+        "Escavadeira",
+        "Patrol",
+        "Pipa",
+        "Rolo compactador",
+        "Caçambas"
+      ],
+      "cashWeight": 0.15,
+      "executionProfile": {
+        "typicalDescription": "Depende de locação, liberação geométrica e controle diário de corte, aterro, umidificação e compactação. A produção precisa respeitar equilíbrio entre frentes, clima, equipamento disponível e volume mobilizado por viagem.",
+        "requestHints": [
+          "Considerar clima, disponibilidade de equipamentos e capacidade de caçambas por dia.",
+          "Planejar compras e locações para evitar ociosidade de patrulha, rolo e pipa."
+        ],
+        "evidenceFocus": [
+          "volume movimentado",
+          "compactação e umidificação",
+          "horas de equipamento",
+          "fotos por trecho"
+        ],
+        "procurementFocus": [
+          "locação de equipamentos",
+          "combustível",
+          "manutenção de frota",
+          "apoio topográfico"
+        ],
+        "notificationTargets": {
+          "owner": [
+            "desktop-owner",
+            "rtdb/owner"
+          ],
+          "admin": [
+            "desktop-admin",
+            "rtdb/admin"
+          ],
+          "foreman": [
+            "mobile-foreman",
+            "rtdb/foreman"
+          ],
+          "supplies": [
+            "desktop-supplies",
+            "rtdb/supplies"
+          ]
+        }
+      }
+    },
+    {
+      "key": "drainage",
+      "name": "Drenagem Pluvial",
+      "priority": 90,
+      "dependsOn": [
+        "earthwork"
+      ],
+      "production": {
+        "quantity": 800,
+        "unit": "m",
+        "rate": 25,
+        "rateUnit": "m/dia"
+      },
+      "materials": [
+        "Manilhas Ø600/800/1000 mm",
+        "49 bocas de lobo",
+        "Blocos",
+        "Cimento",
+        "Brita",
+        "Compactador sapinho"
+      ],
+      "cashWeight": 0.18,
+      "executionProfile": {
+        "typicalDescription": "Exige sequência entre escavação, regularização de fundo, assentamento, caixas e reaterro com controle de cota e declividade. Qualquer falta de manilha, brita ou bloqueio geométrico afeta diretamente a frente seguinte.",
+        "requestHints": [
+          "Priorizar trechos que liberam rede de água e pavimentação posterior.",
+          "Conferir comprovantes de compra, entrega física e aderência entre diâmetro previsto e trecho executado."
+        ],
+        "evidenceFocus": [
+          "cotas e declividade",
+          "extensão assentada",
+          "caixas executadas",
+          "ensaio e fotos"
+        ],
+        "procurementFocus": [
+          "manilhas por diâmetro",
+          "blocos, cimento e brita",
+          "compactação localizada",
+          "frete e descarga"
+        ],
+        "notificationTargets": {
+          "owner": [
+            "desktop-owner",
+            "rtdb/owner"
+          ],
+          "admin": [
+            "desktop-admin",
+            "rtdb/admin"
+          ],
+          "foreman": [
+            "mobile-foreman",
+            "rtdb/foreman"
+          ],
+          "supplies": [
+            "desktop-supplies",
+            "rtdb/supplies"
+          ]
+        }
+      }
+    },
+    {
+      "key": "water",
+      "name": "Rede de Água",
+      "priority": 88,
+      "dependsOn": [
+        "drainage"
+      ],
+      "production": {
+        "quantity": 298,
+        "unit": "lotes",
+        "rate": 12,
+        "rateUnit": "ramais/dia"
+      },
+      "materials": [
+        "Tubos PEAD",
+        "298 cavaletes",
+        "298 ramais",
+        "Areia",
+        "Conexões"
+      ],
+      "cashWeight": 0.14,
+      "executionProfile": {
+        "typicalDescription": "A rede precisa casar distribuição principal, ramais e cavaletes por lote, com testes de pressão e rastreio das conexões. O planejamento deve correlacionar lotes atendidos, frentes liberadas e saldo real de tubos e conexões.",
+        "requestHints": [
+          "Planejar por lotes liberados e disponibilidade de PEAD, conexões e equipe de montagem.",
+          "Evitar abrir mais ramais do que a cobertura de materiais e testes suporta no ciclo."
+        ],
+        "evidenceFocus": [
+          "lotes atendidos",
+          "teste de pressão",
+          "cavaletes instalados",
+          "fotos dos ramais"
+        ],
+        "procurementFocus": [
+          "tubos PEAD por trecho",
+          "conexões e registros",
+          "areia de assentamento",
+          "kits de cavalete e ramal"
+        ],
+        "notificationTargets": {
+          "owner": [
+            "desktop-owner",
+            "rtdb/owner"
+          ],
+          "admin": [
+            "desktop-admin",
+            "rtdb/admin"
+          ],
+          "foreman": [
+            "mobile-foreman",
+            "rtdb/foreman"
+          ],
+          "sales": [
+            "desktop-commercial",
+            "rtdb/commercial"
+          ]
+        }
+      }
+    },
+    {
+      "key": "curbs",
+      "name": "Meio-fio",
+      "priority": 76,
+      "dependsOn": [
+        "water"
+      ],
+      "production": {
+        "quantity": 8000,
+        "unit": "m",
+        "rate": 180,
+        "rateUnit": "m/dia"
+      },
+      "materials": [
+        "Meio-fio pré-moldado",
+        "Concreto/argamassa",
+        "Mão de obra"
+      ],
+      "cashWeight": 0.08,
+      "executionProfile": {
+        "typicalDescription": "A execução depende de alinhamento, nivelamento e liberação das redes enterradas. O ritmo diário varia com transporte de peças, base pronta e arremates necessários por quadra e interseção.",
+        "requestHints": [
+          "Concentrar a compra por trecho liberado para não estocar peças sem base pronta.",
+          "Correlacionar liberação de rede de água com logística de peças e equipe de assentamento."
+        ],
+        "evidenceFocus": [
+          "metros assentados",
+          "alinhamento e arremates",
+          "fotos de esquinas e curvas"
+        ],
+        "procurementFocus": [
+          "pré-moldados por trecho",
+          "argamassa e concreto",
+          "equipe de assentamento"
+        ],
+        "notificationTargets": {
+          "owner": [
+            "desktop-owner",
+            "rtdb/owner"
+          ],
+          "admin": [
+            "desktop-admin",
+            "rtdb/admin"
+          ],
+          "foreman": [
+            "mobile-foreman",
+            "rtdb/foreman"
+          ]
+        }
+      }
+    },
+    {
+      "key": "electrical",
+      "name": "Rede Elétrica",
+      "priority": 60,
+      "dependsOn": [
+        "paving"
+      ],
+      "production": {
+        "quantity": 120,
+        "unit": "postes",
+        "rate": 8,
+        "rateUnit": "postes/dia",
+        "coelba": {
+          "connectionDeadlineDays": 30,
+          "requestLeadDays": 45,
+          "inspectionLeadDays": 10,
+          "requirements": [
+            "Projeto elétrico aprovado",
+            "ART/RRT e memorial descritivo",
+            "Padrão de entrada conforme concessionária",
+            "Subestação/transformador dimensionado",
+            "120 postes, cabos e conectores",
+            "Laudo de inspeção e vistoria",
+            "Protocolo de solicitação de ligação"
+          ]
+        }
+      },
+      "materials": [
+        "120 postes",
+        "Transformadores",
+        "Cabos de baixa e média tensão",
+        "Conectores e caixas de passagem",
+        "Quadros/padrões de entrada",
+        "Luminárias LED",
+        "EPI e sinalização",
+        "Mão de obra especializada"
+      ],
+      "cashWeight": 0.16,
+      "executionProfile": {
+        "typicalDescription": "Depende de pavimento liberado, projeto aprovado, janela de concessionária e cadeia de suprimentos mais longa. A inferência deve considerar protocolos, lead time de inspeção e o impacto de postes, cabos e transformadores na data de energização.",
+        "requestHints": [
+          "Programar pedidos com antecedência à vistoria e à ligação da concessionária.",
+          "Cruzar datas de inspeção, mobilização de equipe especializada e chegada de postes, cabos e transformadores."
+        ],
+        "evidenceFocus": [
+          "postes instalados",
+          "cabos lançados",
+          "laudos e protocolos",
+          "fotos da frente e da vistoria"
+        ],
+        "procurementFocus": [
+          "postes e ferragens",
+          "transformadores",
+          "cabos e conectores",
+          "terceiros especializados"
+        ],
+        "notificationTargets": {
+          "owner": [
+            "desktop-owner",
+            "rtdb/owner"
+          ],
+          "admin": [
+            "desktop-admin",
+            "rtdb/admin"
+          ],
+          "foreman": [
+            "mobile-foreman",
+            "rtdb/foreman"
+          ],
+          "utility": [
+            "desktop-utility",
+            "rtdb/utility"
+          ]
+        }
+      }
+    },
+    {
+      "key": "paving",
+      "name": "Pavimentação",
+      "priority": 70,
+      "dependsOn": [
+        "curbs",
+        "water"
+      ],
+      "production": {
+        "quantity": 32000,
+        "unit": "m²",
+        "rate": 600,
+        "rateUnit": "m²/dia",
+        "truckCapacityStones": 5000,
+        "stonesPerM2": 45,
+        "lossPercent": 5
+      },
+      "materials": [
+        "Paralelepípedo",
+        "Areia",
+        "Brita",
+        "Cimento",
+        "Mão de obra"
+      ],
+      "cashWeight": 0.2,
+      "executionProfile": {
+        "typicalDescription": "Consolida base, drenagem e redes já liberadas. O planejamento deve considerar perdas, caminhões recebidos, trecho contínuo executável e impacto direto no caixa por ser etapa de alto consumo e grande visibilidade.",
+        "requestHints": [
+          "Planejar compra e entrega por trecho contínuo para reduzir perda e retrabalho.",
+          "Cruzar estoque de pedra, areia e brita com produtividade real e liberação das frentes anteriores."
+        ],
+        "evidenceFocus": [
+          "área executada por trecho",
+          "caminhões recebidos",
+          "espessura e acabamento",
+          "fotos comparativas"
+        ],
+        "procurementFocus": [
+          "paralelepípedo por m²",
+          "areia e brita por trecho",
+          "cimento e arremates",
+          "frentes de mão de obra"
+        ],
+        "notificationTargets": {
+          "owner": [
+            "desktop-owner",
+            "rtdb/owner"
+          ],
+          "admin": [
+            "desktop-admin",
+            "rtdb/admin"
+          ],
+          "foreman": [
+            "mobile-foreman",
+            "rtdb/foreman"
+          ],
+          "supplies": [
+            "desktop-supplies",
+            "rtdb/supplies"
+          ]
+        }
+      }
+    }
+  ]
+}

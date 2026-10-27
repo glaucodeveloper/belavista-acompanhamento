@@ -1,7 +1,7 @@
 import {
   AI_AGENDA_COMPREHENSION_DEFAULTS_V1,
   normalizeAiAgendaComprehensionV1,
-} from "./ai-agenda-comprehension-v1.mjs?v=1";
+} from "./ai-agenda-comprehension-v1.mjs?v=2-ts-owner";
 import { createServiceEventAdministrators } from "../events/service-event-admin.mjs?v=service-event-admin-v4";
 
 /** Expose the guidance used by both assistant routes in Settings. */

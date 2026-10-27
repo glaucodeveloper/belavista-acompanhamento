@@ -4,7 +4,7 @@ import {fileURLToPath} from 'node:url';
 
 const root=resolve(fileURLToPath(new URL('..',import.meta.url)));
 const source=join(root,'knowledge','stages');
-const output=join(root,'data','stage-descriptions.json');
+const output=join(root,'frontend','src','data','stage-descriptions.json');
 const files=(await readdir(source)).filter(name=>name.endsWith('.md')).sort();
 const descriptions={};
 for(const file of files){

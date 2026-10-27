@@ -1,5 +1,7 @@
+import { installAtlasReportsWorkspaceV1 } from "../../dist/frontend/components.js";
+
 /** Reports workspace rendering, evidence actions, and custom report builder. */
-export const installReportsWorkspaceV1 = (ViewLayer, services = {}) => {
+const installLegacyReportsWorkspaceV1 = (ViewLayer, services = {}) => {
   const { appStore, syncCashEvidenceReportV1, syncConstructionFinanceReportsV1, syncServiceCompletionReportV1, reportCatalog, esc, ico, notify, documentRef, FileReaderCtor, apiFetch, operationalHeaders, CSSRef, URLRef, schedule, FormDataCtor } = services;
   if (!ViewLayer?.prototype || typeof appStore?.get !== "function" || typeof appStore?.set !== "function") throw new TypeError("Reports workspace requires ViewLayer and appStore get/set.");
   if (!Array.isArray(reportCatalog)) throw new TypeError("Reports workspace requires the application report catalog.");
@@ -280,3 +282,10 @@ ViewLayer.prototype.bind = function () {
 
 
 };
+
+
+/** Use the legacy renderer only when the TS owner is explicitly disabled. */
+export const installReportsWorkspaceV1 = (ViewLayer, services = {}) =>
+  globalThis.BELAVISTA_USE_LEGACY_REPORTS_V1 === true
+    ? installLegacyReportsWorkspaceV1(ViewLayer, services)
+    : installAtlasReportsWorkspaceV1(ViewLayer, services);

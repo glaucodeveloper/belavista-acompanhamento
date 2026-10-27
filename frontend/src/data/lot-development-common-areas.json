@@ -1,0 +1,62 @@
+[
+  {
+    "id": "common:portaria",
+    "kind": "common-area",
+    "title": "Portaria e acesso",
+    "lotLabel": "",
+    "quadra": "",
+    "area": 0,
+    "value": 0,
+    "status": "Em planejamento",
+    "description": "Acesso principal, controle de visitantes e apoio à chegada.",
+    "source": "Cadastro base",
+    "inferredAt": null,
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "common:praca",
+    "kind": "common-area",
+    "title": "Praça e convivência",
+    "lotLabel": "",
+    "quadra": "",
+    "area": 0,
+    "value": 0,
+    "status": "Em planejamento",
+    "description": "Área de convivência, paisagismo e mobiliário urbano.",
+    "source": "Cadastro base",
+    "inferredAt": null,
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "common:lazer",
+    "kind": "common-area",
+    "title": "Lazer e equipamentos",
+    "lotLabel": "",
+    "quadra": "",
+    "area": 0,
+    "value": 0,
+    "status": "Em planejamento",
+    "description": "Espaços de apoio coletivo e equipamentos do empreendimento.",
+    "source": "Cadastro base",
+    "inferredAt": null,
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "common:viario",
+    "kind": "common-area",
+    "title": "Sistema viário",
+    "lotLabel": "",
+    "quadra": "",
+    "area": 0,
+    "value": 0,
+    "status": "Em acompanhamento",
+    "description": "Vias, calçadas, drenagem superficial e sinalização interna.",
+    "source": "Cadastro base",
+    "inferredAt": null,
+    "createdAt": null,
+    "updatedAt": null
+  }
+]

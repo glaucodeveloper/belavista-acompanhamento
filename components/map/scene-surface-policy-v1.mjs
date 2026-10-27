@@ -1,3 +1,5 @@
+import * as atlasComponents from "../../dist/frontend/components.js";
+
 /**
  * Owns the mode checks that distinguish public, shared-admin and standalone
  * MapScene surfaces. Attribute and route behavior matches the original element.
@@ -6,6 +8,9 @@ export const installMapSceneSurfacePolicyV1 = (
   MapScene,
   { locationRef = globalThis.location } = {},
 ) => {
+  if (typeof atlasComponents.installAtlasMapSceneSurfacePolicy === "function")
+    return atlasComponents.installAtlasMapSceneSurfacePolicy(MapScene, { locationRef });
+
   if (typeof MapScene !== "function" || !MapScene.prototype)
     throw new TypeError("Map scene surface policy requires the existing MapScene constructor.");
 

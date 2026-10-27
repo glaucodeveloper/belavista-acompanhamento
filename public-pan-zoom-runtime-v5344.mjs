@@ -1,5 +1,6 @@
 // BELAVISTA_PAN_ZOOM_RUNTIME_V5344
 (() => {
+  if(document.querySelector('map-scene[data-public-map],map-scene[data-public-presentation]')?.dataset.publicPanTsOwner==='true')return;
   const SELECTOR='map-scene[data-public-map],map-scene[data-public-presentation]';
 
   function hit(target){

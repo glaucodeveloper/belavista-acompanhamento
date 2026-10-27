@@ -1,0 +1,33 @@
+{
+  "selector": "map-scene[data-admin-shared-public-map=\"v5352\"]",
+  "staticMapInit": "admin-static-first-v5370",
+  "observerTimeoutMs": 6000,
+  "georeferenceUrl": "./assets/data/dwg-georeference.json",
+  "georeferenceRetryCount": 30,
+  "georeferenceRetryMs": 350,
+  "centerControlPointId": "site-center",
+  "georeferenceZoom": 17,
+  "camera": {
+    "panX": 0,
+    "panY": 0,
+    "rotation": 180,
+    "tilt": 0,
+    "zoom": 1.62,
+    "sceneZoom": 22
+  },
+  "surfaceLabels": {
+    "source": "public-leads-map-scene",
+    "preset": "pan0,0-rotation180-zoom1.62",
+    "rotationLock": "180deg-fixed",
+    "base": "satellite-georeferenced-dashboard-reference",
+    "textureReady": "satellite tile mosaic aligned to DWG centre",
+    "textureUnavailable": "satellite unavailable · neutral base retained",
+    "staticBridge": "deferred-until-3d-activation"
+  },
+  "status": {
+    "probe": "v5353",
+    "intervalMs": 180,
+    "warningAfterMs": 8000,
+    "marker": "__belavistaAdminPublicMap3dStatusV5353"
+  }
+}

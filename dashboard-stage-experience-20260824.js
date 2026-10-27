@@ -1,4 +1,4 @@
-import {appStore,demoData,activityCatalog} from './state.js?v=site-materials-8';
+import {appStore,demoData,activityCatalog} from './state.js?v=site-materials-8&ts-state-catalogs-program-owner-v1';
 
 const ViewLayer=customElements.get('view-layer');
 if(!ViewLayer) throw new Error('Aliança Park dashboard/stage experience: ViewLayer indisponível.');

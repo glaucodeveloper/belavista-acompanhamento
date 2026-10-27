@@ -3377,6 +3377,60 @@ body.lot-control-open{overflow:hidden}
 .stage-record-lot-table{display:grid;gap:0}.stage-record-lot-table>header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid #2d465d}.stage-record-lot-table .stage-record-table{min-width:980px}
 @media(max-width:900px){.stage-record-lot-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.stage-record-lot-charts{grid-template-columns:1fr}}
 @media(max-width:600px){.stage-record-document-summary .stage-record-table-head,.stage-record-lot-analysis-head,.stage-record-lot-table>header,.stage-dashboard-quick-capture>header{display:grid;align-items:stretch}.stage-record-section-note{justify-self:start}.stage-dashboard-quick-grid{grid-template-columns:1fr}.stage-dashboard-quick-grid form{grid-template-columns:1fr}.stage-dashboard-quick-pair{grid-template-columns:1fr}.stage-record-lot-kpis{gap:7px;padding:10px}.stage-record-lot-kpis article{padding:11px}.stage-record-lot-kpis b{font-size:18px}.stage-record-lot-charts{padding:10px}.stage-record-lot-chart{padding:11px}.lot-analysis-bar-row{grid-template-columns:minmax(78px,112px) minmax(55px,1fr) auto}.lot-analysis-bar-row b{min-width:62px;font-size:9px}}
+
+/* Atlas dashboard analytics: part-to-whole status and comparative value bars. */
+.stage-record-lot-analysis{gap:18px;padding:20px;border:1px solid #dce5f0;border-radius:16px;background:#fff;color:#20283a;box-shadow:0 6px 20px #192b490a}
+.stage-record-lot-analysis-head{align-items:center!important;padding:0 0 16px!important;border-bottom:1px solid #e8edf3!important}
+.stage-record-lot-analysis h2{color:#19243b;font-size:21px!important;letter-spacing:-.02em}
+.stage-record-lot-analysis-head p{max-width:680px;color:#6d788a!important;font-size:12px!important}
+.stage-record-lot-analysis .stage-record-section-note{padding:7px 10px;border-color:#dce5f0;background:#f6f9fd;color:#596b83;font:600 11px "IBM Plex Sans",sans-serif;letter-spacing:0;text-transform:none}
+.stage-record-lot-analysis .stage-record-lot-kpis{gap:10px;padding:0 0 16px;border-bottom:1px solid #e8edf3}
+.stage-record-lot-analysis .stage-record-lot-kpis article{gap:5px;padding:14px;border:1px solid #e1e8f1;border-radius:11px;background:#f8fafd}
+.stage-record-lot-analysis .stage-record-lot-kpis small{color:#748198;font:600 10px "IBM Plex Sans",sans-serif;letter-spacing:0;text-transform:none}
+.stage-record-lot-analysis .stage-record-lot-kpis b{color:#19243b;font-size:clamp(20px,2vw,26px);font-variant-numeric:tabular-nums}
+.stage-record-lot-analysis .stage-record-lot-kpis span{color:#6d788a;font-size:11px}
+.stage-record-lot-analysis .stage-record-lot-charts{gap:12px;padding:0 0 16px;border-bottom:1px solid #e8edf3}
+.stage-record-lot-analysis .stage-record-lot-chart{padding:16px;border:1px solid #e1e8f1;border-radius:12px;background:#fbfcfe}
+.stage-record-lot-analysis .stage-record-lot-chart>header{align-items:center;margin-bottom:12px}
+.stage-record-lot-analysis .stage-record-lot-chart h3{margin:0;color:#26334b;font-size:15px}
+.stage-record-lot-analysis .stage-record-lot-chart>header p{margin:4px 0 0;color:#748198;font-size:11px}
+.stage-record-lot-analysis .stage-record-lot-chart>header>small{color:#748198;font:500 11px "IBM Plex Sans",sans-serif;text-transform:none}
+.lot-analysis-status-breakdown{display:grid;grid-template-columns:minmax(120px,148px) minmax(0,1fr);align-items:center;gap:18px;min-height:150px}
+.lot-analysis-status-donut{position:relative;display:grid;place-items:center;width:min(100%,142px);aspect-ratio:1;margin:auto;border-radius:50%;background-color:#eaf0f7}
+.lot-analysis-status-donut::before{position:absolute;inset:19%;border-radius:50%;background:#fbfcfe;content:""}
+.lot-analysis-status-donut>span{position:relative;display:grid;justify-items:center;gap:1px;color:#24334b}
+.lot-analysis-status-donut strong{font-size:22px;font-variant-numeric:tabular-nums}
+.lot-analysis-status-donut small{color:#748198;font-size:10px}
+.lot-analysis-status-legend{display:grid;gap:7px;margin:0;padding:0;list-style:none}
+.lot-analysis-status-legend li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:9px;color:#536178;font-size:11px}
+.lot-analysis-status-legend li>i{width:9px;height:9px;border-radius:50%}
+.lot-analysis-status-legend li>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lot-analysis-status-legend li>strong{min-width:23px;color:#26334b;text-align:right;font-variant-numeric:tabular-nums}
+.lot-analysis-status-legend li>small{min-width:31px;color:#748198;text-align:right;font-variant-numeric:tabular-nums}
+.stage-record-lot-analysis .lot-analysis-bars{display:grid;gap:11px;padding-top:3px}
+.stage-record-lot-analysis .lot-analysis-bar-row{grid-template-columns:minmax(72px,100px) minmax(55px,1fr) auto;gap:9px;color:#536178;font-size:11px}
+.stage-record-lot-analysis .lot-analysis-bar-row>div{height:8px;border:1px solid #dce5f0;border-radius:99px;background:#eef2f7}
+.stage-record-lot-analysis .lot-analysis-bar-row i{min-width:0;border-radius:inherit;background:linear-gradient(90deg,#3486d3,#57b4ed)}
+.stage-record-lot-analysis .lot-analysis-bar-row b{min-width:78px;color:#26334b;font:600 11px "IBM Plex Sans",sans-serif}
+.stage-record-lot-analysis .lot-analysis-chart-empty{display:grid;min-height:110px;place-items:center;margin:0;padding:16px;border:1px dashed #d7e0eb;border-radius:10px;color:#6d788a;font-size:12px;text-align:center}
+.stage-record-lot-analysis details.stage-record-lot-table{display:block;min-width:0;margin:0;border:1px solid #e1e8f1;border-radius:10px;background:#fff}
+.stage-record-lot-analysis details.stage-record-lot-table>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;color:#38577f;cursor:pointer;list-style:none}
+.stage-record-lot-analysis details.stage-record-lot-table>summary::-webkit-details-marker{display:none}
+.stage-record-lot-analysis details.stage-record-lot-table>summary>span{display:grid;gap:3px}
+.stage-record-lot-analysis details.stage-record-lot-table>summary strong{color:#34445e;font-size:12px}
+.stage-record-lot-analysis details.stage-record-lot-table>summary small{color:#748198;font-size:11px}
+.stage-record-lot-analysis details.stage-record-lot-table>summary>b{color:#246be0;font-size:11px}
+.stage-record-lot-analysis details.stage-record-lot-table[open]>summary{border-bottom:1px solid #e8edf3}
+.stage-record-lot-analysis .stage-record-table-wrap{max-width:100%;overflow:auto;border-radius:0 0 10px 10px}
+.stage-record-lot-analysis .stage-record-table{min-width:900px;background:#fff;color:#47546a}
+.stage-record-lot-analysis .stage-record-table th{background:#f7f9fc;color:#748198}
+.stage-record-lot-analysis .stage-record-table td{border-top:1px solid #e8edf3;color:#47546a}
+.stage-record-lot-analysis .stage-record-table td b,.stage-record-lot-analysis .stage-record-table td strong{color:#26334b}
+.stage-record-lot-analysis .stage-record-table td small{color:#748198}
+.stage-record-lot-analysis .stage-record-table .stage-record-empty-state{color:#708096!important}
+@media(max-width:760px){.stage-record-lot-analysis{gap:14px;padding:14px}.stage-record-lot-analysis .stage-record-lot-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.stage-record-lot-analysis .stage-record-lot-charts{grid-template-columns:1fr}}
+@media(max-width:480px){.stage-record-lot-analysis .stage-record-lot-kpis{gap:7px}.stage-record-lot-analysis .stage-record-lot-kpis article{padding:11px}.lot-analysis-status-breakdown{grid-template-columns:1fr;gap:14px;padding:4px}.lot-analysis-status-donut{width:132px}.stage-record-lot-analysis .lot-analysis-bar-row{grid-template-columns:minmax(70px,92px) minmax(40px,1fr) auto;gap:7px}.stage-record-lot-analysis .lot-analysis-bar-row b{min-width:68px;font-size:10px}}
+
 .lot-entry-handoff-card{display:grid;align-content:start;gap:12px}.lot-entry-handoff-note{display:grid;gap:6px;padding:14px;border:1px dashed #496989;background:#172434;color:#c9d9e8;font-size:11px;line-height:1.5}.lot-entry-handoff-note strong{color:#78a9ff;font-size:12px}.lot-entry-handoff-note span{color:#a8b8c8}
 
 /* Planta vetorial de 298 lotes, extraída da prancha PDF e projetada na
@@ -3417,6 +3471,21 @@ map-scene[data-model-render="static-first-paint"] .satellite-lot-plan-overlay{z-
 .admin-masterplan-fit .admin-masterplan-transform>img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center;filter:drop-shadow(0 10px 18px rgba(0,0,0,.32));user-select:none;-webkit-user-drag:none}
 .admin-masterplan-fit .admin-masterplan-transform>img[hidden]{display:none!important}
 .admin-masterplan-fit .admin-masterplan-transform>canvas{position:absolute;max-width:none;max-height:none;pointer-events:none;filter:drop-shadow(0 10px 18px rgba(0,0,0,.32))}
+.admin-masterplan-labels{position:absolute;z-index:1;overflow:visible;pointer-events:none;opacity:1;text-rendering:geometricPrecision;shape-rendering:geometricPrecision;transition:opacity 160ms ease;}
+.admin-masterplan-lot-number{fill:#fff;stroke:#06140e;stroke-width:3.2px;stroke-linejoin:round;paint-order:stroke fill;font-family:"IBM Plex Mono",monospace;font-weight:800;letter-spacing:-.04em;text-rendering:geometricPrecision;vector-effect:non-scaling-stroke;}
+.admin-masterplan-lot-number-value{font-size:calc(10px * var(--masterplan-vector-font-scale,1));}
+.admin-masterplan-lot-mask{fill:#0b542e;stroke:none;opacity:var(--masterplan-marker-mask-opacity,0);transition:opacity 100ms linear;}
+.admin-masterplan-lot-area-value{fill:#ffe08a;stroke:#06140e;stroke-width:2.4px;font-family:"IBM Plex Sans",sans-serif;font-size:calc(6px * var(--masterplan-vector-font-scale,1));font-weight:700;letter-spacing:0;text-rendering:geometricPrecision;paint-order:stroke fill;opacity:var(--masterplan-area-label-opacity,0);transition:opacity 100ms linear;}
+body.public-leads-page public-leads-surface .admin-masterplan-labels{opacity:var(--public-map-label-opacity,1);}
+body.public-leads-page public-leads-surface .admin-masterplan-lot-number{
+  stroke-width:2.6px;
+}
+body.public-leads-page public-leads-surface .admin-masterplan-lot-mask{
+  opacity:var(--public-map-label-opacity,0);
+}
+body.public-leads-page public-leads-surface .admin-masterplan-lot-area-value{
+  opacity:var(--public-map-area-opacity,0);
+}
 map-scene.is-admin-masterplan-editing .admin-masterplan-transform,
 map-scene.is-admin-masterplan-editing .admin-masterplan-transform>img{pointer-events:none!important;cursor:move;touch-action:none}
 map-scene.is-admin-masterplan-editing .admin-masterplan-overlay{z-index:12}
@@ -3426,7 +3495,7 @@ map-scene[data-admin-masterplan-overlay] .satellite-lot-plan-overlay{z-index:11;
 map-scene[data-admin-masterplan-overlay] .satellite-lot-plan-polygons .satellite-lot-hit-area{fill:transparent;stroke:none;filter:none}
 map-scene[data-admin-masterplan-overlay] .satellite-common-area-polygons .satellite-common-area-hit-area{stroke:none;fill:transparent;filter:none}
 map-scene[data-admin-masterplan-overlay] .satellite-lot-plan-polygons{display:block}
-map-scene[data-admin-masterplan-overlay] .satellite-lot-plan-marker{z-index:2;min-width:8px;height:8px;padding:0;border:1px solid rgba(255,255,255,.96);border-radius:999px;background:#f1c21b;box-shadow:0 0 0 1px rgba(8,16,20,.88),0 1px 4px rgba(0,0,0,.72);color:#161616;font:700 3px/8px "IBM Plex Mono",monospace;letter-spacing:-.08em;opacity:.94;cursor:pointer}
+map-scene[data-admin-masterplan-overlay] .satellite-lot-plan-marker{z-index:2;min-width:8px;height:8px;padding:0;border:1px solid rgba(255,255,255,.96);border-radius:999px;background:#f1c21b;box-shadow:0 0 0 1px rgba(8,16,20,.88),0 1px 4px rgba(0,0,0,.72);color:#161616;font:700 3px/8px "IBM Plex Mono",monospace;letter-spacing:-.08em;opacity:var(--masterplan-map-marker-opacity,.94);transition:opacity 120ms linear;cursor:pointer}
 map-scene[compact][data-admin-masterplan-overlay] .satellite-lot-plan-marker{min-width:7px;height:7px;font-size:3px;line-height:7px}
 map-scene[data-admin-masterplan-overlay] .satellite-lot-plan-marker:hover, map-scene[data-admin-masterplan-overlay] .satellite-lot-plan-marker:focus-visible, map-scene[data-admin-masterplan-overlay] .satellite-lot-plan-marker.is-selected{z-index:4;width:9px;height:9px;border:1px solid #fff;background:#f1c21b;box-shadow:0 0 0 2px rgba(241,194,27,.42),0 2px 9px rgba(0,0,0,.75);opacity:1}
 .satellite-lot-context-widget{position:absolute;z-index:2000!important;isolation:isolate;width:min(270px,calc(100vw - 24px));padding:12px;border:1px solid rgba(241,194,27,.78);border-radius:8px;background:rgba(5,18,31,.97);box-shadow:0 12px 28px rgba(0,0,0,.52);color:#f4f4f4;transform:translate(-50%,calc(-100% - 12px)) scale(var(--map-context-widget-scale,1));transform-origin:center bottom;pointer-events:auto}.satellite-lot-context-widget[hidden]{display:none}.satellite-lot-context-widget header{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-bottom:7px}.satellite-lot-widget-controls{display:flex;align-items:center;gap:4px}.satellite-lot-context-widget header button{display:grid;place-items:center;width:34px;height:34px;border:1px solid rgba(157,179,201,.28);border-radius:4px;background:rgba(16,45,76,.72);color:#eaf4ff;font:20px/1 sans-serif;cursor:pointer}.satellite-lot-widget-controls [data-lot-widget-pin]{display:flex;align-items:center;justify-content:center;gap:5px;width:auto;min-width:78px;padding:0 7px;font:600 10px "IBM Plex Sans",sans-serif}.satellite-lot-context-widget header button:hover,.satellite-lot-context-widget header button[aria-pressed="true"]{border-color:#f1c21b;background:rgba(241,194,27,.16);color:#ffe16b}.satellite-lot-context-widget button:focus-visible{outline:2px solid #78a9ff;outline-offset:2px}.satellite-lot-widget-controls svg{width:15px;height:15px}.satellite-lot-context-widget>strong{display:block;font-size:14px}.satellite-lot-context-widget dl{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:9px 0}.satellite-lot-context-widget dl div:last-child{grid-column:1/-1}.satellite-lot-context-widget dt{margin:0;color:#9db3c9;font:9px "IBM Plex Mono",monospace;text-transform:uppercase}.satellite-lot-context-widget dd{margin:2px 0 0;color:#fff;font-size:11px}.satellite-lot-context-widget footer{display:flex;gap:7px;margin-top:10px}.satellite-lot-context-widget footer button{display:flex;align-items:center;justify-content:center;gap:5px;min-height:38px;padding:7px 9px;border:1px solid #3d6088;border-radius:3px;background:#102d4c;color:#eaf4ff;cursor:pointer;font:600 11px "IBM Plex Sans",sans-serif}.satellite-lot-context-widget footer button.primary{margin-left:auto;border-color:#f1c21b;background:#f1c21b;color:#17120a}.satellite-lot-context-widget footer svg{width:14px;height:14px;vertical-align:middle}
@@ -3434,6 +3503,7 @@ map-scene[data-admin-masterplan-overlay] .satellite-lot-plan-marker:hover, map-s
 .map-lot-placement-dialog{position:absolute;z-index:70;top:50%;left:34%;display:grid;gap:9px;width:min(255px,calc(100% - 28px));padding:13px;border:1px solid #f1c21b;border-radius:9px;background:rgba(5,18,31,.98);box-shadow:0 14px 30px rgba(0,0,0,.6);color:#f4f4f4;transform:translate(-50%,-50%)}.map-lot-placement-dialog[hidden]{display:none}.map-lot-placement-dialog label{display:grid;gap:6px;color:#cbd9e8;font:700 10px "IBM Plex Mono",monospace;text-transform:uppercase}.map-lot-placement-dialog input{min-height:36px;padding:7px 9px;border:1px solid #4f79a8;background:#0b1724;color:#fff;font:14px "IBM Plex Sans",sans-serif}.map-lot-placement-dialog>div{display:flex;justify-content:flex-end;gap:7px}.map-lot-placement-dialog button{min-height:31px;padding:6px 9px;border:1px solid #4f79a8;background:#102d4c;color:#eaf4ff;cursor:pointer;font:700 10px "IBM Plex Sans",sans-serif}.map-lot-placement-dialog button[type=submit]{border-color:#f1c21b;background:#f1c21b;color:#17120a}
 .map-marker-adjust-toolbar{position:absolute;top:14px;left:14px;right:auto;z-index:30;display:flex;align-items:center;gap:7px;max-width:min(620px,calc(100% - 28px));padding:7px;border:1px solid rgba(120,169,255,.5);border-radius:9px;background:rgba(5,18,31,.92);box-shadow:0 8px 26px rgba(0,0,0,.36);pointer-events:auto}.map-marker-adjust-toolbar button{min-height:30px;padding:6px 9px;border:1px solid #4f79a8;border-radius:5px;background:#12304f;color:#eaf4ff;cursor:pointer;font:700 10px "IBM Plex Sans",sans-serif;white-space:nowrap}.map-marker-adjust-toolbar button:hover,.map-marker-adjust-toolbar button[aria-pressed="true"]{border-color:#f1c21b;background:#4d3b0e;color:#ffeeb1}.map-marker-adjust-toolbar [data-map-marker-adjust-status]{color:#b9cbe0;font:10px/1.3 "IBM Plex Mono",monospace}.is-admin-masterplan-editing .satellite-lot-plan-marker{width:10px!important;min-width:10px!important;height:10px!important;border:1px solid #fff!important;background:#f1c21b!important;color:#17120a!important;font-size:4px!important;line-height:9px!important;cursor:grab!important;box-shadow:0 0 0 2px rgba(241,194,27,.35),0 3px 8px rgba(0,0,0,.72)!important}.is-admin-masterplan-editing .satellite-lot-plan-marker:active{cursor:grabbing!important}.is-admin-masterplan-editing .satellite-lot-plan-polygons{pointer-events:none!important;opacity:.38}.is-admin-masterplan-editing .satellite-lot-plan-marker[data-map-adjust-u]{background:#ff9f1a!important}map-scene[data-public-static-only="true"].is-admin-masterplan-editing .satellite-lot-plan-marker{visibility:visible!important;pointer-events:auto!important}
 @media(max-width:700px){.map-marker-adjust-toolbar{top:8px;right:8px;left:8px;max-width:none;flex-wrap:wrap}.map-marker-adjust-toolbar [data-map-marker-adjust-status]{flex:1 1 100%}.is-admin-masterplan-editing .satellite-lot-plan-marker{width:24px!important;min-width:24px!important;height:24px!important;font-size:8px!important;line-height:20px!important}}
+map-scene.is-admin-masterplan-editing[data-admin-masterplan-overlay] .satellite-lot-plan-marker{opacity:1!important}
 @media(max-width:700px){.satellite-lot-context-widget{position:fixed;left:12px!important;right:12px;top:auto!important;bottom:12px;width:auto;max-width:none;transform:none;z-index:2001!important}.satellite-lot-context-widget footer button{flex:1;min-height:38px}}
 @media(max-width:700px){map-scene[data-public-static-only="true"]>.satellite-lot-context-widget{position:absolute;left:12px!important;right:12px!important;top:auto!important;bottom:12px!important;width:auto!important;max-width:none;max-height:min(330px,60%);overflow:auto;transform:none;z-index:2001!important}}
 /* A página administrativa não deve receber os marcadores circulares do
@@ -3761,3 +3831,86 @@ view-layer[data-view="lot-development"]>.activity-header,view-layer[data-view="l
 .foreman-access-keys-v1{margin:18px 0;border:1px solid #393939;background:#161616;color:#f4f4f4}.foreman-access-keys-v1>header{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;padding:18px;border-bottom:1px solid #393939}.foreman-access-keys-v1 h2{margin:4px 0 5px}.foreman-access-keys-v1 p,.foreman-access-keys-v1 small{color:#a8a8a8}.foreman-access-keys-v1>header p{margin:0;max-width:760px}.access-key-expiry-v1{color:#78a9ff;font:10px ui-monospace,monospace;white-space:nowrap}.foreman-access-keys-v1 form{display:grid;grid-template-columns:minmax(220px,1fr) 2fr;gap:14px;padding:16px;border-bottom:1px solid #393939}.foreman-access-keys-v1 form>label{display:grid;align-content:start;gap:6px;color:#c6c6c6;font-size:11px}.foreman-access-keys-v1 input[name=label]{min-height:38px;padding:0 10px;border:1px solid #525252;background:#262626;color:#f4f4f4}.foreman-access-keys-v1 fieldset{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0;padding:12px;border:1px solid #393939;background:#202020}.foreman-access-keys-v1 legend{padding:0 5px;color:#78a9ff;font:9px ui-monospace,monospace}.foreman-access-keys-v1 fieldset label{display:flex;align-items:center;gap:8px;color:#dedede;font-size:11px}.foreman-access-keys-v1 fieldset input{accent-color:#0f62fe}.foreman-access-keys-v1 form>footer{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px}.foreman-access-keys-v1 form>footer small{max-width:700px;font-size:10px}.foreman-access-keys-v1 button{min-height:36px;padding:0 12px;border:1px solid #0f62fe;background:#0f62fe;color:#fff;font-weight:700;cursor:pointer}.foreman-access-keys-v1 button:disabled{opacity:.55}.foreman-access-keys-v1 output{display:block;min-height:18px;padding:0 16px;color:#78a9ff;font-size:11px}.foreman-access-keys-v1 [data-foreman-key-once]{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin:0 16px 14px;padding:12px;border:1px solid #24a148;background:#142117}.foreman-access-keys-v1 [data-foreman-key-once] strong{grid-column:1/-1;color:#42be65;font-size:11px}.foreman-access-keys-v1 [data-foreman-key-once] code{overflow-wrap:anywhere;color:#f4f4f4;font-size:11px}.foreman-key-list-v1{padding:0 16px 16px}.foreman-key-row-v1{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #393939}.foreman-key-row-v1>div{display:grid;gap:4px}.foreman-key-row-v1 small{font-size:10px}.foreman-key-row-v1>span{color:#42be65;font:10px ui-monospace,monospace}.foreman-key-row-v1>span.inactive{color:#a8a8a8}.foreman-key-row-v1 button{min-height:30px;border-color:#da1e28;background:transparent;color:#ff8389}.foreman-key-empty-v1{padding:10px 0}
 .atlas-foreman-access-keys-v1{border:1px solid #d8dee9;border-radius:14px;background:#fff;color:#172033;box-shadow:0 4px 16px rgba(16,35,62,.06);overflow:hidden}.atlas-foreman-access-keys-v1>header{border-color:#e4e8ef}.atlas-foreman-access-keys-v1 p,.atlas-foreman-access-keys-v1 small{color:#66758b}.atlas-foreman-access-keys-v1 .access-key-expiry-v1{color:#2164d8}.atlas-foreman-access-keys-v1 form{border-color:#e4e8ef}.atlas-foreman-access-keys-v1 form>label{color:#34445b}.atlas-foreman-access-keys-v1 input[name=label]{border:1px solid #ccd5e2;border-radius:8px;background:#fff;color:#172033}.atlas-foreman-access-keys-v1 fieldset{border:1px solid #d8dee9;border-radius:10px;background:#f7f9fc}.atlas-foreman-access-keys-v1 legend{color:#2164d8}.atlas-foreman-access-keys-v1 fieldset label{color:#34445b}.atlas-foreman-access-keys-v1 form>footer small{color:#66758b}.atlas-foreman-access-keys-v1 button{border-radius:8px}.atlas-foreman-access-keys-v1 [data-foreman-key-once]{border-radius:10px;background:#eef8f0}.atlas-foreman-access-keys-v1 [data-foreman-key-once] code{color:#172033}
 @media(max-width:760px){.foreman-access-keys-v1>header{align-items:start;flex-direction:column}.foreman-access-keys-v1 form{grid-template-columns:1fr}.foreman-access-keys-v1 fieldset{grid-template-columns:1fr}.foreman-access-keys-v1 form>footer{grid-column:auto;align-items:stretch;flex-direction:column}.foreman-key-row-v1{grid-template-columns:1fr auto}.foreman-key-row-v1>div{grid-column:1/-1}}
+
+/* Atlas cleanup: remove the old map category strip and make gesture help a
+   compact hover/focus hint. Restyle the lot detail surface to match Atlas. */
+view-layer[data-view="map"] map-scene[data-operational-map-page]>.map-category-switcher,.scene:has(>view-layer[data-view="map"])>map-scene[data-persistent-map="true"]>.map-category-switcher{display:none!important}
+map-scene .map-gesture-legend{left:auto!important;right:14px!important;bottom:14px!important;z-index:72!important;display:block!important;width:max-content;max-width:min(360px,calc(100% - 24px));transform:none!important;overflow:visible!important;padding:0!important;border:0!important;border-radius:10px!important;background:transparent!important;color:#26334a!important;font:12px/1.4 Inter,ui-sans-serif,system-ui,sans-serif!important;white-space:normal!important;pointer-events:auto!important;backdrop-filter:none!important;box-shadow:none!important}
+map-scene .map-gesture-legend>span:first-child{display:block!important;width:max-content;max-width:100%;padding:8px 11px;border:1px solid #dce3ed;border-radius:10px;background:rgba(255,255,255,.95);box-shadow:0 4px 16px rgba(19,39,66,.14);font-size:0;color:#34445b;cursor:help}
+map-scene .map-gesture-legend>span:first-child::before{content:"Gestos do mapa";font-size:11px;font-weight:600}
+map-scene .map-gesture-legend:not(:hover):not(:focus)>:not(:first-child){display:none!important}
+map-scene .map-gesture-legend:hover>span:first-child,map-scene .map-gesture-legend:focus>span:first-child{border-color:#b9c9e1;border-radius:10px 10px 0 0;box-shadow:none}
+map-scene .map-gesture-legend:hover>:not(:first-child),map-scene .map-gesture-legend:focus>:not(:first-child){display:inline!important}
+map-scene .map-gesture-legend:hover>span:not(:first-child),map-scene .map-gesture-legend:focus>span:not(:first-child){display:inline-flex!important;align-items:center;padding:4px 7px;border:1px solid #e2e8f0;background:#fff;color:#64748b;font-size:10px}
+map-scene .map-gesture-legend:hover>b,map-scene .map-gesture-legend:focus>b{display:inline-flex!important;align-items:center;margin:0;padding:4px 7px;border:1px solid #e2e8f0;background:#f8fafc;color:#27364e;font-size:10px;font-weight:600}
+map-scene .map-gesture-legend:hover,map-scene .map-gesture-legend:focus{padding:0!important;border:1px solid #dce3ed!important;border-radius:10px!important;background:#fff!important;box-shadow:0 8px 24px rgba(19,39,66,.16)!important}
+map-scene .map-gesture-legend:hover>span:first-child,map-scene .map-gesture-legend:focus>span:first-child{border:0;border-bottom:1px solid #e5eaf1;background:#f8fafc}
+map-scene .map-gesture-legend:hover>b,map-scene .map-gesture-legend:hover>span:not(:first-child),map-scene .map-gesture-legend:focus>b,map-scene .map-gesture-legend:focus>span:not(:first-child){margin:4px}
+map-scene .map-gesture-legend:hover,map-scene .map-gesture-legend:focus{display:grid!important;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;width:min(390px,calc(100vw - 32px));padding:8px!important}
+map-scene .map-gesture-legend:hover>span:first-child,map-scene .map-gesture-legend:focus>span:first-child{grid-column:1/-1;width:auto;max-width:none}
+map-scene .map-gesture-legend:hover>b,map-scene .map-gesture-legend:focus>b{justify-content:flex-start;margin:0!important;white-space:normal}
+map-scene .map-gesture-legend:hover>span:not(:first-child),map-scene .map-gesture-legend:focus>span:not(:first-child){justify-content:flex-end;margin:0!important;white-space:nowrap}
+map-scene .map-gesture-legend:focus-visible{outline:2px solid #246be0;outline-offset:3px}
+view-layer[data-view="map"] map-scene[data-operational-map-page]>.map-gesture-legend,.scene:has(>view-layer[data-view="map"])>map-scene[data-persistent-map="true"]>.map-gesture-legend{pointer-events:auto!important}
+view-layer[data-view="map"] map-scene[data-operational-map-page][data-public-presentation]>.map-gesture-legend{display:block!important;pointer-events:auto!important}
+view-layer[data-view="map"] map-scene[data-operational-map-page][data-public-presentation]>.map-gesture-legend:hover,view-layer[data-view="map"] map-scene[data-operational-map-page][data-public-presentation]>.map-gesture-legend:focus{display:grid!important}
+.lot-detail-page{display:grid;gap:14px;min-height:100%;padding:18px 0 36px!important;background:transparent!important;color:#20283a!important}
+.lot-detail-page,.lot-detail-page *{box-sizing:border-box}
+view-layer[data-view="lot-detail"]>.activity-header{position:relative!important;inset:auto!important;display:flex!important;align-items:center!important;max-width:none!important;margin:0 0 12px!important;padding:0 0 12px!important;border:0!important;border-bottom:1px solid #e2e7ef!important;background:#fff!important;color:#20283a!important;box-shadow:none!important;backdrop-filter:none!important}
+view-layer[data-view="lot-detail"]>.activity-header>div:first-child>span{color:#20283a!important;font-size:25px!important;font-weight:700;letter-spacing:-.035em}
+view-layer[data-view="lot-detail"]>.activity-header>div:first-child>small{color:#69768a!important}
+view-layer[data-view="lot-detail"]>.activity-header .activity-state{border:1px solid #e0e7ef!important;border-radius:999px!important;background:#f8fafc!important;color:#657287!important}
+view-layer[data-view="lot-detail"] .activity-header-tools{gap:8px}
+view-layer[data-view="lot-detail"] .activity-header-tools .lot-status-pill,view-layer[data-view="lot-detail"] .activity-header-tools .lot-payment-pill{padding:7px 10px;border:1px solid #dce4ee;border-radius:999px;background:#f8fafc;color:#33435b;font-size:11px}
+view-layer[data-view="lot-detail"] .activity-header-tools .lot-payment-pill{border-color:#f0d49a;background:#fff8e8;color:#8b5a10}
+view-layer[data-view="lot-detail"] .activity-header-tools .toolbar-action{min-height:36px;border:1px solid #d9e1eb;border-radius:8px;background:#fff;color:#26364d}
+.lot-detail-head{border:0!important;border-bottom:1px solid #e2e7ef!important;background:transparent!important;color:#20283a!important}
+.lot-detail-head h1{color:#20283a!important}
+.lot-detail-head p{color:#69768a!important}
+.lot-detail-back{color:#246be0!important}
+.lot-detail-map-drawer,.lot-detail-section{overflow:hidden;border:1px solid #e1e7ef!important;border-radius:14px!important;background:#fff!important;color:#20283a!important;box-shadow:0 4px 16px rgba(25,43,73,.06)}
+.lot-detail-map-drawer{margin:0!important}
+.lot-detail-map-drawer>summary{min-height:50px;padding:13px 16px!important;background:#f8fafc;color:#26364d}
+.lot-detail-map-drawer summary small{color:#68768d!important}
+.lot-detail-map-window{height:340px!important;border-top:1px solid #e1e7ef!important;background:#081522}
+.lot-detail-layout{grid-template-columns:minmax(0,1.4fr) minmax(320px,.86fr)!important;gap:14px!important}
+.lot-detail-section{padding:18px!important}
+.lot-detail-section>header{align-items:center!important;padding-bottom:13px!important;border-bottom:1px solid #e6ebf1!important;margin-bottom:14px!important}
+.lot-detail-section>header>span{width:30px!important;height:30px!important;border:1px solid #d7e5ff;border-radius:8px!important;background:#edf4ff!important;color:#2463c8!important;font:700 11px ui-monospace,monospace!important}
+.lot-detail-section h2{color:#20283a!important;font-size:17px!important}
+.lot-detail-section header p{color:#69768a!important}
+.lot-detail-fields{gap:12px!important}
+.lot-detail-fields label,.lot-detail-inline-form label{color:#4f5e74!important;font-size:12px!important}
+.lot-detail-fields input,.lot-detail-fields select,.lot-detail-fields textarea,.lot-detail-inline-form input,.lot-detail-inline-form select{min-height:40px!important;padding:9px 11px!important;border:1px solid #d7dfe9!important;border-radius:8px!important;background:#fff!important;color:#20283a!important;font:inherit!important}
+.lot-detail-fields input:disabled{border-color:#e5eaf0!important;background:#f7f9fc!important;color:#69768a!important}
+.lot-detail-fields input:focus,.lot-detail-fields select:focus,.lot-detail-fields textarea:focus,.lot-detail-inline-form input:focus,.lot-detail-inline-form select:focus{outline:2px solid #246be0!important;outline-offset:1px}
+.lot-detail-section footer{gap:12px!important}
+.lot-detail-section footer>span{color:#69768a!important}
+.lot-detail-section footer .toolbar-primary,.lot-detail-inline-form footer button[type=submit]{border:1px solid #246be0!important;border-radius:8px!important;background:#246be0!important;color:#fff!important}
+.lot-detail-side{gap:14px!important}
+.lot-detail-plan-list,.lot-detail-document-list,.lot-detail-history ol{gap:6px!important;background:transparent!important}
+.lot-detail-plan-list{margin-bottom:14px!important}
+.lot-detail-plan-list li,.lot-detail-document-list li,.lot-detail-history li{border:1px solid #e6ebf1!important;border-radius:9px!important;background:#fff!important;color:#27364e!important}
+.lot-detail-plan-list small,.lot-detail-document-list small,.lot-detail-history small{color:#69768a!important}
+.lot-detail-plan-list strong{color:#2463c8!important}
+.lot-detail-plan-list button,.lot-detail-document-list button,.lot-detail-document-list a{color:#2463c8!important}
+.lot-detail-inline-form{gap:10px!important;border-top-color:#e6ebf1!important}
+.lot-detail-inline-form footer button{border:1px solid #d7dfe9!important;border-radius:8px!important;background:#fff!important;color:#33435b!important}
+.lot-detail-document-list{gap:6px!important;margin-bottom:14px!important}
+.lot-detail-document-list li>span:first-child{color:#2463c8!important}
+.lot-detail-history time{color:#68768d!important}
+.lot-detail-page .empty-data{border:1px dashed #d8e0ea!important;border-radius:8px!important;background:#f8fafc!important;color:#6b778c!important}
+.lot-cash-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid #e5eaf0;border-radius:10px;background:#f8fafc;color:#26364d}
+.lot-cash-summary>div{display:grid;gap:4px}
+.lot-cash-summary small{color:#6b778c;font-size:10px}
+.lot-cash-summary strong{color:#20283a;font-size:20px}
+.lot-cash-summary span{color:#6b778c;font-size:11px}
+.lot-cash-summary button{min-height:36px;border:1px solid #246be0;border-radius:8px;background:#246be0;color:#fff}
+.lot-cash-entry-list{display:grid;gap:6px;margin:10px 0 0;padding:0;list-style:none}
+.lot-cash-entry-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px;border:1px solid #e6ebf1;border-radius:9px;background:#fff;color:#27364e}
+.lot-cash-entry-list li>div{display:grid;gap:4px}
+.lot-cash-entry-list small{color:#69768a}
+.lot-cash-entry-list strong{color:#2463c8;white-space:nowrap}
+@media(max-width:1050px){.lot-detail-layout{grid-template-columns:1fr!important}.lot-detail-side{grid-template-columns:repeat(2,minmax(0,1fr))}.lot-detail-history{grid-column:1/-1}}
+@media(max-width:760px){.lot-detail-page{padding:12px 0 82px!important}.lot-detail-section{padding:14px!important}.lot-detail-side{grid-template-columns:1fr}.lot-detail-map-window{height:260px!important}.lot-detail-head-state{justify-content:flex-start}.lot-detail-history{grid-column:auto}}
+@media(max-width:520px){.lot-detail-fields,.lot-detail-inline-form{grid-template-columns:1fr!important}.lot-detail-fields label.wide,.lot-detail-inline-form label.wide{grid-column:auto!important}.lot-cash-summary{align-items:stretch;flex-direction:column}.lot-cash-summary button{width:100%}}

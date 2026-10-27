@@ -1,0 +1,32 @@
+[
+  {
+    "id": "signal",
+    "label": "Sinal",
+    "description": "Comissão vinculada ao recebimento do sinal/entrada.",
+    "active": true,
+    "sharePercent": 40,
+    "warley": 50,
+    "partner": 50,
+    "payment": "À vista / sinal"
+  },
+  {
+    "id": "intermediate",
+    "label": "Parcela intermediária",
+    "description": "Comissão vinculada a parcela intermediária prevista no plano.",
+    "active": true,
+    "sharePercent": 30,
+    "warley": 50,
+    "partner": 50,
+    "payment": "Parcela intermediária"
+  },
+  {
+    "id": "monthly",
+    "label": "Mensal",
+    "description": "Comissão distribuída nas parcelas mensais recebidas.",
+    "active": true,
+    "sharePercent": 30,
+    "warley": 70,
+    "partner": 30,
+    "payment": "Parcelas mensais"
+  }
+]

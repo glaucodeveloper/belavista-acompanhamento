@@ -1,3 +1,5 @@
+import dashboardMapHighlightsData from "../../dist/frontend/data/dashboard-map-highlights.json" with { type: "json" };
+
 export const installMapSceneContextExtensionsV1 = (dependencies) => {
   const {
     MapScene,
@@ -227,21 +229,7 @@ MapScene.prototype.applyStageOverlaySetV1 = function (value = []) {
 // Highlights comerciais e sociais usam os próprios polígonos canônicos do
 // GLB. A cor não altera o documento: apenas pinta temporariamente a malha
 // correspondente ao widget ativo.
-const dashboardLotHighlightV1 = {
-  "commercial-leads": { statuses: ["lead"], color: 0x4589ff },
-  "commercial-contracts": { statuses: ["reserved", "installments", "paid"] },
-  "commercial-lots": { statuses: ["lead", "reserved", "installments", "paid"] },
-  "commercial-reservations": { statuses: ["reserved"], color: 0xf1c21b },
-  "commercial-installments": { statuses: ["installments"], color: 0xf08b2d },
-  "commercial-paid": { statuses: ["paid"], color: 0x42be65 },
-  "social-instagram": { statuses: ["lead"], color: 0x9b7cff },
-  "social-personal": { statuses: ["lead", "reserved", "installments", "paid"] },
-  "social-clients": { statuses: ["reserved", "installments", "paid"] },
-  "social-brokers": { statuses: ["lead", "reserved"] },
-  "social-staff-operating": { staffStatus: "operating", color: 0x24a148 },
-  "social-staff-services": { staffStatus: "services", color: 0x4589ff },
-  "social-staff-planned": { staffStatus: "planned", color: 0xf1c21b },
-};
+const dashboardLotHighlightV1 = dashboardMapHighlightsData.rules;
 const dashboardLotPartsV1 = (scene) => {
   const canonical = scene.canonicalPublicLotParts?.() || [];
   if (canonical.length) return canonical;
@@ -351,13 +339,8 @@ MapScene.prototype.applyDashboardModeHighlightV1 = function (key = null) {
     if (!match) return;
     const color =
       config.color ||
-      {
-        lead: 0x4589ff,
-        reserved: 0xf1c21b,
-        installments: 0xf08b2d,
-        paid: 0x42be65,
-      }[status] ||
-      0x32c5d9;
+      dashboardMapHighlightsData.statusColors[status] ||
+      dashboardMapHighlightsData.defaultColor;
     lot.userData.dashboardModeMaterial = this.materialForColor(
       lot.userData.defaultMaterial || lot.material,
       color,

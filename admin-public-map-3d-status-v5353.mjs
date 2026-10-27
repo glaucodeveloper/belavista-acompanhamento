@@ -1,66 +1,22 @@
-// BELAVISTA_ADMIN_PUBLIC_MAP_3D_STATUS_V5353
-(() => {
-  if(globalThis.__belavistaAdminPublicMap3dStatusV5353)return;
-  globalThis.__belavistaAdminPublicMap3dStatusV5353=true;
-
-  const selector='map-scene[data-admin-shared-public-map]';
-
-  function attach(map){
-    if(!map||map.dataset.admin3dProbe==='v5353')return;
-    if(map.dataset.mapInit==='admin-static-first-v5370'){
-      map.dataset.admin3dProbe='static-first-isolated';
-      map.dataset.admin3dState='idle-explicit-activation';
-      return;
-    }
-    map.dataset.admin3dProbe='v5353';
-    map.dataset.admin3dState=map.modelReady?'ready':'loading';
-
-    const started=performance.now();
-    const timer=setInterval(()=>{
-      if(!map.isConnected){clearInterval(timer);return;}
-
-      if(map.modelReady||map.dataset.modelReady==='true'){
-        map.dataset.admin3dState='ready';
-        map.dataset.admin3dReadyMs=String(Math.round(performance.now()-started));
-        clearInterval(timer);
-        return;
-      }
-
-      const error=map.dataset.modelError||map.dataset.threeError;
-      if(error){
-        map.dataset.admin3dState='error';
-        console.error('[BELAVISTA v5.3.53] mapa 3D falhou',{
-          error,
-          three:map.dataset.three,
-          modelRender:map.dataset.modelRender,
-          modelSource:map.dataset.modelSource,
-          modelProgress:map.dataset.modelProgress
-        });
-        clearInterval(timer);
-      }
-    },180);
-
-    setTimeout(()=>{
-      if(map.modelReady||map.dataset.modelReady==='true')return;
-      console.warn('[BELAVISTA v5.3.53] mapa 3D ainda não pronto após 8s',{
-        mapInit:map.dataset.mapInit,
-        three:map.dataset.three,
-        modelError:map.dataset.modelError,
-        modelProgress:map.dataset.modelProgress,
-        modelRender:map.dataset.modelRender
-      });
-    },8000);
+// TypeScript-first adapter for 3D map readiness and failure status.
+const programUrl = './dist/frontend/program.js';
+let ownedByTypeScript = false;
+try {
+  if (document.documentElement.dataset.adminMapComponentRuntimeOwnerV1 === 'typescript') {
+    ownedByTypeScript = true;
+  } else {
+  const program = await import(programUrl);
+  if (typeof program.installAtlasAdminMapComponentRuntimeV1 === 'function') {
+    program.installAtlasAdminMapComponentRuntimeV1({ documentRef: document, windowRef: window, registry: customElements });
+    document.documentElement.dataset.adminPublicMap3dStatusOwnerV1 = 'typescript';
+    document.documentElement.dataset.adminMapComponentRuntimeOwnerV1 = 'typescript';
+    ownedByTypeScript = true;
   }
-
-  const current=document.querySelector(selector);
-  if(current){attach(current);return;}
-
-  const observer=new MutationObserver(()=>{
-    const map=document.querySelector(selector);
-    if(!map)return;
-    observer.disconnect();
-    attach(map);
-  });
-  observer.observe(document.documentElement,{childList:true,subtree:true});
-  setTimeout(()=>observer.disconnect(),6000);
-})();
+  }
+} catch (error) {
+  console.warn('[Belavista admin] Owner TS do estado 3D indisponível; usando recuperação MJS.', error);
+}
+if (!ownedByTypeScript) {
+  await import('./admin-public-map-3d-status-legacy-v5353.mjs?v=admin-public-map-3d-status-recovery-v1');
+  document.documentElement.dataset.adminPublicMap3dStatusOwnerV1 = 'mjs-fallback';
+}

@@ -1,0 +1,24 @@
+{
+  "intentPattern": "\\b(?:alter\\w*|mud\\w*|atualiz\\w*|defin\\w*|coloc\\w*|marqu\\w*)\\b",
+  "lotContextPattern": "\\b(?:lote|quadra|status|situacao)\\b|\\bq[a-z]{1,3}\\s*[- ]?\\s*\\d+\\b",
+  "lotKeyPatterns": [
+    { "pattern": "\\b(q[a-z]{1,3})\\s*[- ]?\\s*0*(\\d{1,3})\\b", "blockGroup": 1, "lotGroup": 2 },
+    { "pattern": "\\blote\\s*0*(\\d{1,3})\\s*(?:da\\s*)?quadra\\s*(q[a-z]{1,3})\\b", "blockGroup": 2, "lotGroup": 1 }
+  ],
+  "statusOptions": [
+    { "label": "Repasse programado", "pattern": "\\brepasse\\s+programad[oa]\\b" },
+    { "label": "Em negociação", "pattern": "\\b(?:em\\s+)?negociacao\\b" },
+    { "label": "Disponível", "pattern": "\\bdisponivel\\b" },
+    { "label": "Reservado", "pattern": "\\breservad[oa]\\b" },
+    { "label": "Vendido", "pattern": "\\bvendid[oa]\\b" },
+    { "label": "Quitado", "pattern": "\\bquitad[oa]\\b" },
+    { "label": "Bloqueado", "pattern": "\\bbloquead[oa]\\b" }
+  ],
+  "messages": {
+    "invalidLotCount": "Informe exatamente um lote e sua quadra (ex.: QA-1).",
+    "unknownLot": "não consta da tabela de lotes.",
+    "invalidStatus": "Informe um único novo status: Disponível, Reservado, Em negociação, Vendido, Repasse programado, Quitado ou Bloqueado.",
+    "invalidCommand": "Comando de status inválido ou estado indisponível.",
+    "writeUnconfirmed": "Não foi possível confirmar a gravação do status."
+  }
+}

@@ -1,4 +1,4 @@
-const CACHE='alianca-park-leads-v58';
+const CACHE='alianca-park-leads-v261-ts-main-public-entry-v1-ts-public-map-registration-program-owner-v1';
 const PREFIX='alianca-park-leads-';
 
 self.addEventListener('install',event=>{

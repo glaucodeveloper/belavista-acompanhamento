@@ -1,10 +1,18 @@
 import { installMapSceneStoreEventsV1 } from "./map-scene-store-events-v1.mjs";
+import { activateAtlasMapScene, installAtlasMapSceneStoreEvents } from "../../dist/frontend/components.js";
 
 /** Activates the connected MapScene after its shell and cover layout are ready. */
 export const activateMapSceneV1 = (
   scene,
   { appStore, demoData, performanceRef = globalThis.performance, solarMarkup },
 ) => {
+  if (typeof activateAtlasMapScene === "function") return activateAtlasMapScene(scene, {
+    appStore,
+    demoData,
+    performanceRef,
+    publicPresentation: scene.isPublicCustomerExperience() && !scene.isAdminPublicMapV1(),
+    solarMarkup,
+  });
   scene.mountMap3DLoadingScreenV1();
   scene.querySelector(".map-tint")?.insertAdjacentHTML(
     "afterend",
@@ -37,11 +45,13 @@ export const activateMapSceneV1 = (
   } else {
     scene.initWhenReady();
   }
-  installMapSceneStoreEventsV1(scene, {
+  const storeEventDependencies = {
     appStore,
     demoData,
     performanceRef,
     publicPresentation,
-  });
+  };
+  if (typeof installAtlasMapSceneStoreEvents === "function") installAtlasMapSceneStoreEvents(scene, storeEventDependencies);
+  else installMapSceneStoreEventsV1(scene, storeEventDependencies);
   return publicPresentation;
 };

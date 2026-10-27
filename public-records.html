@@ -17,6 +17,10 @@
   <title>Aliança Park · Registros de campo</title>
 </head>
 <body>
+  <div id="app" data-app-entry="public-field-records" aria-live="polite">
+    <atlas-public-field-records></atlas-public-field-records>
+  </div>
+  <template id="public-records-legacy-template">
   <main class="field-records-app" data-step="capture">
     <header class="field-header"><span class="field-mark" aria-hidden="true">◢</span><div><strong>Aliança Park</strong><small>CAMPO · REGISTROS</small></div><span class="field-online"><i></i> online</span></header>
     <form class="field-record-form" novalidate>
@@ -41,7 +45,14 @@
     </form>
     <footer>Os registros são enviados ao sistema operacional Aliança Park.</footer>
   </main>
-  <script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-<script type="module" src="./public-records.js?v=map-area-three-importmap-v5"></script>
+  </template>
+<script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script type="module" src="./public-records.js?v=ts-public-field-records-program-owner-v2"></script>
+<script type="module">
+  import('/dist/frontend/main.js?v=ts-public-field-records-program-owner-v3&ts-public-lead-upload-direct-v1&ts-map-geometry-loader-program-owner-v1&ts-map-overlay-direct-program-projections-v3').catch(error => {
+    console.error('Falha ao carregar a entrada TypeScript de Registros Públicos.', error);
+    window.dispatchEvent(new CustomEvent('atlas:public-records-fallback-requested'));
+  });
+</script>
 </body>
 </html>

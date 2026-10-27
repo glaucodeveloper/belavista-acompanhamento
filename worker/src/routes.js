@@ -54,7 +54,7 @@ import {requireAdminRequest,bearerToken} from './request-auth.js';
 import {actorFromGithubSession,openGithubSession,revokeGithubSession,
   listForemanAccessKeys,createForemanAccessKey,revokeForemanAccessKey,
   listForemanAccessRoles,saveForemanAccessRole,deleteForemanAccessRole} from './github-session-store.js';
-import {readPublicCatalog,readPublicCommercialRecords} from './public-commercial-store.js';
+import {readPublicCatalog,readPublicCommercialRecords,readPublicCommercialSummary} from './public-commercial-store.js';
 import {createLiveTestSession,readLiveTestSession,saveLiveTestSession,deleteLiveTestSession,applyLiveTestEvent} from './live-test-session.js';
 
 import {saveCashEvidence} from './cash-evidence.js';
@@ -275,6 +275,14 @@ export async function routeRequest(request,env,ctx){
     if(!['owner','admin','developer'].includes(String(actor?.role||'')))return json({error:'Somente administração pode consultar dados pessoais de leads e reservas.'},403,{'cache-control':'no-store'});
     try{return json(await readPublicCommercialRecords(env),200,{'cache-control':'private, no-store'});}
     catch(error){return json({error:error?.message||'Não foi possível ler os leads públicos do repositório.'},502,{'cache-control':'no-store'});}
+  }
+
+  if(pathname==='/api/admin/public-lead-summary'){
+    if(request.method!=='GET')return methodNotAllowed();
+    const actor=await requireAdminRequest(request,env);
+    if(!['owner','admin','developer'].includes(String(actor?.role||'')))return json({error:'Somente administração pode consultar indicadores agregados de leads.'},403,{'cache-control':'no-store'});
+    try{return json(await readPublicCommercialSummary(env),200,{'cache-control':'private, no-store'});}
+    catch(error){return json({error:error?.message||'Não foi possível ler os indicadores de leads.'},502,{'cache-control':'no-store'});}
   }
 
   if(pathname==='/api/public/catalog'&&request.method==='GET'){

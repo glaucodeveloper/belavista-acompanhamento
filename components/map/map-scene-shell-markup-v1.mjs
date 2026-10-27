@@ -1,5 +1,7 @@
+import { renderAtlasMapSceneShell } from "../../dist/frontend/components.js";
+
 /** Builds the existing MapScene controls and canvas shell without DOM changes. */
-export const createMapSceneShellMarkupV1 = ({ stageOverlayLabels, ico, persistent }) => {
+const renderLegacyMapSceneShellMarkupV1 = ({ stageOverlayLabels, ico, persistent }) => {
   const solarMarkup = `<div class="map-solar-control" data-solar-control aria-label="Iluminação solar do mapa"><div class="map-solar-head"><span>${ico("sun")} SOL</span><b data-solar-time>09:00</b></div><input type="range" min="5.5" max="17.8" step="0.25" value="9" data-solar-hour aria-label="Horário solar, do amanhecer ao entardecer"><div class="map-solar-scale"><span data-solar-sunrise>05:30</span><span>AMANHECER → ENTARDECER</span><span data-solar-sunset>17:45</span></div><small data-solar-location>DWG · localização solar</small></div>`;
   const overlays = Object.entries(stageOverlayLabels)
     .map(
@@ -14,3 +16,7 @@ export const createMapSceneShellMarkupV1 = ({ stageOverlayLabels, ico, persisten
 
   return { solarMarkup, mapMarkup };
 };
+
+export const createMapSceneShellMarkupV1 = input => typeof renderAtlasMapSceneShell === "function"
+  ? renderAtlasMapSceneShell(input)
+  : renderLegacyMapSceneShellMarkupV1(input);

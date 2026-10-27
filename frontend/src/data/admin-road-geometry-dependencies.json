@@ -1,0 +1,14 @@
+{
+  "configuration": [
+    "ADMIN_REFERENCE_AERIAL_ASSET_V1",
+    "ADMIN_REFERENCE_AERIAL_ROAD_TRACE_URL_V1",
+    "ROAD_HALF_LOT_SLICE_WORLD_V1"
+  ],
+  "functions": [
+    "appendAdminReferenceAerialCurbPathV1",
+    "createAdminReferenceAerialBezierCurbGuidesV1",
+    "createAdminReferenceAerialNativeRoadGeometryV1",
+    "createAdminReferenceAerialRoadPlaneGeometryV1",
+    "roadPlanarAngleV1"
+  ]
+}

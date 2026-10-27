@@ -1,5 +1,7 @@
-/** Installs DWG-derived GPS markers, lot metadata, and georeference loading. */
-export const installDwgGeoreferenceControllerV1 = (
+import { installAtlasMapDwgGeoreferenceControllerV1 } from "../../dist/frontend/components.js";
+
+/** Legacy DWG georeference controller retained until the authenticated map path is verified. */
+const installDwgGeoreferenceControllerLegacyV1 = (
   MapScene,
   {
     url,
@@ -128,4 +130,20 @@ export const installDwgGeoreferenceControllerV1 = (
   };
 
   return MapScene;
+};
+
+/** Install the typed DWG controller, retaining the original MJS implementation as fallback. */
+export const installDwgGeoreferenceControllerV1 = (MapScene, dependencies = {}) => {
+  if (typeof installAtlasMapDwgGeoreferenceControllerV1 === "function") {
+    return installAtlasMapDwgGeoreferenceControllerV1(MapScene, {
+      url: dependencies.url,
+      fallback: dependencies.fallback,
+      appStore: dependencies.appStore,
+      localClockHourForGeo: dependencies.localClockHourForGeo,
+      validGeoPoint: dependencies.validGeoPoint,
+      fetchRef: dependencies.fetchFn,
+      consoleRef: dependencies.logger,
+    });
+  }
+  return installDwgGeoreferenceControllerLegacyV1(MapScene, dependencies);
 };

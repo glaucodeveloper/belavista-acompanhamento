@@ -8,7 +8,6 @@
 // Replaces v5.2.1 MutationObserver + 180-frame self-reinstall loop.
 import {runtimeUrlV1} from './runtime-url-v1.mjs?v=ngrok-route-v1';
 
-const BRAND_MARK=runtimeUrlV1('/assets/public/alianca-park-logo-mark-transparent-v551.png?edited=20260915');
 const PUBLIC_MAP_SELECTOR='map-scene[data-public-map],map-scene[data-public-presentation]';
 const HERO_SELECTOR='[data-hero-letter],.public-hero-letter,.public-map-copy';
 // Nível que corresponde à escala física inferida para o footprint do DWG.
@@ -27,6 +26,13 @@ const isPublicMap=map=>Boolean(map?.matches?.(PUBLIC_MAP_SELECTOR));
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({
   '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
 }[char]));
+
+function resolveTypedSurface(map){
+  const enclosing=map?.closest?.('public-leads-surface');
+  if(enclosing)return enclosing;
+  const resolve=globalThis.belavistaPublicMapRuntimeSurfaceForMapV1;
+  return typeof resolve==='function'?resolve(map):null;
+}
 
 function installStyles(){
   if(document.getElementById('belavista-public-selection-focus-v5318-style'))return;
@@ -515,6 +521,9 @@ function ensureStaticFallback(){
   const sticky=document.querySelector('.public-map-sticky');
   const map=sticky?.querySelector(PUBLIC_MAP_SELECTOR)||document.querySelector(PUBLIC_MAP_SELECTOR);
   if(!map)return null;
+  const typedSurface=resolveTypedSurface(map);
+  if(typeof typedSurface?.preparePublicMapBase==='function'&&typedSurface.preparePublicMapBase(map))
+    return {map,bg:sticky?.querySelector('.public-map-static-bg')||null};
   const satelliteImageOnly=document.body.classList.contains('public-leads-page')&&!map.hasAttribute('data-admin-public-map');
   if(satelliteImageOnly){
     map.setAttribute('data-public-static-only','true');
@@ -562,6 +571,7 @@ function ensureStaticFallback(){
 
 function applySunnyPublicScene(map,attempt=0){
   if(!map||!isPublicMap(map))return;
+  if(map.dataset.publicMapTsOwner==='true')return;
   if(!map.THREE||!map.scene||!map.renderer||!map.sceneStage){
     if(attempt<60&&!map.__publicSunnySceneTimer){
       map.__publicSunnySceneTimer=setTimeout(()=>{
@@ -633,54 +643,78 @@ function applySunnyPublicScene(map,attempt=0){
   }
 }
 
-async function applyDwgSatelliteFrame(map,attempt=0){
+async function applyDwgSatelliteFrame(map,attempt=0,allowTypedStartup=true){
   if(!map)return;
+  const typedSurface=resolveTypedSurface(map);
+  if(allowTypedStartup&&typeof typedSurface?.initializePublicMapStartup==='function'&&await typedSurface.initializePublicMapStartup(map))return;
   const staticOnly=map.hasAttribute('data-public-static-only');
   if(!staticOnly&&(!map.THREE||!map.mapSurface)){
-    if(attempt<24)setTimeout(()=>applyDwgSatelliteFrame(map,attempt+1),350);
+    if(attempt<24)setTimeout(()=>applyDwgSatelliteFrame(map,attempt+1,allowTypedStartup),350);
     return;
   }
   try{
-    const response=await fetch(runtimeUrlV1('/assets/data/dwg-georeference.json'),{cache:'no-store'});
-    if(!response.ok)throw new Error(`DWG HTTP ${response.status}`);
-    const geo=await response.json();
-    const center=(geo.controlPoints||[]).find(point=>point.id==='site-center')||geo.controlPoints?.[0];
-    if(!Number.isFinite(Number(center?.lat))||!Number.isFinite(Number(center?.lng)))throw new Error('Centro GPS ausente no DWG');
-    // A captura local é a única base visual do atendimento público. Não
-    // consulte tiles, Leaflet, Google Maps ou Esri: a imagem foi capturada e
-    // tratada no projeto e é enquadrada pelo mesmo centro/bounds do DWG.
+    const loadFrame=globalThis.belavistaLoadPublicDwgSatelliteFrame;
+    let frame,geo;
+    if(typeof loadFrame==='function'){
+      frame=await loadFrame(runtimeUrlV1('/assets/data/dwg-georeference.json'),PUBLIC_SATELLITE_DWG_ZOOM);
+      geo=frame.geo;
+    }else{
+      const response=await fetch(runtimeUrlV1('/assets/data/dwg-georeference.json'),{cache:'no-store'});
+      if(!response.ok)throw new Error(`DWG HTTP ${response.status}`);
+      geo=await response.json();
+      const center=(geo.controlPoints||[]).find(point=>point.id==='site-center')||geo.controlPoints?.[0];
+      if(!Number.isFinite(Number(center?.lat))||!Number.isFinite(Number(center?.lng)))throw new Error('Centro GPS ausente no DWG');
+      const gpsBounds=geo.drawingBounds?.gps;
+      frame={geo,center:[Number(center.lat),Number(center.lng)],zoom:PUBLIC_SATELLITE_DWG_ZOOM,epsg:Number(geo.crs?.epsg)||31984,controlPointCount:(geo.controlPoints||[]).filter(point=>Number.isFinite(Number(point?.lat))&&Number.isFinite(Number(point?.lng))).length,bounds:gpsBounds&&['south','west','north','east'].every(key=>Number.isFinite(Number(gpsBounds[key])))?gpsBounds:null};
+    }
+    // O componente aplica o enquadro validado. O adapter ainda coordena
+    // overlays estáticos e mantém todo o ramo de compatibilidade legado.
+    const surface=resolveTypedSurface(map);
+    let frameAppliedByTs=false;
+    try{frameAppliedByTs=surface?.applyPublicDwgSatelliteFrame?.(map,frame)===true;}catch{}
     const mapMode='generated';
-    const theme={center:[Number(center.lat),Number(center.lng)],zoom:PUBLIC_SATELLITE_DWG_ZOOM};
-    map.dwgGeo=geo;
-    map._publicGeoTheme=theme;
-    map._publicDwgGeoBounds=geo.drawingBounds?.gps||null;
-    map.dataset.publicDwgControlPoints=String((geo.controlPoints||[]).filter(point=>Number.isFinite(Number(point?.lat))&&Number.isFinite(Number(point?.lng))).length);
-    const gpsBounds=geo.drawingBounds?.gps;
-    if(gpsBounds&&['south','west','north','east'].every(key=>Number.isFinite(Number(gpsBounds[key])))){
-      map.dataset.publicDwgBounds=`${Number(gpsBounds.south).toFixed(7)},${Number(gpsBounds.west).toFixed(7)}|${Number(gpsBounds.north).toFixed(7)},${Number(gpsBounds.east).toFixed(7)}`;
+    const theme={center:frame.center,zoom:frame.zoom};
+    if(!frameAppliedByTs){
+      map.dwgGeo=geo;
+      map._publicGeoTheme=theme;
+      map._publicDwgGeoBounds=geo.drawingBounds?.gps||null;
+      map.dataset.publicDwgControlPoints=String(frame.controlPointCount);
+      if(frame.bounds){
+        map.dataset.publicDwgBounds=`${Number(frame.bounds.south).toFixed(7)},${Number(frame.bounds.west).toFixed(7)}|${Number(frame.bounds.north).toFixed(7)},${Number(frame.bounds.east).toFixed(7)}`;
+      }
     }
     if(staticOnly){
-      map.dataset.renderMode=map.dataset.publicSatelliteImageOnly==='true'?'static-satellite-image-only':'static-satellite-markers';
-      map.dataset.mapRasterMode='static-css-background';
-      map.dataset.publicMapTexture='local captured satellite image · static-only · no Maps';
+      if(!frameAppliedByTs){
+        map.dataset.renderMode=map.dataset.publicSatelliteImageOnly==='true'?'static-satellite-image-only':'static-satellite-markers';
+        map.dataset.mapRasterMode='static-css-background';
+        map.dataset.publicMapTexture='local captured satellite image · static-only · no Maps';
+      }
       if(map.dataset.publicSatelliteImageOnly==='true'){
-        const visualSurface=map.closest('.public-map-sticky')||map;
-        visualSurface.querySelectorAll('.satellite-lot-plan-overlay,[data-public-static-lot-markers],.public-lot-info-v5318,[data-public-lot-details-v5335],.public-selected-lot').forEach(node=>node.remove());
-        map.dataset.publicStaticLotMarkers='0';
-        map.dataset.publicLotPolygonCount='0';
-        map.dataset.publicCommercialMarkerState='disabled-satellite-image-only';
-        clearCommercialMarkers(map);
+        if(!frameAppliedByTs){
+          const visualSurface=map.closest('.public-map-sticky')||map;
+          visualSurface.querySelectorAll('.satellite-lot-plan-overlay,[data-public-static-lot-markers],.public-lot-info-v5318,[data-public-lot-details-v5335],.public-selected-lot').forEach(node=>node.remove());
+          map.dataset.publicStaticLotMarkers='0';
+          map.dataset.publicLotPolygonCount='0';
+          map.dataset.publicCommercialMarkerState='disabled-satellite-image-only';
+          clearCommercialMarkers(map);
+        }
       }else{
-        // Reutiliza a planta e os alvos de lote da área administrativa.
-        map.installAdminMasterplanOverlayV1?.();
-        await map.installSatelliteLotPlanOverlayV1?.({markers:true,outlines:false});
-        if(!map.hasAttribute('data-admin-public-map'))installStaticLotMarkers(map,geo);
-        loadPublicCommercialDeals()
-          .then(entries=>updateStaticLotMarkerStatuses(map,entries))
-          .catch(()=>{});
+        const overlaysByTs=await surface?.installPublicSatelliteLotPlan?.(map,geo)===true;
+        if(!overlaysByTs){
+          // Compatibilidade para mapas sem os adapters/serviços TypeScript.
+          map.installAdminMasterplanOverlayV1?.();
+          await map.installSatelliteLotPlanOverlayV1?.({markers:true,outlines:false});
+          if(!map.hasAttribute('data-admin-public-map'))installStaticLotMarkers(map,geo);
+          const syncStatuses=globalThis.belavistaSyncPublicStaticLotMarkerStatuses;
+          if(typeof syncStatuses==='function')void syncStatuses(map).catch(()=>{});
+          else loadPublicCommercialDeals()
+            .then(entries=>updateStaticLotMarkerStatuses(map,entries))
+            .catch(()=>{});
+        }
       }
       return;
     }
+    if(frameAppliedByTs)return;
     // A base aérea não depende da URL nem de preferência persistida do shell.
     // Mantê-la fixa evita que uma navegação reative uma fonte cartográfica
     // externa ou substitua a captura local.
@@ -689,173 +723,13 @@ async function applyDwgSatelliteFrame(map,attempt=0){
     map.setMapTileMode?.(mapMode,false);
     map.refreshMapSurface?.(theme,window.innerWidth,window.innerHeight);
     map.dataset.publicDwgCenter=`${theme.center[0].toFixed(8)},${theme.center[1].toFixed(8)}`;
-    map.dataset.publicDwgCrs=`EPSG:${geo.crs?.epsg||'31984'}`;
+    map.dataset.publicDwgCrs=`EPSG:${frame.epsg||'31984'}`;
     map.dataset.publicMapTexture='local captured satellite image · DWG-centred source · no Maps';
   }catch(error){
     map.dataset.publicMapTexture='satellite unavailable · neutral base retained';
     console.warn('[Belavista public] base satélite do DWG indisponível.',error);
   }
 }
-
-function autoGrow(field){
-  if(!field)return;
-  field.style.height='auto';
-  field.style.height=`${Math.min(Math.max(field.scrollHeight,58),190)}px`;
-}
-
-function installChat(){
-  const box=document.querySelector('public-lead-chat .public-chatbox');
-  if(!box||box.dataset.publicChatV5318==='true')return Boolean(box);
-  box.dataset.publicChatV5318='true';
-  const chatHost=box.closest('public-lead-chat');
-  if(!box.id)box.id='public-leads-chatbox';
-
-  box.querySelectorAll(
-    '.public-chat-chrome,.public-chat-v52-chrome,.public-chat-capabilities.public-chat-v52-capabilities,.public-chat-microcopy'
-  ).forEach(node=>node.remove());
-
-  const legacyHeader=box.querySelector(':scope > header');
-  if(legacyHeader)legacyHeader.dataset.publicLegacyHeader='true';
-
-  const chrome=document.createElement('div');
-  chrome.className='public-chat-v52-chrome';
-  chrome.innerHTML=`<div class="public-chat-v52-brand"><img class="public-chat-v52-mark" src="${BRAND_MARK}" alt=""><span><b>CORRETAGEM · ALIANÇA PARK</b><small>VENDA DE LOTES · INFORMAÇÃO DO VENDEDOR</small></span></div><div class="public-chat-v52-live"><i></i><span>ATIVA</span></div><button type="button" class="public-chat-v52-collapse" data-public-chat-collapse aria-expanded="true" aria-controls="${box.id}" aria-label="Recolher atendimento"><b>Falar sobre lotes</b><span aria-hidden="true">›</span></button>`;
-  box.prepend(chrome);
-
-  const collapseButton=chrome.querySelector('[data-public-chat-collapse]');
-  let autoCollapsedByScroll=false;
-  let scrollZoomActive=false;
-  const setChatCollapsed=collapsed=>{
-    const value=Boolean(collapsed);
-    box.dataset.publicChatCollapsed=value?'true':'false';
-    if(chatHost)chatHost.dataset.publicChatCollapsed=value?'true':'false';
-    document.body.dataset.publicChatCollapsed=value?'true':'false';
-    if(!collapseButton)return;
-    collapseButton.setAttribute('aria-expanded',String(!value));
-    collapseButton.setAttribute('aria-label',value?'Abrir atendimento sobre lotes':'Recolher atendimento');
-    collapseButton.dataset.state=value?'collapsed':'expanded';
-    const glyph=collapseButton.querySelector('span');
-    if(glyph)glyph.textContent=value?'‹':'›';
-  };
-  collapseButton?.addEventListener('click',()=>{
-    autoCollapsedByScroll=false;
-    const next=box.dataset.publicChatCollapsed!=='true';
-    setChatCollapsed(next);
-    if(!next&&matchMedia('(max-width:900px)').matches){
-      requestAnimationFrame(()=>box.querySelector('[name="message"]')?.focus());
-    }
-  });
-  box.addEventListener('keydown',event=>{
-    if(event.key!=='Escape'||box.dataset.publicChatCollapsed==='true'||!matchMedia('(max-width:900px)').matches)return;
-    setChatCollapsed(true);
-    collapseButton?.focus();
-  });
-  chatHost?.addEventListener('belavista:public-map-scroll-zoom',event=>{
-    const active=event.detail?.active===true;
-    if(active===scrollZoomActive)return;
-    scrollZoomActive=active;
-    if(active&&box.dataset.publicChatCollapsed!=='true'){
-      setChatCollapsed(true);
-      autoCollapsedByScroll=true;
-    }else if(!active&&autoCollapsedByScroll){
-      setChatCollapsed(false);
-      autoCollapsedByScroll=false;
-    }
-  });
-  setChatCollapsed(matchMedia('(max-width:900px)').matches);
-  if(Number(document.querySelector('public-leads-surface')?.dataset.planProgress||0)>.08){
-    chatHost?.dispatchEvent(new CustomEvent('belavista:public-map-scroll-zoom',{detail:{active:true}}));
-  }
-
-  const message=box.querySelector('[data-chat-message]');
-  if(message&&!message.dataset.salesSeedV5330){
-    message.dataset.salesSeedV5330='true';
-    message.innerHTML='';
-    const kicker=document.createElement('span');
-    kicker.className='public-chat-v52-kicker';
-    kicker.textContent='BEM-VINDO · ATENDIMENTO ALIANÇA PARK';
-    const copy=document.createElement('span');
-    copy.className='public-chat-sales-question-v5330';
-    const welcome='Bem-vindo ao Aliança Park! Posso ajudar você a encontrar um lote, consultar disponibilidade e valores ou iniciar uma reserva com o corretor.';
-    copy.textContent=welcome;
-    message.append(kicker,copy);
-    globalThis.belavistaTypeAssistantMessage?.(copy,welcome);
-  }
-
-  const form=box.querySelector('[data-chat-form]');
-  if(form){
-    let field=form.elements?.message||form.querySelector('[name="message"]');
-    if(field&&field.tagName!=='TEXTAREA'){
-      const textarea=document.createElement('textarea');
-      for(const attr of field.attributes)textarea.setAttribute(attr.name,attr.value);
-      textarea.rows=1;
-      textarea.value=field.value||'';
-      field.replaceWith(textarea);
-      field=textarea;
-    }
-    if(field){
-      field.rows=1;
-      field.setAttribute('aria-label','Pergunta comercial sobre lote do Aliança Park');
-      field.placeholder='Lote, valor, entrada, condições ou reserva…';
-      field.addEventListener('input',()=>autoGrow(field));
-      field.addEventListener('keydown',event=>{
-        if(event.key==='Enter'&&!event.shiftKey){
-          event.preventDefault();
-          form.requestSubmit?.();
-        }
-      });
-      requestAnimationFrame(()=>autoGrow(field));
-    }
-    if(!box.querySelector('.public-chat-v52-capabilities')){
-      const caps=document.createElement('div');
-      caps.className='public-chat-capabilities public-chat-v52-capabilities';
-      caps.setAttribute('aria-hidden','true');
-      caps.innerHTML='<span>01 · ESCOLHA</span><span>02 · IDENTIFICAÇÃO</span><span>03 · RESERVA</span>';
-      form.before(caps);
-    }
-  }
-
-  const oldFoot=box.querySelector('[data-chat-foot]');
-  if(oldFoot){
-    oldFoot.hidden=false;
-    oldFoot.classList.add('public-chat-v52-foot');
-    oldFoot.textContent='CORRETAGEM CONECTADA · DISPONIBILIDADE · CONDIÇÕES · RESERVA';
-  }
-  return true;
-}
-
-function lotDetails(source){
-  const data=source?.userData||{};
-  const label=data.partLabel||data.label||source?.name||'Lote selecionado';
-  const rows=[];
-  const values={};
-  const add=(name,value,key)=>{
-    const text=String(value??'').trim();
-    if(!text)return;
-    rows.push([name,text]);
-    if(key)values[key]=text;
-  };
-  add('Referência',data.partId||data.lotId||data.id,'id');
-  add('Quadra',data.quadra||data.block||data.blockName,'block');
-  add('Área',data.area||data.areaM2||data.squareMeters,'area');
-  add('Situação',data.publicCommercialLabel||data.publicCommercialStatus||data.status||data.availability||data.lotStatus||data.state,'status');
-  add('Orientação',data.sun||data.orientation||data.solarOrientation,'orientation');
-  if(!values.status){
-    values.status='Disponibilidade sob consulta';
-    rows.push(['Situação',values.status]);
-  }
-  return {
-    label,
-    rows,
-    values,
-    partId:String(data.partId||data.lotId||data.id||source?.name||'').trim(),
-    partKind:String(data.partKind||'lots'),
-    sourceName:String(source?.name||'')
-  };
-}
-
-
-
 
 const PUBLIC_STAGE_COLORS={
   terraplanagem:0xf1b832,drenagem:0x3f9cff,'rede-agua':0x32c5d9,
@@ -866,6 +740,8 @@ const PUBLIC_STAGE_LABELS={
   'rede-eletrica':'Rede elétrica',pavimentacao:'Pavimentação',urbanizacao:'Urbanização'
 };
 function publicStageKey(value=''){
+  const typed=globalThis.belavistaPublicConstructionStageKey?.(value);
+  if(typed!==undefined)return typed;
   const text=String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   if(text.includes('terra'))return 'terraplanagem';
   if(text.includes('dren'))return 'drenagem';
@@ -895,6 +771,8 @@ async function loadPublicConstructionRecords(){
   }catch(error){
     console.info('[Belavista public v5.3.30] registros remotos indisponíveis; usando snapshot público.',error);
   }
+  const typed=globalThis.belavistaProjectPublicConstructionRecords?.(snapshot,live);
+  if(Array.isArray(typed))return typed;
   const byId=new Map();
   [...snapshot,...live].forEach((record,index)=>{
     const id=String(record?.id||`record-${index}`);
@@ -910,6 +788,8 @@ async function loadPublicConstructionRecords(){
   return [...byId.values()];
 }
 function recordStageSummaries(records=[]){
+  const typed=globalThis.belavistaSummarizePublicConstructionRecords?.(records);
+  if(Array.isArray(typed))return typed;
   const result=new Map();
   for(const record of records){
     const key=publicStageKey(record.stage||record.activity||record.category);
@@ -928,6 +808,13 @@ function resolveRecordAreaParts(map,records,stageKey){
     [part.userData?.partId,part.userData?.partLabel,part.name].filter(Boolean).forEach(value=>byId.set(String(value),part));
   }
   const found=[];
+  const typedAliases=globalThis.belavistaPublicConstructionAreaPartAliases?.(records,stageKey);
+  if(Array.isArray(typedAliases)){
+    for(const candidates of typedAliases){
+      for(const candidate of candidates||[]){const part=byId.get(String(candidate));if(part){found.push(part);break;}}
+    }
+    return [...new Map(found.map(part=>[(part.userData?.partId||part.name),part])).values()];
+  }
   for(const record of records){
     if(publicStageKey(record.stage||record.activity||record.category)!==stageKey)continue;
     for(const area of parseRecordMapArea(record)){
@@ -960,7 +847,7 @@ function setConstructionRecordHighlight(map,key){
   clearConstructionRecordHighlight(map,false);
   const state=map.__publicConstructionStateV5330||{records:[]};
   const parts=resolveRecordAreaParts(map,state.records,key);
-  const color=PUBLIC_STAGE_COLORS[key]||0x42be65;
+  const color=globalThis.belavistaPublicConstructionStagePresentation?.(key)?.color??(PUBLIC_STAGE_COLORS[key]||0x42be65);
   if(parts.length){
     for(const part of parts){
       part.userData.overlayMaterial=map.materialForColor?.(part.userData.defaultMaterial,color,.9);
@@ -984,8 +871,10 @@ async function installConstructionRecordState(map){
   if(!map||map.__publicConstructionStateLoadingV5330)return false;
   map.__publicConstructionStateLoadingV5330=true;
   try{
-    const records=await loadPublicConstructionRecords();
-    map.__publicConstructionStateV5330={records,stages:recordStageSummaries(records)};
+    const typedState=await globalThis.belavistaLoadPublicConstructionMapState?.();
+    const records=Array.isArray(typedState?.records)?typedState.records:await loadPublicConstructionRecords();
+    const stages=Array.isArray(typedState?.stages)?typedState.stages:recordStageSummaries(records);
+    map.__publicConstructionStateV5330={records,stages};
     map.dataset.publicConstructionRecords=String(records.length);
     installPublicPavingControl(map);
     renderMapStateExplorer(map);
@@ -1008,26 +897,39 @@ function installPublicPavingControl(map){
   map.setPublicPavingView?.('satellite',0);
 }
 
-const PUBLIC_STATUS_COLORS={
+const LEGACY_PUBLIC_STATUS_COLORS={
   available:0x42be65,
   reserved:0xf1c21b,
   sold:0xfa4d56,
   negotiation:0x4589ff
 };
-const PUBLIC_STATUS_LABELS={
+const LEGACY_PUBLIC_STATUS_LABELS={
   available:'Disponível',
   reserved:'Reservado',
   sold:'Vendido',
   negotiation:'Em negociação'
 };
 function normalizePublicMarkerStatus(value='available'){
+  const projected=globalThis.belavistaNormalizePublicMapCommercialStatus?.(value);
+  if(projected)return projected;
   const status=String(value||'').trim().toLocaleLowerCase('pt-BR');
-  return Object.prototype.hasOwnProperty.call(PUBLIC_STATUS_COLORS,status)?status:'available';
+  return Object.prototype.hasOwnProperty.call(LEGACY_PUBLIC_STATUS_COLORS,status)?status:'available';
+}
+function publicMapStatusPresentation(value='available'){
+  const status=normalizePublicMarkerStatus(value);
+  return globalThis.belavistaPublicMapCommercialStatusPresentation?.(status)||{
+    status,
+    label:LEGACY_PUBLIC_STATUS_LABELS[status]||LEGACY_PUBLIC_STATUS_LABELS.available,
+    color:LEGACY_PUBLIC_STATUS_COLORS[status]||LEGACY_PUBLIC_STATUS_COLORS.available,
+    colorHex:`#${(LEGACY_PUBLIC_STATUS_COLORS[status]||LEGACY_PUBLIC_STATUS_COLORS.available).toString(16).padStart(6,'0')}`
+  };
 }
 function publicStatusColorHex(status='available'){
-  return `#${PUBLIC_STATUS_COLORS[normalizePublicMarkerStatus(status)].toString(16).padStart(6,'0')}`;
+  return publicMapStatusPresentation(status).colorHex;
 }
 function classifyCommercialStatus(value=''){
+  const projected=globalThis.belavistaClassifyPublicMapCommercialStatus?.(value);
+  if(projected)return projected;
   const status=String(value||'').trim().toLocaleLowerCase('pt-BR');
   if(/assin|vend|fechad|conclu|contrat/.test(status))return 'sold';
   if(/reserv/.test(status))return 'reserved';
@@ -1036,10 +938,14 @@ function classifyCommercialStatus(value=''){
 }
 
 function lotDigits(value=''){
+  const typed=globalThis.belavistaPublicCommercialLotNumbers;
+  if(typeof typed==='function')return typed(value);
   return String(value||'').match(/\d+/g)?.map(Number)||[];
 }
 
 function normalizeCommercialLot(value=''){
+  const typed=globalThis.belavistaNormalizePublicCommercialLot;
+  if(typeof typed==='function')return typed(value);
   return String(value||'')
     .toUpperCase()
     .replace(/QUADRA|LOTE|QD/g,'')
@@ -1047,6 +953,8 @@ function normalizeCommercialLot(value=''){
 }
 
 function publicDwgLotRecords(map){
+  const typedMarkers=globalThis.belavistaProjectPublicStaticLotMarkers?.(map?.dwgGeo);
+  if(typedMarkers)return typedMarkers.map(marker=>marker.record);
   const geo=map?.dwgGeo;
   const fields=Array.isArray(geo?.lotFields)?geo.lotFields:[];
   return (Array.isArray(geo?.lots)?geo.lots:[]).map(row=>{
@@ -1056,6 +964,8 @@ function publicDwgLotRecords(map){
 }
 
 function staticLotIdentity(record,index){
+  const typed=globalThis.belavistaProjectPublicStaticLotSelection?.(record,index,'available');
+  if(typed)return {id:typed.id,label:typed.label};
   const id=String(record?.glbObject||`Lote_${String(index+1).padStart(3,'0')}`).trim();
   const digits=lotDigits(id);
   const number=digits.length?digits[digits.length-1]:index+1;
@@ -1063,6 +973,8 @@ function staticLotIdentity(record,index){
 }
 
 function staticLotSource(record,index,status='available'){
+  const typed=globalThis.belavistaProjectPublicStaticLotSelection?.(record,index,status);
+  if(typed)return {name:typed.id,userData:typed.data};
   const identity=staticLotIdentity(record,index);
   const normalized=normalizePublicMarkerStatus(status);
   return {
@@ -1074,7 +986,7 @@ function staticLotSource(record,index,status='available'){
       partKind:'lots',
       areaM2:Number(record?.areaM2)||null,
       publicCommercialStatus:normalized,
-      publicCommercialLabel:PUBLIC_STATUS_LABELS[normalized],
+      publicCommercialLabel:publicMapStatusPresentation(normalized).label,
       block:String(record?.sourceLayer||''),
       lat:Number(record?.lat)||null,
       lng:Number(record?.lng)||null,
@@ -1083,7 +995,53 @@ function staticLotSource(record,index,status='available'){
   };
 }
 
+// Kept as a fallback until the TypeScript map widget has completed its live route review.
+function legacyLotDetails(source){
+  const typed=globalThis.belavistaPublicMapLotWidgetDetails?.({name:source?.name,userData:source?.userData||{}});
+  if(typed)return typed;
+  const data=source?.userData||{};
+  const label=data.partLabel||data.label||source?.name||'Lote selecionado';
+  const rows=[];
+  const add=(name,value)=>{const text=String(value??'').trim();if(text)rows.push([name,text]);};
+  add('Referência',data.partId||data.lotId||data.id);
+  add('Quadra',data.quadra||data.block||data.blockName||data.sourceLayer);
+  add('Área',data.area||data.areaM2||data.squareMeters);
+  add('Situação',data.publicCommercialLabel||data.publicCommercialStatus||data.status||data.availability||data.lotStatus||data.state||'Disponibilidade sob consulta');
+  add('Orientação',data.sun||data.orientation||data.solarOrientation);
+  return {label,rows};
+}
+
+function renderLotWidget(map,source){
+  const typedRender=globalThis.belavistaRenderPublicMapLotWidgetV1;
+  if(typeof typedRender==='function'&&typedRender(map,source))return true;
+  if(customElements.get('atlas-public-lot-widget')&&globalThis.__BELAVISTA_PUBLIC_LEAD_CHAT_EVENTS_INSTALLED)return false;
+  let host=document.querySelector('aside[data-public-lot-details-v5335]');
+  const surface=document.querySelector('.public-map-sticky')||map;
+  if(!host&&surface){host=document.createElement('aside');host.dataset.publicLotDetailsV5335='';surface.append(host);}
+  if(!host)return false;
+  const info=legacyLotDetails(source);
+  host.className='public-selected-lot public-lot-info-v5318';host.hidden=false;
+  host.innerHTML=`<div class="lot-info-head"><div><small>LOTE SELECIONADO</small><strong>${esc(info.label)}</strong></div><button type="button" data-public-lot-close aria-label="Fechar informações">×</button></div><div class="lot-info-facts">${info.rows.slice(0,4).map(([name,value])=>`<div class="lot-info-fact"><small>${esc(name)}</small><strong title="${esc(value)}">${esc(value)}</strong></div>`).join('')}</div><div class="lot-agent-actions"><small>Perguntar à IA sobre esta seleção</small><div class="lot-agent-actions-grid"><button type="button" data-public-lot-agent-action="availability">Disponibilidade</button><button type="button" data-public-lot-agent-action="characteristics">Características</button><button type="button" data-public-lot-agent-action="conditions">Condições</button></div></div><p class="lot-info-note">Clique novamente no lote ou feche este card para retornar ao enquadramento anterior.</p>`;
+  host.querySelector('[data-public-lot-close]')?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();clearPublicSelection(map,true);},{once:true});
+  host.querySelectorAll('[data-public-lot-agent-action]').forEach(button=>button.addEventListener('click',event=>{
+    event.preventDefault();event.stopPropagation();
+    const kind=button.dataset.publicLotAgentAction;
+    const data=source?.userData||{};
+    const selection={kind:'lot-selection',requestKind:kind,selectedLot:info.label,selectedLotId:String(data.partId||data.lotId||source?.name||''),selectedLotData:{id:String(data.partId||data.lotId||source?.name||''),label:info.label,block:String(data.block||data.sourceLayer||''),area:String(data.area||data.areaM2||''),status:String(data.publicCommercialLabel||data.publicCommercialStatus||data.status||'Disponibilidade sob consulta'),orientation:String(data.orientation||data.sun||''),partKind:String(data.partKind||'lots'),sourceName:String(source?.name||'')}};
+    const prompts={availability:`Informe a disponibilidade atual de ${info.label} e o que precisa ser confirmado para reserva.`,characteristics:`Apresente as características confirmadas de ${info.label}: ${info.rows.map(row=>row.join(': ')).join(', ')}.`,conditions:`Informe as condições comerciais confirmadas para ${info.label}, sem inventar valores, e indique como confirmar com o corretor.`};
+    document.querySelector('public-lead-chat')?.dispatchEvent(new CustomEvent('belavista:public-map-lot-request',{bubbles:true,detail:{selection,prompt:prompts[kind]||prompts.availability,status:`${kind} · lote selecionado`}}));
+  }));
+  return true;
+}
+
+function hideLotWidget(){
+  const host=document.querySelector('aside[data-public-lot-details-v5335]');
+  if(host){host.hidden=true;host.replaceChildren();host.classList.remove('public-lot-info-v5318');}
+}
+
 function staticLotPosition(record,bounds,index,total){
+  const typed=globalThis.belavistaPublicStaticLotMarkerPosition?.(record,bounds,index,total);
+  if(typed&&typeof typed.left==='string'&&typeof typed.top==='string')return typed;
   const utmEast=Number(record?.utmEast),northing=Number(record?.utmNorth);
   if(Number.isFinite(utmEast)&&Number.isFinite(northing)){
     const h=SATELLITE_UTM_TO_UV_HOMOGRAPHY_V1;
@@ -1112,6 +1070,14 @@ function staticLotPosition(record,bounds,index,total){
 function updateStaticLotMarkerStatuses(map,entries=[]){
   const markers=map?.__publicStaticLotMarkers||[];
   if(!markers.length)return;
+  const applyTyped=globalThis.belavistaApplyPublicStaticLotMarkerStatuses;
+  if(typeof applyTyped==='function'&&applyTyped(map,entries))return;
+  const projected=globalThis.belavistaProjectPublicStaticLotMarkerStatuses?.(map.__publicStaticLotMarkerModels||[],Array.isArray(entries)?entries:[]);
+  if(projected&&map.__publicStaticLotMarkerLayer?.setMarkerStatuses){
+    map.__publicStaticLotMarkerLayer.setMarkerStatuses(projected.statuses);
+    map.dataset.publicStaticLotStatusCounts=Object.entries(projected.counts).map(([key,value])=>`${key}:${value}`).join('|');
+    return;
+  }
   const byLot=new Map((Array.isArray(entries)?entries:[]).map(entry=>[
     normalizeCommercialLot(entry?.lot||entry?.lotId||''),entry
   ]).filter(([key])=>key));
@@ -1120,7 +1086,7 @@ function updateStaticLotMarkerStatuses(map,entries=[]){
     const entry=byLot.get(normalizeCommercialLot(marker.dataset.lotId||''));
     const status=normalizePublicMarkerStatus(entry?.status||'available');
     marker.dataset.status=status;
-    marker.title=`${marker.dataset.lotLabel||marker.dataset.lotId} · ${PUBLIC_STATUS_LABELS[status]}`;
+    marker.title=`${marker.dataset.lotLabel||marker.dataset.lotId} · ${publicMapStatusPresentation(status).label}`;
     counts[status]=(counts[status]||0)+1;
   });
   map.dataset.publicStaticLotStatusCounts=Object.entries(counts).map(([key,value])=>`${key}:${value}`).join('|');
@@ -1128,6 +1094,9 @@ function updateStaticLotMarkerStatuses(map,entries=[]){
 
 function selectStaticLot(map,record,index,marker){
   if(!map||!marker)return false;
+  const typedSelect=globalThis.belavistaSelectPublicStaticLotMarker;
+  const model=map.__publicStaticLotMarkerModels?.[index];
+  if(typeof typedSelect==='function'&&model&&typedSelect(map,model,marker,()=>restoreView(map),hideLotWidget))return true;
   clearPublicSelection(map,true);
   const source=staticLotSource(record,index,marker.dataset.status||'available');
   marker.classList.add('is-selected');
@@ -1137,7 +1106,16 @@ function selectStaticLot(map,record,index,marker){
   map.dataset.selectedLotCount='1';
   map.dataset.selectedLots=source.userData.partId;
   map.dataset.publicSelectionFocus='static-marker';
-  map.__publicSelectedLotContextV5330=selectedLotAgentContext(map,source);
+  marker.dispatchEvent(new CustomEvent('belavista:lot-marker-selected',{
+    bubbles:true,
+    composed:true,
+    detail:{
+      lotId:source.userData.partId,
+      label:source.userData.partLabel,
+      sourceName:source.name,
+      lotData:{...source.userData}
+    }
+  }));
   renderLotWidget(map,source);
   document.body.dataset.publicWidgetsVisible='true';
   document.body.dataset.publicControlsVisible='true';
@@ -1148,62 +1126,68 @@ function installStaticLotMarkers(map,geo){
   const sticky=document.querySelector('.public-map-sticky');
   const surface=sticky||map;
   if(!map||!surface)return false;
+  const publicSurface=resolveTypedSurface(map);
+  if(typeof publicSurface?.installPublicStaticLotMarkers==='function'&&publicSurface.installPublicStaticLotMarkers(map,geo,surface))return true;
+  const installTyped=globalThis.belavistaInstallPublicStaticLotMarkers;
+  if(typeof installTyped==='function'&&installTyped(map,geo,surface))return true;
   if(!document.__belavistaStaticLotMarkerClickV1){
     document.__belavistaStaticLotMarkerClickV1=true;
-    document.addEventListener('click',event=>{
-      const marker=event.target?.closest?.('[data-public-static-lot-marker]');
-      const owner=marker?.closest?.('map-scene[data-public-static-only]');
-      const selection=marker?.__publicStaticLotRecord;
-      if(!marker||!owner||!selection)return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      selectStaticLot(owner,selection.record,selection.index,marker);
-    },true);
+    document.addEventListener('belavista:public-map-lot-clear',()=>{
+      const activeMap=document.querySelector(PUBLIC_MAP_SELECTOR);
+      if(activeMap)clearPublicSelection(activeMap,true);
+    });
   }
-  const records=publicDwgLotRecords({dwgGeo:geo});
+  const typedMarkers=globalThis.belavistaProjectPublicStaticLotMarkers?.(geo);
+  const records=typedMarkers?typedMarkers.map(marker=>marker.record):publicDwgLotRecords({dwgGeo:geo});
   const fittedSatellite=surface.querySelector('.satellite-lot-plan-fit');
   const markerSurface=fittedSatellite||surface;
   let layer=markerSurface.querySelector('[data-public-static-lot-markers]');
   if(layer)layer.style.setProperty('pointer-events','auto','important');
   if(layer&&map.__publicStaticLotMarkers?.length)return true;
   if(!layer){
-    layer=document.createElement('div');
+    layer=document.createElement(customElements.get('atlas-public-static-lot-markers')?'atlas-public-static-lot-markers':'div');
     layer.className='public-static-lot-markers';
     layer.style.setProperty('pointer-events','auto','important');
     layer.dataset.publicStaticLotMarkers='true';
     layer.setAttribute('aria-label','Marcações dos lotes');
     markerSurface.append(layer);
   }
-  layer.replaceChildren();
   const bounds=geo?.drawingBounds?.gps||{};
-  const markers=[];
-  records.forEach((record,index)=>{
+  const markerModels=typedMarkers||records.map((record,index)=>{
     const identity=staticLotIdentity(record,index);
-    const marker=document.createElement('button');
-    marker.type='button';
-    marker.className='public-static-lot-marker';
-    marker.dataset.publicStaticLotMarker=identity.id;
-    marker.dataset.lotId=identity.id;
-    marker.dataset.lotLabel=identity.label;
-    marker.dataset.status='available';
-    marker.__publicStaticLotRecord={record,index};
-    marker.setAttribute('aria-label',`${identity.label} · Disponível`);
-    marker.textContent=identity.label.replace(/^Lote\s*/i,'');
-    Object.assign(marker.style,staticLotPosition(record,bounds,index,records.length));
-    marker.addEventListener('click',event=>{
-      event.preventDefault();
-      event.stopPropagation();
-      selectStaticLot(map,record,index,marker);
-    });
-    marker.addEventListener('keydown',event=>{
-      if(event.key==='Enter'||event.key===' '){
-        event.preventDefault();
-        selectStaticLot(map,record,index,marker);
-      }
-    });
-    layer.append(marker);
-    markers.push(marker);
+    return {record,index,...identity,status:'available',statusLabel:publicMapStatusPresentation('available').label,position:staticLotPosition(record,bounds,index,records.length)};
   });
+  map.__publicStaticLotMarkerModels=markerModels;
+  map.__publicStaticLotMarkerLayer=layer;
+  if(typeof layer.setMarkers==='function'){
+    layer.setMarkers(markerModels);
+  }else{
+    layer.replaceChildren();
+    markerModels.forEach(model=>{
+      const marker=document.createElement('button');
+      marker.type='button';
+      marker.className='public-static-lot-marker';
+      marker.dataset.publicStaticLotMarker=model.id;
+      marker.dataset.lotId=model.id;
+      marker.dataset.lotLabel=model.label;
+      marker.dataset.status=model.status||'available';
+      marker.setAttribute('aria-label',`${model.label} · ${model.statusLabel||publicMapStatusPresentation(model.status||'available').label}`);
+      marker.textContent=model.label.replace(/^Lote\s*/i,'');
+      Object.assign(marker.style,model.position||staticLotPosition(model.record,bounds,model.index,records.length));
+      const select=event=>{
+        event.preventDefault();event.stopPropagation();
+        if(globalThis.__BELAVISTA_PUBLIC_LEAD_CHAT_EVENTS_INSTALLED&&typeof globalThis.belavistaSelectPublicStaticLotMarker==='function'){
+          marker.dispatchEvent(new CustomEvent('atlas:public-static-lot-selection',{bubbles:true,detail:{model}}));
+          return;
+        }
+        selectStaticLot(map,model.record,model.index,marker);
+      };
+      marker.addEventListener('click',select);
+      marker.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' ')select(event);});
+      layer.append(marker);
+    });
+  }
+  const markers=[...layer.querySelectorAll('[data-public-static-lot-marker]')];
   map.__publicStaticLotMarkers=markers;
   map.dataset.publicStaticLotMarkers=String(markers.length);
   map.dataset.publicStaticLotMarkerMapping='DWG GPS bounds · treated satellite raster';
@@ -1251,6 +1235,18 @@ function commercialLotScore(map,lot,lotCode){
 
 function resolveCommercialLot(map,lotCode){
   const lots=publicLotParts(map);
+  const typedResolution=globalThis.belavistaResolvePublicCommercialMapLot?.({
+    lotCode:String(lotCode||''),
+    lots:lots.map(lot=>({
+      id:String(lot.name||''),
+      name:String(lot.name||''),
+      partLabel:String(lot.userData?.partLabel||''),
+      partId:String(lot.userData?.partId||''),
+      lotId:String(lot.userData?.lotId||''),
+    })),
+    geoLots:publicDwgLotRecords(map),
+  });
+  if(typedResolution)return typedResolution.lotId?lots.find(lot=>String(lot.name)===typedResolution.lotId)||null:null;
   const target=commercialLotReference(lotCode);
   if(target.lot){
     const exact=lots.find(lot=>{
@@ -1272,12 +1268,20 @@ function publicLotParts(map){
   // `lots`. Para os markers usamos somente um nó de implantação por nome e
   // ordenamos pelo número do lote; assim o espaçamento de fallback não acaba
   // escolhendo dois lotes vizinhos por causa da ordem interna do GLB.
-  const lots=(map?.modelParts?.lots||[]).filter(lot=>/^lote(?:[_ -]?\d+)$/i.test(String(lot?.name||'')));
+  const all=map?.modelParts?.lots||[];
+  const typedNames=globalThis.belavistaPublicMapLotPartNames?.(all.map(lot=>lot?.name));
+  if(Array.isArray(typedNames)){
+    const byName=new Map(all.map(lot=>[String(lot?.name||''),lot]));
+    return typedNames.map(name=>byName.get(name)).filter(Boolean);
+  }
+  const lots=all.filter(lot=>/^lote(?:[_ -]?\d+)$/i.test(String(lot?.name||'')));
   return [...new Map(lots.map(lot=>[String(lot.name),lot])).values()]
     .sort((a,b)=>(lotDigits(a?.name)[0]||0)-(lotDigits(b?.name)[0]||0));
 }
 
 async function loadPublicCommercialDeals(){
+  const typedLoad=globalThis.belavistaLoadPublicCommercialMapDeals;
+  if(typeof typedLoad==='function')return typedLoad(apiFetch);
   let live=[];
   try{
     const response=await apiFetch('/api/public/catalog',{headers:{Accept:'application/json'},cache:'no-store'});
@@ -1420,6 +1424,11 @@ function buildPublicLotPolygonIndex(map){
   const lots=publicLotParts(map);
   if(!map?.THREE||!map?.sceneStage||!lots.length)return new Map();
   if(map.__publicLotPolygonIndexV5337)return map.__publicLotPolygonIndexV5337;
+  const typedSurface=resolveTypedSurface(map);
+  if(typeof typedSurface?.buildPublicLotPolygonIndex==='function'){
+    const typedIndex=typedSurface.buildPublicLotPolygonIndex({mapHost:map,lots});
+    if(typedIndex instanceof Map)return typedIndex;
+  }
   const THREE=map.THREE;
   map.sceneStage.updateMatrixWorld?.(true);
   const stageInverse=new THREE.Matrix4().copy(map.sceneStage.matrixWorld).invert();
@@ -1439,29 +1448,49 @@ function buildPublicLotPolygonIndex(map){
         stagePoints.push({x:point.x,y:point.y,z:point.z});
       }
     });
-    const polygon=publicLotPolygonHull(stagePoints);
     const dwg=dwgByObject.get(String(lot.name||''));
+    let boundsCenter=null;
+    let typedRecord=globalThis.belavistaProjectPublicLotFootprintRecord?.({points:stagePoints,dwg});
+    if(typedRecord&&typedRecord.geometry.polygon.length<3){
+      const bounds=new THREE.Box3().setFromObject(lot),world=bounds.getCenter(new THREE.Vector3());
+      world.z=bounds.max.z;
+      const local=world.applyMatrix4(stageInverse);
+      boundsCenter={x:local.x,y:local.y,z:local.z};
+      typedRecord=globalThis.belavistaProjectPublicLotFootprintRecord({points:stagePoints,boundsCenter,dwg});
+    }
+    const footprint=typedRecord?.geometry||globalThis.belavistaPublicLotFootprintGeometry?.(stagePoints);
+    const polygon=footprint?.polygon||publicLotPolygonHull(stagePoints);
     let centroid,source='GLB polygon footprint';
-    if(polygon.length>=3){
-      centroid=publicLotPolygonInteriorPoint(polygon);
+    if(typedRecord){
+      centroid=typedRecord.centroid||publicLotPolygonInteriorPoint(polygon);
+      source=typedRecord.source;
+      if(typedRecord.interiorCorrected)interiorCorrectionCount++;
+      if(polygon.length>=3)vertexCount+=polygon.length;
+      else fallbackCount++;
+      if(typedRecord.needsReview)reviewCount++;
+    }else if(polygon.length>=3){
+      centroid=footprint?.centroid||publicLotPolygonInteriorPoint(polygon);
       if(centroid.method!=='shoelace-centroid')interiorCorrectionCount++;
       vertexCount+=polygon.length;
     }else{
       const bounds=new THREE.Box3().setFromObject(lot),world=bounds.getCenter(new THREE.Vector3());
       world.z=bounds.max.z;
       const local=world.applyMatrix4(stageInverse);
-      centroid={x:local.x,y:local.y,z:local.z,area:0};
+      boundsCenter={x:local.x,y:local.y,z:local.z};
+      centroid={...boundsCenter,area:0};
       fallbackCount++;
       source='GLB bounds fallback';
     }
-    if(Number(dwg?.alignmentErrorM)>2)reviewCount++;
+    const typedAnchor=typedRecord?null:globalThis.belavistaPublicMapLotAnchor?.(footprint,boundsCenter);
+    if(typedAnchor){centroid=typedAnchor;source=typedAnchor.source;}
+    if(!typedRecord&&Number(dwg?.alignmentErrorM)>2)reviewCount++;
     const minX=Math.min(...polygon.map(point=>point.x),centroid.x),maxX=Math.max(...polygon.map(point=>point.x),centroid.x);
     const minY=Math.min(...polygon.map(point=>point.y),centroid.y),maxY=Math.max(...polygon.map(point=>point.y),centroid.y);
     index.set(String(lot.name||''),{
       lot,polygon,centroid:new THREE.Vector3(centroid.x,centroid.y,centroid.z),
-      areaWorld2:centroid.area,spanX:maxX-minX,spanY:maxY-minY,source,dwg,
-      dwgAlignmentErrorM:Number(dwg?.alignmentErrorM)||0,
-      dwgGps:dwg?[Number(dwg.lat),Number(dwg.lng)]:null
+      areaWorld2:centroid.area,spanX:footprint?.spanX??maxX-minX,spanY:footprint?.spanY??maxY-minY,source,dwg,
+      dwgAlignmentErrorM:typedRecord?.dwgAlignmentErrorM??(Number(dwg?.alignmentErrorM)||0),
+      dwgGps:typedRecord?.dwgGps??(dwg?[Number(dwg.lat),Number(dwg.lng)]:null)
     });
   }
   map.__publicLotPolygonIndexV5337=index;
@@ -1481,9 +1510,17 @@ function installCommercialMarkers(map,statuses=new Map()){
   const lots=publicLotParts(map);
   if(!map?.THREE||!map?.sceneStage||!lots.length)return;
   clearCommercialMarkers(map);
+  const polygonIndex=buildPublicLotPolygonIndex(map);
+  const typedSurface=resolveTypedSurface(map);
+  if(typeof typedSurface?.installPublicCommercialMarkerLayer==='function'&&typedSurface.installPublicCommercialMarkerLayer({
+    mapHost:map,lots,statuses,polygonIndex,
+    onSceneReset:()=>{
+      ensurePublicCommercialMarkers(map);
+      if(!map.__publicCommercialMarkersV5330?.parent)scheduleCommercialMapState(map);
+    }
+  }))return true;
   const THREE=map.THREE,group=new THREE.Group();
   group.name='BelavistaPublicLotMarkers';group.renderOrder=80;group.visible=true;
-  const polygonIndex=buildPublicLotPolygonIndex(map);
   const featured=new Set([...statuses.keys()]);
   // Cada mesh Lote_### é uma unidade canônica da implantação. Não reduzir a
   // amostra: o visitante precisa conseguir conferir o número exatamente no
@@ -1503,7 +1540,7 @@ function installCommercialMarkers(map,statuses=new Map()){
   const getPaddleMaterial=status=>{
     const normalized=normalizePublicMarkerStatus(status);
     if(!paddleMaterials.has(normalized)){
-      const color=PUBLIC_STATUS_COLORS[normalized];
+      const color=publicMapStatusPresentation(normalized).color;
       paddleMaterials.set(normalized,new THREE.MeshStandardMaterial({color,roughness:.34,metalness:.06,emissive:color,emissiveIntensity:.08,side:THREE.DoubleSide,depthTest:false,depthWrite:false}));
     }
     return paddleMaterials.get(normalized);
@@ -1520,18 +1557,25 @@ function installCommercialMarkers(map,statuses=new Map()){
         return map.sceneStage.worldToLocal(world.clone());
       })();
       const lotSize={x:polygon?.spanX||0,y:polygon?.spanY||0};
-      const status=normalizePublicMarkerStatus(lot.userData?.publicCommercialStatus);
+      const markerModel=globalThis.belavistaProjectPublicCommercialMarkerModel?.({
+        lotId:String(lot.userData?.partId||lot.name||''),index,status:lot.userData?.publicCommercialStatus,
+        polygon:polygon?.polygon||[],centroid:{x:local.x,y:local.y,z:local.z},spanX:lotSize.x,spanY:lotSize.y,
+        source:polygon?.source||'GLB bounds fallback',areaM2:polygon?.dwg?.areaM2,
+        dwgAlignmentErrorM:polygon?.dwgAlignmentErrorM,dwgGps:polygon?.dwgGps||null,featured:featured.has(lot)
+      });
+      const status=markerModel?.status||normalizePublicMarkerStatus(lot.userData?.publicCommercialStatus);
+      const lotNumber=markerModel?.lotNumber||lotMarkerLabel(lot,index);
       const marker=new THREE.Group();
-      marker.name=`Marcador_3D_${lotMarkerLabel(lot,index)}`;
+      marker.name=`Marcador_3D_${lotNumber}`;
       // No masterplan orientado, X/Y são o plano do lote e Z é a altura. O
       // deslocamento vertical mantém a palheta sobre o polígono sem usar o
       // centro da caixa envolvente, que deslocava lotes diagonais para a rua.
       // A origem do grupo é o centróide do polígono. O corpo e o número da
       // palheta ficam centrados nessa origem; a haste se estende abaixo sem
       // alterar a âncora do marcador em relação ao lote.
-      const lift=Math.max(.45,Math.min(1.05,Math.max(lotSize.x,lotSize.y)*.035));
+      const lift=globalThis.belavistaPublicMapMarkerLift?.(lotSize.x,lotSize.y)??Math.max(.45,Math.min(1.05,Math.max(lotSize.x,lotSize.y)*.035));
       marker.position.copy(local);marker.position.z+=lift;
-      marker.userData={commercialStatus:status,statusColor:publicStatusColorHex(status),lotPartId:lot.userData?.partId||lot.name,lotNumber:lotMarkerLabel(lot,index),lotAreaM2:Number(polygon?.dwg?.areaM2)||null,faceCamera:true,baseZ:marker.position.z,baseLift:lift,anchor:'lot-polygon-centroid',bodyCenter:'lot-polygon-centroid',polygonPoints:polygon?.polygon||[],polygonVertexCount:polygon?.polygon?.length||0,polygonSource:polygon?.source||'GLB bounds fallback',dwgAlignmentErrorM:polygon?.dwgAlignmentErrorM||0,dwgGps:polygon?.dwgGps||null,phase:index*.67,statusLabel:PUBLIC_STATUS_LABELS[status]||PUBLIC_STATUS_LABELS.available,fixedScreenPx:featured.has(lot)?26:18};
+      marker.userData={...(markerModel||{}),commercialStatus:status,statusColor:markerModel?.statusColor||publicStatusColorHex(status),lotPartId:markerModel?.lotPartId||lot.userData?.partId||lot.name,lotNumber,lotAreaM2:markerModel?.lotAreaM2??(Number(polygon?.dwg?.areaM2)||null),faceCamera:true,baseZ:marker.position.z,baseLift:lift,anchor:markerModel?.anchor||'lot-polygon-centroid',bodyCenter:markerModel?.bodyCenter||'lot-polygon-centroid',polygonPoints:markerModel?.polygonPoints||polygon?.polygon||[],polygonVertexCount:markerModel?.polygonVertexCount??polygon?.polygon?.length??0,polygonSource:markerModel?.polygonSource||polygon?.source||'GLB bounds fallback',dwgAlignmentErrorM:markerModel?.dwgAlignmentErrorM??polygon?.dwgAlignmentErrorM??0,dwgGps:markerModel?.dwgGps||polygon?.dwgGps||null,phase:markerModel?.phase??index*.67,statusLabel:markerModel?.statusLabel||publicMapCommercialStatusPresentation(status).label,fixedScreenPx:markerModel?.fixedScreenPx??(featured.has(lot)?26:18)};
       const visual=new THREE.Group();
       // O centro gráfico da palheta coincide com o centróide do lote. A haste
       // fica abaixo do corpo sem deslocar o número para a rua ou para o lote
@@ -1548,7 +1592,7 @@ function installCommercialMarkers(map,statuses=new Map()){
       pin.userData.publicCommercialMarkerPart='pin';
       pin.position.set(0,-1.31,-.02);pin.renderOrder=80;pin.frustumCulled=false;pin.raycast=()=>{};
       const label=new THREE.Sprite(new THREE.SpriteMaterial({
-        map:makeCommercialPointTexture(THREE,PUBLIC_STATUS_COLORS[status]||PUBLIC_STATUS_COLORS.available,lotMarkerLabel(lot,index)),transparent:true,depthTest:false,depthWrite:false,sizeAttenuation:true
+        map:makeCommercialPointTexture(THREE,publicMapStatusPresentation(status).color,lotNumber),transparent:true,depthTest:false,depthWrite:false,sizeAttenuation:true
       }));
       label.userData.publicCommercialMarkerPart='label';
       label.position.set(0,.02,.21);label.scale.set(1.72,1.72,1);label.renderOrder=82;label.frustumCulled=false;label.raycast=()=>{};
@@ -1568,36 +1612,45 @@ function installCommercialMarkers(map,statuses=new Map()){
   map.dataset.publicCommercialMarkerStyle='plastic-teardrop-pin-3d · white edge · lot-polygon-centroid · camera billboard · floating · fixed-screen-size';
   map.dataset.publicCommercialMarkerElevation='lot polygon centroid + 0.45–1.05 world units · bob ±0.13';
   map.dataset.publicCommercialMarkerAnchor='marker body and number centered at each lot polygon centroid; DWG record keyed by glbObject';
-  const markerStatusCounts={available:0,reserved:0,negotiation:0,sold:0};
-  group.children.forEach(marker=>{const status=marker.userData?.commercialStatus||'available';markerStatusCounts[status]=(markerStatusCounts[status]||0)+1;});
+  const initialState=globalThis.belavistaProjectPublicCommercialMarkerState?.(
+    group.children.map(marker=>({lotPartId:String(marker.userData?.lotPartId||''),status:marker.userData?.commercialStatus})),[],'all'
+  );
+  const markerStatusCounts=initialState?.counts||{available:0,reserved:0,negotiation:0,sold:0};
+  if(!initialState)group.children.forEach(marker=>{const status=marker.userData?.commercialStatus||'available';markerStatusCounts[status]=(markerStatusCounts[status]||0)+1;});
   map.dataset.publicCommercialMarkerStatusCounts=JSON.stringify(markerStatusCounts);
-  map.dataset.publicCommercialMarkerColorCode=Object.entries(PUBLIC_STATUS_COLORS).map(([status,color])=>`${status}:${publicStatusColorHex(status)}`).join('|');
+  map.dataset.publicCommercialMarkerColorCode=['available','reserved','negotiation','sold'].map(status=>`${status}:${publicStatusColorHex(status)}`).join('|');
   map.dataset.publicCommercialMarkerMapping=`${group.children.length} markers visíveis / ${lots.length} lotes canônicos · centro do polígono`;
   const updateMarkerStatuses=(entries=[])=>{
+    const projectState=globalThis.belavistaProjectPublicCommercialMarkerState;
+    const projected=typeof projectState==='function'?projectState(
+      group.children.map(marker=>({lotPartId:String(marker.userData?.lotPartId||''),status:marker.userData?.commercialStatus})),
+      Array.isArray(entries)?entries:[],map.dataset.publicMapStateFilter||'all'
+    ):null;
     const byPartId=new Map((Array.isArray(entries)?entries:[]).map(entry=>[String(entry?.partId||''),normalizePublicMarkerStatus(entry?.status)]));
-    const nextCounts={available:0,reserved:0,negotiation:0,sold:0};
-    group.children.forEach(marker=>{
-      const nextStatus=byPartId.has(String(marker.userData?.lotPartId||''))
+    const nextCounts=projected?.counts||{available:0,reserved:0,negotiation:0,sold:0};
+    group.children.forEach((marker,index)=>{
+      const row=projected?.rows?.[index];
+      const nextStatus=row?.status||(byPartId.has(String(marker.userData?.lotPartId||''))
         ?byPartId.get(String(marker.userData?.lotPartId||''))
-        :normalizePublicMarkerStatus(marker.userData?.commercialStatus);
+        :normalizePublicMarkerStatus(marker.userData?.commercialStatus));
       marker.userData.commercialStatus=nextStatus;
-      marker.userData.statusLabel=PUBLIC_STATUS_LABELS[nextStatus];
-      marker.userData.statusColor=publicStatusColorHex(nextStatus);
-      nextCounts[nextStatus]++;
+      marker.userData.statusLabel=row?.label||publicMapStatusPresentation(nextStatus).label;
+      marker.userData.statusColor=row?.color||publicStatusColorHex(nextStatus);
+      if(!projected)nextCounts[nextStatus]++;
       marker.traverse?.(node=>{
         if(node.userData?.publicCommercialMarkerPart==='paddle'||node.userData?.publicCommercialMarkerPart==='pin'){
           node.material=getPaddleMaterial(nextStatus);
         }
         if(node.userData?.publicCommercialMarkerPart==='label'){
           node.material.map?.dispose?.();
-          node.material.map=makeCommercialPointTexture(THREE,PUBLIC_STATUS_COLORS[nextStatus],marker.userData.lotNumber);
+          node.material.map=makeCommercialPointTexture(THREE,publicMapStatusPresentation(nextStatus).color,marker.userData.lotNumber);
           node.material.needsUpdate=true;
         }
       });
-      marker.visible=(map.dataset.publicMapStateFilter||'all')==='all'||map.dataset.publicMapStateFilter===nextStatus;
+      marker.visible=row?.visible??((map.dataset.publicMapStateFilter||'all')==='all'||map.dataset.publicMapStateFilter===nextStatus);
     });
     map.dataset.publicCommercialMarkerStatusCounts=JSON.stringify(nextCounts);
-    map.dataset.publicCommercialMarkerColorCode=Object.entries(PUBLIC_STATUS_COLORS).map(([status,color])=>`${status}:${publicStatusColorHex(status)}`).join('|');
+    map.dataset.publicCommercialMarkerColorCode=['available','reserved','negotiation','sold'].map(status=>`${status}:${publicStatusColorHex(status)}`).join('|');
     map.updatePublicCommercialMarkers?.();
     map.renderer?.render?.(map.scene,map.camera);
   };
@@ -1627,22 +1680,33 @@ function installCommercialMarkers(map,statuses=new Map()){
       const markerTop=marker.localToWorld(new THREE.Vector3(0,1.25,0));
       const centerNdc=markerCenter.clone().project(map.camera);
       const topNdc=markerTop.clone().project(map.camera);
-      const currentPixels=Math.abs(topNdc.y-centerNdc.y)*viewportHeight/2;
       // A palheta continua independente do zoom, mas não pode ser maior que
       // a área projetada do lote. Isso evita que o corpo de um marker cubra
       // os lotes vizinhos no enquadramento inicial.
-      let lotPixels=Infinity;
+      let projectedLot=[];
       const polygonPoints=marker.userData?.polygonPoints||[];
       if(polygonPoints.length>=3&&map.sceneStage){
-        const projectedLot=polygonPoints.map(point=>new THREE.Vector3(point.x,point.y,point.z||0).applyMatrix4(map.sceneStage.matrixWorld).project(map.camera));
+        projectedLot=polygonPoints.map(point=>new THREE.Vector3(point.x,point.y,point.z||0).applyMatrix4(map.sceneStage.matrixWorld).project(map.camera));
+      }
+      const metrics=globalThis.belavistaPublicMapMarkerProjectionMetrics?.({
+        center:centerNdc,top:topNdc,lotPoints:projectedLot,
+        viewportWidth:map.clientWidth||window.innerWidth||1,viewportHeight
+      });
+      const currentPixels=metrics?.currentPixels??Math.abs(topNdc.y-centerNdc.y)*viewportHeight/2;
+      let lotPixels=metrics?.lotPixels??Infinity;
+      if(!metrics&&projectedLot.length>=3){
         const xs=projectedLot.map(point=>point.x),ys=projectedLot.map(point=>point.y);
         const lotWidth=Math.abs(Math.max(...xs)-Math.min(...xs))*((map.clientWidth||window.innerWidth||1)/2);
         const lotHeight=Math.abs(Math.max(...ys)-Math.min(...ys))*viewportHeight/2;
         lotPixels=Math.min(lotWidth,lotHeight);
       }
-      const requestedPixels=Math.max(14,Math.min(28,Number(marker.userData?.fixedScreenPx)||18));
-      const desiredPixels=Math.max(12,Math.min(requestedPixels,Number.isFinite(lotPixels)?Math.max(12,lotPixels*.64):requestedPixels));
-      if(Number.isFinite(currentPixels)&&currentPixels>.01){
+      const scaleModel=globalThis.belavistaPublicMapMarkerScreenScale?.(currentPixels,lotPixels,Number(marker.userData?.fixedScreenPx)||18);
+      const requestedPixels=scaleModel?.requestedPixels??Math.max(14,Math.min(28,Number(marker.userData?.fixedScreenPx)||18));
+      const desiredPixels=scaleModel?.desiredPixels??Math.max(12,Math.min(requestedPixels,Number.isFinite(lotPixels)?Math.max(12,lotPixels*.64):requestedPixels));
+      if(scaleModel){
+        marker.scale.setScalar(scaleModel.scale);
+        marker.updateMatrixWorld?.(true);
+      }else if(Number.isFinite(currentPixels)&&currentPixels>.01){
         marker.scale.setScalar(Math.max(.001,Math.min(100,desiredPixels/currentPixels)));
         marker.updateMatrixWorld?.(true);
       }
@@ -1679,6 +1743,8 @@ function installCommercialMarkers(map,statuses=new Map()){
 }
 
 function clearCommercialMarkers(map){
+  const typedSurface=resolveTypedSurface(map);
+  if(typeof typedSurface?.clearPublicCommercialMarkers==='function'&&typedSurface.clearPublicCommercialMarkers(map))return;
   const group=map?.__publicCommercialMarkersV5330;
   if(!group)return;
   if(map.__publicCommercialMarkerAnimationFrame)cancelAnimationFrame(map.__publicCommercialMarkerAnimationFrame);
@@ -1698,6 +1764,10 @@ function clearCommercialMarkers(map){
 }
 
 function ensurePublicCommercialMarkers(map){
+  const typedSurface=resolveTypedSurface(map);
+  if(typeof typedSurface?.ensurePublicCommercialMarkerLayer==='function')return typedSurface.ensurePublicCommercialMarkerLayer({
+    mapHost:map,onRebuild:statuses=>installCommercialMarkers(map,statuses)
+  });
   if(map?.dataset?.publicSatelliteImageOnly==='true'){
     clearCommercialMarkers(map);
     map.dataset.publicCommercialMarkerState='disabled-satellite-image-only';
@@ -1725,6 +1795,8 @@ function ensurePublicCommercialMarkers(map){
 }
 
 function applyCommercialMarkerFilter(map){
+  const typedSurface=resolveTypedSurface(map);
+  if(typeof typedSurface?.applyPublicCommercialMarkerFilter==='function'&&typedSurface.applyPublicCommercialMarkerFilter(map))return;
   const group=map?.__publicCommercialMarkersV5330;
   if(!group)return;
   const filter=map.dataset.publicMapStateFilter||'all';
@@ -1733,9 +1805,14 @@ function applyCommercialMarkerFilter(map){
   const interactive=true;
   map.dataset.publicCommercialVisiblePhase=document.body.dataset.publicStickyPhase||'';
   group.visible=interactive;
-  group.children.forEach(marker=>{
+  const projectState=globalThis.belavistaProjectPublicCommercialMarkerState;
+  const projected=typeof projectState==='function'?projectState(group.children.map(marker=>({
+    lotPartId:String(marker.userData?.lotPartId||''),status:marker.userData?.commercialStatus
+  })),[],filter):null;
+  group.children.forEach((marker,index)=>{
+    const row=projected?.rows?.[index];
     const status=marker.userData?.commercialStatus;
-    marker.visible=interactive&&(filter==='all'||filter===status);
+    marker.visible=interactive&&(row?.visible??(filter==='all'||filter===status));
   });
   map.dataset.publicCommercialMarkersVisible=group.visible&&[...group.children].some(marker=>marker.visible)?'true':'false';
   map.updatePublicCommercialMarkers?.();
@@ -1745,11 +1822,19 @@ function applyCommercialMarkerFilter(map){
 function renderMapStateExplorer(map,counts=null){
   // The old dashboard-like explorer duplicated the public story and exposed
   // native marker controls.  Availability is now rendered by the map itself
-  // and explained by the scroll legend in public-lead-form.mjs.
+  // and explained by the scroll legend owned by AtlasPublicLeadsSurface.
   document.querySelector('[data-public-map-state]')?.remove();
 }
 
 async function installCommercialMapState(map){
+  const typedSurface=resolveTypedSurface(map);
+  if(typeof typedSurface?.installPublicCommercialMapState==='function')return typedSurface.installPublicCommercialMapState({
+    mapHost:map,fetcher:apiFetch,
+    onSceneReset:()=>{
+      ensurePublicCommercialMarkers(map);
+      if(!map.__publicCommercialMarkersV5330?.parent)scheduleCommercialMapState(map);
+    }
+  });
   if(!map?.THREE||!map?.modelReady||!map?.modelParts?.lots?.length)return false;
   if(map.__publicCommercialStateLoadingV5330)return false;
   map.__publicCommercialStateLoadingV5330=true;
@@ -1761,23 +1846,43 @@ async function installCommercialMapState(map){
     map.dataset.publicCommercialStatusSource=deals.length?'API catalog · status comercial aplicado por lote':'API catalog vazio · todos os lotes exibidos como Disponível';
     clearCommercialMarkers(map);
     const statuses=new Map();
-
-    for(const deal of deals){
-      const lot=resolveCommercialLot(map,deal.lot);
-      if(!lot)continue;
-      const previous=statuses.get(lot);
-      const priority={negotiation:1,reserved:2,sold:3};
-      if(previous&&priority[previous.status]>=priority[deal.status])continue;
-      statuses.set(lot,deal);
-    }
-
     const publicLots=publicLotParts(map);
-    const total=publicLots.length;
-    const counts={available:total,reserved:0,sold:0,negotiation:0,total};
-    for(const [,deal] of statuses){
-      if(deal.status!=='available'){
-        counts[deal.status]=(counts[deal.status]||0)+1;
-        counts.available=Math.max(0,counts.available-1);
+    const lotCandidates=publicLots.map(lot=>({
+      id:String(lot.name||''),
+      name:String(lot.name||''),
+      partLabel:String(lot.userData?.partLabel||''),
+      partId:String(lot.userData?.partId||''),
+      lotId:String(lot.userData?.lotId||''),
+    }));
+    const projectSnapshot=globalThis.belavistaProjectPublicCommercialMapStatusSnapshot;
+    let counts;
+    if(typeof projectSnapshot==='function'){
+      const projection=projectSnapshot({lots:lotCandidates,geoLots:publicDwgLotRecords(map),deals});
+      for(const row of projection.statuses||[]){
+        const lot=publicLots.find(item=>String(item.name||'')===row.lotId);
+        if(lot)statuses.set(lot,row.deal);
+      }
+      counts=projection.counts;
+    }else{
+      const resolvedMatches=[];
+      for(const deal of deals){
+        const lot=resolveCommercialLot(map,deal.lot);
+        if(lot)resolvedMatches.push({lotId:String(lot.name||''),deal});
+      }
+      for(const {lotId,deal} of resolvedMatches){
+        const lot=publicLots.find(item=>String(item.name||'')===lotId);
+        if(!lot)continue;
+        const previous=statuses.get(lot),priority={negotiation:1,reserved:2,sold:3};
+        if(previous&&priority[previous.status]>=priority[deal.status])continue;
+        statuses.set(lot,deal);
+      }
+      const total=publicLots.length;
+      counts={available:total,reserved:0,sold:0,negotiation:0,total};
+      for(const [,deal] of statuses){
+        if(deal.status!=='available'){
+          counts[deal.status]=(counts[deal.status]||0)+1;
+          counts.available=Math.max(0,counts.available-1);
+        }
       }
     }
     map.__publicCommercialCountsV5330=counts;
@@ -1793,6 +1898,15 @@ async function installCommercialMapState(map){
 }
 
 function scheduleCommercialMapState(map,attempt=0){
+  const typedSurface=resolveTypedSurface(map);
+  if(typeof typedSurface?.schedulePublicCommercialMapState==='function')return typedSurface.schedulePublicCommercialMapState({
+    mapHost:map,attempt,fetcher:apiFetch,
+    onRebuildMarkers:statuses=>installCommercialMarkers(map,statuses),
+    onSceneReset:()=>{
+      ensurePublicCommercialMarkers(map);
+      if(!map.__publicCommercialMarkersV5330?.parent)scheduleCommercialMapState(map);
+    }
+  });
   if(!map)return;
   if(map.dataset?.publicSatelliteImageOnly==='true'){
     clearCommercialMarkers(map);
@@ -1818,142 +1932,19 @@ function scheduleCommercialMapState(map,attempt=0){
   if(attempt<240)setTimeout(()=>scheduleCommercialMapState(map,attempt+1),420+Math.min(attempt,8)*90);
 }
 
-const LOT_AGENT_REQUESTS={
-  availability:{
-    label:'Disponibilidade',
-    prompt:info=>`Como corretor vendedor do Aliança Park, informe ao comprador a disponibilidade atual de ${info.label}, se o lote pode ser reservado agora e qual confirmação comercial ainda é necessária.`
-  },
-  characteristics:{
-    label:'Características',
-    prompt:info=>`Apresente ${info.label} como imóvel à venda: área, quadra, orientação, posição no loteamento e os atributos relevantes para o comprador.`
-  },
-  conditions:{
-    label:'Condições',
-    prompt:info=>`Como vendedor/corretor, informe as condições de venda disponíveis para ${info.label}, incluindo valor quando disponível, entrada, negociação e o próximo passo para reserva.`
-  }
-};
-
-function selectedLotAgentContext(map,source,requestKind=''){
-  const info=lotDetails(source);
-  return {
-    kind:'lot-selection',
-    requestKind,
-    selectedLot:info.label,
-    selectedLotId:info.partId,
-    selectedLotData:{
-      label:info.label,
-      id:info.partId,
-      block:info.values.block||'',
-      area:info.values.area||'',
-      status:info.values.status||'',
-      orientation:info.values.orientation||'',
-      partKind:info.partKind,
-      sourceName:info.sourceName
-    }
-  };
-}
-
-function sendSelectedLotToAgent(map,source,requestKind){
-  const request=LOT_AGENT_REQUESTS[requestKind];
-  if(!request)return false;
-  const info=lotDetails(source);
-  const chat=document.querySelector('public-lead-chat .public-chatbox');
-  const form=chat?.querySelector('[data-chat-form]');
-  const field=form?.elements?.message||form?.querySelector('[name="message"]');
-  if(!form||!field)return false;
-
-  form.__publicAgentContextV5330=selectedLotAgentContext(map,source,requestKind);
-  form.dataset.publicAgentRequest=requestKind;
-  field.value=request.prompt(info);
-  autoGrow(field);
-
-  const state=chat.querySelector('[data-chat-state]');
-  if(state){
-    state.hidden=false;
-    state.textContent=`${request.label.toLowerCase()} · lote selecionado`;
-  }
-
-  form.requestSubmit?.();
-  return true;
-}
-
-function renderLotWidget(map,source){
-  let host=document.querySelector('[data-public-lot-details-v5335]');
-  const sticky=document.querySelector('.public-map-sticky');
-  const surface=sticky||map;
-  if(!host&&surface){
-    host=document.createElement('aside');
-    host.setAttribute('data-public-lot-details-v5335','');
-    surface.append(host);
-  }
-  if(!host)return;
-  const info=lotDetails(source);
-  map.__publicSelectedLotContextV5330=selectedLotAgentContext(map,source);
-  host.className='public-selected-lot public-lot-info-v5318';
-  host.hidden=false;
-  const facts=info.rows.slice(0,4);
-  host.innerHTML=`
-    <div class="lot-info-head">
-      <div><small>LOTE SELECIONADO</small><strong>${esc(info.label)}</strong></div>
-      <button type="button" data-public-lot-close aria-label="Fechar informações">×</button>
-    </div>
-    <div class="lot-info-facts">
-      ${facts.map(([name,value])=>`<div class="lot-info-fact"><small>${esc(name)}</small><strong title="${esc(value)}">${esc(value)}</strong></div>`).join('')}
-    </div>
-    <div class="lot-agent-actions">
-      <small>Perguntar à NVIDIA IA sobre esta seleção</small>
-      <div class="lot-agent-actions-grid">
-        <button type="button" data-public-lot-agent-action="availability">Disponibilidade</button>
-        <button type="button" data-public-lot-agent-action="characteristics">Características</button>
-        <button type="button" data-public-lot-agent-action="conditions">Condições</button>
-      </div>
-    </div>
-    <p class="lot-info-note">Clique novamente no lote ou feche este card para retornar ao enquadramento anterior.</p>
-  `;
-
-  host.querySelector('[data-public-lot-close]')?.addEventListener('click',event=>{
-    event.preventDefault();
-    event.stopPropagation();
-    clearPublicSelection(map,true);
-  },{once:true});
-
-  host.querySelectorAll('[data-public-lot-agent-action]').forEach(button=>{
-    button.addEventListener('click',event=>{
-      event.preventDefault();
-      event.stopPropagation();
-      const action=button.dataset.publicLotAgentAction;
-      host.querySelectorAll('[data-public-lot-agent-action]').forEach(item=>item.disabled=true);
-      const sent=sendSelectedLotToAgent(map,source,action);
-      if(!sent){
-        host.querySelectorAll('[data-public-lot-agent-action]').forEach(item=>item.disabled=false);
-      }else{
-        setTimeout(()=>{
-          host.querySelectorAll('[data-public-lot-agent-action]').forEach(item=>item.disabled=false);
-        },700);
-      }
-    });
-  });
-}
-
-function hideLotWidget(){
-  const host=document.querySelector('[data-public-lot-details-v5335]');
-  if(host){
-    host.hidden=true;
-    host.innerHTML='';
-    host.classList.remove('public-lot-info-v5318');
-  }
-}
-
 function saveView(map){
+  const surface=document.querySelector('public-leads-surface');
+  if(typeof surface?.savePublicMapSelectionView==='function'&&surface.savePublicMapSelectionView(map))return true;
   if(map.__publicSelectionViewV5318)return;
-  map.__publicSelectionViewV5318={
+  const values={
     zoom:Number(map.sceneManualZoom||1),
-    pan:{
-      x:Number(map.sceneManualPan?.x||0),
-      y:Number(map.sceneManualPan?.y||0)
-    },
+    panX:Number(map.sceneManualPan?.x||0),
+    panY:Number(map.sceneManualPan?.y||0),
     rotation:Number(map.sceneManualRotation||0),
     tilt:Number(map.sceneTiltAdjust||0)
+  };
+  map.__publicSelectionViewV5318=globalThis.belavistaPublicMapSelectionSavedView?.(values)||{
+    zoom:values.zoom,pan:{x:values.panX,y:values.panY},rotation:values.rotation,tilt:values.tilt
   };
 }
 
@@ -1963,17 +1954,25 @@ function allowProgrammaticPan(map,fn){
 }
 
 function restoreView(map){
+  const surface=document.querySelector('public-leads-surface');
+  if(typeof surface?.restorePublicMapSelectionView==='function'&&surface.restorePublicMapSelectionView(map))return true;
   map.__publicSelectionTransitionTokenV5338=Symbol('selection-camera-cancel-v5338');
   const view=map.__publicSelectionViewV5318;
   delete map.__publicSelectionViewV5318;
   if(!view)return;
-  allowProgrammaticPan(map,()=>map.setScenePan?.(view.pan.x,view.pan.y,true));
-  map.setSceneZoom?.(view.zoom,true);
-  map.setSceneRotation?.(view.rotation,true);
-  map.setSceneTiltAdjust?.(view.tilt,true);
+  const restored=globalThis.belavistaPublicMapSelectionSavedView?.({
+    zoom:view.zoom,panX:view.pan?.x,panY:view.pan?.y,rotation:view.rotation,tilt:view.tilt
+  })||view;
+  allowProgrammaticPan(map,()=>map.setScenePan?.(restored.pan.x,restored.pan.y,true));
+  map.setSceneZoom?.(restored.zoom,true);
+  map.setSceneRotation?.(restored.rotation,true);
+  map.setSceneTiltAdjust?.(restored.tilt,true);
 }
+globalThis.belavistaRestorePublicMapSelectionView=restoreView;
 
 function clearPublicSelection(map,restore=true){
+  const typed=globalThis.belavistaClearPublicMapSelection;
+  if(typeof typed==='function')return typed(map,restore,()=>restoreView(map),()=>hideLotWidget());
   if(!map)return false;
   map.__publicStaticLotMarker?.classList.remove('is-selected');
   delete map.__publicStaticLotMarker;
@@ -1994,12 +1993,7 @@ function clearPublicSelection(map,restore=true){
   delete map.dataset.selectedKind;
   map.dataset.selectedLotCount='0';
   map.dataset.selectedLots='';
-  delete map.__publicSelectedLotContextV5330;
-  const chatForm=document.querySelector('public-lead-chat [data-chat-form]');
-  if(chatForm){
-    delete chatForm.__publicAgentContextV5330;
-    delete chatForm.dataset.publicAgentRequest;
-  }
+  map.dispatchEvent(new CustomEvent('belavista:lot-selection-cleared',{bubbles:true,composed:true}));
   hideLotWidget();
   if(restore)restoreView(map);
   map.sceneStage?.updateMatrixWorld?.(true);
@@ -2022,11 +2016,12 @@ function selectionWorldDeltaV5338(map,source){
       .getCenter(new THREE.Vector3());
 
     const projected=worldCenter.clone().project(map.camera);
-    const targetScreenX=rect.width*.53;
-    const targetScreenY=rect.height*.50;
+    const targetScreen=globalThis.belavistaPublicMapSelectionTargetScreen?.(rect.width,rect.height)||{
+      x:rect.width*.53,y:rect.height*.50,ndcX:.06,ndcY:0
+    };
     const desiredWorld=new THREE.Vector3(
-      (targetScreenX/rect.width)*2-1,
-      -((targetScreenY/rect.height)*2-1),
+      targetScreen.ndcX,
+      targetScreen.ndcY,
       projected.z
     ).unproject(map.camera);
 
@@ -2038,23 +2033,33 @@ function selectionWorldDeltaV5338(map,source){
 }
 
 function applySelectionCameraFrameV5338(map,zoom,pan){
-  map.sceneUserInteracted=true;
-  map.sceneManualZoom=zoom;
-  map.sceneManualPan={x:pan.x,y:pan.y};
-  map.style.setProperty('--scene-pan-x',`${pan.x}px`);
-  map.style.setProperty('--scene-pan-y',`${pan.y}px`);
-  map.dataset.scenePan=`${Math.round(pan.x)},${Math.round(pan.y)}`;
-  map.dataset.sceneZoom=`${Math.round(zoom*100)}%`;
-
   const visual=map._sceneVisual||{};
-  const tilt=Number(visual.tilt ?? Number.parseFloat(map.dataset.sceneTilt) ?? 40);
-  const rotation=Number(visual.rotation ?? map.sceneManualRotation ?? 0);
-
-  map.setSceneVisual?.(tilt,rotation,zoom);
+  const frame=globalThis.belavistaPublicMapSelectionCameraFrame?.({
+    zoom,pan,visualTilt:visual.tilt,datasetTilt:map.dataset.sceneTilt,
+    visualRotation:visual.rotation,manualRotation:map.sceneManualRotation
+  })||{
+    zoom,pan,tilt:Number(visual.tilt ?? Number.parseFloat(map.dataset.sceneTilt) ?? 40),
+    rotation:Number(visual.rotation ?? map.sceneManualRotation ?? 0),
+    panCssX:`${pan.x}px`,panCssY:`${pan.y}px`,panDataset:`${Math.round(pan.x)},${Math.round(pan.y)}`,
+    zoomDataset:`${Math.round(zoom*100)}%`
+  };
+  map.sceneUserInteracted=true;
+  map.sceneManualZoom=frame.zoom;
+  map.sceneManualPan={x:frame.pan.x,y:frame.pan.y};
+  map.style.setProperty('--scene-pan-x',frame.panCssX);
+  map.style.setProperty('--scene-pan-y',frame.panCssY);
+  map.dataset.scenePan=frame.panDataset;
+  map.dataset.sceneZoom=frame.zoomDataset;
+  map.setSceneVisual?.(frame.tilt,frame.rotation,frame.zoom);
 }
 
 function focusSelectedLot(map,source){
   saveView(map);
+  const typedSurface=document.querySelector('public-leads-surface');
+  if(typeof typedSurface?.focusSelectedPublicLot==='function'&&typedSurface.focusSelectedPublicLot(map,source)){
+    map.dataset.publicSelectionCameraOwner='components-ts';
+    return;
+  }
   const original=map.__publicSelectionViewV5318;
   if(!original||!map.sceneStage||!map.camera)return;
 
@@ -2062,14 +2067,17 @@ function focusSelectedLot(map,source){
   map.__publicSelectionTransitionTokenV5338=token;
   map._sceneTransition=token;
 
-  const startZoom=Number(map._sceneVisual?.scale||map.sceneManualZoom||original.zoom||1);
-  const targetZoom=Math.min(Math.max(Number(original.zoom||1)+1.05,2.65),3.25);
+  const cameraPlan=globalThis.belavistaPublicMapSelectionCameraPlan?.(Number(original.zoom||1))||{
+    startZoom:Number(original.zoom||1),targetZoom:Math.min(Math.max(Number(original.zoom||1)+1.05,2.65),3.25),durationMs:720,panSmoothingMs:92
+  };
+  const startZoom=Number(map._sceneVisual?.scale||map.sceneManualZoom||cameraPlan.startZoom||1);
+  const targetZoom=cameraPlan.targetZoom;
   const pan={
     x:Number(map.sceneManualPan?.x||0),
     y:Number(map.sceneManualPan?.y||0)
   };
 
-  const duration=720;
+  const duration=cameraPlan.durationMs;
   const started=performance.now();
   let previous=started;
 
@@ -2079,19 +2087,19 @@ function focusSelectedLot(map,source){
   const tick=now=>{
     if(map.__publicSelectionTransitionTokenV5338!==token)return;
 
-    const dt=Math.max(1,Math.min(34,now-previous));
-    previous=now;
-    const t=Math.min(1,(now-started)/duration);
-    const ease=1-Math.pow(1-t,3);
-
     const delta=selectionWorldDeltaV5338(map,source);
-    if(delta){
-      const gain=1-Math.exp(-dt/92);
-      pan.x+=delta.x*gain;
-      pan.y+=delta.y*gain;
+    const step=globalThis.belavistaPublicMapSelectionCameraStep?.({
+      now,started,previous,startZoom,targetZoom,durationMs:duration,panSmoothingMs:cameraPlan.panSmoothingMs,pan,delta
+    });
+    let t,zoom;
+    if(step){previous=step.previous;t=step.progress;pan.x=step.pan.x;pan.y=step.pan.y;zoom=step.zoom;}
+    else{
+      const dt=Math.max(1,Math.min(34,now-previous));previous=now;
+      t=Math.min(1,(now-started)/duration);
+      const ease=1-Math.pow(1-t,3);
+      if(delta){const gain=1-Math.exp(-dt/cameraPlan.panSmoothingMs);pan.x+=delta.x*gain;pan.y+=delta.y*gain;}
+      zoom=startZoom+(targetZoom-startZoom)*ease;
     }
-
-    const zoom=startZoom+(targetZoom-startZoom)*ease;
     applySelectionCameraFrameV5338(map,zoom,pan);
 
     if(t<1){
@@ -2120,6 +2128,26 @@ function focusSelectedLot(map,source){
   requestAnimationFrame(tick);
 }
 
+function highlightPublicSceneLot(map,source){
+  const typedSurface=document.querySelector('public-leads-surface');
+  if(typeof typedSurface?.highlightSelectedPublicLot==='function'&&typedSurface.highlightSelectedPublicLot(map,source))return;
+  const partId=source.userData.partId||source.name;
+  const matches=(map.modelParts?.lots||[]).filter(item=>(item.userData.partId||item.name)===partId);
+  for(const item of matches){
+    item.userData.selectionMaterial=map.materialForColor?.(item.userData.defaultMaterial,0x2fe6ae,.92);
+    if(item.userData.selectionMaterial)item.material=item.userData.selectionMaterial;
+  }
+  try{
+    const bounds=new map.THREE.Box3().setFromObject(source);
+    const center=bounds.getCenter(new map.THREE.Vector3()),size=bounds.getSize(new map.THREE.Vector3());
+    if(map.selectionHalo){
+      map.selectionHalo.position.set(center.x-(map.sceneStage?.position.x||0),center.y-(map.sceneStage?.position.y||0),2);
+      map.selectionHalo.scale.setScalar(Math.max(.7,Math.min(4.5,Math.max(size.x,size.y)/24)));
+      map.selectionHalo.material.color.setHex(0x2fe6ae);map.selectionHalo.visible=true;
+    }
+  }catch{}
+}
+
 function installPrototypeGuards(){
   const Ctor=customElements.get('map-scene');
   const proto=Ctor?.prototype;
@@ -2130,7 +2158,7 @@ function installPrototypeGuards(){
   if(typeof originalSetMapContext==='function'){
     proto.setMapContext=function(view){
       const result=originalSetMapContext.call(this,view);
-      if(isPublicMap(this)){
+      if(isPublicMap(this)&&this.dataset.publicSelectionGateTsOwner!=='true'){
         queueMicrotask(()=>syncPublicMapControls(
           this,
           document.body.dataset.publicScrollSection==='map'
@@ -2140,11 +2168,12 @@ function installPrototypeGuards(){
     };
   }
 
-  const originalSetScenePan=proto.setScenePan;
-  if(typeof originalSetScenePan==='function'){
-    proto.setScenePan=function(x,y,animate=false){
-      if(!isPublicMap(this))return originalSetScenePan.call(this,x,y,animate);
-      const canvas=this.querySelector('.three-overlay');
+    const originalSetScenePan=proto.setScenePan;
+    if(typeof originalSetScenePan==='function'){
+      proto.setScenePan=function(x,y,animate=false){
+        if(!isPublicMap(this))return originalSetScenePan.call(this,x,y,animate);
+        if(this.dataset.publicPanTsOwner==='true')return originalSetScenePan.call(this,x,y,animate);
+        const canvas=this.querySelector('.three-overlay');
       const width=Math.max(1,canvas?.clientWidth||this.clientWidth||window.innerWidth);
       const height=Math.max(1,canvas?.clientHeight||this.clientHeight||window.innerHeight);
       // O pan vive no espaço local do stage. O limite precisa acompanhar a
@@ -2167,6 +2196,7 @@ function installPrototypeGuards(){
   if(typeof originalPickModelAt==='function'){
     proto.pickModelAt=function(point){
       if(!isPublicMap(this))return originalPickModelAt.call(this,point);
+      if(this.__atlasPublicSelectionInputTsOwnerV1===true)return originalPickModelAt.call(this,point);
       if(this.dataset.publicSelectionEnabled!=='true')return false;
       if(!this.modelReady||!this.raycaster||!this.camera||!this.modelGroup)return false;
       const canvas=this.querySelector('.three-overlay');
@@ -2204,14 +2234,42 @@ function installPrototypeGuards(){
   if(typeof originalToggleLotSelection==='function'){
     proto.toggleLotSelection=function(node){
       if(!isPublicMap(this))return originalToggleLotSelection.call(this,node);
+      if(this.__atlasPublicSelectionInputTsOwnerV1===true)return originalToggleLotSelection.call(this,node);
       if(this.dataset.publicSelectionEnabled!=='true')return false;
+
+      const typedSurface=document.querySelector('public-leads-surface');
+      if(typeof typedSurface?.selectPublicLot==='function'&&typedSurface.selectPublicLot(this,node))return true;
 
       const source=this.modelPartSource?.(node)||node;
       if(!source||source.userData?.partKind!=='lots')return false;
 
-      const partId=source.userData.partId||source.name;
+      const applyTypedSelection=globalThis.belavistaApplyPublicMapLotSelection;
+      if(typeof applyTypedSelection==='function'){
+        const command=applyTypedSelection(this,source,{
+          restoreView:()=>restoreView(this),hideWidget:()=>hideLotWidget(),
+          highlight:()=>highlightPublicSceneLot(this,source),
+          focus:()=>{this.removeMapSelectionPanel?.();renderLotWidget(this,source);focusSelectedLot(this,source);}
+        });
+        if(!command)return false;
+        if(command.operation==='clear'){
+          this.sceneStage?.updateMatrixWorld?.(true);this.renderer?.render?.(this.scene,this.camera);return true;
+        }
+        const scrollPlan=publicSelectionScrollPlan(this);
+        if(scrollPlan.shouldScroll){
+          this.dataset.publicSelectionFromTitle='true';
+          document.body.dataset.publicWidgetsVisible='true';document.body.dataset.publicControlsVisible='true';setScrollSection('map');
+          window.scrollTo({top:scrollPlan.targetY,left:0,behavior:'smooth'});
+        }else delete this.dataset.publicSelectionFromTitle;
+        this.sceneStage?.updateMatrixWorld?.(true);this.renderer?.render?.(this.scene,this.camera);return true;
+      }
+
       const current=this.selectedLotIds||new Set();
-      const wasSelected=current.has(partId);
+      const command=globalThis.belavistaPublicMapLotSelectionCommand?.({
+        sourceName:source.name,partId:source.userData.partId,partLabel:source.userData.partLabel,
+        partKind:source.userData.partKind,userData:source.userData,selectedLotIds:current
+      });
+      const partId=command?.partId||source.userData.partId||source.name;
+      const wasSelected=command?command.operation==='clear':current.has(partId);
 
       // Public UX is single-selection.
       clearPublicSelection(this,false);
@@ -2221,59 +2279,28 @@ function installPrototypeGuards(){
       }
 
       this.selectedLotIds=new Set([partId]);
-      const matches=(this.modelParts?.lots||[]).filter(
-        item=>(item.userData.partId||item.name)===partId
-      );
-      for(const item of matches){
-        item.userData.selectionMaterial=this.materialForColor?.(
-          item.userData.defaultMaterial,
-          0x2fe6ae,
-          .92
-        );
-        if(item.userData.selectionMaterial)item.material=item.userData.selectionMaterial;
-      }
+      highlightPublicSceneLot(this,source);
 
-      const label=source.userData.partLabel||source.name||'Lote';
+      const label=command?.label||source.userData.partLabel||source.name||'Lote';
       this.dataset.selectedPart=label;
       this.dataset.selectedKind='lots';
       this.dataset.selectedLotCount='1';
       this.dataset.selectedLots=partId;
 
-      try{
-        const bounds=new this.THREE.Box3().setFromObject(source);
-        const center=bounds.getCenter(new this.THREE.Vector3());
-        const size=bounds.getSize(new this.THREE.Vector3());
-        if(this.selectionHalo){
-          this.selectionHalo.position.set(
-            center.x-(this.sceneStage?.position.x||0),
-            center.y-(this.sceneStage?.position.y||0),
-            2
-          );
-          this.selectionHalo.scale.setScalar(
-            Math.max(.7,Math.min(4.5,Math.max(size.x,size.y)/24))
-          );
-          this.selectionHalo.material.color.setHex(0x2fe6ae);
-          this.selectionHalo.visible=true;
-        }
-      }catch{}
-
-      // Remove the generic reservation panel and present the public information widget.
-      const selectedFromTitle=this.dataset.publicTitleSelectionEnabled==='true';
+      // Keep camera and lot geometry in the map; the TypeScript element presents details.
       this.removeMapSelectionPanel?.();
+      this.dispatchEvent(new CustomEvent('belavista:lot-marker-selected',{bubbles:true,composed:true,detail:command?.detail||{lotId:String(source.userData.partId||source.name||''),label:String(source.userData.partLabel||source.name||'Lote'),sourceName:String(source.name||''),lotData:{...(source.userData||{})}}}));
       renderLotWidget(this,source);
       focusSelectedLot(this,source);
 
-      if(selectedFromTitle){
+      const scrollPlan=publicSelectionScrollPlan(this);
+      if(scrollPlan.shouldScroll){
         this.dataset.publicSelectionFromTitle='true';
-        const scrollTarget=
-          elasticBreakpoints.threshold+
-          Math.max(8,Math.min(22,window.innerHeight*.018));
-
         document.body.dataset.publicWidgetsVisible='true';
         document.body.dataset.publicControlsVisible='true';
-        setScrollSection('map');
+        setScrollSection(scrollPlan.section);
         window.scrollTo({
-          top:scrollTarget,
+          top:scrollPlan.targetY,
           left:0,
           behavior:'smooth'
         });
@@ -2294,6 +2321,7 @@ function updateSelectionGate(){
   gateFrame=0;
   const map=document.querySelector(PUBLIC_MAP_SELECTOR);
   if(!map)return;
+  if(map.dataset.publicSelectionGateTsOwner==='true')return;
 
   const y=window.scrollY;
   const sceneSelectable=
@@ -2319,15 +2347,6 @@ function scheduleSelectionGate(){
 
 
 
-let publicPinFrame=0;
-let publicPinBounds={top:0,release:0,left:0,width:0};
-
-let elasticInstalled=false;
-let elasticTouchStart=null;
-let elasticResizeFrame=0;
-let nativeSmoothTarget=null; // legacy compatibility; snap disabled v5.3.36
-let nativeSmoothIssued=false;
-let elasticLastY=0;
 let elasticBreakpoints={top:0,threshold:0,second:0,end:0};
 
 function ensureCaptionStack(){
@@ -2351,68 +2370,7 @@ function syncPublicMapControls(map,enabled){
 
 
 
-function measurePublicPinnedScene(){
-  const story=document.querySelector('[data-map-story],.public-map-story');
-  const sticky=story?.querySelector('.public-map-sticky');
-  if(!story||!sticky)return null;
-  const rect=story.getBoundingClientRect();
-  const top=rect.top+window.scrollY;
-  const width=rect.width;
-  const left=rect.left;
-  publicPinBounds={
-    top,
-    release:top+window.innerHeight*2,
-    left,
-    width
-  };
-  sticky.style.setProperty('--v5324-pin-left',`${left}px`);
-  sticky.style.setProperty('--v5324-pin-width',`${width}px`);
-  return {story,sticky};
-}
-
-function syncPublicPinnedScene(){
-  publicPinFrame=0;
-  const story=document.querySelector('[data-map-story],.public-map-story');
-  const sticky=story?.querySelector('.public-map-sticky');
-  if(!story||!sticky)return;
-  if(!publicPinBounds.width)measurePublicPinnedScene();
-  const y=window.scrollY;
-  const {top,release,left,width}=publicPinBounds;
-
-  if(y<top){
-    sticky.dataset.publicPinState='before';
-    sticky.style.position='absolute';
-    sticky.style.top='0px';
-    sticky.style.left='0px';
-    sticky.style.width='100%';
-    return;
-  }
-
-  if(y<release){
-    sticky.dataset.publicPinState='fixed';
-    sticky.style.position='fixed';
-    sticky.style.top='0px';
-    sticky.style.left=`${left}px`;
-    sticky.style.width=`${width}px`;
-    return;
-  }
-
-  // Release at the exact end of the second 100vh. At y===release this
-  // document-space top maps to viewport top 0, so there is no visual jump.
-  sticky.dataset.publicPinState='released';
-  sticky.style.position='absolute';
-  sticky.style.top=`${release-top}px`;
-  sticky.style.left='0px';
-  sticky.style.width='100%';
-}
-
-function schedulePublicPinnedScene(){
-  if(publicPinFrame)return;
-  publicPinFrame=requestAnimationFrame(syncPublicPinnedScene);
-}
-
 function refreshElasticBreakpoints(){
-  elasticResizeFrame=0;
   const story=document.querySelector('[data-map-story],.public-map-story');
   if(!story)return;
   const top=story.getBoundingClientRect().top+window.scrollY;
@@ -2423,384 +2381,31 @@ function refreshElasticBreakpoints(){
     second:top+vh,
     end:top+vh*2
   };
-  publicPinBounds={
-    top,
-    release:elasticBreakpoints.end,
-    left:story.getBoundingClientRect().left,
-    width:story.getBoundingClientRect().width
-  };
 }
 
 function setScrollSection(section){
   const normalized=section==='map'?'map':'title';
-  document.body.dataset.publicScrollSection=normalized;
   const surface=document.querySelector('public-leads-surface');
-  if(surface)surface.dataset.publicElasticSection=normalized;
+  const typedOwnsScroll=surface?.dataset.publicScrollTsOwner==='true';
+  if(!typedOwnsScroll){document.body.dataset.publicScrollSection=normalized;if(surface)surface.dataset.publicElasticSection=normalized;}
   const map=document.querySelector(PUBLIC_MAP_SELECTOR);
   ensureCaptionStack();
   if(map){
-    syncPublicMapControls(map,normalized==='map');
-    map.fitPublicGapView?.();
+    if(map.dataset.publicSelectionGateTsOwner!=='true')syncPublicMapControls(map,normalized==='map');
+    if(!typedOwnsScroll)map.fitPublicGapView?.();
     if(map.dataset.publicSatelliteImageOnly!=='true'&&!ensurePublicCommercialMarkers(map))scheduleCommercialMapState(map);
   }
-  scheduleSelectionGate();
+  if(map?.dataset.publicSelectionGateTsOwner!=='true')scheduleSelectionGate();
 }
 
-function titleFadeForY(y=window.scrollY){
-  const {top,threshold}=elasticBreakpoints;
-  const span=Math.max(1,threshold-top);
-  return Math.max(0,Math.min(1,(y-top)/span));
-}
-
-function applyScrollVisuals(){
-  const progress=titleFadeForY();
-  const style=document.body.style;
-
-  for(const name of [
-    '--v5330-title-opacity','--v5331-title-opacity','--v5332-title-opacity',
-    '--v5333-title-opacity','--v5334-title-opacity','--v5335-title-opacity',
-    '--v5336-title-opacity'
-  ])style.setProperty(name,String(1-progress));
-  for(const name of [
-    '--v5330-title-blur','--v5331-title-blur','--v5332-title-blur',
-    '--v5333-title-blur','--v5334-title-blur','--v5335-title-blur',
-    '--v5336-title-blur'
-  ])style.setProperty(name,`${(progress*7).toFixed(2)}px`);
-  for(const name of [
-    '--v5330-title-lift','--v5331-title-lift','--v5332-title-lift',
-    '--v5333-title-lift','--v5334-title-lift','--v5335-title-lift',
-    '--v5336-title-lift'
-  ])style.setProperty(name,`${(-progress*64).toFixed(1)}px`);
-  for(const name of [
-    '--v5330-title-events','--v5331-title-events','--v5332-title-events',
-    '--v5333-title-events','--v5334-title-events','--v5335-title-events',
-    '--v5336-title-events'
-  ])style.setProperty(name,progress>.88?'none':'auto');
-
-  document.body.dataset.publicScrollProgress=progress.toFixed(4);
-  const surface=document.querySelector('public-leads-surface');
-  if(surface)surface.dataset.scrollProgress=progress.toFixed(4);
-
-  const y=window.scrollY;
-  const afterFade=y>=elasticBreakpoints.threshold;
-  const sceneStillVisible=y<elasticBreakpoints.end+window.innerHeight;
-  const interactive=afterFade&&sceneStillVisible;
-
-  document.body.dataset.publicWidgetsVisible=interactive?'true':'false';
-  document.body.dataset.publicControlsVisible=interactive?'true':'false';
-  setScrollSection(interactive?'map':'title');
-
-  document.body.dataset.publicStickyPhase=
-    !afterFade?'title-fade':(
-      y>=elasticBreakpoints.end?'release-visible':'interactive-after-fade'
-    );
-
-  const sticky=document.querySelector('.public-map-sticky');
-  if(sticky){
-    sticky.dataset.publicStickyPhase=document.body.dataset.publicStickyPhase;
-    sticky.dataset.publicControlsThreshold='30vh';
-  }
-}
-
-function commandNativeSmoothScroll(){
-  return false;
-}
-
-function maybeElasticSnap(){
-  return false;
-}
-
-function syncElasticSection(){
-  syncPublicPinnedScene();
-  applyScrollVisuals();
-}
-
-function onElasticWheel(){
-  // v5.3.36: natural wheel scrolling only.
-}
-
-function installElasticTouch(){
-  // v5.3.36: no scroll snapping on touch.
-}
-
-function installElasticScroll(){
-  if(elasticInstalled)return;
-  elasticInstalled=true;
-  refreshElasticBreakpoints();
-  syncPublicPinnedScene();
-  ensureCaptionStack();
-  elasticLastY=window.scrollY;
-
-  window.addEventListener('scroll',syncElasticSection,{passive:true,capture:true});
-  window.addEventListener('resize',()=>{
-    if(elasticResizeFrame)return;
-    elasticResizeFrame=requestAnimationFrame(()=>{
-      refreshElasticBreakpoints();
-      syncPublicPinnedScene();
-      applyScrollVisuals();
-    });
-  },{passive:true});
-
-  applyScrollVisuals();
-}
-
-const PUBLIC_CHAT_MEMORY_KEY_V5340='belavista.public.chat.memory.v5340';
-const PUBLIC_CHAT_MEMORY_TTL_V5340=12*60*60*1000;
-const PUBLIC_CHAT_MAX_TURNS_V5340=16;
-const PUBLIC_CHAT_MAX_CONTEXT_CHARS_V5340=5600;
-
-function newPublicChatMemoryV5340(){
-  return {
-    version:'v5.3.40',
-    id:globalThis.crypto?.randomUUID?.()||`chat-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
-    createdAt:Date.now(),
-    updatedAt:Date.now(),
-    turns:[]
+function publicSelectionScrollPlan(map){
+  const input={titleSelection:map?.dataset?.publicTitleSelectionEnabled==='true',threshold:elasticBreakpoints.threshold,viewportHeight:window.innerHeight};
+  const typed=globalThis.belavistaPublicMapSelectionScrollPlan;
+  return typeof typed==='function'?typed(input):{
+    shouldScroll:input.titleSelection,
+    targetY:input.titleSelection?input.threshold+Math.max(8,Math.min(22,input.viewportHeight*.018)):null,
+    section:'map'
   };
-}
-
-function loadPublicChatMemoryV5340(){
-  try{
-    const parsed=JSON.parse(localStorage.getItem(PUBLIC_CHAT_MEMORY_KEY_V5340)||'null');
-    if(
-      !parsed||
-      parsed.version!=='v5.3.40'||
-      !Array.isArray(parsed.turns)||
-      Date.now()-Number(parsed.updatedAt||0)>PUBLIC_CHAT_MEMORY_TTL_V5340
-    )return newPublicChatMemoryV5340();
-
-    parsed.turns=parsed.turns
-      .filter(turn=>turn&&['user','assistant'].includes(turn.role)&&String(turn.content||'').trim())
-      .slice(-PUBLIC_CHAT_MAX_TURNS_V5340);
-    return parsed;
-  }catch{
-    return newPublicChatMemoryV5340();
-  }
-}
-
-function savePublicChatMemoryV5340(memory){
-  memory.updatedAt=Date.now();
-  memory.turns=(memory.turns||[]).slice(-PUBLIC_CHAT_MAX_TURNS_V5340);
-  try{
-    localStorage.setItem(PUBLIC_CHAT_MEMORY_KEY_V5340,JSON.stringify(memory));
-  }catch{}
-}
-
-function publicChatSelectionV5340(form){
-  const map=document.querySelector(PUBLIC_MAP_SELECTOR);
-  const transient=form.__publicAgentContextV5330||{};
-  const persistent=map?.__publicSelectedLotContextV5330||{};
-  const merged={...persistent,...transient};
-
-  return {
-    selectedLot:String(merged.selectedLot||map?.dataset.selectedPart||'').trim(),
-    selectedLotId:String(merged.selectedLotId||map?.dataset.selectedPart||'').trim(),
-    requestKind:String(merged.requestKind||'').trim(),
-    selectedLotData:merged.selectedLotData||null
-  };
-}
-
-function compactPublicChatTurnsV5340(turns=[]){
-  const selected=turns.slice(-10);
-  const compact=[];
-  let chars=0;
-
-  for(let index=selected.length-1;index>=0;index--){
-    const turn=selected[index];
-    const content=String(turn.content||'').trim().slice(0,1200);
-    if(!content)continue;
-    const lot=String(turn.selectedLot||'').trim();
-    const cost=content.length+lot.length+32;
-    if(chars+cost>PUBLIC_CHAT_MAX_CONTEXT_CHARS_V5340)break;
-    chars+=cost;
-    compact.unshift({
-      role:turn.role,
-      content,
-      selectedLot:lot,
-      selectedLotId:String(turn.selectedLotId||'').trim()
-    });
-  }
-
-  return compact;
-}
-
-function contextualPublicChatMessageV5340(userMessage,history,selection){
-  const lines=[
-    '[CONTEXTO DE CONTINUIDADE — não reproduzir estes rótulos na resposta]',
-    `Lote atualmente selecionado: ${selection.selectedLot||'nenhum'}${selection.selectedLotId&&selection.selectedLotId!==selection.selectedLot?` (${selection.selectedLotId})`:''}.`,
-    'Regra: a seleção estruturada atual é autoritativa. Se ela divergir de lotes citados em respostas anteriores, responda sobre a seleção atual, salvo se o usuário nomear explicitamente outro lote.',
-    'Regra: respostas anteriores do assistente servem como contexto conversacional, não como fonte autoritativa para atributos do imóvel.'
-  ];
-
-  if(history.length){
-    lines.push('Histórico recente:');
-    for(const turn of history){
-      const who=turn.role==='user'?'Cliente':'Corretor';
-      const lot=turn.selectedLot?` [contexto: ${turn.selectedLot}]`:'';
-      lines.push(`${who}${lot}: ${turn.content}`);
-    }
-  }
-
-  lines.push('Pergunta atual do cliente:');
-  lines.push(userMessage);
-  return lines.join('\n');
-}
-
-function exposePublicChatMemoryV5340(){
-  globalThis.belavistaPublicChatContext={
-    get(){
-      return loadPublicChatMemoryV5340();
-    },
-    clear(){
-      const memory=newPublicChatMemoryV5340();
-      savePublicChatMemoryV5340(memory);
-      return memory;
-    }
-  };
-}
-
-function installStableChatTransport(){
-  const box=document.querySelector('public-lead-chat .public-chatbox');
-  const form=box?.querySelector('[data-chat-form]');
-  if(!form||form.dataset.workerTransportV5340==='true')return Boolean(form);
-
-  form.dataset.workerTransportV5340='true';
-  form.dataset.chatContextV5340='persistent-thread';
-  exposePublicChatMemoryV5340();
-
-  form.addEventListener('submit',async event=>{
-    event.preventDefault();
-    event.stopImmediatePropagation();
-
-    const field=form.elements?.message||form.querySelector('[name="message"]');
-    const userMessage=String(field?.value||'').trim();
-    if(!userMessage)return;
-
-    const output=box.querySelector('[data-chat-message]');
-    const state=box.querySelector('[data-chat-state]');
-    const memory=loadPublicChatMemoryV5340();
-    const selection=publicChatSelectionV5340(form);
-    const history=compactPublicChatTurnsV5340(memory.turns);
-    const contextualMessage=contextualPublicChatMessageV5340(
-      userMessage,
-      history,
-      selection
-    );
-
-    form.dataset.publicConversationId=memory.id;
-    form.dataset.publicConversationTurn=String(memory.turns.length+1);
-
-    if(output)output.textContent='Consultando disponibilidade e contexto do Aliança Park…';
-    if(state){state.hidden=false;state.textContent='consultando';}
-    if(field)field.disabled=true;
-
-    try{
-      const configured=
-        document.querySelector('meta[name="belavista-api-base"]')?.content?.trim()||
-        document.querySelector('meta[name="belavista-ai-base"]')?.content?.trim()||
-        '';
-      const endpoint=configured
-        ? new URL('/api/public/lead-chat',configured).href
-        : new URL(runtimeUrlV1('/api/public/lead-chat'),location.origin).href;
-
-      const response=await fetch(endpoint,{
-        method:'POST',
-        mode:'cors',
-        headers:{
-          'Content-Type':'application/json',
-          'Accept':'application/json'
-        },
-        body:JSON.stringify({
-          message:contextualMessage,
-          context:{
-            source:'public-map',
-            scenario:'real-estate-brokerage-sale',
-            perspective:'seller-broker',
-            project:'Aliança Park',
-            conversationId:memory.id,
-            conversationTurn:memory.turns.length+1,
-            conversationHistory:history,
-            currentSelection:selection,
-            rawUserMessage:userMessage,
-            continuityPolicy:[
-              'Preserve semantic continuity across turns.',
-              'Resolve pronouns and short follow-ups from recent conversation.',
-              'Current structured lot selection overrides stale lot references from earlier assistant turns.',
-              'Do not invent property facts from prior assistant prose when structured lot data differs.'
-            ],
-            responsePolicy:'Responda como corretor vendedor do loteamento. Continue naturalmente a conversa anterior. Para perguntas curtas, use o histórico recente. A seleção estruturada atual do mapa é a referência principal para o lote; se houve mudança de seleção, não continue falando do lote anterior salvo menção explícita do cliente.',
-            selectedLot:selection.selectedLot,
-            selectedLotId:selection.selectedLotId,
-            selectedLotData:selection.selectedLotData,
-            requestKind:selection.requestKind
-          },
-          requireNvidia:true
-        })
-      });
-
-      const raw=await response.text();
-      let payload=null;
-      try{
-        payload=raw?JSON.parse(raw):{};
-      }catch{
-        throw new Error(`Worker respondeu ${response.status} sem JSON válido.`);
-      }
-
-      if(!response.ok){
-        throw new Error(payload?.error||`Worker respondeu HTTP ${response.status}.`);
-      }
-
-      const reply=String(payload?.reply||payload?.message||'').trim();
-      if(!reply){
-        throw new Error('Worker respondeu sem conteúdo de orientação.');
-      }
-
-      if(output){
-        const animate=globalThis.belavistaTypeAssistantMessage;
-        if(typeof animate==='function')await animate(output,reply);
-        else output.textContent=reply;
-      }
-      if(state){state.hidden=true;state.textContent='';}
-      if(field){field.value='';autoGrow(field);}
-
-      memory.turns.push({
-        role:'user',
-        content:userMessage,
-        selectedLot:selection.selectedLot,
-        selectedLotId:selection.selectedLotId,
-        at:Date.now()
-      });
-      memory.turns.push({
-        role:'assistant',
-        content:reply,
-        selectedLot:selection.selectedLot,
-        selectedLotId:selection.selectedLotId,
-        at:Date.now()
-      });
-      savePublicChatMemoryV5340(memory);
-
-      form.dataset.publicConversationTurn=String(memory.turns.length);
-      form.dataset.publicConversationTurnsStored=String(memory.turns.length);
-    }catch(error){
-      if(output){
-        const failure='Não foi possível consultar a IA agora. O mapa continua disponível para exploração.';
-        const animate=globalThis.belavistaTypeAssistantMessage;
-        if(typeof animate==='function')await animate(output,failure);
-        else output.textContent=failure;
-      }
-      if(state){state.hidden=true;state.textContent='';}
-      console.warn('[Belavista public v5.3.40] lead-chat Worker falhou.',error);
-    }finally{
-      delete form.__publicAgentContextV5330;
-      delete form.dataset.publicAgentRequest;
-      if(field){
-        field.disabled=false;
-        field.focus();
-      }
-    }
-  },{capture:true});
-
-  return true;
 }
 
 function installMap(){
@@ -2813,7 +2418,24 @@ function installMap(){
   map.dataset.publicSelectionVersion=VERSION;
   if(!map.dataset.publicSelectionEnabled)map.dataset.publicSelectionEnabled='false';
 
-  installPrototypeGuards();
+  const typedSurface=resolveTypedSurface(map);
+  if(typeof typedSurface?.installPublicMapInteractionGuards==='function'
+    &&typedSurface.installPublicMapInteractionGuards(map)){
+    map.dataset.publicPrototypeGuardsOwnerV1='components-ts';
+  }else{
+    installPrototypeGuards();
+  }
+  if(typeof typedSurface?.initializePublicMapScene==='function'&&typedSurface.initializePublicMapScene({
+    mapHost:map,
+    fetcher:apiFetch,
+    startSatellite:()=>applyDwgSatelliteFrame(map,0,false),
+    installLegacyConstructionRecords:()=>installConstructionRecordState(map),
+    onSceneReset:()=>{
+      ensurePublicCommercialMarkers(map);
+      if(!map.__publicCommercialMarkersV5330?.parent)scheduleCommercialMapState(map);
+    }
+  }))return true;
+
   if(map.hasAttribute('data-public-static-only')){
     if(!document.getElementById('belavista-static-only-final-v1')){
       const style=document.createElement('style');
@@ -2860,12 +2482,11 @@ function reinforcePublicVisualComposition(map,attempt=0){
 }
 
 function installOnce(){
-  installStyles();
-  installChat();
-  installStableChatTransport();
+  const surface=document.querySelector('public-leads-surface');
+  if(typeof surface?.installPublicLeadsMapStyles==='function')surface.installPublicLeadsMapStyles();
+  else installStyles();
+  refreshElasticBreakpoints();
   installMap();
-  installElasticScroll();
-  schedulePublicPinnedScene();
 }
 
 // No MutationObserver, no recursive frame installer.
@@ -2875,6 +2496,7 @@ function installOnce(){
 // contains only lot code, availability and public pricing metadata.
 import {apiFetch} from './api-client.mjs';
 
+  if (!document.getElementById('belavista-selection-stable-v5335')) {
   const stableSelectionStyle=document.createElement('style');
   stableSelectionStyle.id='belavista-selection-stable-v5335';
   stableSelectionStyle.textContent=`
@@ -2900,8 +2522,10 @@ import {apiFetch} from './api-client.mjs';
     }
   `;
   document.head.append(stableSelectionStyle);
+  }
 
 
+  if (!document.getElementById('belavista-lot-left-v5337')) {
   const lotVisualStyle=document.createElement('style');
   lotVisualStyle.id='belavista-lot-left-v5337';
   lotVisualStyle.textContent=`
@@ -2939,8 +2563,10 @@ import {apiFetch} from './api-client.mjs';
     }
   `;
   document.head.append(lotVisualStyle);
+  }
 
 
+  if (!document.getElementById('belavista-title-pick-v5338')) {
   const titlePickStyle=document.createElement('style');
   titlePickStyle.id='belavista-title-pick-v5338';
   titlePickStyle.textContent=`
@@ -2966,11 +2592,10 @@ import {apiFetch} from './api-client.mjs';
     }
   `;
   document.head.append(titlePickStyle);
+  }
 
 function boot(){
   installStyles();
-
-  installElasticScroll();
 
   const promises=[];
   if(globalThis.customElements){

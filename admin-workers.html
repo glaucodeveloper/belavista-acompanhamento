@@ -42,7 +42,7 @@
       </div>
     </header>
 
-    <main class="worker-main">
+    <atlas-worker-monitor-dashboard class="worker-main" data-worker-monitor-dashboard role="main">
       <section class="worker-intro">
         <div><span class="eyebrow">MONITORIA OPERACIONAL · TEMPO REAL</span><h1>A obra fala. O worker organiza.</h1><p>Registros, caixa, materiais e dependências viram próximos passos auditáveis para quem precisa agir.</p></div>
         <div class="live-indicator"><i></i><span data-connection>Conectando ao worker</span><small data-updated>—</small></div>
@@ -55,7 +55,7 @@
         <article class="metric-card metric-amber"><small>AGENDA GERADA</small><strong data-agenda-count>—</strong><span>itens planejados</span></article>
       </section>
 
-      <section class="worker-panel requirements-panel" data-requirements-catalog>
+      <atlas-worker-requirements-catalog class="worker-panel requirements-panel" data-requirements-catalog>
         <header class="panel-header"><div><span class="eyebrow">BASE DE CONHECIMENTO · EXECUÇÃO REAL</span><h2>Etapas, requisições e evidências do loteamento</h2><p>Referência operacional para o agente organizar dependências, materiais, inspeções e agendas. Os parâmetros devem ser calibrados pelos projetos aprovados e pelos responsáveis técnicos.</p></div><span class="panel-count" data-requirements-count>15 etapas</span></header>
         <div class="rural-gate"><strong>PORTÃO JURÍDICO IMPEDITIVO</strong><p>“Loteamento rural” não deve ser presumido como loteamento urbano autorizado. Primeiro confirme o enquadramento municipal da gleba; enquanto isso não estiver documentado, o worker mantém a execução permanente bloqueada.</p></div>
         <div class="requirements-toolbar">
@@ -66,7 +66,7 @@
         <div class="requirements-summary" data-requirements-summary></div>
         <div class="requirements-list" data-requirements-list><div class="empty-state">Carregando o catálogo de execução…</div></div>
         <footer class="requirements-sources"><strong>FONTES DE REFERÊNCIA</strong><div data-requirements-sources></div><p>Base geral de planejamento, não substitui projetos, licenças, normas municipais, exigências da concessionária ou decisão de profissional habilitado.</p></footer>
-      </section>
+      </atlas-worker-requirements-catalog>
 
       <section class="worker-panel loop-panel">
         <header class="panel-header"><div><span class="eyebrow">CICLO HIERÁRQUICO</span><h2>Entrada → inferência → organização</h2></div><button class="button button-primary" data-run-cycle>Executar ciclo</button></header>
@@ -115,7 +115,7 @@
         <header class="panel-header"><div><span class="eyebrow">TRILHA AUDITÁVEL</span><h2>Fatos e jobs recentes</h2></div><span class="panel-count">auto · 8s</span></header>
         <div class="event-list" data-event-list><div class="empty-state">Carregando eventos do worker…</div></div>
       </section>
-    </main>
+    </atlas-worker-monitor-dashboard>
     <div class="communication-scrim" data-communication-close></div>
     <aside class="communication-sidebar" data-communication-sidebar aria-label="Comunicações em tempo real" aria-hidden="true">
       <header><div><span class="eyebrow">REALTIME DATABASE</span><h2>Comunicações</h2></div><button data-communication-close aria-label="Fechar">×</button></header>
@@ -137,12 +137,12 @@
     </aside>
     <footer class="worker-footer"><span>Aliança Park · monitoria de agentes</span><span>modo local protegido · saída externa desabilitada nos testes</span></footer>
   </div>
-  <script type="module" src="/admin-auth.mjs?v=admin-auth-v4"></script>
+  <script type="module" src="/admin-auth.mjs?v=admin-auth-timeout-v7-reachable-origin"></script>
   <script type="module" src="/admin-test-controls.mjs?v=1"></script>
-  <script type="module" src="/admin-workers.js?v=activity-record-page-v5386"></script>
+  <script type="module" src="/admin-workers.js?v=worker-dedicated-route-lazy-monitor-deps-v52-activity-map-program-owner&worker-realtime-communications-ts-owner-v1&worker-stage-admin-route-program-owner-v1&worker-stage-admin-route-entry-v1&worker-activity-map-runtime-bootstrap-v1&worker-stage-admin-route-recovery-v1&worker-monitor-bootstrap-ts-owner-v1"></script>
   <!-- A camada de mapa é carregada somente pela tela de atividade, depois da
        autenticação. Mantê-la global fazia a rota de login inicializar observers
        de mapa/3D desnecessariamente e podia derrubar o renderer embutido. -->
-  <script type="module" src="/worker-context-chat.mjs?v=codex-floating-v2"></script>
+  <script type="module" src="/worker-context-chat.mjs?v=ts-chat-component-actions-v1&ts-chat-component-shell-mount-v1&ts-chat-composer-state-component-v1&ts-chat-conversation-state-component-v1&ts-chat-inference-context-program-v1&ts-chat-response-commit-program-v1&ts-chat-service-request-lifecycle-program-owner-v1&ts-chat-observation-program-owner-v2&ts-chat-map-context-reader-v1&ts-chat-storage-catalog-v1&ts-chat-inference-controller-v1&ts-chat-operational-controller-v3"></script>
 </body>
 </html>

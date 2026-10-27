@@ -571,3 +571,31 @@ html[data-belavista-user-type="foreman"] .top-admin-menu button:not(:last-child)
     max-width: 94px;
   }
 }
+
+/* Tablet layouts preserve labels while giving the scene a stable minimum width. */
+@media (min-width: 761px) and (max-width: 1024px) {
+  body.admin-shell-page,
+  body.admin-shell-page > belavista-app:not([hidden]),
+  .app-shell,
+  .app-main,
+  .scene,
+  view-layer { min-width: 0; max-width: 100%; }
+
+  .app-shell { --sidebar: clamp(208px, 26vw, 250px); grid-template-columns: var(--sidebar) minmax(0, 1fr); }
+  .app-shell.sidebar-collapsed { --sidebar: 72px; }
+  .sidebar { min-width: 0; padding-right: 10px; padding-left: 10px; }
+  .app-main { overflow: hidden; }
+  .scene { overflow: auto; overscroll-behavior: contain; }
+  .dashboard-widgets-v5362 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashboard-widgets-v5362 > .dashboard-widget-v5362:last-child { display: block; }
+  .leads-institutional-phases-v5362 > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .mobile-menu-trigger { min-width: 44px; min-height: 44px; }
+  .app-main, .scene, view-layer, .panel, [class*="-panel"] { min-width: 0; }
+  .scene { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+  .sidebar nav > .nav-item { min-height: 46px; }
+  .table-scroll, [class*="table-wrap"], [class*="table-scroll"] { max-width: 100%; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+  input, select, textarea { max-width: 100%; }
+}

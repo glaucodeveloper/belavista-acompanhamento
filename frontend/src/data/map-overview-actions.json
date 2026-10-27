@@ -1,0 +1,9 @@
+[
+  { "view": "stages", "icon": "calendar-days", "label": "Etapas" },
+  { "view": "records", "icon": "clipboard-pen-line", "label": "Registrar" },
+  { "view": "leads", "icon": "users-round", "label": "Leads" },
+  { "view": "brokers", "icon": "badge-dollar-sign", "label": "Corretores" },
+  { "view": "finance", "icon": "wallet-cards", "label": "Financeiro" },
+  { "view": "reports", "icon": "chart-no-axes-combined", "label": "Relatórios" },
+  { "view": "settings", "icon": "settings", "label": "Ajustes" }
+]

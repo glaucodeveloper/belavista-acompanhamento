@@ -1,14 +1,8 @@
-import './components.js?v=brand-south-v8';
-window.addEventListener('DOMContentLoaded',()=>window.lucide?.createIcons?.());
-if('serviceWorker' in navigator&&location.protocol!=='file:'){
-  (async()=>{
-    try{
-      if('caches' in globalThis){
-        const keys=await caches.keys();
-        await Promise.all(keys.filter(key=>key.startsWith('alianca-park-leads-')&&key!=='alianca-park-leads-v58').map(key=>caches.delete(key)));
-      }
-      const registration=await navigator.serviceWorker.register('./lead-sw.js?v=asset-stream-v54',{updateViaCache:'none'});
-      await registration.update();
-    }catch(error){console.info('Service Worker público não ativado.',error);}
-  })();
+// Compatibility bootstrap for older public page shells. The application entry
+// and all route orchestration belong to the TypeScript program.
+const leadSurface = document.querySelector('public-leads-surface');
+if (leadSurface && leadSurface.dataset.appEntry !== 'public-leads') {
+  leadSurface.dataset.appEntry = 'public-leads';
 }
+
+await import('./dist/frontend/main.js?v=atlas-public-compat-entry-ts-v2&ts-public-program-entry-owner-v2&ts-public-map-registration-program-owner-v1&ts-ui-memory-lot-board-json-v1');

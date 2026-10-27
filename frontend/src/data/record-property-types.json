@@ -1,0 +1,10 @@
+{
+  "propertyTypes": [
+    ["text", "Texto"],
+    ["number", "Número"],
+    ["date", "Data"],
+    ["select", "Seleção"],
+    ["boolean", "Sim / não"],
+    ["map_area", "Área assinalada no mapa"]
+  ]
+}

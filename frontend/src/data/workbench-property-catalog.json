@@ -1,0 +1,12 @@
+[
+  { "source": "productionUnit", "label": "Unidade de produção", "fallback": "registro" },
+  { "source": "materialsAndEquipment", "label": "Materiais e equipamentos", "fallback": "A definir" },
+  { "source": "releaseRequirement", "label": "Requisito de liberação", "fallback": "Sem requisito informado" },
+  { "source": "primaryResponsibility", "label": "Responsabilidade principal", "fallback": "Responsável técnico da frente" },
+  { "source": "supportTeam", "label": "Equipe e apoio", "fallback": "Encarregado e equipe executora" },
+  { "source": "entryConditions", "label": "Condições de entrada", "fallback": "Projeto e área liberados" },
+  { "source": "measurementMethod", "label": "Forma de medição", "fallback": "Medir produção confirmada por frente, local e data" },
+  { "source": "productionFormula", "label": "Fórmula de produção", "fallback": "quantidade válida = soma das medições confirmadas" },
+  { "source": "evidenceAcceptance", "label": "Evidência e aceite", "fallback": "Registro, fotos e confirmação do responsável" },
+  { "source": "legalBasis", "label": "Base legal/técnica", "fallback": "Projeto, licença e norma aplicável" }
+]

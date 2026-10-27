@@ -1,4 +1,5 @@
 import { createServiceEventAdmin } from "../events/service-event-admin.mjs?v=service-event-admin-v4";
+import mapFilterCatalogData from "../../frontend/src/data/map-filter-catalog.json" with { type: "json" };
 
 export const createMapFilterRail = (dependencies) => {
   const {
@@ -172,15 +173,7 @@ export const createMapFilterRail = (dependencies) => {
       syncDashboardMapWidgetSmokeV1(Boolean(widgetKey));
       const socialContactBar =
         mode === "social"
-          ? `<div class="dashboard-social-contact-bar" aria-label="Highlights por contato da conversa"><span>DESTAQUE DA CONVERSA</span><div>${[
-              ["social-instagram", "Instagram"],
-              ["social-personal", "Pessoal"],
-              ["social-clients", "Cliente"],
-              ["social-brokers", "Corretor"],
-              ["social-staff-operating", "Encarregado · operando"],
-              ["social-staff-services", "Serviços"],
-              ["social-staff-planned", "Planejados"],
-            ]
+          ? `<div class="dashboard-social-contact-bar" aria-label="Highlights por contato da conversa"><span>DESTAQUE DA CONVERSA</span><div>${mapFilterCatalogData.socialContacts
               .map(
                 ([key, label]) =>
                   `<button type="button" data-map-filter="${key}" class="${active.includes(key) ? "active" : ""}" aria-pressed="${active.includes(key)}">${esc(label)}</button>`,

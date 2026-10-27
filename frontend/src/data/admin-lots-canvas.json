@@ -1,0 +1,26 @@
+{
+  "storageKey": "belavista.admin.lots.canvas.v1",
+  "stageWidth": 9600,
+  "stageHeight": 6200,
+  "nodeWidth": 128,
+  "nodeHeight": 58,
+  "initialZoom": 0.9,
+  "minimumZoom": 0.45,
+  "maximumZoom": 1.6,
+  "zoomStep": 0.1,
+  "rowsPerBand": 12,
+  "rowXStep": 154,
+  "rowYStep": 78,
+  "blockYStep": 190,
+  "initialX": 120,
+  "initialY": 140,
+  "groupWidth": 560,
+  "groupHeight": 330,
+  "saveDebounceMs": 180,
+  "assetUrls": [
+    "./assets/data/dwg-georeference.json",
+    "./assets/data/lot-pricing.json",
+    "./assets/dwg-georeference.json",
+    "./dwg-georeference.json"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "tracking": {
+    "label": "Acompanhamento",
+    "icon": "activity",
+    "description": "Execução · cronograma · riscos"
+  },
+  "commercial": {
+    "label": "Leads e lotes",
+    "icon": "badge-dollar-sign",
+    "description": "Demanda · contratos · parcelas"
+  },
+  "social": {
+    "label": "Comunicação",
+    "icon": "messages-square",
+    "description": "Instagram · pessoal · equipe"
+  }
+}

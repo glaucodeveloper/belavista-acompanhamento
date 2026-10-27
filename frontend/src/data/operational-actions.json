@@ -1,0 +1,15 @@
+{
+  "phases": ["Identificar", "Preparar", "Liberar", "Executar", "Verificar"],
+  "actions": [
+    { "id": "AI-A01", "label": "Pavimentar Q3", "impact": 92, "readiness": 84, "phase": 2, "track": "Frente de execução", "owner": "Carlos Mendes", "eta": "Hoje · 14:00", "blocker": "Medição anterior validada", "relation": "Pavimentação" },
+    { "id": "AI-A02", "label": "Instalar postes · rua B", "impact": 86, "readiness": 72, "phase": 1, "track": "Responsabilidade", "owner": "Paula Nascimento", "eta": "Amanhã · 08:00", "blocker": "Confirmar equipe da concessionária", "relation": "Rede elétrica" },
+    { "id": "AI-A03", "label": "Comprar tubos PEAD", "impact": 79, "readiness": 47, "phase": 1, "track": "Suprimento", "owner": "Mariana Lopes", "eta": "Hoje · 11:30", "blocker": "Aprovar cotação final", "relation": "Drenagem" },
+    { "id": "AI-A04", "label": "Liberar medição drenagem", "impact": 88, "readiness": 91, "phase": 3, "track": "Frente de execução", "owner": "Carlos Mendes", "eta": "Agora", "blocker": "Sem bloqueios", "relation": "Drenagem" },
+    { "id": "AI-A06", "label": "Conferir estoque de brita", "impact": 61, "readiness": 68, "phase": 2, "track": "Suprimento", "owner": "Mariana Lopes", "eta": "Hoje · 16:30", "blocker": "Contagem física em andamento", "relation": "Pavimentação" }
+  ],
+  "trackSteps": {
+    "Frente de execução": ["Validar predecessora", "Confirmar equipe e frente", "Liberar execução", "Executar e medir", "Registrar evidência e liberar próxima"],
+    "Suprimento": ["Detectar necessidade", "Validar saldo e especificação", "Cotar / aprovar compra", "Receber e inspecionar", "Reservar material e liberar frente"],
+    "Responsabilidade": ["Detectar atividade sem dono", "Definir R/A/C/I", "Confirmar agenda e contrato", "Executar atribuição", "Confirmar entrega e evidência"]
+  }
+}

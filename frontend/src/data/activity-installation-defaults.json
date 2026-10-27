@@ -1,0 +1,25 @@
+{
+  "step": 1,
+  "stageKey": "earthwork",
+  "draft": {
+    "name": "",
+    "nature": "",
+    "description": "",
+    "unit": "",
+    "responsible": "",
+    "target": "",
+    "release": "",
+    "evidence": ""
+  },
+  "materials": [],
+  "rationalization": {
+    "status": "pending",
+    "summary": "Aguardando leitura da proposta.",
+    "checks": []
+  },
+  "cards": [],
+  "dependencies": [],
+  "assignments": [],
+  "priority": null,
+  "updatedAt": null
+}

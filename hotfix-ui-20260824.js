@@ -1,11 +1,11 @@
-import './components.js?v=site-materials-8';
+import './components.js?v=site-materials-8&ts-map-coordinate-policy-v1';
 const AppSidebar=customElements.get('app-sidebar');
 const AppTopbar=customElements.get('app-topbar');
 const AiChat=customElements.get('ai-chat');
 const MapScene=customElements.get('map-scene');
 const ViewLayer=customElements.get('view-layer');
 if(!AppSidebar||!AppTopbar||!AiChat||!MapScene||!ViewLayer) throw new Error('Aliança Park components registry incompleto antes do hotfix');
-import {appStore,demoData} from './state.js?v=site-materials-8';
+import {appStore,demoData} from './state.js?v=site-materials-8&ts-state-catalogs-program-owner-v1';
 
 const clamp=(value,min=0,max=100)=>Math.max(min,Math.min(max,Number(value)||0));
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));

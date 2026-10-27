@@ -1,4 +1,8 @@
+import * as atlasComponents from "../../dist/frontend/components.js";
+
 export const installSceneContextLifecycleV1 = (MapScene, { requestAnimationFrame } = {}) => {
+  if (typeof atlasComponents.installAtlasMapSceneContextLifecycle === "function")
+    return atlasComponents.installAtlasMapSceneContextLifecycle(MapScene, { requestAnimationFrame });
   if (typeof MapScene !== "function" || !MapScene.prototype)
     throw new TypeError("Scene context lifecycle requires the existing MapScene constructor.");
   if (typeof requestAnimationFrame !== "function")

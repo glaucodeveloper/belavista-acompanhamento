@@ -1,4 +1,5 @@
 import { runtimeRouteV1 } from "../shared/routing.mjs";
+import * as atlasMapModelCacheTsV1 from "../../dist/frontend/components.js";
 
 // BELAVISTA_MODEL_CLIENT_CACHE_V14
 // O GLB principal é baixado uma vez e salvo no Cache Storage do navegador.
@@ -106,7 +107,7 @@ const getClientCachedModelBufferV14 = async (fetchUrl, onProgress) => {
   };
 };
 
-export const loadGlbWithClientCacheV14 = (
+const loadGlbWithClientCacheLegacyV14 = (
   loader,
   url,
   onLoad,
@@ -133,7 +134,14 @@ export const loadGlbWithClientCacheV14 = (
     .catch((error) => onError?.(error));
 };
 
-export const preloadClientModelV14 = async () => {
+export const loadGlbWithClientCacheV14 = (...args) => {
+  const owner = atlasMapModelCacheTsV1.loadAtlasMapGlbWithClientCacheV1;
+  return typeof owner === "function"
+    ? owner(...args)
+    : loadGlbWithClientCacheLegacyV14(...args);
+};
+
+const preloadClientModelLegacyV14 = async () => {
   if (globalThis.__BELAVISTA_MODEL_CLIENT_PRELOAD_V14__)
     return globalThis.__BELAVISTA_MODEL_CLIENT_PRELOAD_V14__;
 
@@ -167,4 +175,11 @@ export const preloadClientModelV14 = async () => {
   })();
 
   return globalThis.__BELAVISTA_MODEL_CLIENT_PRELOAD_V14__;
+};
+
+export const preloadClientModelV14 = (...args) => {
+  const owner = atlasMapModelCacheTsV1.preloadAtlasMapModelClientCacheV1;
+  return typeof owner === "function"
+    ? owner(...args)
+    : preloadClientModelLegacyV14(...args);
 };

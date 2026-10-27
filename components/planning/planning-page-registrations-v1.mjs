@@ -1,9 +1,21 @@
-import { registerProductWorkspacesV5356 } from "./product-workspaces-registration-v5356.mjs?v=product-workspaces-registration-v5356";
-import { installBelavistaFinalWorkspacesBootstrapV5360 } from "./final-workspaces-bootstrap-v5360.mjs?v=final-workspaces-bootstrap-v5360";
-import { registerBelavistaStagesLandingV5361 } from "./stages-landing-page-v5361.mjs?v=stages-landing-page-v5361";
-import { installBelavistaFinalUiV5362 } from "./final-ui-events-v5362.mjs?v=final-ui-events-v5362";
+import * as atlasProgramTsV1 from "../../dist/frontend/program.js";
+import {
+  installPlanningPageRegistrationsV1 as installLegacyPlanningPageRegistrationsV1,
+} from "./planning-page-registrations-legacy-v1.mjs?v=planning-page-registration-recovery-v1";
+import { installProductWorkspacesV5356 as recoverProductWorkspacesV5356 } from "./product-workspaces-v5356.mjs?v=product-workspaces-recovery-v2";
+import { installBelavistaFinalWorkspacesBootstrapV5360 as recoverFinalWorkspacesV5360 } from "./final-workspaces-bootstrap-legacy-v5360.mjs?v=final-workspaces-recovery-v1";
+import { registerBelavistaStagesLandingV5361 as recoverStagesLandingV5361 } from "./stages-landing-page-legacy-v5361.mjs?v=stages-landing-recovery-v1";
+import { installBelavistaFinalUiV5362 as recoverFinalUiEventsV5362 } from "./final-ui-events-legacy-v5362.mjs?v=final-ui-events-recovery-v1";
 
-/** Install planning-related page owners in their established override order. */
+export const PLANNING_PAGE_REGISTRATION_LEAF_INSTALLERS_V1 = Object.freeze({
+  installProductWorkspacesRecoveryV5356: recoverProductWorkspacesV5356,
+  installFinalWorkspacesRecoveryV5360: recoverFinalWorkspacesV5360,
+  installStagesLandingRecoveryV5361: recoverStagesLandingV5361,
+  installFinalUiEventsRecoveryV5362: recoverFinalUiEventsV5362,
+  installPlanningPageRegistrationsLegacyV1: installLegacyPlanningPageRegistrationsV1,
+});
+
+/** Adapt legacy leaf installers; program.ts owns their registration order. */
 export const installPlanningPageRegistrationsV1 = ({
   globalRef = globalThis,
   ViewLayer,
@@ -19,24 +31,8 @@ export const installPlanningPageRegistrationsV1 = ({
   windowRef = globalRef.window,
   DateCtor = globalRef.Date,
   consoleRef = globalRef.console,
-  productWorkspacesInstallerV1 = registerProductWorkspacesV5356,
-  finalWorkspacesInstallerV1 = installBelavistaFinalWorkspacesBootstrapV5360,
-  stagesLandingInstallerV1 = registerBelavistaStagesLandingV5361,
-  finalUiInstallerV1 = installBelavistaFinalUiV5362,
 } = {}) => {
-  productWorkspacesInstallerV1({
-    globalRef,
-    ViewLayer,
-    appStore,
-    demoData,
-    esc,
-    ico,
-    runtimeRouteV1,
-    apiFetch,
-    notify,
-    windowRef,
-  });
-  finalWorkspacesInstallerV1({
+  const shared = {
     globalRef,
     ViewLayer,
     appStore,
@@ -44,28 +40,21 @@ export const installPlanningPageRegistrationsV1 = ({
     commissionDeals,
     esc,
     ico,
+    notify,
+    runtimeRouteV1,
     apiFetch,
     operationalHeaders,
-    notify,
     windowRef,
     DateCtor,
-  });
-  stagesLandingInstallerV1({
-    globalRef,
-    ViewLayer,
-    appStore,
-    demoData,
-    esc,
-    ico,
-    notify,
-    windowRef,
     consoleRef,
-    DateCtor,
+  };
+  const installTyped = atlasProgramTsV1.installAtlasPlanningPageRegistrationsV1;
+  if (typeof installTyped === "function") return installTyped({
+    ...shared,
+    productWorkspacesRecoveryV1: recoverProductWorkspacesV5356,
+    finalWorkspacesRecoveryV1: recoverFinalWorkspacesV5360,
+    stagesLandingRecoveryV1: recoverStagesLandingV5361,
+    finalUiEventsRecoveryV1: recoverFinalUiEventsV5362,
   });
-  finalUiInstallerV1({
-    globalRef,
-    ViewLayer,
-    appStore,
-    window: windowRef,
-  });
+  return installLegacyPlanningPageRegistrationsV1(shared);
 };

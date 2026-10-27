@@ -1,0 +1,28 @@
+{
+  "fallbackKey": "drenagem",
+  "emptyColor": "#2fe6ae",
+  "rules": [
+    { "key": "terraplanagem", "terms": ["terra"] },
+    { "key": "drenagem", "terms": ["dren"] },
+    { "key": "rede-agua", "terms": ["agua"] },
+    { "key": "rede-eletrica", "terms": ["eletric"] },
+    { "key": "pavimentacao", "terms": ["meio", "fio", "guia", "paviment"] },
+    { "key": "urbanizacao", "terms": ["projeto", "praca", "urban", "arbor"] }
+  ],
+  "labels": {
+    "terraplanagem": "Terraplanagem",
+    "drenagem": "Drenagem",
+    "rede-agua": "Rede de água",
+    "rede-eletrica": "Rede elétrica",
+    "pavimentacao": "Pavimentação",
+    "urbanizacao": "Praças / urbanização"
+  },
+  "colors": {
+    "terraplanagem": "#f1b832",
+    "drenagem": "#3f9cff",
+    "rede-agua": "#32c5d9",
+    "rede-eletrica": "#9b7cff",
+    "pavimentacao": "#ff7c45",
+    "urbanizacao": "#42be65"
+  }
+}

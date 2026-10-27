@@ -1,35 +1,10 @@
-const RACI_ACTORS = [
-  { id: "carlos", name: "Carlos Mendes", role: "Engenharia / execução", contract: "CT-ENG-014" },
-  { id: "mariana", name: "Mariana Lopes", role: "Planejamento / suprimentos", contract: "CT-ADM-008" },
-  { id: "paula", name: "Paula Nascimento", role: "Qualidade / campo", contract: "CT-QLD-021" },
-  { id: "fornecedor", name: "Fornecedor principal", role: "Materiais e entregas", contract: "PE-2025-040" },
-];
+import RACI_DATA from "../../frontend/src/data/operational-raci.json" with { type: "json" };
 
-const RACI_TASKS = [
-  { id: "t1", label: "Preparar frente" },
-  { id: "t2", label: "Confirmar materiais" },
-  { id: "t3", label: "Executar serviço" },
-  { id: "t4", label: "Registrar medição" },
-  { id: "t5", label: "Validar qualidade" },
-  { id: "t6", label: "Liberar próxima frente" },
-];
-
-const defaultRaci = () => ({
-  t1: { carlos: "C", mariana: "A", paula: "I", fornecedor: "I" },
-  t2: { carlos: "C", mariana: "A", paula: "I", fornecedor: "R" },
-  t3: { carlos: "R", mariana: "A", paula: "C", fornecedor: "I" },
-  t4: { carlos: "R", mariana: "A", paula: "C", fornecedor: "I" },
-  t5: { carlos: "C", mariana: "I", paula: "A", fornecedor: "I" },
-  t6: { carlos: "R", mariana: "A", paula: "C", fornecedor: "I" },
-});
-
-const raciMeaning = {
-  R: "Responsável · executa a atividade",
-  A: "Aprovador · responde pelo resultado",
-  C: "Consultado · participa da decisão",
-  I: "Informado · acompanha o avanço",
-  "—": "Sem vínculo definido",
-};
+const RACI_ACTORS = RACI_DATA.actors;
+const RACI_TASKS = RACI_DATA.tasks;
+const raciMeaning = RACI_DATA.meaning;
+const roleOrder = RACI_DATA.roleOrder;
+const defaultRaci = () => structuredClone(RACI_DATA.defaultAssignments);
 
 /** RACI page renderer and event category, with application state injected. */
 export const createRaciPageV1 = ({ appStore, extensionStage, esc, ico, notify, clone } = {}) => {
@@ -59,7 +34,7 @@ export const createRaciPageV1 = ({ appStore, extensionStage, esc, ico, notify, c
     const cycleCell = (key) => {
       const [taskId, actorId] = key.split(":"),
         assignments = clone(appStore.get().raciAssignments || defaultRaci()),
-        order = ["R", "A", "C", "I", "—"],
+        order = roleOrder,
         current = assignments?.[taskId]?.[actorId] || "—",
         next = order[(order.indexOf(current) + 1) % order.length];
       assignments[taskId] ??= {};

@@ -1,0 +1,10 @@
+{
+  "destinations": [
+    {
+      "key": "office",
+      "name": "Escritório",
+      "kind": "administrative",
+      "description": "Etapa administrativa para notas, atividades internas e lançamentos de repasse."
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "terraplanagem": { "label": "Terraplanagem", "colorHex": "#f1b832", "keywords": ["terra"] },
+  "drenagem": { "label": "Drenagem", "colorHex": "#3f9cff", "keywords": ["dren"] },
+  "rede-agua": { "label": "Rede de água", "colorHex": "#32c5d9", "keywords": ["agua"] },
+  "rede-eletrica": { "label": "Rede elétrica", "colorHex": "#9b7cff", "keywords": ["eletric", "ilumin"] },
+  "pavimentacao": { "label": "Pavimentação", "colorHex": "#ff7c45", "keywords": ["paviment", "meio", "fio", "guia"] },
+  "urbanizacao": { "label": "Urbanização", "colorHex": "#42be65", "keywords": ["praca", "urban", "arbor", "sinal"] }
+}

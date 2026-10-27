@@ -1,248 +1,127 @@
-import { installPlanningPageRegistrationsV1 } from "./planning-page-registrations-v1.mjs?v=planning-page-registrations-v1";
-import { installOperationalMapPageV1 } from "../map/operational-map-page-v1.mjs?v=operational-map-page-v2";
-import { installStageOperationalPagesCompositionV1 } from "./stage-operational-pages-composition-v1.mjs?v=stage-operational-pages-composition-v1";
-import { installControlCenterApplicationCompositionV1 } from "./control-center-application-composition-v1.mjs?v=control-center-application-composition-v1";
-import { installActivityRouteBridgeLifecycleV1 } from "./activity-route-bridge-lifecycle-v1.mjs?v=activity-route-bridge-lifecycle-v1";
-import { installPersonnelPageRegistrationV1 } from "./personnel-page-registration-v1.mjs?v=personnel-page-registration-v1";
-import { installLeadsDirectoryRegistrationV1 } from "../commercial/leads-directory-registration-v1.mjs?v=leads-directory-registration-v1";
-import { installStagePagesApplicationCompositionV1 } from "./stage-pages-application-composition-v1.mjs?v=stage-pages-application-composition-v1";
-import { installStageAgendaApplicationCompositionV1 } from "./stage-agenda-application-composition-v1.mjs?v=stage-agenda-application-composition-v1";
+const importExportV1 = (specifier, exportName) => async (...args) => {
+  const module = await import(specifier);
+  const installer = module[exportName];
+  if (typeof installer !== "function")
+    throw new TypeError(`Planning recovery export is unavailable: ${exportName}`);
+  return installer(...args);
+};
 
-const PLANNING_PAGE_INSTALLERS_V1 = Object.freeze({
+const installPlanningPageRegistrationsLegacyV1 = importExportV1(
+  "./planning-page-registrations-legacy-v1.mjs?v=planning-page-registration-recovery-v2",
+  "installPlanningPageRegistrationsV1",
+);
+const installProductWorkspacesRecoveryV5356 = importExportV1(
+  "./product-workspaces-v5356.mjs?v=product-workspaces-recovery-v3",
+  "installProductWorkspacesV5356",
+);
+const installFinalWorkspacesRecoveryV5360 = importExportV1(
+  "./final-workspaces-bootstrap-legacy-v5360.mjs?v=final-workspaces-recovery-v2",
+  "installBelavistaFinalWorkspacesBootstrapV5360",
+);
+const installStagesLandingRecoveryV5361 = importExportV1(
+  "./stages-landing-page-legacy-v5361.mjs?v=stages-landing-recovery-v2",
+  "registerBelavistaStagesLandingV5361",
+);
+const installFinalUiEventsRecoveryV5362 = importExportV1(
+  "./final-ui-events-legacy-v5362.mjs?v=final-ui-events-recovery-v2",
+  "installBelavistaFinalUiV5362",
+);
+
+const installPlanningPageRegistrationsV1 = importExportV1(
+  "./planning-page-registrations-v1.mjs?v=planning-page-registrations-lazy-recovery-v1",
+  "installPlanningPageRegistrationsV1",
+);
+const installOperationalMapPageV1 = importExportV1(
+  "../map/operational-map-page-v1.mjs?v=operational-map-page-lazy-recovery-v1",
+  "installOperationalMapPageV1",
+);
+const installStageOperationalPagesCompositionV1 = importExportV1(
+  "./stage-operational-pages-composition-v1.mjs?v=stage-operational-pages-lazy-recovery-v1",
+  "installStageOperationalPagesCompositionV1",
+);
+const installControlCenterApplicationCompositionV1 = importExportV1(
+  "./control-center-application-composition-v1.mjs?v=control-center-composition-lazy-recovery-v1",
+  "installControlCenterApplicationCompositionV1",
+);
+const installActivityRouteBridgeLifecycleV1 = importExportV1(
+  "./activity-route-bridge-lifecycle-v1.mjs?v=activity-route-bridge-lazy-recovery-v1",
+  "installActivityRouteBridgeLifecycleV1",
+);
+const installActivityRouteBridgeLegacyLifecycleV1 = importExportV1(
+  "./activity-route-bridge-lifecycle-v1.mjs?v=activity-route-bridge-legacy-lazy-recovery-v1",
+  "installActivityRouteBridgeLifecycleV1",
+);
+const installLegacyActivityInstallationSessionV1 = importExportV1(
+  "./activity-installation-session-v1.mjs?v=activity-installation-session-lazy-recovery-v1",
+  "installActivityInstallationSessionV1",
+);
+const installPersonnelPageRegistrationV1 = importExportV1(
+  "./personnel-page-registration-v1.mjs?v=personnel-page-registration-lazy-recovery-v1",
+  "installPersonnelPageRegistrationV1",
+);
+const installStageDedicatedSubpagesEventsLegacyV1 = importExportV1(
+  "./stage-dedicated-subpages-events-v5427.mjs?v=stage-subpage-events-lazy-recovery-v1",
+  "installStageDedicatedSubpagesEventsV5427",
+);
+const installStageRecordEntryPageLegacyV1 = importExportV1(
+  "../records/stage-record-entry-page-v1.mjs?v=stage-record-entry-lazy-recovery-v1",
+  "installStageRecordEntryPageV1",
+);
+const installStagePagesApplicationCompositionV1 = importExportV1(
+  "./stage-pages-application-composition-v1.mjs?v=stage-pages-composition-lazy-recovery-v1",
+  "installStagePagesApplicationCompositionV1",
+);
+
+const installStageDedicatedSubpagesEventsV1 = async (...args) => {
+  try {
+    const typed = await import("../../dist/frontend/components.js");
+    if (typeof typed.installAtlasStageDedicatedSubpagesEventsV1 === "function")
+      return typed.installAtlasStageDedicatedSubpagesEventsV1(...args);
+  } catch {}
+  return installStageDedicatedSubpagesEventsLegacyV1(...args);
+};
+
+const installStageRecordEntryPageV1 = async (...args) => {
+  try {
+    const typed = await import("../../dist/frontend/components.js");
+    if (typeof typed.installAtlasStageRecordEntryPageV1 === "function")
+      return typed.installAtlasStageRecordEntryPageV1(...args);
+  } catch {}
+  return installStageRecordEntryPageLegacyV1(...args);
+};
+
+const installStageAgendaApplicationCompositionV1 = async (input = {}) => {
+  try {
+    const typed = await import("../../dist/frontend/program.js");
+    if (typeof typed.installAtlasStageAgendaApplicationCompositionV1 === "function")
+      return await typed.installAtlasStageAgendaApplicationCompositionV1({
+        ...input,
+        installLegacyActivityInstallationSessionV1,
+      });
+  } catch {}
+  const legacy = await import("./stage-agenda-application-composition-v1.mjs?v=stage-agenda-composition-lazy-recovery-v1");
+  return legacy.installStageAgendaApplicationCompositionV1(input);
+};
+
+/** Planning recovery leaves load only when the TypeScript owner needs recovery. */
+export const PLANNING_PAGE_INSTALLERS_V1 = Object.freeze({
   installPlanningPageRegistrationsV1,
+  installPlanningPageRegistrationsLegacyV1,
+  installProductWorkspacesRecoveryV5356,
+  installFinalWorkspacesRecoveryV5360,
+  installStagesLandingRecoveryV5361,
+  installFinalUiEventsRecoveryV5362,
   installOperationalMapPageV1,
   installStageOperationalPagesCompositionV1,
   installControlCenterApplicationCompositionV1,
   installActivityRouteBridgeLifecycleV1,
+  installActivityRouteBridgeLegacyLifecycleV1,
+  installLegacyActivityInstallationSessionV1,
   installPersonnelPageRegistrationV1,
-  installLeadsDirectoryRegistrationV1,
+  installStageDedicatedSubpagesEventsV1,
+  installStageDedicatedSubpagesEventsLegacyV1,
+  installStageRecordEntryPageV1,
+  installStageRecordEntryPageLegacyV1,
   installStagePagesApplicationCompositionV1,
   installStageAgendaApplicationCompositionV1,
 });
-
-/** Install the complete stage/planning page family in its historical order. */
-export const installPlanningPagesApplicationV1 = ({
-  ViewLayer,
-  appStore,
-  demoData,
-  commissionDeals,
-  executionModel,
-  activityCatalog,
-  extensionStage,
-  stageOverlayKey,
-  stageProfileSettingsFor,
-  stageMaterialsFor,
-  formatBRL,
-  esc,
-  ico,
-  notify,
-  runtimeRouteV1,
-  apiFetch,
-  operationalHeaders,
-  highlightStatus,
-  workbenchActivityRouteV1,
-  stageRecordServices,
-  controlCenterData,
-  cashRecordLauncherMarkupV1,
-  subscribeOperationalControlCenter,
-  readIntegrationSettings,
-  integrationSettingsKey,
-  normalizeStageMaterialRows,
-  defaultStageMaterialRows,
-  STAGE_WORKBENCH,
-  splitStageConfigList,
-  beginCardCanvasLinkV1,
-  dashboardFilters,
-  installLotDevelopmentRenderGuardV1,
-  isLimitedOperationalActor,
-  operationalActions,
-  publishOperationalEvent,
-  personnelModel,
-  activityInstallationDefaults,
-  normalizeActivityRouteTextV1,
-  renderActivityFormGroupsV1,
-  installers = PLANNING_PAGE_INSTALLERS_V1,
-  globalRef = globalThis,
-} = {}) => {
-  // Keep the application-specific registration and final map override ahead
-  // of the stage-owned renderers, as in the original bootstrap.
-  installers.installPlanningPageRegistrationsV1({
-    globalRef,
-    ViewLayer,
-    appStore,
-    demoData,
-    commissionDeals,
-    esc,
-    ico,
-    notify,
-    runtimeRouteV1,
-    apiFetch,
-    operationalHeaders,
-    windowRef: globalRef.window,
-    consoleRef: globalRef.console,
-    DateCtor: globalRef.Date,
-  });
-
-  installers.installOperationalMapPageV1(ViewLayer, { appStore, highlightStatus, esc });
-
-  const calendar = {};
-  const stageOperational = installers.installStageOperationalPagesCompositionV1({
-    ViewLayer,
-    appStore,
-    demoData,
-    executionModel,
-    activityCatalog,
-    extensionStage,
-    stageOverlayKey,
-    stageProfileSettingsFor,
-    stageMaterialsFor,
-    formatBRL,
-    apiFetch,
-    esc,
-    ico,
-    globalRef,
-    workbenchActivityRouteV1,
-    agendaCalendarIsoV3: (...args) => calendar.agendaCalendarIsoV3(...args),
-    agendaCalendarParseDateV3: (...args) => calendar.agendaCalendarParseDateV3(...args),
-    agendaCalendarTimeToHoursV3: (...args) => calendar.agendaCalendarTimeToHoursV3(...args),
-    agendaCalendarEventEndV3: (...args) => calendar.agendaCalendarEventEndV3(...args),
-    agendaCalendarReadV3: (...args) => calendar.agendaCalendarReadV3(...args),
-    agendaCalendarOperationalEventsV3: (...args) => calendar.agendaCalendarOperationalEventsV3(...args),
-    agendaCalendarWriteV3: (...args) => calendar.agendaCalendarWriteV3(...args),
-    agendaCalendarWeekKeyV8: (...args) => calendar.agendaCalendarWeekKeyV8(...args),
-    controlCenterMaterialRowsV1: (...args) => controlCenterData.controlCenterMaterialRowsV1(...args),
-    notify,
-  });
-
-  const controlCenter = installers.installControlCenterApplicationCompositionV1({
-    ViewLayer,
-    appStore,
-    executionModel,
-    demoData,
-    commissionDeals,
-    brokerReasonsV9: controlCenterData.brokerReasonsV9,
-    controlCenterData,
-    cashRecordLauncherMarkupV1,
-    subscribeOperationalControlCenter,
-    readIntegrationSettings,
-    integrationSettingsKey,
-    apiFetch,
-    operationalHeaders,
-    stageContext: {
-      normalizeStageMaterialRows,
-      defaultStageMaterialRows,
-      stageV9LiveFor: stageOperational.stageV9LiveFor,
-      stageV9StatusFor: stageOperational.stageV9StatusFor,
-      STAGE_WORKBENCH,
-      workbenchStageFromValueV1: stageRecordServices.workbenchStageFromValueV1,
-      splitStageConfigList,
-    },
-    formatBRL,
-    esc,
-    ico,
-    notify,
-    stageViewTabs: stageRecordServices.stageViewTabs,
-    stageOverlayKey,
-    extensionStage,
-    requestAnimationFrameFn: globalRef.requestAnimationFrame.bind(globalRef),
-  });
-
-  installers.installActivityRouteBridgeLifecycleV1({
-    ViewLayer,
-    workbenchActivityRouteV1,
-    documentRef: globalRef.document,
-    queueMicrotaskFn: globalRef.queueMicrotask.bind(globalRef),
-  });
-
-  installers.installPersonnelPageRegistrationV1({
-    ViewLayer,
-    appStore,
-    executionModel,
-    publishOperationalEvent,
-    extensionStage,
-    personnelModel,
-    stageV9LiveFor: stageOperational.stageV9LiveFor,
-    esc,
-    ico,
-    logger: globalRef.console,
-    host: globalRef,
-  });
-
-  installers.installLeadsDirectoryRegistrationV1({
-    ViewLayer,
-    appStore,
-    apiFetch,
-    runtimeRouteV1,
-    demoData,
-    esc,
-    ico,
-    notify,
-    host: globalRef,
-  });
-
-  const stagePages = installers.installStagePagesApplicationCompositionV1({
-    ViewLayer,
-    appStore,
-    activityCatalog,
-    beginCardCanvasLinkV1,
-    controlStageProfileV1: controlCenter.controlStageProfileV1,
-    currentPertNodes: stageRecordServices.currentPertNodes,
-    dashboardFilters,
-    dashboardHomePageV1: stageOperational.dashboardHomePageV1,
-    demoData,
-    documentRef: globalRef.document,
-    executionModel,
-    extensionStage,
-    esc,
-    fetcher: (input, init) => apiFetch(input, init),
-    ico,
-    installLotDevelopmentRenderGuardV1: (viewLayer, options) =>
-      installLotDevelopmentRenderGuardV1(viewLayer, options),
-    isLimitedOperationalActor,
-    notify,
-    operationalActions,
-    runtimeRouteV1,
-    stageContextV1: stageRecordServices.stageContextV1,
-    stageHeader3DMarkup: controlCenter.stageHeader3DMarkup,
-    stageV9LiveFor: stageOperational.stageV9LiveFor,
-    windowRef: globalRef.window,
-  });
-
-  const stagePersistentTimelineMarkupV1 = stagePages.stagePersistentTimelineMarkupV1;
-  const stageAgenda = installers.installStageAgendaApplicationCompositionV1({
-    ViewLayer,
-    apiFetch,
-    STAGE_WORKBENCH,
-    activityCatalog,
-    activityInstallationDefaults,
-    appStore,
-    beginCardCanvasLinkV1,
-    dashboardPageMarkup: () => stageRecordServices.stageHomePageMarkupV1,
-    demoData,
-    esc,
-    executionModel,
-    extensionStage,
-    globalRef,
-    ico,
-    normalizeActivityRouteTextV1,
-    notify,
-    operationalRaid: stageRecordServices.operationalRaid,
-    renderActivityFormGroupsV1,
-    stagePersistentTimelineMarkupV1,
-    stageV9LiveFor: stageOperational.stageV9LiveFor,
-    stageV9MaterialsFor: stageOperational.stageV9MaterialsFor,
-    stageV9ProductionFor: stageOperational.stageV9ProductionFor,
-    stageV9StatusFor: stageOperational.stageV9StatusFor,
-    workbenchStageFromValueV1: stageRecordServices.workbenchStageFromValueV1,
-  });
-  Object.assign(calendar, stageAgenda);
-
-  return Object.freeze({
-    ...stageOperational,
-    ...controlCenter,
-    ...stageRecordServices,
-    ...stagePages,
-    ...stageAgenda,
-    stagePersistentTimelineMarkupV1,
-  });
-};

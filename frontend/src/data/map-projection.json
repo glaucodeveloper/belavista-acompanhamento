@@ -1,0 +1,124 @@
+{
+  "coordinateSpaces": {
+    "aerialUtm": "EPSG:31984 to normalized image UV, top-left origin",
+    "pdfLotTrace": "PDF lot trace pixels to normalized satellite UV",
+    "canonicalLotTrace": "canonical GLB/DWG trace pixels to normalized masterplan overlay UV",
+    "masterplanFrame": "normalized satellite UV"
+  },
+  "publicSatellite": {
+    "dwgZoom": 18
+  },
+  "adminGeoreferenceScene": {
+    "dwgGeoreferencePath": "/assets/data/dwg-georeference.json",
+    "worldHeight": 320,
+    "verticalScale": 0.28,
+    "geoWarpVersion": "dwg-utm-to-image-traced-lots-v1",
+    "aerialLotTraceUrl": "/assets/data/aerial-lot-trace-v1.json?v=2",
+    "masterplanLotPolygonsUrl": "/assets/data/masterplan-lot-polygons-v2.json?v=1",
+    "pdfLotLabelsUrl": "/assets/data/pdf-lot-labels-v1.json?v=pdf-lot-centers-v3",
+    "pdfLotGreenMappingUrl": "/assets/data/pdf-lot-green-mapping-v1.json?v=pdf-yellow-circles-v4",
+    "roadTraceUrl": "/assets/data/aerial-road-trace-v1.json?v=18-vector-curb-normalized",
+    "commonAreaLabel": "Área comum do loteamento",
+    "visualRecoveryLotNumberRange": { "first": 3, "last": 44 },
+    "visualRecoveryAdditionalLotIds": ["Lote_212"],
+    "rasterMask": {
+      "enabled": false,
+      "version": "aerial-site-mask-extrusion-v1",
+      "grid": { "x": 128, "y": 72 },
+      "sampleSize": { "width": 512, "height": 288 }
+    },
+    "pdfMasterplan": {
+      "underlayAsset": "/assets/public/alianca-park-masterplan-static-v535-no-photo.webp",
+      "underlayVersion": "pdf-underlay-photo-removed-v1",
+      "threeDLayerVersion": "pdf-derived-elements-v1",
+      "modelTextureVersion": "semantic-model-map-texture-v1",
+      "modelTextureBrightness": 1.35,
+      "textureShiftUp": 0.018,
+      "pageSize": { "width": 1800, "height": 2098 },
+      "siteFrame": { "left": 0.1, "top": 0.045, "right": 0.935, "bottom": 0.945 },
+      "vehicleAnchors": [
+        { "u": 0.442, "v": 0.42, "angle": -0.82 },
+        { "u": 0.455, "v": 0.436, "angle": -0.82 },
+        { "u": 0.469, "v": 0.452, "angle": -0.82 },
+        { "u": 0.482, "v": 0.468, "angle": -0.82 },
+        { "u": 0.558, "v": 0.508, "angle": 0.72 },
+        { "u": 0.571, "v": 0.526, "angle": 0.72 },
+        { "u": 0.584, "v": 0.544, "angle": 0.72 },
+        { "u": 0.596, "v": 0.561, "angle": 0.72 },
+        { "u": 0.358, "v": 0.579, "angle": -0.82 },
+        { "u": 0.375, "v": 0.595, "angle": -0.82 },
+        { "u": 0.392, "v": 0.611, "angle": -0.82 },
+        { "u": 0.409, "v": 0.627, "angle": -0.82 },
+        { "u": 0.427, "v": 0.644, "angle": -0.82 },
+        { "u": 0.445, "v": 0.66, "angle": -0.82 }
+      ]
+    },
+    "aerialReference": {
+      "asset": "/assets/public/alianca-park-aerial-realistic-preview-v2.jpg",
+      "zoomTileRoot": "/assets/public/alianca-park-aerial-realistic-tiles-v2",
+      "zoomTileGrid": { "cols": 5, "rows": 3 },
+      "zoomTilePixels": { "width": 19200, "height": 10805 },
+      "tilePrefetchRatio": 1.3,
+      "tileSwapRatio": 1.5,
+      "semanticCoordinateSystem": "aerial-image UV 0..1 · origin top-left · world XY projected to the same base plane",
+      "version": "admin-reference-aerial-realistic-preview-v2",
+      "semanticLayerVersion": "semantic-elements-only-v2",
+      "environmentVersion": "full-image-3d-environment-v2",
+      "terrainSegments": { "x": 96, "y": 54 },
+      "siteFrameV2": { "left": 0.268, "top": 0.078, "right": 0.721, "bottom": 0.704 },
+      "reliefAmplitudeV2": 0,
+      "siteFrameV1": { "left": 0.315, "top": 0.07, "right": 0.646, "bottom": 0.771 },
+      "displayScale": 1.15
+    }
+  },
+  "aerialUtmToUvHomography": [
+    [-2.94306335e-7, -6.87434193e-8, 7.15685809e-1],
+    [3.56353169e-11, 3.82122918e-7, -3.27219102],
+    [7.83358933e-8, -1.2079129e-7, 1]
+  ],
+  "aerialResidualWarpV2": {
+    "topLeftRight": 0.01,
+    "lowerLeftRight": 0.018,
+    "lowerLeftUp": 0.008,
+    "topCutoffV": 0.24,
+    "bottomStartV": 0.42,
+    "leftCutoffU": 0.42
+  },
+  "pdfLotTraceToSatelliteUvHomography": [
+    [1.0086098422894447, 0.0016134121622422126, -0.0038032196583164613],
+    [0.008350177715188936, 1.0024607676404558, -0.004674004133295162],
+    [0.006975914424053379, -0.0032041357221301472, 1]
+  ],
+  "canonicalLotTraceToMasterplanUvHomography": [
+    [-1.305634578549388, -0.09262782662689444, 0.3977201474957953],
+    [0.044328560352298825, -0.870047499833295, 0.04463101808400932],
+    [-0.05480788446101144, -0.09718665320688509, -0.4624988534836937]
+  ],
+  "masterplanSatelliteFrame": {
+    "left": 0.2110515272100637,
+    "top": 0.4572318077949459,
+    "width": 0.24460825293243182,
+    "height": 0.29477393932728184,
+    "rotation": 0
+  },
+  "aerialGeoQuadUv": {
+    "nw": { "u": 0.32090587, "v": 0.08733924 },
+    "ne": { "u": 0.68860404, "v": 0.0951735 },
+    "se": { "u": 0.71232314, "v": 0.7420018 },
+    "sw": { "u": 0.27644378, "v": 0.66968067 }
+  },
+  "invalidMasterplanLotIds": [
+    "Lote_023", "Lote_041", "Lote_048", "Lote_055", "Lote_069", "Lote_114", "Lote_133",
+    "Lote_164", "Lote_195", "Lote_208", "Lote_212", "Lote_283", "Lote_284"
+  ],
+  "geometryRepairLotIds": [
+    "Lote_003", "Lote_005", "Lote_010", "Lote_030", "Lote_044", "Lote_124",
+    "Lote_179", "Lote_186", "Lote_198", "Lote_223", "Lote_241"
+  ],
+  "commonAreaSourceIds": [
+    "Lote_023", "Lote_041", "Lote_048", "Lote_055", "Lote_069", "Lote_114", "Lote_133",
+    "Lote_164", "Lote_195", "Lote_208", "Lote_212", "Lote_283", "Lote_284"
+  ],
+  "canonicalLotTraceOverlayAlignment": "GLB/DWG → prancha masterplan · registro geométrico de 298 lotes",
+  "pdfLotTraceSatelliteAlignment": "298 centros PDF→DWG→satélite · erro médio 0,16% da imagem"
+}

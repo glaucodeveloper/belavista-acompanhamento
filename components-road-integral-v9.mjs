@@ -10,14 +10,14 @@ import {
   executionModel,
   personnelModel,
   activityInstallationDefaults,
-} from "./state.js?v=system-metrics-v1-20260919";
+} from "./state.js?v=system-metrics-v1-20260919&ts-state-catalogs-program-owner-v1";
 import {
   STAGE_WORKBENCH,
   findWorkbenchStage,
   findWorkbenchActivity,
 } from "./stage-workbench-data.mjs";
-import { renderActivityFormGroupsV1 } from "./activity-form-groups-v1.mjs?v=activity-form-groups-v1";
-import { renderStageHomePageV1, renderOperationalAiPrioritiesV1 } from "./stage-home-page-v1.mjs?v=stage-home-page-v5";
+import { renderActivityFormGroupsV1 } from "./activity-form-groups-v1.mjs?v=activity-form-groups-v2-ts-owner";
+import { renderStageHomePageV1, renderOperationalAiPrioritiesV1 } from "./stage-home-page-v1.mjs?v=stage-home-page-v8-ts-renderer-exclusive";
 import {
   FOREMAN_EXTENSION_VIEWS,
   navigationItemsForRole,
@@ -39,7 +39,7 @@ import {
   publishOperationalEvent,
   subscribeOperationalControlCenter,
   saveOperationalProposal,
-} from "./firebase.mjs?v=public-runtime-v49";
+} from "./firebase.mjs?v=public-runtime-v50-ts-public-sales-persistence";
 import "./public-lead-form.mjs?v=public-instagram-handoff-v1";
 import "./reservation-flow.mjs?v=reservation-validation-v1";
 

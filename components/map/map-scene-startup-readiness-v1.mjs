@@ -1,5 +1,10 @@
+import { installAtlasMapSceneStartupReadiness } from "../../dist/frontend/components.js";
+
 /** Installs the MapScene viewport gate and renderer startup policy. */
-export const installMapSceneStartupReadinessV1 = (MapScene) => {
+export const installMapSceneStartupReadinessV1 = (MapScene, dependencies = {}) => {
+  if (typeof installAtlasMapSceneStartupReadiness === "function")
+    return installAtlasMapSceneStartupReadiness(MapScene, dependencies);
+
   MapScene.prototype.waitForAdminShellViewportV5376 = function () {
     if (this._adminShellViewportGateV5376) return;
     this._adminShellViewportGateV5376 = true;

@@ -1,0 +1,28 @@
+{
+  "satellite": [
+    {
+      "id": "satellite",
+      "urlTemplate": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+    },
+    {
+      "id": "satellite-alt",
+      "urlTemplate": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+    }
+  ],
+  "osm": [
+    {
+      "id": "osm",
+      "urlTemplate": "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+    },
+    {
+      "id": "osm-de",
+      "urlTemplate": "https://tile.openstreetmap.de/{z}/{x}/{y}.png"
+    }
+  ],
+  "generated": [
+    {
+      "id": "dwg-satellite-treated-v5411",
+      "versionQueryKey": "v"
+    }
+  ]
+}

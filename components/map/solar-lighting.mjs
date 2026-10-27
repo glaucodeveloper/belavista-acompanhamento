@@ -1,11 +1,13 @@
-export const MAP_GEOREFERENCE_FALLBACK = {
+import * as atlasProgram from "../../dist/frontend/program.js";
+
+const MAP_GEOREFERENCE_FALLBACK_FALLBACK = {
   lat: -13.00044486,
   lng: -39.62315439,
   label: "Aliança Park · Amargosa, BA",
   timezone: "America/Bahia",
   timezoneOffset: -3,
 };
-export const localClockHourForGeo = (geo = {}, date = new Date()) => {
+const localClockHourForGeoFallback = (geo = {}, date = new Date()) => {
   const timezone = geo.timezone || MAP_GEOREFERENCE_FALLBACK.timezone;
   try {
     const parts = new Intl.DateTimeFormat("en-US", {
@@ -32,7 +34,7 @@ const solarDayOfYear = (date) => {
   const start = new Date(date.getFullYear(), 0, 0);
   return Math.floor((date - start) / 86400000);
 };
-export const solarWindowForGeo = (geo = {}, date = new Date()) => {
+const solarWindowForGeoFallback = (geo = {}, date = new Date()) => {
   const lat =
     (Math.max(
       -89,
@@ -71,14 +73,14 @@ export const solarWindowForGeo = (geo = {}, date = new Date()) => {
     label: geo.label || MAP_GEOREFERENCE_FALLBACK.label,
   };
 };
-export const solarHourLabel = (hour) => {
+const solarHourLabelFallback = (hour) => {
   const totalMinutes = Math.round(Math.max(0, Number(hour) || 0) * 60),
     hours = Math.floor(totalMinutes / 60),
     minutes = totalMinutes % 60;
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 };
-export const solarStateForHour = (hour, geo = {}) => {
-  const window = solarWindowForGeo(geo),
+const solarStateForHourFallback = (hour, geo = {}) => {
+  const window = solarWindowForGeoFallback(geo),
     span = Math.max(0.1, window.sunset - window.sunrise),
     progress = Math.max(0, Math.min(1, (Number(hour) - window.sunrise) / span));
   const elevation = Math.max(0, Math.sin(progress * Math.PI)),
@@ -92,3 +94,9 @@ export const solarStateForHour = (hour, geo = {}) => {
     daylight: elevation > 0.02,
   };
 };
+
+export const MAP_GEOREFERENCE_FALLBACK = atlasProgram.MAP_GEOREFERENCE_FALLBACK || MAP_GEOREFERENCE_FALLBACK_FALLBACK;
+export const localClockHourForGeo = (...args) => atlasProgram.localClockHourForGeo?.(...args) ?? localClockHourForGeoFallback(...args);
+export const solarWindowForGeo = (...args) => atlasProgram.solarWindowForGeo?.(...args) ?? solarWindowForGeoFallback(...args);
+export const solarHourLabel = (...args) => atlasProgram.solarHourLabel?.(...args) ?? solarHourLabelFallback(...args);
+export const solarStateForHour = (...args) => atlasProgram.solarStateForHour?.(...args) ?? solarStateForHourFallback(...args);

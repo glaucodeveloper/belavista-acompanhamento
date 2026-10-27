@@ -1,0 +1,69 @@
+{
+  "publicRoadSurfacePolicyMethods": [
+    "reassertPublicPresentationStyle",
+    "disablePublicSyntheticRoads",
+    "ensurePublicTextureUv",
+    "disablePublicCobbleTexture",
+    "getPublicCobbleMaterial",
+    "loadPublicCobbleTexture",
+    "setPublicPavingView",
+    "reassertPublicRoadMaterial",
+    "enforcePublicTechnicalVisibility"
+  ],
+  "publicDwgGeoreferenceConfigKeys": [
+    "ADMIN_PDF_DISPLAY_HORIZONTAL_FLIP",
+    "ADMIN_PDF_DISPLAY_Y_ROTATION_DEG",
+    "ADMIN_PDF_DISPLAY_Y_ROTATION_RAD",
+    "MODEL_EXTRA_Y_ROTATION_DEG",
+    "MODEL_EXTRA_Y_ROTATION_RAD",
+    "MODEL_VERTICAL_EXAGGERATION",
+    "PUBLIC_MODEL_HORIZONTAL_FLIP",
+    "PUBLIC_MODEL_NORTH_ROTATION_DEG",
+    "PUBLIC_MODEL_NORTH_ROTATION_RAD",
+    "SCENE_MODEL_BASE_Z"
+  ],
+  "publicDwgGeoreferenceMethods": [
+    "publicDwgGeoFrame",
+    "publicDwgModelAffine"
+  ],
+  "mapSceneSyncConfigKeys": [
+    "ADMIN_FIXED_MAP_ROTATION_DEG",
+    "ADMIN_PDF_DISPLAY_HORIZONTAL_FLIP",
+    "ADMIN_PDF_DISPLAY_Y_ROTATION_DEG",
+    "ADMIN_PDF_DISPLAY_Y_ROTATION_RAD",
+    "ADMIN_REFERENCE_AERIAL_DISPLAY_SCALE_V1",
+    "DWG_PLAN_HEADING_DEG",
+    "DWG_PLAN_HEADING_RAD",
+    "DWG_SATELLITE_MOSAIC_ZOOM",
+    "MAP_RASTER_MAX",
+    "MAP_TILE_OVERSCAN",
+    "MODEL_EXTRA_Y_ROTATION_DEG",
+    "MODEL_EXTRA_Y_ROTATION_RAD",
+    "MODEL_FIT_RATIO",
+    "MODEL_PUBLIC_FIT_RATIO",
+    "MODEL_VERTICAL_EXAGGERATION",
+    "PUBLIC_MODEL_HORIZONTAL_FLIP",
+    "PUBLIC_MODEL_NORTH_ROTATION_RAD",
+    "PUBLIC_SATELLITE_VERTICAL_COVERAGE",
+    "SCENE_MAP_Z",
+    "SCENE_MODEL_BASE_Z",
+    "SCENE_SURFACE_SCALE"
+  ],
+  "mapRasterSurfaceConfigKeys": [
+    "DWG_SATELLITE_MOSAIC_TILES",
+    "DWG_SATELLITE_MOSAIC_TILE_SIZE",
+    "DWG_SATELLITE_MOSAIC_TILE_X0",
+    "DWG_SATELLITE_MOSAIC_TILE_Y0",
+    "DWG_SATELLITE_MOSAIC_ZOOM",
+    "MAP_RASTER_MAX",
+    "MAP_TILE_OVERSCAN",
+    "SCENE_MAP_Z"
+  ],
+  "mapRasterSurfaceMethods": [
+    "refreshMapSurface",
+    "applyMapRasterCentering",
+    "refreshOsmRaster",
+    "commitMapSurfaceTexture",
+    "projectPublicStaticPointV1"
+  ]
+}

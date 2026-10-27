@@ -3,40 +3,15 @@
 <head>
 <base href="/">
 <script>
-/* BELAVISTA_NGROK_PREFIX_RUNTIME_V5371 */
+/* Keep the path prefix available before the browser resolves the TypeScript entry module. */
 (()=>{
-  const ngrok=/\.ngrok-free\.dev$/i.test(location.hostname);
+  const host=location.hostname;
   const prefix=location.pathname.match(/^\/\d+(?=\/|$)/)?.[0]||'';
   globalThis.BELAVISTA_PORT_PREFIX=prefix;
-
-  if(/^(?:localhost|127\.0\.0\.1)$/i.test(location.hostname)){
+  const base=document.querySelector('base');
+  if(base)base.href=`${prefix||''}/`;
+  if(/^(?:localhost|127\.0\.0\.1)$/i.test(host)||/\.ngrok-free\.dev$/i.test(host)||/(?:^|\.)trycloudflare\.com$/i.test(host))
     globalThis.BELAVISTA_DISABLE_SERVICE_WORKER=true;
-    const mobileAssetsVersion='mobile-chat-toggle-v1';
-    const nativeLocal=location.protocol==='https:'&&location.hostname==='localhost';
-    const purge=async()=>{
-      const registrations=await navigator.serviceWorker?.getRegistrations?.()||[];
-      await Promise.all(registrations.map(item=>item.unregister()));
-      const keys=await globalThis.caches?.keys?.()||[];
-      await Promise.all(keys.map(key=>caches.delete(key)));
-      if(nativeLocal&&sessionStorage.getItem('belavista.mobile.assets')!==mobileAssetsVersion){
-        sessionStorage.setItem('belavista.mobile.assets',mobileAssetsVersion);
-        const next=new URL(location.href);
-        next.searchParams.set('_assets',mobileAssetsVersion);
-        location.replace(next.href);
-      }
-    };
-    purge().catch(error=>console.warn('Não foi possível limpar o cache local:',error));
-  }
-
-  if(ngrok){
-globalThis.BELAVISTA_DISABLE_SERVICE_WORKER=true;
-
-    if('serviceWorker' in navigator){
-      navigator.serviceWorker.getRegistrations()
-        .then(items=>Promise.all(items.map(item=>item.unregister())))
-        .catch(()=>{});
-    }
-  }
 })();
 </script>
   <script src="./pat-freeze-guard-v5364.js?v=5.3.64"></script>
@@ -55,24 +30,12 @@ globalThis.BELAVISTA_DISABLE_SERVICE_WORKER=true;
   <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <link rel="stylesheet" href="./styles.css?v=atlas-map-lot-controls-v2" />
+    <link rel="stylesheet" href="./styles.css?v=atlas-dashboard-organic-layout-20261023" />
   <link rel="stylesheet" href="./map-page-widgets-v5.css?v=widget-blue-smoke-v1" />
   <link rel="stylesheet" href="./dashboard-map-tabs-v3.css?v=map-dashboard-modes-v2" />
   <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
   <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script defer src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-  <script id="belavista-boot-guard">
-    (()=>{
-      const showBootFailure=(reason)=>{
-        const boot=document.querySelector('#boot'); if(!boot)return;
-        boot.classList.add('boot-failed');
-        const p=boot.querySelector('p'); if(p)p.textContent='Falha ao inicializar. Recarregue com Ctrl+Shift+R.';
-        console.error('[Aliança Park boot]',reason);
-      };
-      window.addEventListener('error',event=>showBootFailure(event.error||event.message));
-      window.addEventListener('unhandledrejection',event=>showBootFailure(event.reason));
-    })();
-  </script>
   <link rel="stylesheet" href="./execution-planning-v8.css?v=8">
   <link rel="stylesheet" href="./admin-runtime-v11.css?v=admin-runtime-v11">
   <link rel="stylesheet" href="./finance-mobile-cash-v5358.css?v=5.3.58">
@@ -82,14 +45,6 @@ globalThis.BELAVISTA_DISABLE_SERVICE_WORKER=true;
   <link rel="stylesheet" href="./final-workspaces-v5360.css?v=5.3.61-stage-context-home">
   <link rel="stylesheet" href="./stages-landing-v5361.css?v=atlas-timeline-v2">
   <link rel="stylesheet" href="./stages-navigation-v5374.css?v=5.3.74">
-<script data-belavista-worker-direct-v5362>
-(() => {
-  if (!/^(?:localhost|127\.0\.0\.1)$/i.test(location.hostname)) return;
-  // APIs operacionais permanecem no servidor local durante o desenvolvimento;
-  // somente a inferência conversa com o Worker NVIDIA configurado.
-  globalThis.BELAVISTA_AI_BASE = 'https://belavista-cloudflare-worker.icaroglaucooliveira.workers.dev';
-})();
-</script>
 <link rel="stylesheet" href="./belavista-final-ui-v5362.css?v=5.3.64-stage-context-home">
 <link rel="stylesheet" href="./admin-test-controls.css?v=1">
 <link rel="stylesheet" href="./activity-map-layer.css?v=lead-number-markers-v3">
@@ -97,41 +52,7 @@ globalThis.BELAVISTA_DISABLE_SERVICE_WORKER=true;
 <link rel="stylesheet" href="./control-record-accordion-v1.css?v=1">
 <link rel="stylesheet" href="./material-transition-v1.css?v=2">
   <link rel="stylesheet" href="./mobile-operational-v1.css?v=mobile-agenda-v2">
-<script>
-/* BELAVISTA_NGROK_SW_PURGE_V5372 */
-(()=>{
-  const ngrok=/\.ngrok-free\.dev$/i.test(location.hostname);
-  if(!ngrok)return;
-
-  globalThis.BELAVISTA_DISABLE_SERVICE_WORKER=true;
-
-  const reloadKey='belavista.ngrok.sw.purged.v5372';
-  if(sessionStorage.getItem(reloadKey)==='1')return;
-  sessionStorage.setItem(reloadKey,'1');
-
-  const purge=async()=>{
-    try{
-      if('serviceWorker' in navigator){
-        const regs=await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map(reg=>reg.unregister()));
-      }
-      if('caches' in globalThis){
-        const keys=await caches.keys();
-        await Promise.all(keys.map(key=>caches.delete(key)));
-      }
-    }catch(error){
-      console.warn('[Aliança Park v5.3.72] purge SW/cache parcial',error);
-    }
-
-    const next=new URL(location.href);
-    next.searchParams.set('_bv','5372');
-    location.replace(next.href);
-  };
-
-  purge();
-})();
-</script>
-<link rel="stylesheet" href="./record-ocr-dynamic-v21.css?v=21">
+<link rel="stylesheet" href="./record-ocr-dynamic-v21.css?v=22-office-destination">
 <link rel="stylesheet" href="./atlas-application-v1.css?v=dynamic-access-roles-v1">
 <link rel="stylesheet" href="./atlas-zip-shell-v2.css?v=atlas-zip-front-structure-v5">
 <link rel="stylesheet" href="./worker-context-chat.css?v=atlas-chat-v1">
@@ -147,36 +68,7 @@ globalThis.BELAVISTA_DISABLE_SERVICE_WORKER=true;
   </div>
   <cloudflare-bootstrap hidden></cloudflare-bootstrap>
   <belavista-app hidden></belavista-app>
-  <script type="module" src="./admin-auth.mjs?v=github-pat-key-only-v2"></script>
-  <script type="module" src="./admin-twa-runtime.mjs?v=admin-twa-runtime-v1"></script>
-<script type="module" src="./bootstrap/admin-application-entry.mjs?v=dynamic-access-roles-v1"></script>
-<script>
-/* BELAVISTA_STAGE_RECORD_CENTER_CACHE_RESET_V1 */
-(() => {
-  if (!/^(?:localhost|127\.0\.0\.1)$/i.test(location.hostname)) return;
-  const key = "belavista.map-original-pdf-perimeter.cache-reset.v3";
-  if (sessionStorage.getItem(key) === "1") return;
-  sessionStorage.setItem(key, "1");
-  const clear = async () => {
-    try {
-      const registrations = await navigator.serviceWorker?.getRegistrations?.();
-      await Promise.all((registrations || []).map((registration) => registration.unregister()));
-      if (globalThis.caches) {
-        await Promise.all((await caches.keys()).map((cacheKey) => caches.delete(cacheKey)));
-      }
-    } catch {}
-    location.reload();
-  };
-  void clear();
-})();
-</script>
-<script type="module" src="./records-activity-drill-in-v5377.mjs?v=lot-development-v1"></script>
-<script type="module" src="./map-drag-calibration-v1.mjs?v=13"></script>
-  <script type="module" src="./admin-test-controls.mjs?v=1"></script>
-  <script type="module" src="./activity-map-layer.mjs?v=lead-number-markers-v3"></script>
-  <script type="module" src="./worker-context-chat.mjs?v=worker-chat-auth-api-v4-mobile-tab"></script>
-  <script type="module" src="./admin-communications.mjs?v=admin-messages-v2"></script>
-<script type="module" src="./record-ocr-dynamic-v21.mjs?v=21"></script>
-<script type="module" src="./glauco-shell-bridge-v58.mjs"></script>
+  <script type="module" src="./admin-auth.mjs?v=github-pat-session-timeout-v18-leads-route-owner&ts-admin-auth-gate-projection-v1&ts-admin-auth-session-flow-v1&ts-admin-auth-runtime-owner-v1&ts-admin-auth-application-owner-v1&desktop-local-demo-v1&ts-dashboard-organic-layout-v1&ts-dashboard-crm-summary-v1&ts-progress-diary-form-v1"></script>
+<script type="module" src="./dist/frontend/main.js?v=ts-admin-document-bootstrap-ts-root-v2&ts-admin-composition-inline-root-v1&ts-retired-map-widget-noop-removed-v1&ts-worker-chat-root-owner-v1&ts-admin-preflight-runtime-v1&ts-public-lead-upload-direct-v1&ts-map-geometry-loader-program-owner-v1&ts-map-overlay-direct-program-projections-v3&ts-record-ocr-form-component-owner-v1&ts-record-ocr-review-dto-program-v1&ts-chat-submission-program-owner-v1&ts-chat-attachment-action-program-owner-v1&ts-ai-chat-contextual-suggestions-program-v1&ts-dashboard-lot-analysis-chart-program-v1&ts-dashboard-agenda-material-join-v1&ts-dashboard-operational-overview-program-v1&ts-dashboard-control-table-projection-v1&ts-dashboard-record-submission-program-v1&ts-dashboard-cash-chart-scaling-program-v1&ts-dashboard-agenda-navigation-program-v1&ts-activity-form-projections-program-v1&ts-progress-page-projection-program-v1&ts-activities-page-projection-program-v1&ts-materials-page-projection-program-v1&ts-agenda-page-projections-program-v1&ts-repasses-page-projection-program-v1&ts-sales-history-page-projection-program-v1&ts-broker-directory-page-projection-program-v1&ts-lot-board-page-projection-program-v1&ts-dashboard-page-projection-program-v1&ts-leads-page-projection-program-v1&ts-project-documents-page-projection-program-v1&ts-settings-page-projection-program-v1&ts-lot-development-page-projection-program-v1&ts-records-page-projection-program-v1&ts-communications-page-projection-program-v1&ts-operational-map-page-projection-program-v1&ts-agenda-calendar-display-program-v1&ts-materials-page-display-program-v1&ts-cash-record-command-program-v1&ts-public-field-record-draft-context-program-v1&ts-cash-record-page-projection-v1&ts-instagram-reply-draft-program-v1&ts-lot-development-save-draft-program-v1&ts-material-save-draft-program-v1&ts-material-transition-inline-edit-program-v1&ts-agenda-status-transition-program-v1&ts-project-document-save-draft-program-v1&ts-project-document-cell-mutation-program-v1&ts-repasse-form-command-program-v1&ts-settings-form-drafts-program-v1&ts-progress-activity-record-form-program-v1&ts-report-builder-model-program-v1&ts-report-cash-upload-program-v1&ts-public-lead-reservation-drafts-program-v1&ts-public-lead-chat-events-program-v1&ts-activity-installation-command-owners-v1&ts-activity-admin-crud-program-owner-v1&ts-desktop-setup-form-program-owner-v1&ts-dashboard-quick-record-program-owner-v1&ts-progress-record-command-program-owner-v1&ts-control-stage-context-save-program-owner-v1&ts-control-inline-record-program-owner-v1&ts-control-center-edit-commands-program-owner-v1&ts-control-center-realtime-lifecycle-program-owner-v1&ts-control-stage-context-save-duplicate-binding-owner-v1&ts-control-stage-context-single-form-binding-v1&ts-control-center-component-no-api-port-v1&ts-stage-activity-loader-program-owner-v1&ts-stage-activity-navigation-program-owner-v1&ts-operational-loop-program-owner-v1&ts-operational-notifications-lifecycle-program-owner-v1&ts-report-cash-evidence-program-ports-v1&ts-agenda-event-loader-program-owner-v1&ts-agenda-navigation-state-commands-v1&ts-report-workspace-commands-program-owner-v1&ts-map-filter-rail-commands-program-owner-v1&ts-map-spatial-selection-state-commands-v1&ts-map-lot-selection-state-commands-v1&ts-map-ts-only-composition-v1&ts-map-scene-state-command-owners-v1"></script>
 </body>
 </html>

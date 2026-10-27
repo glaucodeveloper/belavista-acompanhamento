@@ -2,9 +2,10 @@ import {
   SIDEBAR_REPORT_ICONS_V1,
   SIDEBAR_STAGE_EXTENSION_ITEMS_V1,
 } from "./sidebar-navigation-catalog-v1.mjs?v=sidebar-navigation-catalog-v1";
+import { renderSidebarNavigation as renderSidebarNavigationTsV1 } from "../../dist/frontend/components.js";
 
 /** Renders role-aware primary, stage-extension, report, and mobile navigation items. */
-export const renderSidebarNavigationV1 = ({
+const renderSidebarNavigationLegacyV1 = ({
   items = [],
   state = {},
   view = state.view,
@@ -55,3 +56,7 @@ export const renderSidebarNavigationV1 = ({
 
   return Object.freeze({ markup, mobileAgendaItem });
 };
+
+export const renderSidebarNavigationV1 = (input = {}) => renderSidebarNavigationTsV1
+  ? renderSidebarNavigationTsV1({ ...input, foremanExtensionViews: input.FOREMAN_EXTENSION_VIEWS })
+  : renderSidebarNavigationLegacyV1(input);

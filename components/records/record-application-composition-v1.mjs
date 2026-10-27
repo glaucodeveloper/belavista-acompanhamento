@@ -1,91 +1,29 @@
 import {
+  createAtlasStageRecordServicesV1,
+  installAtlasRecordApplicationCompositionV1,
+} from "../../dist/frontend/program.js";
+import * as atlasRecordComponentsV1 from "../../dist/frontend/components.js";
+import { createAtlasStageMaterialReportViewV1 } from "../../dist/frontend/components.js";
+import {
   createStageRecordServicesV1,
   installStageRecordCenterV1,
-} from "./stage-record-center-v1.mjs?v=stage-record-center-v4";
+} from "./stage-record-center-v1.mjs?v=stage-record-center-v6-ts-service-projection-adapter";
 import { installLotDetailEventsV1 } from "../lots/lot-detail-events-v1.mjs?v=lot-detail-events-v1";
 import { installRecordOcrDynamicBridgeV21 } from "./record-ocr-dynamic-bridge-v21.mjs?v=stage-comprehension-settings-v1";
 
-/** Compose stage records, lot detail interactions, and the OCR bridge in bootstrap order. */
-export const installRecordApplicationCompositionV1 = ({
-  ViewLayer,
-  REPASSE_PRICE_CATALOG,
-  apiFetch,
-  appStore,
-  commissionProfiles,
-  controlCenterMaterialRowsV1,
-  defaultStageMaterialRows,
-  demoData,
-  downloadBrandedLotExcelV1,
-  esc,
-  executionModel,
-  formatBRL,
-  ico,
-  isAssistantVisualAdditionV1,
-  lotExportRowV1,
-  notify,
-  operationalHeaders,
-  prepareAssistantLotStatusPromptV1,
-  renderStageHomePageV1,
-  stageContextV1,
-  stageHomeSnapshotV1,
-  stageProfileSettingsFor,
-  stageViewTabs,
-  stageV9LiveFor,
-  host = globalThis,
-  documentRef = globalThis.document,
-} = {}) => {
-  const stageRecordServicesV1 = createStageRecordServicesV1({
-    executionModel,
-    demoData,
-    controlCenterMaterialRowsV1,
-    stageV9LiveFor,
+/** Keep record UI and OCR as leaf ports; TypeScript owns their setup order and typed projections. */
+export const installRecordApplicationCompositionV1 = (input = {}) =>
+  installAtlasRecordApplicationCompositionV1({
+    ...input,
+    installRecordOcrFormsV1: atlasRecordComponentsV1.installAtlasRecordOcrFormsV1,
+    owners: {
+      stageRecordServices: {
+        typed: createAtlasStageRecordServicesV1,
+        legacy: createStageRecordServicesV1,
+      },
+      stageMaterialReportView: createAtlasStageMaterialReportViewV1,
+      stageRecordCenter: atlasRecordComponentsV1.installAtlasStageRecordCenterV1 || installStageRecordCenterV1,
+      lotDetailEventsLegacy: installLotDetailEventsV1,
+      recordOcrBridge: installRecordOcrDynamicBridgeV21,
+    },
   });
-
-  const stageRecordCenterModulesV1 = installStageRecordCenterV1(ViewLayer, {
-    REPASSE_PRICE_CATALOG,
-    apiFetch,
-    appStore,
-    defaultStageMaterialRows,
-    demoData,
-    esc,
-    formatBRL,
-    ico,
-    isAssistantVisualAdditionV1,
-    operationalHeaders,
-    notify,
-    renderStageHomePageV1,
-    stageContextV1,
-    stageHomeSnapshotV1,
-    ...stageRecordServicesV1,
-    stageViewTabs,
-    document: documentRef,
-  });
-
-  installLotDetailEventsV1(ViewLayer, {
-    REPASSE_PRICE_CATALOG,
-    apiFetch,
-    appStore,
-    commissionProfiles,
-    downloadBrandedLotExcelV1,
-    formatBRL,
-    lotExportRowV1,
-    notify,
-    operationalHeaders,
-    prepareAssistantLotStatusPromptV1,
-  });
-
-  const recordOcrBridgeV1 = installRecordOcrDynamicBridgeV21({
-    host,
-    apiFetch,
-    operationalHeaders,
-    appStore,
-    executionModel,
-    stageProfileSettingsFor,
-  });
-
-  return Object.freeze({
-    ...stageRecordServicesV1,
-    ...stageRecordCenterModulesV1,
-    recordOcrBridgeV1,
-  });
-};

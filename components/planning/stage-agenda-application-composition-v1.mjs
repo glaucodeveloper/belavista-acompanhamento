@@ -1,6 +1,6 @@
 import { installActivityInstallationSessionV1 } from "./activity-installation-session-v1.mjs?v=activity-installation-session-v1";
-import { installStageHomeCalendarV1 } from "./stage-home-calendar-v1.mjs?v=stage-home-calendar-v1";
-import { installAgendaCalendarPageV8 } from "./agenda-calendar-v8.mjs?v=agenda-calendar-load-v3";
+import { installStageHomeCalendarV1 } from "./stage-home-calendar-v1.mjs?v=stage-home-calendar-v4-ts-exclusive&ts-stage-record-center-owner-v1";
+import * as agendaCalendarComponentsTsV1 from "../../dist/frontend/components.js";
 
 /** Install the agenda calendar, activity-installation route, and stage-home snapshot in source order. */
 export const installStageAgendaApplicationCompositionV1 = ({
@@ -48,7 +48,11 @@ export const installStageAgendaApplicationCompositionV1 = ({
     return result;
   };
 
-  const agendaCalendarV1 = installAgendaCalendarPageV8(ViewLayer, {
+  const installAgendaCalendarPageTsV1 = agendaCalendarComponentsTsV1.installAtlasAgendaCalendarPageV8;
+  if (typeof installAgendaCalendarPageTsV1 !== "function") {
+    throw new TypeError("A rota Agenda requer o instalador TypeScript installAtlasAgendaCalendarPageV8().");
+  }
+  const agendaCalendarV1 = installAgendaCalendarPageTsV1(ViewLayer, {
     STAGE_WORKBENCH,
     appStore,
     apiFetch,
@@ -67,7 +71,7 @@ export const installStageAgendaApplicationCompositionV1 = ({
     workbenchStageFromValueV1,
   });
 
-  installActivityInstallationSessionV1(ViewLayer, {
+  const activityInstallationDependenciesV1 = {
     activityCatalog,
     activityInstallationDefaults,
     appStore,
@@ -82,7 +86,21 @@ export const installStageAgendaApplicationCompositionV1 = ({
     stageV9MaterialsFor,
     stageV9ProductionFor,
     stageV9StatusFor,
-  });
+  };
+  let typedActivityInstallationInstalledV1 = false;
+  try {
+    typedActivityInstallationInstalledV1 =
+      typeof agendaCalendarComponentsTsV1.installAtlasActivityInstallationSessionV1 === "function"
+        && agendaCalendarComponentsTsV1.installAtlasActivityInstallationSessionV1(ViewLayer, {
+          ...activityInstallationDependenciesV1,
+          globalRef,
+        });
+  } catch (error) {
+    globalRef.console?.warn?.("[Aliança Park] TypeScript activity-installation owner unavailable; keeping MJS fallback.", error);
+  }
+  if (!typedActivityInstallationInstalledV1) {
+    installActivityInstallationSessionV1(ViewLayer, activityInstallationDependenciesV1);
+  }
 
   const { stageHomeSnapshotV1 } = installStageHomeCalendarV1(ViewLayer, {
     appStore,
@@ -100,7 +118,7 @@ export const installStageAgendaApplicationCompositionV1 = ({
     ico,
     operationalRaid,
     stageV9LiveFor,
-    getStageHomePageMarkupV1: () => dashboardPageMarkup(),
+    getStageHomePageMarkupV1: (calendarWeek = "") => dashboardPageMarkup(calendarWeek),
   });
 
   return Object.freeze({ ...agendaCalendarV1, stageHomeSnapshotV1 });

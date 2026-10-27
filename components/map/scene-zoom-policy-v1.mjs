@@ -1,4 +1,9 @@
+import * as atlasComponents from "../../dist/frontend/components.js";
+
 export const installSceneZoomPolicyV1 = (MapScene, { appStore, minSceneZoom } = {}) => {
+  if (typeof atlasComponents.installAtlasMapSceneZoomPolicy === "function")
+    return atlasComponents.installAtlasMapSceneZoomPolicy(MapScene, { appStore, minSceneZoom });
+
   if (typeof MapScene !== "function" || !MapScene.prototype)
     throw new TypeError("Scene zoom policy requires the existing MapScene constructor.");
   if (typeof appStore?.get !== "function")

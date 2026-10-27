@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "commercialStatuses": [
+    "Disponível",
+    "Reservado",
+    "Em negociação",
+    "Vendido",
+    "Repasse programado",
+    "Quitado",
+    "Bloqueado"
+  ],
+  "paymentStatuses": [
+    "Pendente",
+    "Parcial",
+    "Pago",
+    "Cancelado"
+  ]
+}

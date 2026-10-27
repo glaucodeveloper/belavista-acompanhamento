@@ -1,29 +1,10 @@
-import { esc, ico } from "./dom.mjs";
+import * as atlasPrimitiveComponentsV1 from "../../dist/frontend/components.js";
+import * as legacyPrimitiveElementsV1 from "./primitive-elements-legacy-v1.mjs?v=primitive-elements-recovery-v1";
 
-export class GlassCard extends HTMLElement {
-  connectedCallback() {
-    if (!this.classList.contains("glass-card"))
-      this.classList.add("glass-card");
-  }
-}
-
-export class StatPill extends HTMLElement {
-  connectedCallback() {
-    this.render();
-  }
-  static get observedAttributes() {
-    return ["label", "value", "tone", "icon", "sub"];
-  }
-  attributeChangedCallback() {
-    this.render();
-  }
-  render() {
-    const label = this.getAttribute("label") || "";
-    const value = this.getAttribute("value") || "";
-    const tone = this.getAttribute("tone") || "teal";
-    const icon = this.getAttribute("icon") || "activity";
-    const sub = this.getAttribute("sub") || "";
-    this.innerHTML = `<div class="stat-pill tone-${tone}"><span class="stat-icon">${ico(icon)}</span><span><small>${esc(label)}</small><strong>${esc(value)}</strong>${sub ? `<em>${esc(sub)}</em>` : ""}</span></div>`;
-    window.lucide?.createIcons();
-  }
-}
+const useLegacy = globalThis.BELAVISTA_USE_LEGACY_PRIMITIVE_ELEMENTS_V1 === true;
+export const GlassCard = !useLegacy && typeof atlasPrimitiveComponentsV1.AtlasGlassCardElementV1 === "function"
+  ? atlasPrimitiveComponentsV1.AtlasGlassCardElementV1
+  : legacyPrimitiveElementsV1.GlassCard;
+export const StatPill = !useLegacy && typeof atlasPrimitiveComponentsV1.AtlasStatPillElementV1 === "function"
+  ? atlasPrimitiveComponentsV1.AtlasStatPillElementV1
+  : legacyPrimitiveElementsV1.StatPill;

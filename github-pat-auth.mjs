@@ -16,8 +16,15 @@ async function githubGet(path,token){
   }catch{
     throw authError('Não foi possível consultar o GitHub. Tente novamente.',503);
   }
-  if(response.status===401||response.status===403||response.status===404){
-    throw authError('PAT inválido ou sem acesso ao repositório privado.',401);
+  if(response.status===401){
+    throw authError('O GitHub recusou o PAT. Confira se ele está ativo.',401);
+  }
+  if(response.status===403){
+    const message=String((await response.clone().json().catch(()=>({}))).message||'').toLowerCase();
+    if(response.headers.get('x-ratelimit-remaining')==='0'||/rate limit/.test(message)){
+      throw authError('O GitHub limitou temporariamente as tentativas. Aguarde e tente novamente.',503);
+    }
+    throw authError('O GitHub reconheceu o PAT, mas recusou esta operação por falta de permissão.',403);
   }
   if(!response.ok)throw authError(`GitHub indisponível (HTTP ${response.status}).`,503);
   return response.json();
@@ -34,9 +41,17 @@ export async function verifyRepositoryPat(value,repository){
   }
   const user=await githubGet('/user',token);
   if(!Number.isSafeInteger(user.id)||!user.login)throw authError('Identidade GitHub inválida.',401);
-  const repositoryInfo=await githubGet(`/repos/${repo}`,token);
+  let repositoryInfo;
+  try{
+    repositoryInfo=await githubGet(`/repos/${repo}`,token);
+  }catch(error){
+    if(error?.statusCode===403||error?.statusCode===404){
+      throw authError(`PAT reconhecido para ${String(user.login)}, mas esta conta não tem acesso ao repositório privado ${repo}.`,403);
+    }
+    throw error;
+  }
   if(repositoryInfo.full_name?.toLowerCase()!==repo.toLowerCase()||repositoryInfo.private!==true){
-    throw authError('O repositório privado de autenticação não está acessível.',403);
+    throw authError(`O repositório ${repo} não corresponde ao repositório privado configurado para autenticação.`,403);
   }
   return {githubId:user.id,githubLogin:String(user.login),name:String(user.name||user.login),
     avatarUrl:String(user.avatar_url||'')};

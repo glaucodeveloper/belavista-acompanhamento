@@ -25,8 +25,9 @@ export default {
       if(pathname.startsWith('/api/')&&!publicApi){
         const actor=await requireAdminRequest(request,env);
         if(!limitedActorCanAccessApi(actor,pathname,request.method,new URL(request.url).search)){
+          const privateLeadPath=pathname==='/api/admin/public-leads'||pathname==='/api/admin/public-lead-summary';
           return new Response(JSON.stringify({error:'Este perfil só pode acessar registros e a linha do tempo do cronograma.'}),
-            {status:403,headers:{'content-type':'application/json; charset=utf-8',...(pathname==='/api/admin/public-leads'?{'cache-control':'no-store'}:{}),...cors}});
+            {status:403,headers:{'content-type':'application/json; charset=utf-8',...(privateLeadPath?{'cache-control':'no-store'}:{}),...cors}});
         }
       }
       const response=await routeRequest(request,env,ctx);
@@ -35,7 +36,8 @@ export default {
       return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
     }catch(error){
       console.error('worker request failed',error);
-      return new Response(JSON.stringify({error:error?.message||'Erro interno do Worker.'}),{status:Number(error?.statusCode)||500,headers:{'content-type':'application/json; charset=utf-8',...(pathname==='/api/admin/public-leads'?{'cache-control':'no-store'}:{}),...cors}});
+      const privateLeadPath=pathname==='/api/admin/public-leads'||pathname==='/api/admin/public-lead-summary';
+      return new Response(JSON.stringify({error:error?.message||'Erro interno do Worker.'}),{status:Number(error?.statusCode)||500,headers:{'content-type':'application/json; charset=utf-8',...(privateLeadPath?{'cache-control':'no-store'}:{}),...cors}});
     }
   },
   async queue(batch,env,ctx){

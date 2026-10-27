@@ -1,3 +1,5 @@
+import * as atlasComponents from "../../dist/frontend/components.js";
+
 export const installMapSolarLightingControllerV1 = (
   MapScene,
   {
@@ -11,6 +13,18 @@ export const installMapSolarLightingControllerV1 = (
     windowRef,
   },
 ) => {
+  if (typeof atlasComponents.installAtlasMapSolarLighting === "function")
+    return atlasComponents.installAtlasMapSolarLighting(MapScene, {
+      appStore,
+      MAP_GEOREFERENCE_FALLBACK,
+      localClockHourForGeo,
+      notify,
+      solarHourLabel,
+      solarStateForHour,
+      solarWindowForGeo,
+      windowRef,
+    });
+
   Object.assign(MapScene.prototype, {
     bindSolarControl() {
       if (this._solarControlBound) return;

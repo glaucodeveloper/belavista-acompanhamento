@@ -1,0 +1,38 @@
+[
+  {
+    "id": "CX-001",
+    "date": "2026-08-01",
+    "kind": "entrada",
+    "category": "Vendas",
+    "stage": "Geral",
+    "description": "Recebimentos comerciais",
+    "amountCents": 31200000
+  },
+  {
+    "id": "CX-002",
+    "date": "2026-08-05",
+    "kind": "saida",
+    "category": "Obra",
+    "stage": "Drenagem Pluvial",
+    "description": "Medição e materiais de drenagem",
+    "amountCents": 11800000
+  },
+  {
+    "id": "CX-003",
+    "date": "2026-08-10",
+    "kind": "saida",
+    "category": "Obra",
+    "stage": "Rede de Água",
+    "description": "Reserva de materiais hidráulicos",
+    "amountCents": 8200000
+  },
+  {
+    "id": "CX-004",
+    "date": "2026-08-18",
+    "kind": "saida",
+    "category": "Obra",
+    "stage": "Rede Elétrica",
+    "description": "Sinal de postes e cabos",
+    "amountCents": 6400000
+  }
+]

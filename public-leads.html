@@ -10,31 +10,21 @@
   <meta name="belavista-fcm-vapid-key" content="">
   <title>Aliança Park · Lotes em Amargosa, Bahia</title>
   <link rel="manifest" href="./lead-manifest.webmanifest">
-  <link rel="preload" as="image" href="./assets/public/dwg-satellite-public-v1.webp">
-  <link rel="preload" as="image" href="./assets/public/alianca-park-masterplan-lot-overlay-public-v1.webp">
+  <link rel="preload" as="image" href="./assets/public/dwg-satellite-public-v1.webp" media="(max-width: 700px)">
+  <link rel="preload" as="image" href="./assets/public/dwg-satellite-detail-v2.webp" media="(min-width: 701px)">
+  <link rel="preload" as="image" href="./assets/public/alianca-park-masterplan-lot-overlay-mobile-v1.webp" media="(max-width: 900px)">
+  <link rel="preload" as="image" href="./assets/public/alianca-park-masterplan-lot-overlay-detail-v2.webp" media="(min-width: 901px)">
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="stylesheet" href="./styles.css?v=ctrl-wheel-zoom-v5386">
-  <link rel="stylesheet" href="./public-leads.css?v=brand-south-v8">
+  <link rel="stylesheet" href="./styles.css?v=pdf-detail-zoom-v3-vector-map-labels">
+  <link rel="stylesheet" href="./public-leads.css?v=ts-public-runtime-polish-owner-v1">
   <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
   <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
   <link rel="stylesheet" href="./public-model-loading-v531.css?v=logo-letter-counters-v555&motion-v5552">
 <link rel="stylesheet" href="./belavista-final-ui-v5362.css?v=5.3.62">
-  <link rel="stylesheet" href="./activity-map-layer.css?v=lead-number-markers-v3">
   <link rel="stylesheet" href="./public-usability-v1.css?v=20261015a">
 </head>
 <body class="public-leads-page">
-  <public-leads-surface></public-leads-surface>
-  <script type="module" src="./public-leads.js?v=brand-south-v8"></script>
-  <script type="module" src="./public-leads-map-v50.mjs?v=public-satellite-only-v5409&route=ngrok-route-v1"></script>
-  <script type="module" src="./public-leads-context-v521.mjs?v=public-usability-v1"></script>
-  <script type="module" src="./public-model-loading-v531.mjs?v=logo-letter-counters-v555&motion-v5552&model-area-complete-v5556&route=ngrok-route-v1"></script>
-  <script type="module" src="./public-runtime-polish-v5332.mjs?v=5.3.32"></script>
-<script type="module" src="./public-model-quality-v5337.mjs?v=5.3.37"></script>
-<script type="module" src="./public-lead-intent-v5342.mjs?v=5.3.43"></script>
-  <script type="module" src="./public-pan-zoom-runtime-v5344.mjs?v=5.3.45-world-pan"></script>
-  <script type="module" src="./public-brand-return-reset-v5346.mjs?v=5.3.47-logo-letter-counters-v555"></script>
-<script type="module" src="./belavista-final-ui-v5362.mjs?v=5.3.62"></script>
-  <script type="module" src="./activity-map-layer.mjs?v=lead-number-markers-v3&route=ngrok-route-v1"></script>
-  <script type="module" src="./public-pdf-brand-v1.mjs?v=brand-south-v8"></script>
+  <public-leads-surface data-app-entry="public-leads"></public-leads-surface>
+  <script type="module" src="./dist/frontend/main.js?v=atlas-public-entry-main-ts-v1&ts-public-program-entry-owner-v2&ts-public-map-registration-program-owner-v1&ts-ui-memory-lot-board-json-v1&ts-public-lead-upload-direct-v1&ts-map-geometry-loader-program-owner-v1&ts-map-overlay-direct-program-projections-v3"></script>
 </body>
 </html>

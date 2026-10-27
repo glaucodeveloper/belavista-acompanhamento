@@ -207,17 +207,32 @@ const agendaSelect=`SELECT id,source_type AS sourceType,source_id AS sourceId,ti
   activity_name AS activityName,owner,event_date AS date,start_time AS start,
   duration_hours AS durationHours,span_days AS spanDays,status,
   related_from AS relatedFrom,notes,material_ids_json AS materialIdsJson,
-  user_edited AS userEdited,hidden,updated_at AS updatedAt FROM agenda_events`;
+  agenda_metadata_json AS agendaMetadataJson,user_edited AS userEdited,hidden,updated_at AS updatedAt FROM agenda_events`;
 
 function agendaEvent(row){
   let materialIds=[];
+  let metadata={};
   try{materialIds=JSON.parse(row.materialIdsJson||'[]');}catch{}
-  const {materialIdsJson,hidden,userEdited,...rest}=row;
-  return {...rest,materialIds:Array.isArray(materialIds)?materialIds:[],userEdited:Boolean(userEdited)};
+  try{metadata=JSON.parse(row.agendaMetadataJson||'{}');}catch{}
+  const {materialIdsJson,agendaMetadataJson,hidden,userEdited,...rest}=row;
+  return {...rest,...(metadata&&typeof metadata==='object'&&!Array.isArray(metadata)?metadata:{}),materialIds:Array.isArray(materialIds)?materialIds:[],userEdited:Boolean(userEdited)};
 }
 
 export async function listAgendaEvents(env){
   return (await all(env,`${agendaSelect} WHERE hidden=0 ORDER BY event_date,start_time,id`)).map(agendaEvent);
+}
+
+function normalizeAgendaMetadata(input){
+  const list=value=>Array.isArray(value)?value.map(item=>text(item).trim().slice(0,240)).filter(Boolean).slice(0,100):String(value||'').split(/\r?\n/).map(item=>item.trim().slice(0,240)).filter(Boolean).slice(0,100);
+  const offset=Number(input?.notificationOffsetMinutes??30);
+  return {
+    requirements:list(input?.requirements),materials:list(input?.materials),
+    customStatus:text(input?.customStatus).slice(0,120),
+    cancellationReason:text(input?.cancellationReason).slice(0,1000),
+    cancelledAt:text(input?.cancelledAt).slice(0,40),
+    cancellationConfirmed:input?.cancellationConfirmed===true,
+    notificationOffsetMinutes:Number.isFinite(offset)?Math.max(0,Math.min(1440,Math.round(offset))):30,
+  };
 }
 
 function normalizeAgendaEvent(input){
@@ -243,7 +258,8 @@ function normalizeAgendaEvent(input){
     status:text(input.status,'Planejado').slice(0,80),relatedFrom:text(input.relatedFrom).slice(0,160),
     notes:text(input.notes).slice(0,2000),
     materialIdsJson:JSON.stringify(Array.isArray(input.materialIds)
-      ?input.materialIds.map(value=>text(value).slice(0,160)).slice(0,100):[])
+      ?input.materialIds.map(value=>text(value).slice(0,160)).slice(0,100):[]),
+    agendaMetadataJson:JSON.stringify(normalizeAgendaMetadata(input))
   };
 }
 
@@ -258,27 +274,35 @@ export async function saveAgendaSnapshot(env,events){
   const db=required(env.BELAVISTA_DB,'BELAVISTA_DB');
   const current=await all(env,agendaSelect);
   const byId=new Map(current.map(row=>[row.id,row]));
+  const inputById=new Map(events.map(input=>[text(input?.id).slice(0,160),input]));
   const selected=new Set(normalized.map(item=>item.id));
   const statements=[];
   for(const item of normalized){
     const previous=byId.get(item.id);
     if(previous){
+      let previousMetadata={},nextMetadata=JSON.parse(item.agendaMetadataJson||'{}');
+      try{previousMetadata=JSON.parse(previous.agendaMetadataJson||'{}');}catch{}
+      const raw=inputById.get(item.id)||{};
+      for(const key of ['requirements','materials','customStatus','cancellationReason','cancelledAt','cancellationConfirmed','notificationOffsetMinutes']){
+        if(!Object.prototype.hasOwnProperty.call(raw,key)&&Object.prototype.hasOwnProperty.call(previousMetadata,key))nextMetadata[key]=previousMetadata[key];
+      }
+      item.agendaMetadataJson=JSON.stringify(nextMetadata);
       if(!previous.hidden&&Object.entries(item).every(([key,value])=>previous[key]===value))continue;
       statements.push(db.prepare(`UPDATE agenda_events SET title=?,stage_key=?,stage_name=?,
         activity_id=?,activity_name=?,owner=?,event_date=?,start_time=?,duration_hours=?,
-        span_days=?,status=?,related_from=?,notes=?,material_ids_json=?,user_edited=1,
+        span_days=?,status=?,related_from=?,notes=?,material_ids_json=?,agenda_metadata_json=?,user_edited=1,
         hidden=0,updated_at=? WHERE id=?`).bind(
         item.title,item.stageKey,item.stageName,item.activityId,item.activityName,item.owner,
         item.date,item.start,item.durationHours,item.spanDays,item.status,item.relatedFrom,
-        item.notes,item.materialIdsJson,now(),item.id));
+        item.notes,item.materialIdsJson,item.agendaMetadataJson,now(),item.id));
     }else{
       statements.push(db.prepare(`INSERT INTO agenda_events(id,source_type,title,stage_key,stage_name,
         activity_id,activity_name,owner,event_date,start_time,duration_hours,span_days,status,
-        related_from,notes,material_ids_json,user_edited,updated_at)
-        VALUES(?,'manual',?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?)`).bind(
+        related_from,notes,material_ids_json,agenda_metadata_json,user_edited,updated_at)
+        VALUES(?,'manual',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?)`).bind(
         item.id,item.title,item.stageKey,item.stageName,item.activityId,item.activityName,
         item.owner,item.date,item.start,item.durationHours,item.spanDays,item.status,
-        item.relatedFrom,item.notes,item.materialIdsJson,now()));
+        item.relatedFrom,item.notes,item.materialIdsJson,item.agendaMetadataJson,now()));
     }
   }
   for(const previous of current){

@@ -39,7 +39,9 @@ export const installBrokersPageV1 = (
     const result = previousBind?.apply(this, args);
     this._brokersPageEventAdministratorsV1?.dispose();
     this._brokersPageEventAdministratorsV1 = null;
-    if ((this.dataset.view || appStore.get().view) !== "brokers") return result;
+    const typedRouteOwnsBrokers = ViewLayer.prototype.__atlasBrokersRouteTsOwnerV1 === true &&
+      globalThis.BELAVISTA_USE_LEGACY_BROKERS_PAGE_V1 !== true;
+    if ((this.dataset.view || appStore.get().view) !== "brokers" || typedRouteOwnsBrokers) return result;
 
     this._brokersPageEventAdministratorsV1 = createServiceEventAdministrators({
       root: this,

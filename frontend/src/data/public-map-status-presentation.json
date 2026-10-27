@@ -1,0 +1,6 @@
+{
+  "available": { "label": "Disponível", "colorHex": "#42be65" },
+  "reserved": { "label": "Reservado", "colorHex": "#f1c21b" },
+  "sold": { "label": "Vendido", "colorHex": "#fa4d56" },
+  "negotiation": { "label": "Em negociação", "colorHex": "#4589ff" }
+}
