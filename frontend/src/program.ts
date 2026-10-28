@@ -8357,6 +8357,14 @@ export interface AtlasApplicationRuntimeInputV1 {
   sessionStorage?: AtlasApplicationRuntimeStorageV1 | null;
 }
 
+/** Runtime state owned by the program and injected into the map view composer. */
+export interface AtlasMapSceneRuntimeStateV1 {
+  appStore: NonNullable<AtlasApplicationRuntimeGlobalV1['__belavistaAppStore']>;
+  demoData: typeof ATLAS_STATE_CATALOGS_V1.demoData;
+  viewThemes: typeof ATLAS_STATE_CATALOGS_V1.viewThemes;
+  activityCatalog: typeof ATLAS_STATE_CATALOGS_V1.activityCatalog;
+}
+
 /** Assemble the legacy shell bridge once while keeping state creation and catalog ownership in the program. */
 export function initializeAtlasApplicationRuntimeV1(input: AtlasApplicationRuntimeInputV1 = {}): {
   appStore: AtlasApplicationStore<AtlasApplicationInitialState>;
@@ -19754,6 +19762,31 @@ export interface PublicLeadChatMemory {
   turns: PublicLeadChatTurn[];
 }
 
+/** Create the browser-persisted continuity record used by the public lead chat. */
+export function createAtlasPublicLeadChatMemoryV1(now = Date.now()): PublicLeadChatMemory {
+  return {
+    version: 'v5.3.40',
+    id: globalThis.crypto?.randomUUID?.() || `chat-${now}-${Math.random().toString(36).slice(2, 8)}`,
+    createdAt: now,
+    updatedAt: now,
+    turns: [],
+  };
+}
+
+/** Create the persisted commercial session before the first public chat request. */
+export function createAtlasPublicLeadChatSessionV1(now = new Date()): PublicLeadChatSession {
+  return {
+    id: `PLS-${now.getTime().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
+    phase: 'exploration',
+    selectedLot: null,
+    lead: {},
+    reservation: {},
+    contactConfirmed: false,
+    conversationSummary: '',
+    updatedAt: now.toISOString(),
+  };
+}
+
 export type PublicLeadChatRequestKind = 'availability' | 'characteristics' | 'conditions';
 
 /** Structured metadata emitted when a buyer selects a canonical lot on the public map. */
@@ -22545,12 +22578,27 @@ export function createAtlasMapSceneGeoreferenceBindingsV1(): ReturnType<typeof c
   });
 }
 
+/** Build the map scene's typed snapshot from the store owned by the active program entry. */
+function createAtlasMapSceneRuntimeStateV1(
+  appStore: AtlasMapSceneRuntimeStateV1['appStore'],
+): AtlasMapSceneRuntimeStateV1 {
+  return {
+    appStore,
+    demoData: ATLAS_STATE_CATALOGS_V1.demoData,
+    viewThemes: ATLAS_STATE_CATALOGS_V1.viewThemes,
+    activityCatalog: ATLAS_STATE_CATALOGS_V1.activityCatalog,
+  };
+}
+
 /** Compose the shared map scene through typed component owners for every document entry. */
-function createAtlasMapSceneComposerV1(): Parameters<typeof createAtlasMapSceneElementV1>[0]['composeMapSceneV1'] {
+function createAtlasMapSceneComposerV1(
+  runtimeState: AtlasMapSceneRuntimeStateV1,
+): Parameters<typeof createAtlasMapSceneElementV1>[0]['composeMapSceneV1'] {
   const georeferenceBindingsV1 = createAtlasMapSceneGeoreferenceBindingsV1();
   return (MapScene, dependencies) => installAtlasMapSceneCompositionV1({
     MapScene,
     dependencies,
+    runtimeState,
     georeferenceBindings: georeferenceBindingsV1,
     importThree: () => import('three'),
     importGltfLoader: () => import('three/addons/loaders/GLTFLoader.js'),
@@ -27845,6 +27893,126 @@ export interface PublicLeadChatResult extends Record<string, unknown> {
   effects?: { reservation?: { lot?: { id?: string; code?: string; label?: string } } };
 }
 
+export interface AtlasPublicLeadChatTurnRequestV1 {
+  session: PublicLeadChatSession;
+  requestSelection?: PublicLeadChatSelection | null;
+  extra: Partial<PublicLeadChatPayload>;
+  converse(payload: PublicLeadChatPayload): Promise<PublicLeadChatResult>;
+}
+
+export interface AtlasPublicLeadChatTurnPortsV1 {
+  getSelection(requestSelection?: PublicLeadChatSelection | null): PublicLeadChatSelection;
+  readMemory(): PublicLeadChatMemory;
+  saveMemory(memory: PublicLeadChatMemory): PublicLeadChatMemory;
+  saveSession(session: PublicLeadChatSession): PublicLeadChatSession;
+}
+
+export interface AtlasPublicLeadChatTurnResultV1 {
+  result: PublicLeadChatResult;
+  session: PublicLeadChatSession;
+  selection: PublicLeadChatSelection;
+  selectedLot: PublicLeadSelectedLot | null;
+  memoryId: string;
+  turn: number;
+  conversationTurn: number;
+  storedTurns: number;
+  userMessage: string;
+}
+
+export const publicLeadChatLotFromSelectionV1 = (selection: PublicLeadChatSelection): PublicLeadSelectedLot | null => {
+  const data = selection.selectedLotData || {};
+  const id = String(data.id || selection.selectedLotId || selection.selectedLot || '').trim();
+  if (!id) return null;
+  return { ...data, id, label: String(data.label || selection.selectedLot || id), status: String(data.status || 'unknown') };
+};
+
+export const publicLeadChatAssistantTextV1 = (data?: PublicLeadChatResult | null): string =>
+  String(data?.reply || data?.message || data?.text || 'Conte o que procura e eu organizo os próximos passos.').trim();
+
+/** Resolve one public chat turn, persist successful session/memory state, and return UI metadata. */
+export async function executeAtlasPublicLeadChatTurnV1(
+  input: AtlasPublicLeadChatTurnRequestV1,
+  ports: AtlasPublicLeadChatTurnPortsV1,
+): Promise<AtlasPublicLeadChatTurnResultV1> {
+  const selection = ports.getSelection(input.requestSelection) || {};
+  const selectedLot = publicLeadChatLotFromSelectionV1(selection) || input.session.selectedLot || null;
+  const memory = ports.readMemory();
+  const userMessage = String(input.extra.message || '').trim();
+  const prepared = userMessage
+    ? preparePublicLeadChatContext(userMessage, memory.turns, selection)
+    : { message: userMessage, history: [] as PublicLeadChatTurn[] };
+  const turn = memory.turns.length + 1;
+  const context: PublicLeadChatContext | undefined = userMessage ? {
+    source: 'public-map',
+    scenario: 'real-estate-brokerage-sale',
+    perspective: 'seller-broker',
+    project: 'Aliança Park',
+    conversationId: memory.id,
+    conversationTurn: turn,
+    conversationHistory: prepared.history,
+    currentSelection: selection,
+    rawUserMessage: userMessage,
+    continuityPolicy: [
+      'Preserve semantic continuity across turns.',
+      'Resolve pronouns and short follow-ups from recent conversation.',
+      'Current structured lot selection overrides stale lot references from earlier assistant turns.',
+      'Do not invent property facts from prior assistant prose when structured lot data differs.',
+    ],
+    responsePolicy: 'Responda como corretor vendedor do loteamento. Continue naturalmente a conversa anterior. Para perguntas curtas, use o histórico recente. A seleção estruturada atual do mapa é a referência principal para o lote; se houve mudança de seleção, não continue falando do lote anterior salvo menção explícita do cliente.',
+    selectedLot: selection.selectedLot,
+    selectedLotId: selection.selectedLotId,
+    selectedLotData: selection.selectedLotData,
+    requestKind: selection.requestKind,
+  } : input.extra.context;
+  const payload: PublicLeadChatPayload = {
+    session: input.session,
+    selectedLot,
+    ...input.extra,
+    message: prepared.message || input.extra.message,
+    context,
+    requireNvidia: true,
+  };
+  const result = await input.converse(payload);
+  const reply = publicLeadChatAssistantTextV1(result);
+  if (userMessage && !String(result.reply || result.message || result.text || '').trim()) {
+    throw new Error('Worker respondeu sem conteúdo de orientação.');
+  }
+
+  const confirmedByEvent = input.extra.event?.type === 'lead.contact.confirmed';
+  const session = ports.saveSession({
+    ...input.session,
+    ...(result.session || {}),
+    contactConfirmed: Boolean(input.session.contactConfirmed || result.session?.contactConfirmed || confirmedByEvent),
+  });
+  let savedMemory = memory;
+  let conversationTurn = turn;
+  if (userMessage) {
+    const selected = String(selection.selectedLot || selectedLot?.label || selectedLot?.id || '');
+    const selectedId = String(selection.selectedLotId || selectedLot?.id || '');
+    savedMemory = ports.saveMemory({
+      ...memory,
+      turns: [
+        ...memory.turns,
+        { role: 'user', content: userMessage, selectedLot: selected, selectedLotId: selectedId },
+        { role: 'assistant', content: reply, selectedLot: selected, selectedLotId: selectedId },
+      ],
+    });
+    conversationTurn = memory.turns.length + 2;
+  }
+
+  return {
+    result,
+    session,
+    selection,
+    selectedLot,
+    memoryId: memory.id,
+    turn,
+    conversationTurn,
+    storedTurns: savedMemory.turns.length,
+    userMessage,
+  };
+}
+
 export type PublicLeadFileUploader = (
   sessionId: string,
   files: Record<string, File | undefined>,
@@ -27859,6 +28027,7 @@ type Runtime = typeof globalThis & {
     goAdmin?: () => Promise<unknown>;
   };
   BELAVISTA_API_BASE?: string;
+  BELAVISTA_AI_BASE?: string;
   BELAVISTA_CAPACITOR_NATIVE?: boolean;
   BELAVISTA_ADMIN_AUTH_READY?: Promise<unknown>;
   BELAVISTA_GET_ID_TOKEN?: () => Promise<string | null>;
@@ -27866,6 +28035,7 @@ type Runtime = typeof globalThis & {
   BELAVISTA_RESET_WORKER_SESSION?: () => void;
   BELAVISTA_ADMIN_AUTH_INVALIDATE?: () => void | Promise<boolean>;
   belavistaPublicLeadConversation?: (payload: PublicLeadChatPayload) => Promise<PublicLeadChatResult>;
+  belavistaExecutePublicLeadChatTurnV1?: (input: AtlasPublicLeadChatTurnRequestV1) => Promise<AtlasPublicLeadChatTurnResultV1>;
   belavistaPreparePublicLeadChatContext?: (userMessage: string, turns: PublicLeadChatTurn[], selection: PublicLeadChatSelection) => { message: string; history: PublicLeadChatTurn[] };
   belavistaPublicChatSelection?: { get(requestSelection?: PublicLeadChatSelection | null): PublicLeadChatSelection };
   belavistaPublicMapLotFacts?: (input: PublicMapLotFactsInput) => PublicMapLotFacts;
@@ -28896,10 +29066,7 @@ export function* program(): Generator<SystemAPI, never, void> {
   const publicChatMemoryTtl = 12 * 60 * 60 * 1000;
   const publicChatMemoryTurnLimit = 16;
   let activePublicMapSelection: PublicLeadChatSelection = {};
-  const newPublicLeadChatSession = (): PublicLeadChatSession => ({
-    id: `PLS-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
-    phase: 'exploration', selectedLot: null, lead: {}, reservation: {}, contactConfirmed: false, conversationSummary: '', updatedAt: new Date().toISOString(),
-  });
+  const newPublicLeadChatSession = (): PublicLeadChatSession => createAtlasPublicLeadChatSessionV1();
   const readPublicLeadChatSession = (): PublicLeadChatSession => {
     try {
       const stored = JSON.parse(sessionStorage.getItem(publicChatSessionKey) || 'null');
@@ -28913,10 +29080,7 @@ export function* program(): Generator<SystemAPI, never, void> {
     try { sessionStorage.setItem(publicChatSessionKey, JSON.stringify(next)); } catch {}
     return next;
   };
-  const newPublicLeadChatMemory = (): PublicLeadChatMemory => {
-    const now = Date.now();
-    return { version: 'v5.3.40', id: runtime.crypto?.randomUUID?.() || `chat-${now}-${Math.random().toString(36).slice(2, 8)}`, createdAt: now, updatedAt: now, turns: [] };
-  };
+  const newPublicLeadChatMemory = (): PublicLeadChatMemory => createAtlasPublicLeadChatMemoryV1();
   const readPublicLeadChatMemory = (): PublicLeadChatMemory => {
     try {
       const parsed = JSON.parse(localStorage.getItem(publicChatMemoryKey) || 'null') as Partial<PublicLeadChatMemory> | null;
@@ -29117,6 +29281,14 @@ export function* program(): Generator<SystemAPI, never, void> {
 
   /** Join a service path to the configured API origin. */
   function apiUrl(path: string): string {
+    if (path === '/api/public/lead-chat') {
+      const workerBase = String(runtime.BELAVISTA_AI_BASE ||
+        document.querySelector<HTMLMetaElement>('meta[name="belavista-ai-base"]')?.content ||
+        document.querySelector<HTMLMetaElement>('meta[name="belavista-api-base"]')?.content ||
+        runtime.BELAVISTA_API_BASE || '').replace(/\/$/, '');
+      if (!workerBase) throw new Error('Worker Cloudflare não configurado para o atendimento público.');
+      return workerBase + path;
+    }
     // The local server owns the operational SQLite API, but administrative CRM
     // data is stored in the GitHub-backed Worker. Route these reads directly
     // to the already configured Worker origin (the same origin used for AI),
@@ -29306,6 +29478,12 @@ export function* program(): Generator<SystemAPI, never, void> {
       save: savePublicLeadChatMemory,
       clear: () => savePublicLeadChatMemory(newPublicLeadChatMemory()),
     };
+    runtime.belavistaExecutePublicLeadChatTurnV1 = input => executeAtlasPublicLeadChatTurnV1(input, {
+      getSelection: requestSelection => runtime.belavistaPublicChatSelection?.get(requestSelection) || {},
+      readMemory: readPublicLeadChatMemory,
+      saveMemory: savePublicLeadChatMemory,
+      saveSession: savePublicLeadChatSession,
+    });
     runtime.belavistaPublicLeadConversation = async (payload: PublicLeadChatPayload): Promise<PublicLeadChatResult> => {
       const response = await fetch(apiUrl('/api/public/lead-chat'), {
         method: 'POST',
@@ -32217,10 +32395,19 @@ export function* program(): Generator<SystemAPI, never, void> {
 
   /** Own the document-level entry routing; main.ts only finds the root and starts this program. */
   const registerTypedDocumentMapSceneV1 = async (): Promise<void> => {
+    const readBrowserStorage = (key: 'localStorage' | 'sessionStorage'): Storage | null => {
+      try { return globalThis[key] || null; } catch { return null; }
+    };
+    const { appStore } = initializeAtlasApplicationRuntimeV1({
+      globalRef: globalThis as AtlasApplicationRuntimeGlobalV1,
+      localStorage: readBrowserStorage('localStorage'),
+      sessionStorage: readBrowserStorage('sessionStorage'),
+    });
+    const composeMapSceneV1 = createAtlasMapSceneComposerV1(createAtlasMapSceneRuntimeStateV1(appStore));
     const createTypedMapSceneElementV1: Parameters<typeof registerAtlasStandaloneMapSceneV1>[0]['createMapSceneElement'] =
       options => createAtlasMapSceneElementV1({
         ...options,
-        composeMapSceneV1: createAtlasMapSceneComposerV1(),
+        composeMapSceneV1,
       });
     await registerAtlasStandaloneMapSceneV1({
       customElementsRef: globalThis.customElements,
@@ -40506,7 +40693,9 @@ export async function composeAtlasAdminComponentApplicationV1(): Promise<Readonl
     patch: Partial<RouteState>,
     nonRouteState: Record<string, unknown> = {},
   ): void => store.set({ ...patch, ...nonRouteState } as Partial<AtlasApplicationInitialState>);
-  const installMapSceneCompositionV1 = createAtlasMapSceneComposerV1();
+  const installMapSceneCompositionV1 = createAtlasMapSceneComposerV1(
+    createAtlasMapSceneRuntimeStateV1(appStore),
+  );
   const applicationElementRegistrationInputV1 = {
     customElementsRef: customElements,
     navigationDependencies: {

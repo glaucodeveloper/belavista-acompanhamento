@@ -259,7 +259,8 @@ import publicLeadIntentPresentationData from "./data/public-lead-intent-presenta
 import publicReservationPresentationData from "./data/public-reservation-presentation.json" with { type: "json" };
 import { PUBLIC_LEAD_DOCUMENT_TYPES_V1, PUBLIC_LEAD_DEFAULT_DOCUMENT_TYPE_V1 } from "./program.js";
 import type { PublicLeadRegistrationCommandV1, PublicLeadRegistrationResponse } from "./program.js";
-import { buildAtlasPublicLeadChatEventV1, buildAtlasPublicLeadRegistrationCommandV1, buildAtlasPublicReservationSubmissionDraftV1 } from "./program.js";
+import { buildAtlasPublicLeadChatEventV1, buildAtlasPublicLeadRegistrationCommandV1, buildAtlasPublicReservationSubmissionDraftV1, createAtlasPublicLeadChatMemoryV1, createAtlasPublicLeadChatSessionV1, publicLeadChatAssistantTextV1 } from "./program.js";
+import type { AtlasPublicLeadChatTurnRequestV1, AtlasPublicLeadChatTurnResultV1 } from "./program.js";
 import { isAtlasPublicReservationIdentityReadyV1, PUBLIC_RESERVATION_OCR_POLICY_V1, PUBLIC_RESERVATION_REVIEW_RESULT_CODES_V1, evaluateAtlasPublicReservationReviewV1 } from "./program.js";
 import adminStandaloneCameraDependenciesData from "./data/admin-standalone-camera-dependencies.json" with { type: "json" };
 import mapRuntimeDependenciesData from "./data/map-runtime-dependencies.json" with { type: "json" };
@@ -288,18 +289,17 @@ import { buildAtlasActivityInstallationEntrySubmissionV1, buildAtlasActivityInst
 import { removeAtlasWorkerContextChatAttachmentV1 } from "./program.js";
 import type { AtlasWorkerContextChatAttachmentV1, AtlasWorkerContextChatComposerSubmissionInputV1, AtlasWorkerContextChatComposerSubmissionV1 } from "./program.js";
 import type { AtlasAiChatToolCallV1 } from "./program.js";
+import type { AtlasMapSceneRuntimeStateV1 } from "./program.js";
 import { PROPOSAL_VISION_MAX_BYTES_V1, PROPOSAL_VISION_MIME_TYPES_V1 } from "./program.js";
 import { createPublicMapAssistantContextActions, projectPublicSatelliteLots } from "./program.js";
 import type { PublicMapGeometryAssetBundle } from "./program.js";
 import {
-  ATLAS_STATE_CATALOGS_V1,
   MASTERPLAN_PDF_ARTWORK_V3,
   MASTERPLAN_COMMON_AREA_LABEL_V1,
   MAP_GEOREFERENCE_FALLBACK,
   createAtlasCompactMapCoordinatorV1,
   projectAtlasMapScenePresentationConfig,
   createAtlasMapTileSourceCatalogV1,
-  initializeAtlasApplicationRuntimeV1,
   installAtlasMapSceneRuntimeCompositionV1,
   resolveAtlasDashboardMapHighlightRuleV1,
   projectAtlasDashboardMapLotStatusV1,
@@ -1665,20 +1665,13 @@ export async function installAtlasMapSceneFeatureCompositionV1(input: {
 export async function installAtlasMapSceneCompositionV1(input: {
   MapScene: CustomElementConstructor;
   dependencies: AtlasMapSceneCompositionDependenciesV1;
+  runtimeState: AtlasMapSceneRuntimeStateV1;
   georeferenceBindings: AtlasMapSceneGeoreferenceBindingsV1;
   importThree: () => Promise<unknown>;
   importGltfLoader: () => Promise<unknown>;
 }): Promise<AtlasMapSceneAssistantActionsV1> {
   const { MapScene, dependencies, georeferenceBindings } = input;
-  const readBrowserStorage = (key: "localStorage" | "sessionStorage"): Storage | null => {
-    try { return globalThis[key] || null; } catch { return null; }
-  };
-  const { appStore } = initializeAtlasApplicationRuntimeV1({
-    globalRef: globalThis as unknown as import("./program.js").AtlasApplicationRuntimeGlobalV1,
-    localStorage: readBrowserStorage("localStorage"),
-    sessionStorage: readBrowserStorage("sessionStorage"),
-  });
-  const { demoData, viewThemes, activityCatalog } = ATLAS_STATE_CATALOGS_V1;
+  const { appStore, demoData, viewThemes, activityCatalog } = input.runtimeState;
   const mapSelectionOptionsData = projectAtlasMapSelectionOptions();
   const atlasMapComponentsTsV1 = {
     installAtlasAdminMasterplanAdjustmentV1,
@@ -8577,6 +8570,7 @@ interface PublicChatSelectionBridge {
 type PublicChatRuntime = typeof globalThis & {
   belavistaPublicChatContext?: PublicChatContextBridge;
   belavistaPublicLeadSession?: { read(): PublicLeadChatSession; save(session: PublicLeadChatSession): PublicLeadChatSession };
+  belavistaExecutePublicLeadChatTurnV1?: (input: AtlasPublicLeadChatTurnRequestV1) => Promise<AtlasPublicLeadChatTurnResultV1>;
   belavistaPublicChatSelection?: PublicChatSelectionBridge;
   belavistaDetectPublicLeadIntent?: (message: unknown, selection?: import("./program.js").PublicLeadChatSelection) => boolean;
   belavistaHasPublicLeadRegistration?: (selection: import("./program.js").PublicLeadChatSelection) => boolean;
@@ -8594,28 +8588,12 @@ type PublicChatRuntime = typeof globalThis & {
 };
 
 const publicChatWelcome = "Bem-vindo ao Aliança Park! Posso ajudar você a encontrar um lote, consultar disponibilidade e valores ou iniciar uma reserva com o corretor.";
-const publicChatMemoryTurnLimit = 16;
 const publicChatImageMaxBytes = 6 * 1024 * 1024;
 const publicChatMapHighlights = new Set(["available", "reserved", "negotiation", "sold"]);
 
 const publicChatEsc = (value: unknown): string => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char] || char));
 const publicChatClean = (value: unknown): string => String(value ?? "").trim();
 const publicChatDigits = (value: unknown): string => String(value ?? "").replace(/\D/g, "");
-const publicChatLotFromSelection = (selection: import("./program.js").PublicLeadChatSelection): PublicLeadSelectedLot | null => {
-  const data = selection.selectedLotData || {};
-  const id = String(data.id || selection.selectedLotId || selection.selectedLot || "").trim();
-  if (!id) return null;
-  return { ...data, id, label: String(data.label || selection.selectedLot || id), status: String(data.status || "unknown") };
-};
-const publicChatInitialSession = (): PublicLeadChatSession => ({
-  id: "",
-  phase: "exploration", selectedLot: null, lead: {}, reservation: {}, contactConfirmed: false, conversationSummary: "", updatedAt: new Date().toISOString(),
-});
-function newPublicChatMemory(): PublicLeadChatMemory {
-  const now = Date.now();
-  return { version: "v5.3.40", id: globalThis.crypto?.randomUUID?.() || `chat-${now}-${Math.random().toString(36).slice(2, 8)}`, createdAt: now, updatedAt: now, turns: [] };
-}
-const publicChatAssistantText = (data?: PublicLeadChatResult | null): string => publicChatClean(data?.reply || data?.message || data?.text || "Conte o que procura e eu organizo os próximos passos.");
 const publicChatRuntime = globalThis as PublicChatRuntime;
 
 function typePublicChatAssistantMessage(element: HTMLElement, value: string, { immediate = false }: { immediate?: boolean } = {}): Promise<void> {
@@ -27573,7 +27551,7 @@ export class AtlasPublicLeadChat extends AtlasHTMLElementBase {
 
   constructor() {
     super();
-    const initial: PublicLeadChatState = { session: publicChatInitialSession(), attachment: null, busy: false, busyLabel: "NVIDIA analisando…", foot: "CORRETAGEM CONECTADA · DISPONIBILIDADE · CONDIÇÕES · RESERVA", footVisible: true, collapsed: false, requestSelection: null };
+    const initial: PublicLeadChatState = { session: publicChatRuntime.belavistaPublicLeadSession?.read() || createAtlasPublicLeadChatSessionV1(), attachment: null, busy: false, busyLabel: "NVIDIA analisando…", foot: "CORRETAGEM CONECTADA · DISPONIBILIDADE · CONDIÇÕES · RESERVA", footVisible: true, collapsed: false, requestSelection: null };
     function* state(value: PublicLeadChatState): Generator<PublicLeadChatState, never, StateSetter<PublicLeadChatState>> { while (true) value = (yield value)(value); }
     const iterator = state(initial); iterator.next(); this.snapshot = initial;
     this.state = { next: setter => { this.snapshot = iterator.next(setter).value; this.renderState(); return this.snapshot; } };
@@ -27630,7 +27608,7 @@ export class AtlasPublicLeadChat extends AtlasHTMLElementBase {
         const detectsIntent = publicChatRuntime.belavistaDetectPublicLeadIntent?.(message, selection) || false;
         const alreadyRegistered = publicChatRuntime.belavistaHasPublicLeadRegistration?.(selection) || false;
         if (detectsIntent && !alreadyRegistered) {
-          const memory = publicChatRuntime.belavistaPublicChatContext?.get() || newPublicChatMemory();
+          const memory = publicChatRuntime.belavistaPublicChatContext?.get() || createAtlasPublicLeadChatMemoryV1();
           document.querySelector<AtlasPublicLeadIntent>("public-lead-intent")?.dispatchEvent(new CustomEvent("atlas:public-lead-intent-detected", {
             detail: { message, selection, memory },
           }));
@@ -27737,6 +27715,16 @@ export class AtlasPublicLeadChat extends AtlasHTMLElementBase {
       this.dispatchEvent(new CustomEvent<PublicLeadChatRequestDetail>("atlas:public-lead-chat-request", { bubbles: true, composed: true, detail: { requestId, payload } }));
     });
   }
+  private executeProgramTurn(extra: Partial<PublicLeadChatPayload>): Promise<AtlasPublicLeadChatTurnResultV1> {
+    const execute = publicChatRuntime.belavistaExecutePublicLeadChatTurnV1;
+    if (!execute) return Promise.reject(new Error("O programa de atendimento ainda não iniciou."));
+    return execute({
+      session: this.session,
+      requestSelection: this.snapshot.requestSelection,
+      extra,
+      converse: payload => this.requestConversation(payload),
+    });
+  }
   private uploadFiles(files: Record<string, File | undefined>, scope: string): Promise<Record<string, unknown>> {
     const requestId = this.nextRequestId();
     return new Promise((resolve, reject) => {
@@ -27788,61 +27776,20 @@ export class AtlasPublicLeadChat extends AtlasHTMLElementBase {
     let result: PublicLeadChatResult | null = null;
     try {
       const form = this.querySelector<HTMLFormElement>("[data-chat-form]");
-      const selection = publicChatRuntime.belavistaPublicChatSelection?.get(this.snapshot.requestSelection) || {};
       const surface = this.closest("public-leads-surface") as (HTMLElement & { activateHighlight?: (key: string, source: string) => void; markReserved?: (lot: Record<string, unknown>) => void }) | null;
-      const selectedLot = publicChatLotFromSelection(selection) || this.session.selectedLot || null;
-      const memory = publicChatRuntime.belavistaPublicChatContext?.get() || newPublicChatMemory();
-      const userMessage = publicChatClean(extra.message || "");
-      const prepared = userMessage && publicChatRuntime.belavistaPreparePublicLeadChatContext
-        ? publicChatRuntime.belavistaPreparePublicLeadChatContext(userMessage, memory.turns, selection)
-        : { message: userMessage, history: [] as PublicLeadChatTurn[] };
-      const turn = memory.turns.length + 1;
+      const programTurn = await this.executeProgramTurn(extra);
+      result = programTurn.result;
+      this.state.next(previous => ({ ...previous, session: programTurn.session }));
       if (form) {
         form.dataset.chatContextV5340 = "typed-program";
-        form.dataset.publicConversationId = memory.id;
-        form.dataset.publicConversationTurn = String(turn);
+        form.dataset.publicConversationId = programTurn.memoryId;
+        form.dataset.publicConversationTurn = String(programTurn.userMessage ? programTurn.conversationTurn : programTurn.turn);
+        if (programTurn.userMessage) form.dataset.publicConversationTurnsStored = String(programTurn.storedTurns);
       }
-      const context = userMessage ? {
-        source: "public-map",
-        scenario: "real-estate-brokerage-sale",
-        perspective: "seller-broker",
-        project: "Aliança Park",
-        conversationId: memory.id,
-        conversationTurn: turn,
-        conversationHistory: prepared.history,
-        currentSelection: selection,
-        rawUserMessage: userMessage,
-        continuityPolicy: [
-          "Preserve semantic continuity across turns.",
-          "Resolve pronouns and short follow-ups from recent conversation.",
-          "Current structured lot selection overrides stale lot references from earlier assistant turns.",
-          "Do not invent property facts from prior assistant prose when structured lot data differs.",
-        ],
-        responsePolicy: "Responda como corretor vendedor do loteamento. Continue naturalmente a conversa anterior. Para perguntas curtas, use o histórico recente. A seleção estruturada atual do mapa é a referência principal para o lote; se houve mudança de seleção, não continue falando do lote anterior salvo menção explícita do cliente.",
-        selectedLot: selection.selectedLot,
-        selectedLotId: selection.selectedLotId,
-        selectedLotData: selection.selectedLotData,
-        requestKind: selection.requestKind,
-      } : extra.context;
-      result = await this.requestConversation({ session: this.session, selectedLot, ...extra, message: prepared.message || extra.message, context, requireNvidia: true });
-      if (userMessage && !publicChatClean(result.reply || result.message || result.text)) throw new Error("Worker respondeu sem conteúdo de orientação.");
-      this.session = { ...this.session, ...(result.session || {}), contactConfirmed: Boolean(this.session.contactConfirmed || result.session?.contactConfirmed) };
       this.renderInstagramHandoff(result.contact?.instagram || null);
-      if (message) { delete message.dataset.loading; await typePublicChatAssistantMessage(message, publicChatAssistantText(result)); }
+      if (message) { delete message.dataset.loading; await typePublicChatAssistantMessage(message, publicLeadChatAssistantTextV1(result)); }
       const status = result.attachment?.stored ? "Imagem protegida no Cloudflare R2 e analisada pela NVIDIA." : result.attachment ? "Imagem analisada nesta conversa; R2 ainda não está configurado." : result.statusLine || "";
       this.state.next(previous => ({ ...previous, foot: status, footVisible: Boolean(result?.statusLine || result?.attachment) }));
-      if (userMessage && result && publicChatRuntime.belavistaPublicChatContext) {
-        const selected = String(selection.selectedLot || selectedLot?.label || selectedLot?.id || "");
-        const selectedId = String(selection.selectedLotId || selectedLot?.id || "");
-        publicChatRuntime.belavistaPublicChatContext.save({
-          ...memory,
-          turns: [...memory.turns, { role: "user", content: userMessage, selectedLot: selected, selectedLotId: selectedId }, { role: "assistant", content: publicChatAssistantText(result), selectedLot: selected, selectedLotId: selectedId }],
-        });
-        if (form) {
-          form.dataset.publicConversationTurn = String(memory.turns.length + 2);
-          form.dataset.publicConversationTurnsStored = String(Math.min(memory.turns.length + 2, publicChatMemoryTurnLimit));
-        }
-      }
       if (result.map?.highlight && publicChatMapHighlights.has(result.map.highlight)) surface?.activateHighlight?.(result.map.highlight, "ai");
       if (result.contact?.confirmRequired && !this.session.contactConfirmed && !options.deferContact) this.openContactConfirm(result.contact, result.ui);
       else if (result.ui?.modal && !options.deferModal) this.openModal(result.ui.modal, result.ui);
@@ -27874,11 +27821,8 @@ export class AtlasPublicLeadChat extends AtlasHTMLElementBase {
 
   private async registerContactConfirmation(): Promise<void> {
     try {
-      const form = this.querySelector<HTMLFormElement>("[data-chat-form]");
-      const selection = publicChatRuntime.belavistaPublicChatSelection?.get() || {};
-      const selectedLot = publicChatLotFromSelection(selection) || this.session.selectedLot || null;
-      const result = await this.requestConversation({ session: this.session, selectedLot, event: buildAtlasPublicLeadChatEventV1({ type: "lead.contact.confirmed" }) });
-      this.session = { ...this.session, ...(result.session || {}), contactConfirmed: true };
+      const turn = await this.executeProgramTurn({ event: buildAtlasPublicLeadChatEventV1({ type: "lead.contact.confirmed" }) });
+      this.state.next(previous => ({ ...previous, session: turn.session }));
     } catch (error) { console.warn("Falha ao registrar confirmação de contato", error); }
   }
 

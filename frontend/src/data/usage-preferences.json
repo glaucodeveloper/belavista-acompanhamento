@@ -1,7 +1,7 @@
 {
   "preferenceKey": "belavista.usage-preferences.v1",
   "defaults": {
-    "defaultPage": "map",
+    "defaultPage": "control",
     "density": "comfortable",
     "reduceMotion": false,
     "voiceEnabled": false
