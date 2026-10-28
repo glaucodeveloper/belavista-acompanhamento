@@ -43,7 +43,7 @@ export { applyPublicMapLotSelection, clearPublicMapSelection, selectPublicStatic
 import { installAtlasPersonnelDirectoryRecoveryComponentControllerV1 } from './components.js';
 import { applyAtlasApplicationThemeV1 } from './components.js';
 import { installAtlasWorkerContextChatBindingsV1, installAtlasWorkerContextChatObservationV1, installAtlasWorkerContextChatRecordSavedEventV1, mountAtlasWorkerContextChatV1, type AtlasWorkerContextChatBindingComponentsV1, type AtlasWorkerContextChatBindingControllerV1, type AtlasWorkerContextChatLogInputV1, type AtlasWorkerContextChatMessageV1, type AtlasWorkerContextChatMountControllerV1 } from './components.js';
-import { installAtlasChatTabWidgetV5359, installAtlasDashboardMapTabsV1, installAtlasFinanceMobileCashV5358 } from './components.js';
+import { installAtlasChatTabWidgetV5359, installAtlasDashboardMapTabsV1, installAtlasFinanceMobileCashV5358 as installAtlasFinanceMobileCashComponentV5358 } from './components.js';
 import { installAtlasReportsComponentControllerV1 } from './components.js';
 import { installAtlasSettingsComponentControllerV1 } from './components.js';
 import { installAtlasGlaucoShellBridgeComponentV1 } from './components.js';
@@ -87,6 +87,7 @@ import executionModelCatalogData from './data/execution-model.json' with { type:
 import personnelModelCatalogData from './data/personnel-model.json' with { type: 'json' };
 import commissionReasonDefaultsData from './data/commission-reason-defaults.json' with { type: 'json' };
 import cashFlowSeedData from './data/cash-flow-seed.json' with { type: 'json' };
+import financeMobileCashCatalogData from './data/finance-mobile-cash-catalog.json' with { type: 'json' };
 import viewThemesData from './data/view-themes.json' with { type: 'json' };
 import dashboardModesData from './data/dashboard-modes.json' with { type: 'json' };
 import spreadsheetSchemaData from './data/spreadsheet-schema.json' with { type: 'json' };
@@ -107,6 +108,7 @@ import workerContextChatStorageData from './data/worker-context-chat-storage.jso
 import topbarOperationEventsData from './data/topbar-operation-events.json' with { type: 'json' };
 import { AtlasWorkerMonitorDashboardV1, AtlasWorkerRequirementsCatalogV1 } from './components.js';
 import type { AtlasPublicLeadsMapServicesV1, AtlasPublicReservationFileKindV1, AtlasPublicReservationSubmitDetailV1 } from './components.js';
+import type { AtlasFinanceMobileCashCatalogV5358, AtlasFinanceMobileCashControllerV5358, AtlasFinanceMobileCashHostV5358 } from './components.js';
 import type { AtlasDashboardQuickRecordSubmitDetailV1, AtlasDashboardQuickRecordResultDetailV1 } from './components.js';
 import type { AtlasLegacyLeadCommandV1 } from './components.js';
 import type { AtlasLegacyViewActionCommandV1 } from './components.js';
@@ -120,10 +122,6 @@ import type { AtlasLegacyStageUtilityCommandV1, AtlasLegacyStageTodoResultV1 } f
 import { type AtlasActivityFormGroupsInputV1, type AtlasAgendaRouteFocusV1, type AtlasOperationalRecordCreateCommandDetailV1, type AtlasDashboardRecordCreateCommandDetailV1, type AtlasProgressRecordDraftDetailV1, type AtlasLegacyOperationalRecordSaveCommandV1, type AtlasLegacyOperationalRecordDeleteCommandV1, type AtlasLegacyRecordEditorComponentCommandV1, type AtlasLegacyProgressRecordCreateCommandV1, type AtlasLegacyActivityCommandV1, type AtlasLegacyViewNavigationCommandV1, AtlasActivities, installAtlasActivitiesComponentControllerV1, AtlasAgenda, installAtlasAgendaComponentControllerV1, AtlasBrokers, AtlasCashRecord, installAtlasCommunicationsComponentControllerV1, AtlasDashboard, installAtlasDashboardComponentControllerV1, AtlasDesktopSetup, AtlasForemen, AtlasLeads, type AtlasLeadsCommandV1, AtlasLotBoard, type AtlasLotBoardComponentCommandV1, installAtlasLotBoardComponentControllerV1, AtlasLotDevelopment, AtlasMaterials, installAtlasMaterialsComponentControllerV1, AtlasPersonnel, AtlasProgress, AtlasProjectDocuments, AtlasPublicFieldRecords, AtlasPublicLeadsSurface, createAtlasPublicMapRuntimeSurfaceV1, AtlasPublicReservationFlow, AtlasRecords, AtlasReports, AtlasRepasses, AtlasSalesHistory, AtlasSettings, createAtlasStageContextMarkupV1, createAtlasCardCanvasLinkV1, renderAtlasActivityFormGroupsV1 } from './components.js';
 import type { AtlasOperationalRecordSubmissionV1 } from './components.js';
 import type { AtlasStageRecordCenterOutputV1 } from './components.js';
-import type {
-  AtlasSettingsAiAgendaDraftV1, AtlasSettingsComprehensionDraftV1, AtlasSettingsContactDraftV1,
-  AtlasSettingsKeyDraftV1, AtlasSettingsRoleDraftV1, AtlasSettingsStageDraftV1, AtlasSettingsUsageDraftV1,
-} from './components.js';
 import type { AtlasAgendaDeleteCommandV1, AtlasAgendaFormDraftCommandV1, AtlasAgendaGestureSaveCommandV1, AtlasAgendaRecordDraftCommandV1, AtlasAgendaSaveCommandV1, AtlasAgendaTransitionDraftCommandV1, AtlasProjectDocumentCellSaveCommandV1, AtlasProjectDocumentColumnCreateCommandV1, AtlasProjectDocumentColumnDeleteCommandV1, AtlasProjectDocumentDeleteCommandV1, AtlasProjectDocumentOpenCommandV1, AtlasProjectDocumentSaveCommandV1, AtlasProjectDocumentsImportCommandV1, AtlasProjectDocumentsOpenRequestDetailV1 } from './components.js';
 import type { AtlasMaterialAllocationCommandV1, AtlasMaterialColumnDeleteCommandV1, AtlasMaterialColumnSaveCommandV1, AtlasMaterialDeleteCommandV1, AtlasMaterialFileOpenCommandV1, AtlasMaterialSaveCommandV1, AtlasMaterialTransitionOpenCommandV1, AtlasMaterialTransitionSaveCommandV1 } from './components.js';
 import { registerAtlasStandaloneMapSceneV1 } from './components.js';
@@ -139,7 +137,7 @@ import { installAtlasPublicMapTextureQualityV1 } from './components.js';
 import { createAtlasSidebarElement, createAtlasTopbarElement } from './components.js';
 import { applyAtlasAdminPublicMapNaturalMaterialsV1 } from './components.js';
 import { installAtlasStageAdministrationViewV1, type AtlasStageAdministrationContextDraftV1, type AtlasStageAdministrationFormValuesV1, type AtlasStageAdministrationViewControllerV1, type AtlasStageAdministrationWorkspaceModelV1 } from './components.js';
-import { downloadAtlasBrandedLotExcelV1, installAtlasLotDetailComponentControllerV1, projectAtlasLotExportRowV1, type AtlasLotDetailCommandResultV1, type AtlasLotDetailCommandV1 } from './components.js';
+import { downloadAtlasBrandedLotExcelV1, installAtlasLotDetailComponentControllerV1, type AtlasLotDetailCommandResultV1, type AtlasLotDetailCommandV1 } from './components.js';
 import { installAtlasCommissionNegotiationComponentControllerV1 } from './components.js';
 import { installAtlasPertWorkspace } from './components.js';
 import { installAtlasExecutionPlanningComponentControllerV1, type AtlasExecutionPlanningComponentSnapshotV1, type AtlasExecutionPlanningBrokerReportV1, type AtlasExecutionPlanningCashPanelV1, type AtlasExecutionPlanningCommissionReasonV1, type AtlasExecutionPlanningOutsourcingReceiptV1 } from './components.js';
@@ -147,8 +145,6 @@ import { mountAtlasAdminCashEvidenceFormV1, type AtlasAdminCashEvidenceFormViewV
 import { installAtlasOperationalViewBindingsV1, type AtlasOperationalViewActionV1 } from './components.js';
 import { installAtlasOperationalMapPageV1, type AtlasOperationalMapLotOptionV1 } from './components.js';
 import { installAtlasActivityMapLayerV1 } from './components.js';
-import type { AtlasCommissionHistoryActionV1 } from './components.js';
-import type { AtlasCommissionProfileActionV1 } from './components.js';
 import { installAtlasAdminMapComponentControllerV1, type AtlasAdminMapContextPresentationInputV1 } from './components.js';
 import { installAtlasWorkerStageInputEditorComponentV1, type AtlasWorkerWorkbenchInputSessionViewV1 } from './components.js';
 import {
@@ -325,6 +321,8 @@ export interface AtlasAiChatPoliciesV1 {
   operationalExecutionInstruction: string;
   visualAllocationPolicy: string;
 }
+
+const atlasFinanceMobileCashCatalogV5358 = financeMobileCashCatalogData as AtlasFinanceMobileCashCatalogV5358;
 
 const atlasAiChatPoliciesV1 = aiChatPoliciesData as AtlasAiChatPoliciesV1;
 export const CHAT_OPERATIONAL_EXECUTION_INSTRUCTION_V1 = String(atlasAiChatPoliciesV1.operationalExecutionInstruction || '');
@@ -623,6 +621,35 @@ export async function inferAtlasProposalAttachmentV1(input: {
       extractedAt: now.toISOString(),
     }),
   });
+}
+
+export type AtlasProposalInferenceFieldV1 = 'seller' | 'lot' | 'quadra' | 'lotArea' | 'value' | 'client' | 'payment';
+
+export interface AtlasProposalVisionFormUpdateV1 {
+  fields: Array<{ name: AtlasProposalInferenceFieldV1; value: string }>;
+  statusMessage: string;
+}
+
+/** Project the recognized proposal fields and review status for the attachment form. */
+export function projectAtlasProposalVisionFormUpdateV1(
+  draft: AtlasProposalVisionDraftV1,
+): AtlasProposalVisionFormUpdateV1 {
+  const names: AtlasProposalInferenceFieldV1[] = [
+    'seller', 'lot', 'quadra', 'lotArea', 'value', 'client', 'payment',
+  ];
+  const fields = names.flatMap(name => draft[name] ? [{ name, value: draft[name] }] : []);
+  const confidence = draft.confidence == null
+    ? ''
+    : ` Confiança estimada: ${Math.round(draft.confidence * 100)}%.`;
+  return Object.freeze({
+    fields,
+    statusMessage: `Sugestões aplicadas. Revise os campos antes de salvar.${confidence}`,
+  });
+}
+
+/** Only raster formats supported by the vision endpoint participate in proposal inference. */
+export function isAtlasProposalInferenceAttachmentV1(file: Pick<File, 'type'>): boolean {
+  return /^image\/(?:png|jpeg|webp)$/i.test(file.type);
 }
 
 type AtlasApiClientRuntimeV1 = typeof globalThis & {
@@ -2805,29 +2832,15 @@ export async function installAtlasFinanceApplicationCompositionV1(input: AtlasFi
     onAction: (action: AtlasCommissionProfileActionV1) => {
       const store = appStore as { get(): Record<string, any>; set(patch: Record<string, unknown>): void };
       const notifyAction = notify as (message: string, tone?: string) => void;
-      if (action.kind === 'select-profile') {
-        store.set({ selectedCommissionProfile: action.profileId, selectedCommissionContract: null, lastAction: 'Abriu carteira de comissões' });
-      } else if (action.kind === 'open-proposal') {
-        store.set({ selectedCommissionProposal: action.id, selectedCommissionProfile: null, selectedCommissionContract: null, lastAction: `Abriu proposta ${action.id}` });
-      } else if (action.kind === 'commission-back') {
-        store.set({ selectedCommissionProfile: null, selectedCommissionContract: null, lastAction: 'Voltou para a carteira de comissões' });
-      } else if (action.kind === 'proposal-back') {
-        store.set({ selectedCommissionProposal: null, selectedCommissionProfile: null, selectedCommissionContract: null, lastAction: 'Voltou da proposta' });
-      } else if (action.kind === 'proposal-save') {
-        notifyAction('Proposta salva como minuta para revisão.', 'success');
-      } else if (action.kind === 'new-commission') {
-        notifyAction('Novo lançamento de comissão: escolha um perfil comercial para associar o negócio.');
-      } else if (action.kind === 'lead-lot-interest') {
-        store.set({ lastAction: 'Selecionou QD02-L18 para registrar interesse' });
-        notifyAction('Lote QD02-L18 selecionado. Preencha seus dados para registrar o interesse.', 'success');
-      } else if (action.kind === 'send-contract') {
-        const deal = (commissionDeals as Array<{ id: string; profile: string; client?: string; quadra?: string; value?: string }>).find(item => item.id === action.id);
-        const profile = (commissionProfiles as Array<{ id: string; name: string; phone?: string }>).find(item => item.id === deal?.profile);
-        const phone = String(profile?.phone || '').replace(/\D/g, '');
-        if (!deal || !profile || !phone) { notifyAction('Cadastre um telefone válido no perfil do corretor para abrir o WhatsApp.', 'warning'); return; }
-        const message = `Olá, ${deal.client}. Segue a minuta do contrato ${deal.id} referente ao ${deal.quadra}, no valor de ${deal.value}.`;
-        windowRef.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener');
-      }
+      const result = createAtlasCommissionProfileActionResultV1({
+        action,
+        deals: commissionDeals as AtlasCommissionDealV1[],
+        profiles: commissionProfiles as AtlasCommissionProfileCatalogEntry[],
+      });
+      if (!result) return;
+      if (result.patch) store.set(result.patch);
+      if (result.notification) notifyAction(result.notification.message, result.notification.tone);
+      if (result.openExternalUrl) windowRef.open(result.openExternalUrl, '_blank', 'noopener');
     },
   } as Parameters<typeof installAtlasCommissionProfileBindingV1>[1]);
 
@@ -2902,48 +2915,16 @@ export async function installAtlasFinanceApplicationCompositionV1(input: AtlasFi
     onAction: (action: AtlasCommissionHistoryActionV1) => {
       const store = appStore as { get(): Record<string, any>; set(patch: Record<string, unknown>): void };
       const profiles = commissionProfiles as Array<{ id: string; name: string }>;
-      if (action.kind === 'open-contract') {
-        store.set({ selectedCommissionContract: action.id, commissionContractReturn: action.returnProfile || null, lastAction: `Abriu contrato ${action.id}` });
-        return;
-      }
-      if (action.kind === 'open-deal') {
-        store.set({ selectedCommissionContract: action.id, commissionContractReturn: null, lastAction: `Abriu contrato ${action.id}` });
-        return;
-      }
-      if (action.kind === 'return-to-profile') {
-        store.set({ selectedCommissionProfile: action.profileId || null, selectedCommissionContract: null, commissionContractReturn: null, lastAction: 'Voltou para a origem do lançamento' });
-        return;
-      }
-      const [header, ...lines] = action.text.split(/\r?\n/).filter(Boolean);
-      if (!header) { (notify as (message: string, tone?: string) => void)('Não encontrei linhas válidas na planilha CSV.', 'warning'); return; }
-      const columns = header.split(/[;,\t]/).map(value => value.trim().toLocaleLowerCase());
-      const read = (row: string, names: string[]): string => {
-        const values = row.split(/[;,\t]/);
-        const index = columns.findIndex(column => names.some(name => column.includes(name)));
-        return index >= 0 ? String(values[index] || '').trim() : '';
-      };
-      const importedAt = String(globalRef.Date.now()).slice(-5);
-      const entries = lines.map((line, index) => {
-        const profileName = read(line, ['respons', 'consultor', 'corretor']);
-        const profile = profiles.find(item => item.name.toLocaleLowerCase() === profileName.toLocaleLowerCase()) || profiles[0];
-        const value = read(line, ['valor']) || '0';
-        const rate = Number(String(read(line, ['taxa']) || '6').replace(',', '.').replace(/[^\d.]/g, '')) || 6;
-        const numericValue = brlToNumber(value);
-        return {
-          id: `CT-IMP-${importedAt}${index}`, profile: profile?.id || '',
-          lot: read(line, ['lote']) || `IMPORT-${index + 1}`,
-          quadra: read(line, ['quadra']) || 'Lote importado',
-          client: read(line, ['cliente', 'comprador']) || 'Cliente importado',
-          status: read(line, ['status']) || 'Proposta',
-          value: formatBRL(numericValue), commission: formatBRL((numericValue * rate) / 100),
-          rate: `${rate.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}%`,
-          date: new globalRef.Date().toLocaleDateString('pt-BR'),
-          payment: 'Importado de planilha', purpose: 'A definir', stage: 'Importação CSV',
-        };
-      }).filter(entry => entry.lot || entry.client);
-      if (!entries.length) { (notify as (message: string, tone?: string) => void)('Não encontrei linhas válidas na planilha CSV.', 'warning'); return; }
-      store.set({ commissionEntries: [...((store.get().commissionEntries as unknown[]) || []), ...entries], lastAction: `Importou ${entries.length} lançamentos da planilha` });
-      (notify as (message: string, tone?: string) => void)(`${entries.length} lançamentos importados para a carteira.`, 'success');
+      const result = createAtlasCommissionHistoryActionResultV1({
+        action,
+        state: store.get() as AtlasApplicationStoreState,
+        profiles,
+        brlToNumber,
+        formatBRL,
+        DateCtor: globalRef.Date,
+      });
+      if (result.patch) store.set(result.patch);
+      if (result.notification) (notify as (message: string, tone?: string) => void)(result.notification.message, result.notification.tone);
     },
   } as Parameters<typeof installAtlasCommissionHistoryControlsV1>[1]);
 
@@ -3152,7 +3133,6 @@ export function installAtlasCommercialApplicationCompositionV1(
   input: AtlasCommercialApplicationCompositionInput,
 ): Readonly<AtlasCommissionNegotiationViewsV1 & {
   lotDetailPageV1: {
-    lotExportRowV1(lot: RepassePriceCatalogEntry, state?: AtlasLotDetailStateV1): RepassePriceCatalogEntry & Record<string, unknown>;
     downloadBrandedLotExcelV1(options: { lots?: Array<RepassePriceCatalogEntry & Record<string, unknown>>; title?: string; subtitle?: string; filename?: string }): void;
   };
   disposeNegotiationPersistenceV1(): void;
@@ -3178,7 +3158,12 @@ export function installAtlasCommercialApplicationCompositionV1(
   });
   const negotiation = input.createCommissionNegotiationViewsV1({
     readState: () => appStore.get(),
-    onStatePatch: patch => appStore.set(patch),
+    onAction: action => appStore.set(createAtlasCommissionNegotiationPageActionResultV1({
+      action,
+      state: appStore.get(),
+      profiles: commissionProfiles,
+      DateCtor: globalRef.Date,
+    })),
     commissionDeals, commissionProfiles, esc, ico, formatBRL,
     brlToNumber, contractStatusClassV1, FileReader: globalRef.FileReader,
     Date: globalRef.Date, FormData: globalRef.FormData,
@@ -3186,9 +3171,7 @@ export function installAtlasCommercialApplicationCompositionV1(
   });
   installAtlasCommissionNegotiationComponentControllerV1(ViewLayer, negotiation);
 
-  const lotDetailStore = appStore as { get(): AtlasLotDetailStateV1 };
   const lotDetailPageV1 = Object.freeze({
-    lotExportRowV1: (lot: RepassePriceCatalogEntry, state: AtlasLotDetailStateV1 = lotDetailStore.get()) => projectAtlasLotExportRowV1(lot, state),
     downloadBrandedLotExcelV1: (options: { lots?: Array<RepassePriceCatalogEntry & Record<string, unknown>>; title?: string; subtitle?: string; filename?: string }) => downloadAtlasBrandedLotExcelV1(options, globalRef),
   });
   return Object.freeze({ ...negotiation, lotDetailPageV1, disposeNegotiationPersistenceV1 });
@@ -5141,11 +5124,12 @@ export async function installAtlasPlanningPagesApplicationV1(
   } = input;
   const globalRef = input.globalRef || globalThis;
   const browserGlobal = globalRef as typeof globalThis & { window: Window };
-  const callService = (source: Record<string, unknown>, name: string, args: unknown[] = []): unknown => {
-    const service = source[name];
-    return typeof service === 'function'
-      ? (service as (...values: unknown[]) => unknown)(...args)
-      : undefined;
+  type StageAgendaCompositionV1 = Awaited<ReturnType<typeof installAtlasStageAgendaApplicationCompositionV1>>;
+  let stageAgendaCompositionV1: StageAgendaCompositionV1 | null = null;
+  const requireStageAgendaCompositionV1 = (): StageAgendaCompositionV1 => {
+    if (!stageAgendaCompositionV1)
+      throw new Error('Agenda services were requested before the typed stage-agenda composition completed.');
+    return stageAgendaCompositionV1;
   };
 
   const planningPageRegistrationsInputV1: AtlasPlanningPageRegistrationsInputV1 = {
@@ -5167,22 +5151,21 @@ export async function installAtlasPlanningPagesApplicationV1(
     ico: ico as (name: string) => string,
   });
 
-  const calendar: Record<string, (...args: unknown[]) => unknown> = {};
   const stageOperationalInputV1 = {
     ViewLayer, appStore, demoData, executionModel, activityCatalog, extensionStage,
     stageOverlayKey, stageProfileSettingsFor, stageMaterialsFor, formatBRL,
     apiFetch, esc, ico, globalRef, workbenchActivityRouteV1,
-    agendaCalendarIsoV3: (date: Date) => callService(calendar, 'agendaCalendarIsoV3', [date]) as string,
-    agendaCalendarParseDateV3: (value: unknown) => callService(calendar, 'agendaCalendarParseDateV3', [value]) as Date | null,
-    agendaCalendarTimeToHoursV3: (value: unknown) => callService(calendar, 'agendaCalendarTimeToHoursV3', [value]) as number,
-    agendaCalendarEventEndV3: (event: Partial<OperationalAgendaEvent>) => callService(calendar, 'agendaCalendarEventEndV3', [event]) as number,
-    agendaCalendarReadV3: () => callService(calendar, 'agendaCalendarReadV3') as AgendaCalendarSnapshotV3,
-    agendaCalendarOperationalEventsV3: (state: Record<string, unknown>) => callService(calendar, 'agendaCalendarOperationalEventsV3', [state]) as OperationalAgendaEvent[],
-    agendaCalendarWriteV3: (data: { version?: 3; initialized?: boolean; events?: OperationalAgendaEvent[] }) => callService(calendar, 'agendaCalendarWriteV3', [data]) as Promise<OperationalAgendaEvent[]>,
-    agendaCalendarWeekKeyV8: (value: Date | string) => callService(calendar, 'agendaCalendarWeekKeyV8', [value]) as string,
-    ensureAgendaCalendarLoadedV8: () => { callService(calendar, 'ensureAgendaCalendarLoadedV8'); },
-    controlCenterMaterialRowsV1: (state: Record<string, unknown>) =>
-      callService(controlCenterData, 'controlCenterMaterialRowsV1', [state]) as AtlasStageAgendaMaterialV1[],
+    agendaCalendarIsoV3: (date: Date) => requireStageAgendaCompositionV1().agendaCalendarIsoV3(date),
+    agendaCalendarParseDateV3: (value: unknown) => requireStageAgendaCompositionV1().agendaCalendarParseDateV3(value),
+    agendaCalendarTimeToHoursV3: (value: unknown) => requireStageAgendaCompositionV1().agendaCalendarTimeToHoursV3(value),
+    agendaCalendarEventEndV3: (event: Partial<OperationalAgendaEvent>) => requireStageAgendaCompositionV1().agendaCalendarEventEndV3(event),
+    agendaCalendarReadV3: () => requireStageAgendaCompositionV1().agendaCalendarReadV3(),
+    agendaCalendarOperationalEventsV3: (state: Record<string, unknown>) => requireStageAgendaCompositionV1().agendaCalendarOperationalEventsV3(state),
+    agendaCalendarWriteV3: (data: Parameters<AtlasAgendaCalendarProgramV1['agendaCalendarWriteV3']>[0]) =>
+      requireStageAgendaCompositionV1().agendaCalendarWriteV3(data),
+    agendaCalendarWeekKeyV8: (value: Date | string) => requireStageAgendaCompositionV1().agendaCalendarWeekKeyV8(value),
+    ensureAgendaCalendarLoadedV8: () => requireStageAgendaCompositionV1().ensureAgendaCalendarLoadedV8(),
+    controlCenterMaterialRowsV1: (state: Record<string, unknown>) => controlCenterData.controlCenterMaterialRowsV1(state),
     notify,
   };
   const stageOperational = installAtlasStageOperationalPagesCompositionV1(stageOperationalInputV1);
@@ -5304,7 +5287,7 @@ export async function installAtlasPlanningPagesApplicationV1(
   const stageAgendaInputV1 = {
     ViewLayer, apiFetch, STAGE_WORKBENCH, activityCatalog, activityInstallationDefaults,
     appStore, beginCardCanvasLinkV1,
-    dashboardPageMarkup: (calendarWeek = '') => String(callService(stageRecordServices, 'stageHomePageMarkupV1', [calendarWeek]) || ''),
+    dashboardPageMarkup: (calendarWeek = '') => stageRecordServices.stageHomePageMarkupV1(calendarWeek),
     demoData, esc, executionModel, extensionStage, globalRef, ico,
     normalizeActivityRouteTextV1, notify,
     onCommit: (command, label) => appStore.update(state => ({
@@ -5326,7 +5309,7 @@ export async function installAtlasPlanningPagesApplicationV1(
     workbenchStageFromValueV1: stageRecordServices.workbenchStageFromValueV1,
   } as Parameters<typeof installAtlasStageAgendaApplicationCompositionV1>[0];
   const stageAgenda = await installAtlasStageAgendaApplicationCompositionV1(stageAgendaInputV1);
-  Object.assign(calendar, stageAgenda);
+  stageAgendaCompositionV1 = stageAgenda;
 
   return Object.freeze({
     ...stageOperational, ...controlCenter, ...stageRecordServices, ...stagePages,
@@ -8711,6 +8694,8 @@ export interface BrokerProfile {
   createdAt: string;
   updatedAt: string;
 }
+
+export type AtlasBrokerProfileFieldsV1 = Omit<BrokerProfile, 'id' | 'name' | 'createdAt' | 'updatedAt'>;
 
 export interface OperationalStage {
   id: number;
@@ -16191,6 +16176,179 @@ export interface OperationalAgendaEvent {
   evidenceRequired?: boolean;
 }
 
+export interface AtlasAgendaCalendarEventProjectionV1 {
+  event: OperationalAgendaEvent;
+  startHour: number;
+  durationHours: number;
+  spanDays: number;
+  tone: 'done' | 'warning' | 'planned';
+  heightPixels: number;
+  widthPercent: number;
+  widthOffsetPixels: number;
+  startLabel: string;
+  durationLabel: string;
+  spanLabel: string;
+}
+
+export interface AtlasAgendaPageProjectionV1 {
+  dayNavigation: Array<{ date: string; weekdayLabel: string; dayOfMonth: number; eventCount: number; selected: boolean }>;
+  orderedEvents: OperationalAgendaEvent[];
+  selected: OperationalAgendaEvent | null;
+  editing: boolean;
+  stage: OperationalStage | undefined;
+  stageName: string;
+  stageOptions: Array<{ stage: OperationalStage; selected: boolean }>;
+  activityOptions: Array<{ activity: OperationalActivity; selected: boolean }>;
+  materialOptions: Array<{ material: OperationalMaterial; selected: boolean }>;
+  timeLabels: Array<{ hour: number; label: string }>;
+  statusGroups: Array<{ key: string; title: string; events: OperationalAgendaEvent[] }>;
+  calendarDays: Array<{ date: string; label: string; eventCount: number; events: AtlasAgendaCalendarEventProjectionV1[] }>;
+}
+
+export interface AtlasAgendaResourceOptionsInputV1 {
+  stages: readonly OperationalStage[];
+  materials: readonly OperationalMaterial[];
+  stageName: string;
+  selectedActivityId?: string;
+  selectedMaterialIds?: readonly string[];
+}
+
+/** Format an agenda date in the same local calendar used by its week controls. */
+export function atlasAgendaPageDateIsoV1(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/** Join the selected agenda stage to its activities and available materials. */
+export function projectAtlasAgendaResourceOptionsV1(input: AtlasAgendaResourceOptionsInputV1): {
+  activities: Array<{ activity: OperationalActivity; selected: boolean }>;
+  materials: Array<{ material: OperationalMaterial; selected: boolean }>;
+} {
+  const selectedMaterialIds = input.selectedMaterialIds || [];
+  const stage = input.stages.find(item => item.name === input.stageName);
+  return {
+    activities: (stage?.activities || []).map(activity => ({
+      activity,
+      selected: input.selectedActivityId === activity.id,
+    })),
+    materials: input.materials
+      .filter(item => item.stageName === input.stageName)
+      .map(material => ({ material, selected: selectedMaterialIds.includes(material.id) })),
+  };
+}
+
+/** Project persisted agenda data into the weekly page, status groups, and calendar geometry. */
+export function projectAtlasAgendaPageV1(input: {
+  events: readonly OperationalAgendaEvent[];
+  stages: readonly OperationalStage[];
+  materials: readonly OperationalMaterial[];
+  week: string;
+  selectedDate: string;
+  editor: OperationalAgendaEvent | null | false;
+  relatedFrom: string;
+}): AtlasAgendaPageProjectionV1 {
+  const start = new Date(`${input.week}T12:00:00`);
+  const days = Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(start);
+    day.setDate(day.getDate() + index);
+    return day;
+  });
+  const keys = days.map(atlasAgendaPageDateIsoV1);
+  const weekEvents = input.events.filter(event => keys.includes(event.date));
+  const selected = input.editor && typeof input.editor === 'object' ? input.editor : null;
+  const relatedStageName = input.events.find(event => event.id === input.relatedFrom)?.stageName;
+  const stage = selected
+    ? input.stages.find(item => item.name === selected.stageName)
+    : input.stages.find(item => item.name === relatedStageName) || input.stages[0];
+  const stageName = selected?.stageName || stage?.name || '';
+  const orderedEvents = [...weekEvents].sort((left, right) =>
+    `${left.date}T${left.start || '00:00'}`.localeCompare(`${right.date}T${right.start || '00:00'}`));
+  const normalizeStatus = (value: string): string => value.toLocaleLowerCase('pt-BR')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replaceAll('_', ' ').trim();
+  const statusPriority = operationalPolicies.agendaStatusPriority;
+  const statusLabels = operationalPolicies.agendaStatusLabels;
+  const statusKeys = [...new Set(orderedEvents.map(event => normalizeStatus(event.status)))].sort((left, right) => {
+    const leftIndex = statusPriority.indexOf(left), rightIndex = statusPriority.indexOf(right);
+    return (leftIndex < 0 ? statusPriority.length : leftIndex)
+      - (rightIndex < 0 ? statusPriority.length : rightIndex)
+      || left.localeCompare(right, 'pt-BR');
+  });
+  const statusGroups = statusKeys.map(key => ({
+    key,
+    title: statusLabels[key] || key,
+    events: orderedEvents.filter(event => normalizeStatus(event.status) === key),
+  }));
+  const dayNavigation = days.map(day => {
+    const date = atlasAgendaPageDateIsoV1(day);
+    return {
+      date,
+      weekdayLabel: day.toLocaleDateString('pt-BR', { weekday: 'short' }),
+      dayOfMonth: day.getDate(),
+      eventCount: weekEvents.filter(event => event.date === date).length,
+      selected: date === input.selectedDate,
+    };
+  });
+  const stageOptions = input.stages.map(item => ({
+    stage: item,
+    selected: selected ? selected.stageName === item.name : stage?.id === item.id,
+  }));
+  const resources = projectAtlasAgendaResourceOptionsV1({
+    stages: input.stages,
+    materials: input.materials,
+    stageName,
+    selectedActivityId: selected?.activityId,
+    selectedMaterialIds: selected?.materialIds,
+  });
+  const timeLabels = [0, 4, 8, 12, 16, 20].map(hour => ({
+    hour,
+    label: `${String(hour).padStart(2, '0')}:00`,
+  }));
+  const calendarDays = days.map(day => {
+    const date = atlasAgendaPageDateIsoV1(day);
+    const events = orderedEvents.filter(event => event.date === date).map(event => {
+      const [hour, minute] = String(event.start || '08:00').split(':').map(Number);
+      const startHour = hour + minute / 60;
+      const durationHours = Math.max(0.5, Math.min(24 - startHour, Number(event.durationHours) || 1));
+      const spanDays = Math.min(Math.max(1, Number(event.spanDays) || 1), 7 - day.getDay());
+      const tone: AtlasAgendaCalendarEventProjectionV1['tone'] = /concl/i.test(event.status)
+        ? 'done'
+        : /pend|risco|bloq/i.test(event.status) ? 'warning' : 'planned';
+      return {
+        event,
+        startHour,
+        durationHours,
+        spanDays,
+        tone,
+        heightPixels: Math.max(24, durationHours * 48),
+        widthPercent: spanDays * 100,
+        widthOffsetPixels: (spanDays - 1) * 8,
+        startLabel: String(event.start || ''),
+        durationLabel: `${durationHours} h`,
+        spanLabel: `${spanDays} dia(s)`,
+      };
+    });
+    return {
+      date,
+      label: day.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' }),
+      eventCount: events.length,
+      events,
+    };
+  });
+  return {
+    dayNavigation,
+    orderedEvents,
+    selected,
+    editing: input.editor !== false,
+    stage,
+    stageName,
+    stageOptions,
+    activityOptions: resources.activities,
+    materialOptions: resources.materials,
+    timeLabels,
+    statusGroups,
+    calendarDays,
+  };
+}
+
 /** Project the agenda week's drag and resize gesture into a persisted event value. */
 export function projectAtlasAgendaWeekGestureV1(input: {
   source: OperationalAgendaEvent;
@@ -17429,15 +17587,15 @@ export function createAtlasAgendaCalendarProgramV1(ports: AtlasAgendaCalendarPro
 }
 
 export interface AtlasStageAgendaApplicationCompositionInputV1 extends AtlasActivityInstallationDependenciesV1 {
-  ViewLayer: { prototype: HTMLElement & Record<string, unknown> };
-  STAGE_WORKBENCH: ReadonlyArray<AtlasWorkbenchActivityRouteStageV1>;
-  apiFetch: (path: string, init?: RequestInit) => Promise<Response>;
-  beginCardCanvasLinkV1: (...args: any[]) => unknown;
+  ViewLayer: AtlasPlanningViewLayer;
+  STAGE_WORKBENCH: typeof WORKER_STAGE_WORKBENCH_CATALOG_V1;
+  apiFetch: AtlasPlanningPagesApplicationInput['apiFetch'];
+  beginCardCanvasLinkV1: AtlasPlanningPagesApplicationInput['beginCardCanvasLinkV1'];
   dashboardPageMarkup: (calendarWeek?: string) => string;
-  extensionStage?: unknown;
-  normalizeActivityRouteTextV1: (...args: any[]) => string;
-  stagePersistentTimelineMarkupV1: (...args: any[]) => string;
-  workbenchStageFromValueV1: (...args: any[]) => unknown;
+  extensionStage: AtlasPlanningPagesApplicationInput['extensionStage'];
+  normalizeActivityRouteTextV1: AtlasPlanningRuntimeContextV1['normalizeActivityRouteTextV1'];
+  stagePersistentTimelineMarkupV1: () => string;
+  workbenchStageFromValueV1: AtlasPlanningPagesApplicationInput['stageRecordServices']['workbenchStageFromValueV1'];
 }
 
 /** Compose the Agenda, activity-installation route, and stage-home calendar. */
@@ -17450,7 +17608,7 @@ export async function installAtlasStageAgendaApplicationCompositionV1(
     ViewLayer, STAGE_WORKBENCH, activityCatalog, activityInstallationDefaults,
     appStore, apiFetch, beginCardCanvasLinkV1, dashboardPageMarkup, demoData,
     esc, executionModel, extensionStage, ico, normalizeActivityRouteTextV1,
-    notify, operationalRaid, renderActivityFormGroupsV1,
+    notify, onCommit, operationalRaid, renderActivityFormGroupsV1,
     stagePersistentTimelineMarkupV1, stageV9LiveFor, stageV9MaterialsFor,
     stageV9ProductionFor, stageV9StatusFor, workbenchStageFromValueV1,
   } = input;
@@ -17486,18 +17644,7 @@ export async function installAtlasStageAgendaApplicationCompositionV1(
   const activityInstallationDependenciesV1: AtlasActivityInstallationDependenciesV1 = {
     activityCatalog, activityInstallationDefaults, appStore, demoData, esc,
     executionModel, ico, notify, operationalRaid, renderActivityFormGroupsV1,
-    onCommit: (command, label) => appStore.update(state => ({
-      ...state,
-      activityInstallation: {
-        ...applyAtlasActivityInstallationCommandV1(
-          state.activityInstallation,
-          activityInstallationDefaults,
-          command,
-        ),
-        updatedAt: new Date().toISOString(),
-      },
-      lastAction: label,
-    })),
+    onCommit,
     onNavigate: input.onNavigate,
     stageV9LiveFor, stageV9MaterialsFor, stageV9ProductionFor, stageV9StatusFor,
   };
@@ -19049,6 +19196,42 @@ export function projectAtlasRepasseSaleEditorV1(
   };
 }
 
+export interface AtlasRepassePageProjectionV1 extends AtlasRepasseWorkspaceSummaryV1 {
+  reasonOptions: RepasseOperations['reasons'];
+  registerableSaleOptions: Array<{ id: string; label: string }>;
+  saleEditors: Array<ReturnType<typeof projectAtlasRepasseSaleEditorV1>>;
+  destinationStageOptions: AtlasRepasseDestinationStageOptionV1[];
+  entryDate: string;
+}
+
+export function projectAtlasRepassePageV1(
+  data: RepasseOperations,
+  reports: readonly RepasseReport[],
+  selectedSaleId: string,
+  now: Date = new Date(),
+): AtlasRepassePageProjectionV1 {
+  const summary = projectAtlasRepasseWorkspaceSummaryV1(data, reports, selectedSaleId);
+  const reportsBySale = new Map(reports.map(report => [report.saleId, report]));
+  const reasonOrder: Record<string, number> = { signal: 0, intermediate: 1, monthly: 2 };
+  const reasonOptions = data.reasons.filter(reason => reason.active).sort((left, right) =>
+    (reasonOrder[left.id] ?? 9) - (reasonOrder[right.id] ?? 9));
+  return {
+    ...summary,
+    reasonOptions,
+    registerableSaleOptions: summary.registerableSales.map(sale => ({
+      id: sale.id,
+      label: [sale.lot || 'Lote', sale.client || 'Cliente', sale.broker || 'Sem corretor'].join(' · '),
+    })),
+    saleEditors: data.sales.map(sale => projectAtlasRepasseSaleEditorV1(
+      sale,
+      reportsBySale.get(sale.id),
+      data.stages,
+    )),
+    destinationStageOptions: projectAtlasRepasseDestinationStageOptionsV1(data.stages),
+    entryDate: now.toISOString().slice(0, 10),
+  };
+}
+
 export interface AtlasBrokerDirectoryProfileV1 {
   id: string;
   name: string;
@@ -19095,6 +19278,80 @@ export function projectAtlasBrokerDirectoryProfilesV1(
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+}
+
+export interface AtlasBrokerDirectoryPageProjectionV1 {
+  profiles: AtlasBrokerDirectoryProfileV1[];
+  visibleProfiles: AtlasBrokerDirectoryProfileV1[];
+  selectedProfile: AtlasBrokerDirectoryProfileV1 | null;
+  selectedSales: Array<{ sale: RepasseSale; receivedCents: number }>;
+}
+
+export function resolveAtlasBrokerDirectoryProfileV1(
+  profiles: readonly AtlasBrokerDirectoryProfileV1[],
+  selectedBrokerId: string,
+): AtlasBrokerDirectoryProfileV1 | null {
+  return profiles.find(profile => profile.id === selectedBrokerId) || null;
+}
+
+export interface AtlasBrokerProfileSaveDraftV1 {
+  name: string;
+  profile: AtlasBrokerProfileFieldsV1;
+}
+
+export function createAtlasBrokerProfileSaveDraftV1(input: {
+  profiles: readonly AtlasBrokerDirectoryProfileV1[];
+  selectedBrokerId: string;
+  saving: boolean;
+  fields: Partial<Record<keyof AtlasBrokerProfileFieldsV1, unknown>>;
+}): AtlasBrokerProfileSaveDraftV1 | null {
+  if (input.saving) return null;
+  const selected = resolveAtlasBrokerDirectoryProfileV1(input.profiles, input.selectedBrokerId);
+  if (!selected) return null;
+  const clean = (value: unknown): string => String(value || '').trim();
+  return {
+    name: selected.name,
+    profile: {
+      creci: clean(input.fields.creci),
+      phone: clean(input.fields.phone),
+      email: clean(input.fields.email),
+      notes: clean(input.fields.notes),
+    },
+  };
+}
+
+/** Filter broker profiles by name and associated lots. */
+export function projectAtlasBrokerDirectoryVisibleProfilesV1(
+  profiles: readonly AtlasBrokerDirectoryProfileV1[],
+  query: unknown,
+): AtlasBrokerDirectoryProfileV1[] {
+  const search = String(query || '').trim().toLocaleLowerCase('pt-BR');
+  return profiles.filter(profile =>
+    !search || [profile.name, profile.lots.join(' ')].join(' ').toLocaleLowerCase('pt-BR').includes(search),
+  );
+}
+
+/** Resolve the selected broker and join its sale rows with persisted receipt totals. */
+export function projectAtlasBrokerDirectoryPageV1(input: {
+  data: RepasseOperations | null;
+  reports: readonly RepasseReport[];
+  profileRecords: readonly BrokerProfile[];
+  query: string;
+  selectedBrokerId: string;
+}): AtlasBrokerDirectoryPageProjectionV1 {
+  const profiles = projectAtlasBrokerDirectoryProfilesV1(input.data, input.reports, input.profileRecords);
+  const selectedProfile = resolveAtlasBrokerDirectoryProfileV1(profiles, input.selectedBrokerId);
+  return {
+    profiles,
+    visibleProfiles: projectAtlasBrokerDirectoryVisibleProfilesV1(profiles, input.query),
+    selectedProfile,
+    selectedSales: selectedProfile
+      ? selectedProfile.sales.map(sale => ({
+        sale,
+        receivedCents: selectedProfile.report.find(report => report.saleId === sale.id)?.receivedCents || 0,
+      }))
+      : [],
+  };
 }
 
 /** Project archive metadata; file bytes live in the persistent document service. */
@@ -19574,6 +19831,7 @@ interface OperationalPolicies {
   repasseReasonPriority: Record<string, number>;
   repasseReasonSplit: Record<string, number[]>;
   agendaStatusPriority: string[];
+  agendaStatusLabels: Record<string, string>;
   stageKeyPatterns: Array<{ pattern: string; key: string }>;
 }
 const operationalPolicies = operationalPoliciesData as OperationalPolicies;
@@ -19990,6 +20248,89 @@ export interface AtlasLotDetailStateV1 extends Record<string, unknown> {
   currentActor?: { role?: string };
 }
 
+export interface AtlasLotDetailPageProjectionV1 {
+  lotKey: string;
+  lot: RepassePriceCatalogEntry | undefined;
+  lotStatus: AtlasLotStatus;
+  plans: AtlasLotPaymentPlanV1[];
+  documents: AtlasLotDocumentV1[];
+  history: AtlasLotHistoryItemV1[];
+  partners: AtlasLotBoardSeller[];
+  sellerId: string;
+  payment: NonNullable<AtlasLotStatus['payment']>;
+  paymentTotal: number;
+  derivedHistory: AtlasLotHistoryItemV1[];
+  cashEntries: AtlasLotCashEntryV1[];
+  totalCashCents: number;
+  canRegisterCash: boolean;
+}
+
+/** Keep lot-linked cash and detail values derived from the shared operational store. */
+export function projectAtlasLotCashEntriesV1(state: AtlasLotDetailStateV1, lotKey: string): AtlasLotCashEntryV1[] {
+  return (state.cashFlowLocal || []).filter(entry => entry.kind === 'entrada' && String(entry.lotKey || '') === lotKey);
+}
+
+function projectAtlasLotDetailHistoryV1(
+  state: AtlasLotDetailStateV1,
+  lotKey: string,
+  lotStatus: AtlasLotStatus,
+  history: AtlasLotHistoryItemV1[],
+  formatBRL: (value: unknown) => string,
+): AtlasLotHistoryItemV1[] {
+  const entries = projectAtlasLotCashEntriesV1(state, lotKey).map(entry => ({
+    id: String(entry.id || ''), at: String(entry.createdAt || entry.date || ''),
+    type: 'Entrada no caixa',
+    detail: `${formatBRL(Number(entry.amountCents || 0) / 100)} · ${entry.category || entry.description || 'Sem descrição'}`,
+  }));
+  const statusEvent: AtlasLotHistoryItemV1[] = lotStatus.updatedAt ? [{
+    id: `status-${lotStatus.updatedAt}`, at: lotStatus.updatedAt,
+    type: 'Controle comercial atualizado',
+    detail: `${lotStatus.status || 'Disponível'} · ${lotStatus.payment?.status || 'Pendente'}`,
+  }] : [];
+  return [...history, ...entries, ...statusEvent].sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+}
+
+/** Project the selected lot's canonical catalog, commercial controls, plans and cash history. */
+export function projectAtlasLotDetailPageV1(input: {
+  state: AtlasLotDetailStateV1;
+  priceCatalog: readonly RepassePriceCatalogEntry[];
+  commissionProfiles: readonly AtlasCommissionProfileCatalogEntry[];
+  formatBRL(value: unknown): string;
+}): AtlasLotDetailPageProjectionV1 {
+  const { state } = input;
+  const fallbackLot = input.priceCatalog[0];
+  const lotKey = String(state.selectedLotDetailKey || fallbackLot?.label || '');
+  const lot = input.priceCatalog.find(item => String(item.label) === lotKey) || fallbackLot;
+  const lotStatus = state.lotStatuses?.[lotKey] || {};
+  const plans = state.lotPaymentPlans?.[lotKey] || [];
+  const documents = state.lotDocuments?.[lotKey] || [];
+  const history = state.lotHistory?.[lotKey] || [];
+  const partners = state.repassePartners || input.commissionProfiles.map(person => ({ id: person.id, name: person.name }));
+  const cashEntries = projectAtlasLotCashEntriesV1(state, lotKey);
+  return {
+    lotKey,
+    lot,
+    lotStatus,
+    plans,
+    documents,
+    history,
+    partners,
+    sellerId: lotStatus.sellerId || '',
+    payment: lotStatus.payment || {},
+    paymentTotal: plans.reduce((total, plan) => total + Math.max(0, Number(plan.amount) || 0), 0),
+    derivedHistory: projectAtlasLotDetailHistoryV1(state, lotKey, lotStatus, history, input.formatBRL),
+    cashEntries,
+    totalCashCents: cashEntries.reduce((sum, entry) => sum + Number(entry.amountCents || 0), 0),
+    canRegisterCash: state.currentActor?.role === 'owner' || state.currentActor?.role === 'developer',
+  };
+}
+
+/** Project the same table row shape used by lot reports and Excel export. */
+export function projectAtlasLotExportRowV1(lot: RepassePriceCatalogEntry, state: AtlasLotDetailStateV1): RepassePriceCatalogEntry & Record<string, unknown> {
+  const details = state.lotStatuses?.[lot.label] || {};
+  return { ...lot, status: details.status || 'Disponível', paymentStatus: details.payment?.status || 'Pendente', sellerName: details.sellerName || '', client: details.client || '', note: details.note || '' };
+}
+
 export interface AtlasLotDetailProgramCommandsInputV1 {
   ViewLayer: AtlasCommercialViewLayerConstructor;
   REPASSE_PRICE_CATALOG: RepassePriceCatalogEntry[];
@@ -20002,7 +20343,6 @@ export interface AtlasLotDetailProgramCommandsInputV1 {
   commissionProfiles: AtlasCommissionProfileCatalogEntry[];
   downloadBrandedLotExcelV1(input: { lots?: Array<RepassePriceCatalogEntry & Record<string, unknown>>; title?: string; subtitle?: string; filename?: string }): void;
   formatBRL(value: unknown): string;
-  lotExportRowV1(lot: RepassePriceCatalogEntry, state?: AtlasLotDetailStateV1): RepassePriceCatalogEntry & Record<string, unknown>;
   esc(value: unknown): string;
   ico(name: string): string;
   notify?(message: string, kind?: string): void;
@@ -20173,7 +20513,7 @@ export function installAtlasLotDetailProgramCommandsV1(input: AtlasLotDetailProg
       const lot = input.REPASSE_PRICE_CATALOG.find(item => String(item.label) === lotKey);
       if (!lot) return;
       input.downloadBrandedLotExcelV1({
-        lots: [input.lotExportRowV1(lot, input.appStore.get())],
+        lots: [projectAtlasLotExportRowV1(lot, input.appStore.get())],
         title: "Ficha do lote " + lotKey,
         subtitle: "Cadastro comercial, pagamento e acompanhamento",
         filename: "alianca-park-ficha-" + lotKey.toLowerCase(),
@@ -20263,6 +20603,151 @@ export interface AtlasCommissionDealV1 {
   stage: string;
 }
 
+export type AtlasCommissionHistoryActionV1 =
+  | { kind: 'open-contract'; id: string; returnProfile: string }
+  | { kind: 'open-deal'; id: string }
+  | { kind: 'return-to-profile'; profileId: string }
+  | { kind: 'import-csv'; fileName: string; text: string };
+
+export interface AtlasCommissionHistoryActionResultV1 {
+  patch?: Partial<AtlasApplicationStoreState>;
+  notification?: { message: string; tone?: string };
+}
+
+/** Project commission-history actions into state patches and user notifications. */
+export function createAtlasCommissionHistoryActionResultV1(input: {
+  action: AtlasCommissionHistoryActionV1;
+  state: Pick<AtlasApplicationStoreState, 'commissionEntries'>;
+  profiles: readonly Pick<AtlasCommissionProfileCatalogEntry, 'id' | 'name'>[];
+  brlToNumber(value: string): number;
+  formatBRL(value: number): string;
+  DateCtor?: DateConstructor;
+}): AtlasCommissionHistoryActionResultV1 {
+  const { action } = input;
+  switch (action.kind) {
+    case 'open-contract':
+      return {
+        patch: {
+          selectedCommissionContract: action.id,
+          commissionContractReturn: action.returnProfile || null,
+          lastAction: `Abriu contrato ${action.id}`,
+        },
+      };
+    case 'open-deal':
+      return {
+        patch: {
+          selectedCommissionContract: action.id,
+          commissionContractReturn: null,
+          lastAction: `Abriu contrato ${action.id}`,
+        },
+      };
+    case 'return-to-profile':
+      return {
+        patch: {
+          selectedCommissionProfile: action.profileId || null,
+          selectedCommissionContract: null,
+          commissionContractReturn: null,
+          lastAction: 'Voltou para a origem do lançamento',
+        },
+      };
+    case 'import-csv': {
+      const [header, ...lines] = action.text.split(/\r?\n/).filter(Boolean);
+      if (!header) return { notification: { message: 'Não encontrei linhas válidas na planilha CSV.', tone: 'warning' } };
+      const columns = header.split(/[;,\t]/).map(value => value.trim().toLocaleLowerCase());
+      const read = (row: string, names: string[]): string => {
+        const values = row.split(/[;,\t]/);
+        const index = columns.findIndex(column => names.some(name => column.includes(name)));
+        return index >= 0 ? String(values[index] || '').trim() : '';
+      };
+      const DateCtor = input.DateCtor || globalThis.Date;
+      const importedAt = String(DateCtor.now()).slice(-5);
+      const entries = lines.map((line, index): AtlasCommissionNegotiationDealV1 => {
+        const profileName = read(line, ['respons', 'consultor', 'corretor']);
+        const profile = input.profiles.find(item => item.name.toLocaleLowerCase() === profileName.toLocaleLowerCase()) || input.profiles[0];
+        const value = read(line, ['valor']) || '0';
+        const rate = Number(String(read(line, ['taxa']) || '6').replace(',', '.').replace(/[^\d.]/g, '')) || 6;
+        const numericValue = input.brlToNumber(value);
+        return {
+          id: `CT-IMP-${importedAt}${index}`,
+          profile: profile?.id || '',
+          lot: read(line, ['lote']) || `IMPORT-${index + 1}`,
+          quadra: read(line, ['quadra']) || 'Lote importado',
+          client: read(line, ['cliente', 'comprador']) || 'Cliente importado',
+          status: read(line, ['status']) || 'Proposta',
+          value: input.formatBRL(numericValue),
+          commission: input.formatBRL((numericValue * rate) / 100),
+          rate: `${rate.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}%`,
+          date: new DateCtor().toLocaleDateString('pt-BR'),
+          payment: 'Importado de planilha',
+          purpose: 'A definir',
+          stage: 'Importação CSV',
+        };
+      }).filter(entry => entry.lot || entry.client);
+      if (!entries.length) return { notification: { message: 'Não encontrei linhas válidas na planilha CSV.', tone: 'warning' } };
+      return {
+        patch: {
+          commissionEntries: [...(input.state.commissionEntries || []), ...entries],
+          lastAction: `Importou ${entries.length} lançamentos da planilha`,
+        },
+        notification: { message: `${entries.length} lançamentos importados para a carteira.`, tone: 'success' },
+      };
+    }
+  }
+}
+
+export type AtlasCommissionProfileActionV1 =
+  | { kind: 'select-profile'; profileId: string }
+  | { kind: 'open-proposal'; id: string }
+  | { kind: 'commission-back' }
+  | { kind: 'proposal-back' }
+  | { kind: 'proposal-save' }
+  | { kind: 'send-contract'; id: string }
+  | { kind: 'new-commission' }
+  | { kind: 'lead-lot-interest' };
+
+export interface AtlasCommissionProfileActionResultV1 {
+  patch?: Partial<AtlasApplicationStoreState>;
+  notification?: { message: string; tone?: string };
+  openExternalUrl?: string;
+}
+
+/** Resolve commission-profile events into application-state and browser effects. */
+export function createAtlasCommissionProfileActionResultV1(input: {
+  action: AtlasCommissionProfileActionV1;
+  deals: readonly Pick<AtlasCommissionDealV1, 'id' | 'profile' | 'client' | 'quadra' | 'value'>[];
+  profiles: readonly Pick<AtlasCommissionProfileCatalogEntry, 'id' | 'name' | 'phone'>[];
+}): AtlasCommissionProfileActionResultV1 | null {
+  const { action, deals, profiles } = input;
+  switch (action.kind) {
+    case 'select-profile':
+      return { patch: { selectedCommissionProfile: action.profileId, selectedCommissionContract: null, lastAction: 'Abriu carteira de comissões' } };
+    case 'open-proposal':
+      return { patch: { selectedCommissionProposal: action.id, selectedCommissionProfile: null, selectedCommissionContract: null, lastAction: `Abriu proposta ${action.id}` } };
+    case 'commission-back':
+      return { patch: { selectedCommissionProfile: null, selectedCommissionContract: null, lastAction: 'Voltou para a carteira de comissões' } };
+    case 'proposal-back':
+      return { patch: { selectedCommissionProposal: null, selectedCommissionProfile: null, selectedCommissionContract: null, lastAction: 'Voltou da proposta' } };
+    case 'proposal-save':
+      return { notification: { message: 'Proposta salva como minuta para revisão.', tone: 'success' } };
+    case 'new-commission':
+      return { notification: { message: 'Novo lançamento de comissão: escolha um perfil comercial para associar o negócio.' } };
+    case 'lead-lot-interest':
+      return {
+        patch: { lastAction: 'Selecionou QD02-L18 para registrar interesse' },
+        notification: { message: 'Lote QD02-L18 selecionado. Preencha seus dados para registrar o interesse.', tone: 'success' },
+      };
+    case 'send-contract': {
+      const deal = deals.find(item => item.id === action.id);
+      const profile = profiles.find(item => item.id === deal?.profile);
+      const phone = String(profile?.phone || '').replace(/\D/g, '');
+      if (!deal || !profile || !phone)
+        return { notification: { message: 'Cadastre um telefone válido no perfil do corretor para abrir o WhatsApp.', tone: 'warning' } };
+      const message = `Olá, ${deal.client}. Segue a minuta do contrato ${deal.id} referente ao ${deal.quadra}, no valor de ${deal.value}.`;
+      return { openExternalUrl: `https://wa.me/${phone}?text=${encodeURIComponent(message)}` };
+    }
+  }
+}
+
 export interface AtlasCommercialContractRecordV1 extends AtlasCommissionDealV1 {
   seller?: string;
   sellerDocument?: string;
@@ -20290,6 +20775,46 @@ export interface AtlasContractsPageProjectionV1 {
 export const ATLAS_CONTRACT_STATUS_OPTIONS_V1: readonly string[] = Object.freeze([
   'Reserva', 'Em análise', 'Proposta', 'Assinado', 'Compra confirmada',
 ]);
+
+/** Resolve the role gate and redirects for the contracts/proposals route. */
+export function projectAtlasContractsRouteAccessV1(input: {
+  state: AtlasApplicationStoreState;
+  normalizedRole: string;
+}): Partial<AtlasApplicationStoreState> | null {
+  const { state, normalizedRole } = input;
+  const brokerOnly = ['sales', 'commercial', 'broker', 'corretor'].includes(normalizedRole);
+  const privileged = ['owner', 'admin', 'developer'].includes(normalizedRole);
+  const requestedView = String(state.view || 'map');
+
+  if (brokerOnly && !['map', 'contracts', 'proposals'].includes(requestedView)) {
+    return {
+      view: 'map',
+      activityDedicated: false,
+      selectedActivity: null,
+      lastAction: 'Acesso do corretor limitado ao dashboard e à carteira',
+    };
+  }
+  if (!brokerOnly && state.view === 'contracts' && !privileged) {
+    return {
+      view: 'map',
+      proposalFormOpen: false,
+      selectedCommissionProfile: null,
+      selectedCommissionContract: null,
+      selectedCommissionProposal: null,
+      lastAction: 'Carteira comercial restrita ao corretor',
+    };
+  }
+  if (!privileged && ['commissions', 'brokers'].includes(requestedView)) {
+    return {
+      view: 'contracts',
+      selectedCommissionProfile: null,
+      selectedCommissionContract: null,
+      selectedCommissionProposal: null,
+      lastAction: 'Acesso comercial redirecionado para minha carteira',
+    };
+  }
+  return null;
+}
 
 /** Join the canonical commercial catalog with local entries and project the contract ledger. */
 export function projectAtlasContractsPageV1(input: {
@@ -20339,10 +20864,74 @@ export function projectAtlasContractsPageV1(input: {
   });
 }
 
+export type AtlasContractsPageSurfaceV1 =
+  | { kind: 'proposal-form' }
+  | { kind: 'proposal-detail'; deal: AtlasCommercialContractRecordV1 | null }
+  | { kind: 'contract-detail'; deal: AtlasCommercialContractRecordV1 | null }
+  | { kind: 'ledger' };
+
+/** Resolve which contracts surface is active and its selected business record. */
+export function projectAtlasContractsPageSurfaceV1(input: {
+  state: Pick<AtlasApplicationStoreState, 'proposalFormOpen' | 'selectedCommissionProposal' | 'selectedCommissionContract'>;
+  deals: readonly AtlasCommercialContractRecordV1[];
+}): AtlasContractsPageSurfaceV1 {
+  const { state, deals } = input;
+  if (state.proposalFormOpen) return { kind: 'proposal-form' };
+  if (state.selectedCommissionProposal) {
+    return {
+      kind: 'proposal-detail',
+      deal: deals.find(item => item.id === state.selectedCommissionProposal) || null,
+    };
+  }
+  if (state.selectedCommissionContract) {
+    return {
+      kind: 'contract-detail',
+      deal: deals.find(item => item.id === state.selectedCommissionContract) || null,
+    };
+  }
+  return { kind: 'ledger' };
+}
+
+export interface AtlasContractsCsvExportV1 {
+  fileName: string;
+  contentType: 'text/csv;charset=utf-8';
+  content: string;
+}
+
+/** Serialize the visible contract ledger with its established columns and CSV dialect. */
+export function projectAtlasContractsCsvExportV1(
+  deals: readonly AtlasCommercialContractRecordV1[],
+): AtlasContractsCsvExportV1 {
+  const rows: unknown[][] = [
+    ['Contrato', 'Cliente', 'Lote', 'Status', 'Recibo / condição', 'Valor'],
+    ...deals.map(deal => [
+      deal.id,
+      deal.client || '',
+      deal.lot || '',
+      deal.status || '',
+      deal.payment || '',
+      deal.value || '',
+    ]),
+  ];
+  const serialized = rows
+    .map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(';'))
+    .join('\n');
+  return Object.freeze({
+    fileName: 'contratos-recibos.csv',
+    contentType: 'text/csv;charset=utf-8',
+    content: `\ufeff${serialized}`,
+  });
+}
+
 export type AtlasContractsPageCommandV1 =
   | { type: "filter"; name: "query" | "status"; value: string }
   | { type: "clear-filters" }
   | { type: "new" }
+  | { type: "open-proposal-form" }
+  | { type: "return-from-proposal-form" }
+  | { type: "open-proposal"; proposalId: string }
+  | { type: "select-contract-detail"; contractId: string }
+  | { type: "preview-contract"; contractId: string }
   | { type: "open"; contractId: string }
   | { type: "edit"; deal: AtlasCommercialContractRecordV1; source?: "row" | "button" }
   | { type: "confirm-purchase"; deal: Pick<AtlasCommercialContractRecordV1, "id" | "status"> }
@@ -20374,6 +20963,40 @@ export function createAtlasContractsPageCommandV1(input: {
         view: "contracts", proposalFormOpen: true, contractEditing: null,
         selectedCommissionProposal: null, selectedCommissionContract: null,
         lastAction: "Abriu novo contrato",
+      } };
+    case "open-proposal-form":
+      return { patch: {
+        view: "contracts", proposalFormOpen: true,
+        selectedCommissionProposal: null, selectedCommissionContract: null,
+        lastAction: "Abriu formulário de nova proposta",
+      } };
+    case "return-from-proposal-form":
+      return { patch: {
+        view: state.view === "proposals" ? "commissions" : "contracts",
+        proposalFormOpen: false,
+        lastAction: "Voltou para a área comercial",
+      } };
+    case "open-proposal":
+      return { patch: {
+        view: "contracts",
+        selectedCommissionProposal: command.proposalId,
+        selectedCommissionProfile: null,
+        selectedCommissionContract: null,
+        lastAction: `Abriu proposta ${command.proposalId}`,
+      } };
+    case "select-contract-detail":
+      return { patch: {
+        view: "contracts",
+        selectedCommissionContract: command.contractId,
+        selectedCommissionProfile: null,
+        selectedCommissionProposal: null,
+        lastAction: `Abriu contrato ${command.contractId}`,
+      } };
+    case "preview-contract":
+      return { patch: {
+        view: "contracts", proposalFormOpen: false, contractEditing: null,
+        selectedCommissionContract: command.contractId,
+        lastAction: `Visualizou contrato ${command.contractId}`,
       } };
     case "open":
       return { patch: {
@@ -20415,6 +21038,45 @@ export type AtlasProposalFormSubmissionResultV1 =
       patch: Partial<AtlasApplicationStoreState>;
       notification: { message: string; tone: 'success' };
     };
+
+export interface AtlasContractEditFormValuesV1 {
+  seller: string;
+  sellerDocument: string;
+  lot: string;
+  quadra: string;
+  lotArea: string;
+  value: string;
+  rate: string;
+  payment: string;
+  profile: string;
+  client: string;
+  cpf: string;
+  email: string;
+  phone: string;
+  purpose: string;
+}
+
+/** Project a saved contract record into the editable proposal-form fields. */
+export function projectAtlasContractEditFormValuesV1(
+  deal: AtlasCommercialContractRecordV1,
+): AtlasContractEditFormValuesV1 {
+  return {
+    seller: deal.seller || '',
+    sellerDocument: deal.sellerDocument || '',
+    lot: deal.lot || '',
+    quadra: deal.quadra || '',
+    lotArea: String(deal.lotArea || ''),
+    value: String(deal.value || '').replace(/[^\d,.-]/g, ''),
+    rate: String(deal.rate || '6').replace('%', '').replace(',', '.'),
+    payment: deal.payment || '',
+    profile: deal.profile || '',
+    client: deal.client || '',
+    cpf: deal.cpf || '',
+    email: deal.email || '',
+    phone: deal.phone || '',
+    purpose: deal.purpose || 'Moradia',
+  };
+}
 
 /** Validate and normalize a proposal form into the application-state transition. */
 export function createAtlasProposalFormSubmissionV1(input: {
@@ -20478,6 +21140,69 @@ export function createAtlasProposalFormSubmissionV1(input: {
   };
 }
 
+export interface AtlasProposalPersistenceRequestV1 {
+  proposal: Record<string, unknown>;
+  files: readonly File[];
+  actor: Record<string, unknown>;
+}
+
+export type AtlasOperationalProposalSaveServiceV1 = (
+  proposal?: Record<string, unknown>,
+  files?: File[],
+  actor?: Record<string, unknown>,
+) => Promise<unknown>;
+
+export type AtlasProposalPersistenceCommandV1 = (request: AtlasProposalPersistenceRequestV1) => void;
+
+/** Keep remote proposal writes behind the program command, after form validation succeeds. */
+export function createAtlasProposalPersistenceCommandV1(input: {
+  saveOperationalProposal: AtlasOperationalProposalSaveServiceV1;
+  onFailure?: (message: string, error: unknown) => void;
+}): AtlasProposalPersistenceCommandV1 {
+  if (typeof input?.saveOperationalProposal !== 'function')
+    throw new TypeError('Proposal persistence command requires saveOperationalProposal().');
+  const onFailure = input.onFailure || ((message: string, error: unknown) => globalThis.console.info(message, error));
+  return (request): void => {
+    void Promise.resolve()
+      .then(() => input.saveOperationalProposal(
+        { ...request.proposal },
+        [...request.files],
+        { ...request.actor },
+      ))
+      .catch(error => onFailure('Proposta salva localmente; envio ao Firebase indisponível.', error));
+  };
+}
+
+export interface AtlasProposalSaveCommandRequestV1 {
+  state: AtlasApplicationStoreState;
+  scope: AtlasCommercialScopeV1;
+  values: Record<string, unknown>;
+  files: readonly File[];
+  inference?: Record<string, unknown> | null;
+  brlToNumber(value: unknown): number;
+  formatBRL(value: number): string;
+  persist: AtlasProposalPersistenceCommandV1;
+}
+
+/** Validate a proposal, create its local patch, and queue the remote save as one workflow. */
+export function createAtlasProposalSaveCommandV1(
+  input: AtlasProposalSaveCommandRequestV1,
+): AtlasProposalFormSubmissionResultV1 {
+  const result = createAtlasProposalFormSubmissionV1(input);
+  if (!result.accepted) return result;
+  const actor = input.state.currentActor || {};
+  input.persist({
+    proposal: {
+      ...input.values,
+      uid: actor.uid || '',
+      inference: input.inference || null,
+    },
+    files: input.files,
+    actor,
+  });
+  return result;
+}
+
 export interface AtlasCommissionNegotiationTransactionV1 extends Record<string, unknown> {
   label?: string;
   type?: string;
@@ -20493,6 +21218,97 @@ export interface AtlasCommissionNegotiationDealV1 extends AtlasCommissionDealV1 
   notes?: string;
   transactions?: AtlasCommissionNegotiationTransactionV1[];
   latestTransactions?: AtlasCommissionNegotiationTransactionV1[];
+}
+
+export interface AtlasCommissionNegotiationLedgerV1 {
+  deals: AtlasCommissionNegotiationDealV1[];
+  shown: AtlasCommissionNegotiationDealV1[];
+  filters: AtlasCommissionNegotiationFiltersV1;
+  statusOptions: readonly string[];
+  valueTotal: number;
+  commissionTotal: number;
+  activeCount: number;
+}
+
+/** Merge canonical deals with saved local edits, hidden IDs, and date ordering. */
+export function projectAtlasCommissionNegotiationDealsV1(input: {
+  state: AtlasCommissionNegotiationStateV1;
+  canonicalDeals: readonly AtlasCommissionNegotiationDealV1[];
+}): AtlasCommissionNegotiationDealV1[] {
+  const hidden = new Set(input.state.commissionHiddenIds || []);
+  const merged = new Map<string, AtlasCommissionNegotiationDealV1>(
+    input.canonicalDeals.map(item => [item.id, { ...item }]),
+  );
+  (input.state.commissionEntries || []).forEach(item => {
+    if (item?.id) merged.set(item.id, { ...(merged.get(item.id) || {}), ...item });
+  });
+  const parseDate = (value: unknown): number => {
+    const match = String(value || '').match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    return match ? Date.parse(`${match[3]}-${match[2]}-${match[1]}`) : 0;
+  };
+  return [...merged.values()]
+    .filter(item => !hidden.has(item.id))
+    .sort((a, b) => parseDate(b.date) - parseDate(a.date));
+}
+
+/** Project the filtered negotiation ledger and its commercial totals. */
+export function projectAtlasCommissionNegotiationLedgerV1(input: {
+  state: AtlasCommissionNegotiationStateV1;
+  canonicalDeals: readonly AtlasCommissionNegotiationDealV1[];
+  brlToNumber(value: unknown): number;
+}): AtlasCommissionNegotiationLedgerV1 {
+  const deals = projectAtlasCommissionNegotiationDealsV1(input);
+  const filters: AtlasCommissionNegotiationFiltersV1 = {
+    query: '',
+    status: 'all',
+    profile: 'all',
+    ...(input.state.commissionNegotiationFilters || {}),
+  };
+  const query = String(filters.query || '').toLocaleLowerCase('pt-BR');
+  const shown = deals.filter(deal => {
+    const haystack = JSON.stringify(deal).toLocaleLowerCase('pt-BR');
+    return (!query || haystack.includes(query)) &&
+      (filters.status === 'all' || deal.status === filters.status) &&
+      (filters.profile === 'all' || deal.profile === filters.profile);
+  });
+  return {
+    deals,
+    shown,
+    filters,
+    statusOptions: ['Reserva', 'Em análise', 'Proposta', 'Assinado', 'Compra confirmada'],
+    valueTotal: shown.reduce((sum, deal) => sum + input.brlToNumber(deal.value), 0),
+    commissionTotal: shown.reduce((sum, deal) => sum + input.brlToNumber(deal.commission), 0),
+    activeCount: shown.filter(deal => deal.status !== 'Assinado' && deal.status !== 'Compra confirmada').length,
+  };
+}
+
+/** Preserve the three-transaction limit and synthesize the two commercial fallbacks. */
+export function projectAtlasCommissionNegotiationTransactionsV1(
+  deal: AtlasCommissionNegotiationDealV1,
+  profile?: Pick<AtlasCommissionProfileCatalogEntry, 'name'>,
+): AtlasCommissionNegotiationTransactionV1[] {
+  const supplied = Array.isArray(deal.transactions)
+    ? deal.transactions
+    : Array.isArray(deal.latestTransactions)
+      ? deal.latestTransactions
+      : [];
+  if (supplied.length) return supplied.slice(0, 3);
+  return [
+    {
+      label: 'Registro da negociação',
+      detail: deal.stage || deal.status || 'Em acompanhamento',
+      value: deal.value || '—',
+      at: deal.date || 'Data não informada',
+      status: deal.status || 'Em acompanhamento',
+    },
+    {
+      label: 'Comissão prevista',
+      detail: `${deal.rate || 'Taxa cadastrada'} · ${profile?.name || 'Corretor'}`,
+      value: deal.commission || '—',
+      at: deal.date || 'Data não informada',
+      status: 'Provisionada',
+    },
+  ];
 }
 
 export interface AtlasCommercialWorkspaceDealStateV1 extends Record<string, unknown> {
@@ -20540,6 +21356,71 @@ export interface AtlasBrokerCommissionReasonV1 {
   warley: number;
   partner: number;
   payment: string;
+}
+
+export interface AtlasBrokerControlPageProjectionV1 {
+  period: 'monthly' | 'annual' | 'cumulative';
+  periodLabels: Readonly<Record<'monthly' | 'annual' | 'cumulative', string>>;
+  reasons: AtlasBrokerCommissionReasonV1[];
+  reasonEditorRows: Array<{ reason: AtlasBrokerCommissionReasonV1; initialSharePercent: number }>;
+  reasonLabels: Readonly<Record<string, string>>;
+  profileCards: Array<{
+    profile: AtlasCommissionProfileCatalogEntry;
+    stats: { rows: AtlasCommissionDealV1[]; sales: number; commission: number; pending: number };
+  }>;
+  ledgerRows: Array<{
+    deal: AtlasCommissionDealV1;
+    profile?: AtlasCommissionProfileCatalogEntry;
+    reason?: AtlasBrokerCommissionReasonV1;
+    searchValue: string;
+  }>;
+}
+
+/** Project broker cards and the commission ledger without owning its HTML. */
+export function projectAtlasBrokerControlPageV1(input: {
+  state: Record<string, unknown>;
+  commissionDeals: readonly AtlasCommissionDealV1[];
+  commissionProfiles: readonly AtlasCommissionProfileCatalogEntry[];
+  reasons: readonly AtlasBrokerCommissionReasonV1[];
+  brlToNumber(value: unknown): number;
+}): AtlasBrokerControlPageProjectionV1 {
+  const localDeals = Array.isArray(input.state.commissionEntries)
+    ? input.state.commissionEntries as AtlasCommissionDealV1[]
+    : [];
+  const deals = [...input.commissionDeals, ...localDeals];
+  const periodLabels = { monthly: 'Mensal', annual: 'Anual', cumulative: 'Acumulado' } as const;
+  const requestedPeriod = String(input.state.reportPeriod || 'monthly') as keyof typeof periodLabels;
+  const period = periodLabels[requestedPeriod] ? requestedPeriod : 'monthly';
+  const reasons = input.reasons.filter(reason => reason.active !== false);
+  const reasonEditorRows = reasons.map(reason => ({
+    reason,
+    initialSharePercent: Number(reason.sharePercent ?? (reason.id === 'signal' ? 40 : 30)),
+  }));
+  const reasonLabels = Object.fromEntries(
+    (commissionReasonDefaultsData as AtlasBrokerCommissionReasonV1[]).map(reason => [reason.id, reason.label]),
+  );
+  const profileCards = input.commissionProfiles.map(profile => {
+    const rows = deals.filter(deal => deal.profile === profile.id);
+    return {
+      profile,
+      stats: {
+        rows,
+        sales: rows.reduce((sum, deal) => sum + input.brlToNumber(deal.value), 0),
+        commission: rows.reduce((sum, deal) => sum + input.brlToNumber(deal.commission), 0),
+        pending: rows.filter(deal => deal.status !== 'Assinado').length,
+      },
+    };
+  });
+  const ledgerRows = deals.map((deal, index) => {
+    const profile = input.commissionProfiles.find(item => item.id === deal.profile);
+    return {
+      deal,
+      profile,
+      reason: reasons[index % Math.max(1, reasons.length)],
+      searchValue: JSON.stringify(deal).toLowerCase() + ' ' + String(profile?.name || '').toLowerCase(),
+    };
+  });
+  return { period, periodLabels, reasons, reasonEditorRows, reasonLabels, profileCards, ledgerRows };
 }
 
 export interface AtlasBrokerCommissionReportRowV1 extends Omit<AtlasCommissionDealV1, 'reason'> {
@@ -20688,6 +21569,84 @@ export interface AtlasCommissionNegotiationSaveCommandV1 {
   attachmentReadFailed?: boolean;
 }
 
+export type AtlasCommissionNegotiationPageActionV1 =
+  | { kind: 'set-filter'; key: keyof AtlasCommissionNegotiationFiltersV1; value: string }
+  | { kind: 'clear-filters' }
+  | { kind: 'open-brokers' }
+  | { kind: 'open-record'; id?: string }
+  | { kind: 'create-record' }
+  | { kind: 'return-to-ledger' };
+
+/** Resolve negotiation ledger actions and draft defaults into application patches. */
+export function createAtlasCommissionNegotiationPageActionResultV1(input: {
+  action: AtlasCommissionNegotiationPageActionV1;
+  state: Pick<AtlasCommissionNegotiationStateV1, 'commissionEntries' | 'commissionNegotiationFilters'>;
+  profiles: readonly Pick<AtlasCommissionProfileCatalogEntry, 'id'>[];
+  DateCtor?: DateConstructor;
+}): Partial<AtlasCommissionNegotiationStateV1> {
+  const { action } = input;
+  switch (action.kind) {
+    case 'set-filter':
+      return {
+        commissionNegotiationFilters: {
+          ...(input.state.commissionNegotiationFilters || {}),
+          [action.key]: action.value,
+        },
+        lastAction: `Filtrou negociações por ${action.key}`,
+      };
+    case 'clear-filters':
+      return {
+        commissionNegotiationFilters: { query: '', status: 'all', profile: 'all' },
+        lastAction: 'Limpou filtros de negociações',
+      };
+    case 'open-brokers':
+      return {
+        view: 'brokers-board',
+        selectedCommissionProfile: null,
+        selectedCommissionNegotiation: null,
+        lastAction: 'Abriu o quadro de corretores',
+      };
+    case 'open-record':
+      return {
+        view: 'commission-deal',
+        selectedCommissionNegotiation: action.id,
+        selectedCommissionProfile: null,
+        selectedCommissionContract: null,
+        lastAction: 'Abriu a negociação ' + action.id,
+      };
+    case 'create-record': {
+      const DateCtor = input.DateCtor || globalThis.Date;
+      const id = 'NEG-' + new DateCtor().getFullYear() + '-' + String(DateCtor.now()).slice(-5);
+      const draft: AtlasCommissionNegotiationDealV1 = {
+        id,
+        profile: input.profiles[0]?.id || '',
+        client: '',
+        lot: '',
+        quadra: '',
+        value: '',
+        commission: '',
+        rate: '6,00%',
+        status: 'Reserva',
+        stage: 'Novo registro',
+        date: new DateCtor().toLocaleDateString('pt-BR'),
+        payment: '',
+        purpose: '',
+        notes: '',
+      };
+      return {
+        commissionEntries: [...(input.state.commissionEntries || []), draft],
+        view: 'commission-deal',
+        selectedCommissionNegotiation: id,
+        selectedCommissionProfile: null,
+        selectedCommissionContract: null,
+        lastAction: 'Abriu nova negociação',
+      };
+    }
+    case 'return-to-ledger':
+      return { view: 'brokers', selectedCommissionNegotiation: null, lastAction: 'Voltou para comissões' };
+  }
+}
+
 export const ATLAS_COMMISSION_PROFILES_V1 = commissionProfilesCatalogData as unknown as AtlasCommissionProfileCatalogEntry[];
 export const ATLAS_COMMISSION_DEALS_V1 = commissionDealsCatalogData as unknown as AtlasCommissionDealV1[];
 
@@ -20737,6 +21696,65 @@ export interface AtlasLotBoardRow extends RepassePriceCatalogEntry {
   receivedCents: number;
   remainingCents: number | null;
   balanceStatus: 'Sem venda' | 'Pendente' | 'Parcial' | 'Quitado' | 'Cancelado';
+}
+
+export interface AtlasLotBoardPageProjectionV1 {
+  filteredRows: AtlasLotBoardRow[];
+  totalValue: number;
+  controlledCount: number;
+  selectedRow: AtlasLotBoardRow | undefined;
+  activeRow: AtlasLotBoardRow | undefined;
+  quadrants: string[];
+  sellerNames: string[];
+  pickerMatches: AtlasLotBoardRow[];
+  pickerRows: AtlasLotBoardRow[];
+  pickerPage: number;
+  pickerPages: number;
+  markerMatches: AtlasLotBoardRow[];
+}
+
+/** Project Lotes search, filters, balances, map selection and picker pagination. */
+export function projectAtlasLotBoardPageV1(input: {
+  rows: readonly AtlasLotBoardRow[];
+  search: string;
+  quadra: string;
+  status: string;
+  payment: string;
+  seller: string;
+  selectedKey: string;
+  activeLotKey: string;
+  pickerQuadra: string;
+  pickerPage: number;
+  markerLotNumber: number;
+}): AtlasLotBoardPageProjectionV1 {
+  const query = input.search.trim().toLocaleLowerCase('pt-BR');
+  const filteredRows = input.rows.filter(row =>
+    (!query || [row.label, String(row.lot), row.quadra].join(' ').toLocaleLowerCase('pt-BR').includes(query)) &&
+    (!input.quadra || row.quadra === input.quadra) &&
+    (!input.status || row.status === input.status) &&
+    (!input.payment || row.paymentStatus === input.payment) &&
+    (!input.seller || row.sellerName === input.seller),
+  );
+  const pickerMatches = input.rows.filter(row =>
+    (!input.pickerQuadra || row.quadra === input.pickerQuadra) &&
+    (!input.markerLotNumber || row.lot === input.markerLotNumber),
+  );
+  const pickerPages = Math.max(1, Math.ceil(pickerMatches.length / 12));
+  const pickerPage = Math.max(0, Math.min(input.pickerPage, pickerPages - 1));
+  return {
+    filteredRows,
+    totalValue: input.rows.reduce((sum, row) => sum + row.price, 0),
+    controlledCount: input.rows.filter(row => row.hasControl).length,
+    selectedRow: input.rows.find(row => row.label === input.selectedKey),
+    activeRow: input.rows.find(row => row.label === input.activeLotKey),
+    quadrants: [...new Set(input.rows.map(row => row.quadra))].sort(),
+    sellerNames: [...new Set(input.rows.map(row => row.sellerName).filter(Boolean))].sort(),
+    pickerMatches,
+    pickerRows: pickerMatches.slice(pickerPage * 12, (pickerPage + 1) * 12),
+    pickerPage,
+    pickerPages,
+    markerMatches: input.rows.filter(row => row.lot === input.markerLotNumber),
+  };
 }
 
 export interface AtlasLotBoardReceivableV1 {
@@ -28764,7 +29782,6 @@ export interface AtlasRecordApplicationCompositionInputV1 {
   formatBRL: (value: unknown) => string;
   ico: (name: string) => string;
   isAssistantVisualAdditionV1: (record: Record<string, unknown>) => unknown;
-  lotExportRowV1: AtlasLotDetailProgramCommandsInputV1['lotExportRowV1'];
   notify: (message: string, kind?: string) => unknown;
   operationalHeaders: (headers?: Record<string, string>) => HeadersInit;
   prepareAssistantLotStatusPromptV1: AtlasLotDetailProgramCommandsInputV1['prepareAssistantLotStatusPromptV1'];
@@ -28865,7 +29882,6 @@ export function installAtlasRecordApplicationCompositionV1(input: AtlasRecordApp
     commissionProfiles: input.commissionProfiles,
     downloadBrandedLotExcelV1: input.downloadBrandedLotExcelV1,
     formatBRL: input.formatBRL,
-    lotExportRowV1: input.lotExportRowV1,
     esc: input.esc,
     ico: input.ico,
     notify: input.notify,
@@ -28906,7 +29922,9 @@ export interface AtlasSidebarRouteCompositionInput {
   communicationsServices: Parameters<SystemAPI['installCommunicationsPanel']>[1];
   stageHomeRecordResources: Omit<Parameters<typeof createAtlasStageHomeRecordResourcesViewV1>[0], 'esc' | 'ico' | 'stages' | 'materialRows' | 'serviceRows' | 'normalize'>
     & Pick<AtlasStageHomeRecordResourceServicesV1, 'stages' | 'materialRows' | 'serviceRows' | 'bindMaterialReport' | 'normalize'>;
-  commercialContracts: Omit<Parameters<typeof installAtlasCommercialContractsPageV1>[0], 'ViewLayer' | 'host'>;
+  commercialContracts: Omit<Parameters<typeof installAtlasCommercialContractsPageV1>[0], 'ViewLayer' | 'host' | 'persistProposal'> & {
+    saveOperationalProposal: AtlasOperationalProposalSaveServiceV1;
+  };
   adminAiChat: Omit<Parameters<typeof registerAtlasAdminAiChatV1>[0], 'host' | 'appStore'>;
 }
 
@@ -30114,7 +31132,7 @@ export function* program(): Generator<SystemAPI, never, void> {
 
   /** Persist professional profile fields without changing linked sales or ledger entries. */
   async function saveBrokerProfile(event:Event):Promise<void>{
-    const detail=(event as CustomEvent<{element:AtlasBrokers;name:string;profile:Omit<BrokerProfile,'id'|'name'|'createdAt'|'updatedAt'>}>).detail;
+    const detail=(event as CustomEvent<{element:AtlasBrokers;name:string;profile:AtlasBrokerProfileFieldsV1}>).detail;
     if(!detail||detail.element!==brokersElement)return;
     try{
       await writeApi<{profile:BrokerProfile}>('/api/broker-profiles/'+encodeURIComponent(detail.name),detail.profile);
@@ -32546,8 +33564,13 @@ export function* program(): Generator<SystemAPI, never, void> {
       bindMaterialReport: input.stageHomeRecordResources.bindMaterialReport,
       stages: input.stageHomeRecordResources.stages,
     }, stageHomeRecordResourcesViewV1);
+    const { saveOperationalProposal, ...commercialContractPorts } = input.commercialContracts;
     installAtlasCommercialContractsPageV1({
-      ...input.commercialContracts,
+      ...commercialContractPorts,
+      persistProposal: createAtlasProposalPersistenceCommandV1({
+        saveOperationalProposal,
+        onFailure: (message, error) => globalThis.console.info(message, error),
+      }),
       ViewLayer: ViewLayer as unknown as Parameters<typeof installAtlasCommercialContractsPageV1>[0]['ViewLayer'],
       host: globalThis as Parameters<typeof installAtlasCommercialContractsPageV1>[0]['host'],
     });
@@ -34186,6 +35209,204 @@ export interface AtlasUsagePreferencesV1 {
 export interface AtlasUsagePageOptionV1 { id: AtlasUsagePageIdV1; label: string }
 export interface AtlasUsageDensityOptionV1 { id: AtlasUsagePreferencesV1['density']; label: string }
 export interface AtlasUsageBusinessDefaultsV1 { signalAmount: number; pixReceiver: string; pixCity: string }
+
+export interface AtlasSettingsStageDraftV1 { name: string; status: string; progress: string; week: string; owner: string }
+export interface AtlasSettingsComprehensionDraftV1 {
+  requirements: string; conditions: string; typicalDescription: string; requestHints: string;
+  evidenceFocus: string; procurementFocus: string; organizationRequest: string; organizationContext: string;
+  notifyOwner: string; notifyAdmin: string; notifyForeman: string; expectedActivities: string;
+  productionQuantity: string; productionUnit: string; productionRate: string; productionRateUnit: string;
+  materialsTable: Array<{ name: string; description: string; quantity: string; unit: string; status: string }>;
+}
+export interface AtlasSettingsAiAgendaDraftV1 { reading: string; determination: string; generation: string; autoCreatePending: boolean }
+export interface AtlasSettingsContactDraftV1 { whatsappNumber: string }
+export interface AtlasSettingsUsageDraftV1 {
+  defaultPage: string; density: string; reduceMotion: boolean; voiceEnabled: boolean;
+  whatsappNumber: string; instagramAccount: string; autoNotify: boolean; pixKey: string;
+  signalAmount: string; pixReceiver: string; pixCity: string;
+}
+export interface AtlasSettingsRoleDraftV1 { id: string | null; name: string; permissions: string[] }
+export interface AtlasSettingsKeyDraftV1 { label: string; roleId: string }
+
+const atlasSettingsFormTextV1 = (values: Record<string, unknown>, name: string): string => String(values[name] || '');
+
+export function buildAtlasSettingsStageDraftV1(values: Record<string, unknown>): AtlasSettingsStageDraftV1 {
+  return {
+    name: atlasSettingsFormTextV1(values, 'name'), status: atlasSettingsFormTextV1(values, 'status'),
+    progress: atlasSettingsFormTextV1(values, 'progress'), week: atlasSettingsFormTextV1(values, 'week'),
+    owner: atlasSettingsFormTextV1(values, 'owner'),
+  };
+}
+
+export function buildAtlasSettingsComprehensionDraftV1(input: {
+  values: Record<string, unknown>;
+  materialsTable: AtlasSettingsComprehensionDraftV1['materialsTable'];
+}): AtlasSettingsComprehensionDraftV1 {
+  const value = (name: string): string => atlasSettingsFormTextV1(input.values, name);
+  return {
+    requirements: value('requirements'), conditions: value('conditions'), typicalDescription: value('typicalDescription'), requestHints: value('requestHints'),
+    evidenceFocus: value('evidenceFocus'), procurementFocus: value('procurementFocus'), organizationRequest: value('organizationRequest'), organizationContext: value('organizationContext'),
+    notifyOwner: value('notifyOwner'), notifyAdmin: value('notifyAdmin'), notifyForeman: value('notifyForeman'), expectedActivities: value('expectedActivities'),
+    productionQuantity: value('productionQuantity'), productionUnit: value('productionUnit'), productionRate: value('productionRate'), productionRateUnit: value('productionRateUnit'),
+    materialsTable: input.materialsTable,
+  };
+}
+
+export function buildAtlasSettingsAiAgendaDraftV1(values: Record<string, unknown>): AtlasSettingsAiAgendaDraftV1 {
+  return {
+    reading: atlasSettingsFormTextV1(values, 'reading'), determination: atlasSettingsFormTextV1(values, 'determination'),
+    generation: atlasSettingsFormTextV1(values, 'generation'), autoCreatePending: Boolean(values.autoCreatePending),
+  };
+}
+
+export function buildAtlasSettingsContactDraftV1(values: Record<string, unknown>): AtlasSettingsContactDraftV1 {
+  return { whatsappNumber: atlasSettingsFormTextV1(values, 'whatsappNumber') };
+}
+
+export function buildAtlasSettingsUsageDraftV1(values: Record<string, unknown>): AtlasSettingsUsageDraftV1 {
+  return {
+    defaultPage: atlasSettingsFormTextV1(values, 'defaultPage'), density: atlasSettingsFormTextV1(values, 'density'),
+    reduceMotion: Boolean(values.reduceMotion), voiceEnabled: Boolean(values.voiceEnabled), whatsappNumber: atlasSettingsFormTextV1(values, 'whatsappNumber'),
+    instagramAccount: atlasSettingsFormTextV1(values, 'instagramAccount'), autoNotify: Boolean(values.autoNotify), pixKey: atlasSettingsFormTextV1(values, 'pixKey'),
+    signalAmount: atlasSettingsFormTextV1(values, 'signalAmount'), pixReceiver: atlasSettingsFormTextV1(values, 'pixReceiver'), pixCity: atlasSettingsFormTextV1(values, 'pixCity'),
+  };
+}
+
+export function buildAtlasSettingsRoleDraftV1(input: { values: Record<string, unknown>; id: string | null; permissions: string[] }): AtlasSettingsRoleDraftV1 {
+  return { id: input.id, name: atlasSettingsFormTextV1(input.values, 'name'), permissions: input.permissions.map(String) };
+}
+
+export function buildAtlasSettingsKeyDraftV1(values: Record<string, unknown>): AtlasSettingsKeyDraftV1 {
+  return { label: atlasSettingsFormTextV1(values, 'label'), roleId: atlasSettingsFormTextV1(values, 'roleId') };
+}
+
+function projectAtlasSettingsWorkbenchSessionsV1(sessions: WorkbenchSession[]): WorkbenchSession[] {
+  return [...sessions].sort((left, right) => Number(left.order) - Number(right.order));
+}
+
+export function moveAtlasSettingsWorkbenchSessionV1(input: {
+  sessions: readonly WorkbenchSession[];
+  sessionId: string;
+  direction: 'up' | 'down';
+}): WorkbenchSession[] | null {
+  const rows = projectAtlasSettingsWorkbenchSessionsV1([...input.sessions]);
+  const from = rows.findIndex(item => item.id === input.sessionId);
+  const to = from + (input.direction === 'up' ? -1 : 1);
+  if (from < 0 || to < 0 || to >= rows.length) return null;
+  [rows[from], rows[to]] = [rows[to], rows[from]];
+  rows.forEach((item, index) => item.order = index);
+  return rows;
+}
+
+export function projectAtlasSettingsWorkbenchSessionV1(
+  session: WorkbenchSession,
+  index: number,
+  count: number,
+  options: Array<{ key: string; label: string; group: string }>,
+) {
+  const materials = Array.isArray(session.materials) ? session.materials.map((item, materialIndex): WorkbenchMaterial =>
+    typeof item === 'string'
+      ? { id: `material-${materialIndex}`, name: item, description: '', usage: '', quantity: '', unit: '' }
+      : item) : [];
+  const conditions = (session.inference?.conditions || session.operational?.entryConditions || []) as Array<Record<string, unknown> | string>;
+  const production = (session.inference?.production || session.operational?.production || {}) as Record<string, unknown>;
+  const automation = session.automation || {};
+  const programming = session.programming || {};
+  return {
+    id: session.id,
+    title: session.title || 'Atividade',
+    unit: session.unit || 'Unidade não definida',
+    release: session.release || 'Sem requisito de liberação',
+    summary: (session.inference?.summary as string) || 'Editar compreensão',
+    status: (session.inference?.summary as string) || 'Alterações são salvas na compreensão original do Worker.',
+    moveUpDisabled: index === 0,
+    moveDownDisabled: index === count - 1,
+    materials,
+    properties: session.properties || [],
+    conditions: conditions.map(condition => typeof condition === 'string'
+      ? { label: 'Condição', trigger: condition, severity: 'warning' }
+      : condition),
+    production,
+    automation,
+    programming,
+    options: options.map(option => ({
+      ...option,
+      checked: Boolean((option.group === 'automation' ? automation[option.key] : programming[option.key])),
+    })),
+    custom: session.custom,
+  };
+}
+
+export function projectAtlasSettingsPageV1(input: {
+  snapshot: SettingsSnapshot;
+  selectedStageId: string;
+  activeTab: 'materials' | 'activities' | 'execution';
+  creatingStage: boolean;
+  usagePages: AtlasUsagePageOptionV1[];
+  usageDensities: AtlasUsageDensityOptionV1[];
+  usageBusinessDefaults: AtlasUsageBusinessDefaultsV1 | null;
+}) {
+  const { snapshot } = input;
+  const stage = snapshot.stages.find(item => String(item.id) === input.selectedStageId) || snapshot.stages[0];
+  const config = stage?.aiConfig || ({} as NonNullable<ConfiguredStage['aiConfig']>);
+  const profile = config.executionProfile || {};
+  const sessions = stage ? projectAtlasSettingsWorkbenchSessionsV1(stage.workbenchSessions) : [];
+  const materials = profile.materialsTable || [];
+  const activities = profile.expectedActivities || sessions.map(session => session.title);
+  const production = profile.production || { quantity: null, unit: '', rate: null, rateUnit: '' };
+  const listText = (value: unknown) => Array.isArray(value)
+    ? value.map(item => typeof item === 'string' ? item : '').filter(Boolean).join('\n')
+    : '';
+  const targetText = (value: unknown) => Array.isArray(value) ? value.join(', ') : '';
+  const sourceMaterials = sessions.flatMap(session => (Array.isArray(session.materials) ? session.materials : []).map((value, index) => ({
+    session,
+    material: typeof value === 'string'
+      ? { id: `${session.id}-${index}`, name: value, description: '', usage: '', quantity: '', unit: '' }
+      : value,
+  })));
+  return {
+    stage,
+    sessions,
+    materials,
+    fields: {
+      procurementFocus: listText(config.procurementFocus),
+      expectedActivities: listText(activities),
+      requestHints: listText(config.requestHints),
+      typicalDescription: String(config.typicalDescription || ''),
+      requirements: listText(config.requirements),
+      conditions: listText(config.conditions),
+      evidenceFocus: listText(config.evidenceFocus),
+      organizationContext: String(config.organizationContext || ''),
+      organizationRequest: String(config.organizationRequest || ''),
+      productionQuantity: String(production.quantity ?? ''),
+      productionUnit: String(production.unit ?? ''),
+      productionRate: String(production.rate ?? ''),
+      productionRateUnit: String(production.rateUnit ?? ''),
+      notifyOwner: targetText(config.notificationTargets?.owner),
+      notifyAdmin: targetText(config.notificationTargets?.admin),
+      notifyForeman: targetText(config.notificationTargets?.foreman),
+    },
+    ...projectAtlasSettingsAccessPolicyV1(snapshot),
+    stageChoices: snapshot.stages.map(item => ({
+      item,
+      selected: String(item.id) === String(stage?.id ?? ''),
+      progress: Number(item.progress) || 0,
+      disabled: input.creatingStage,
+    })),
+    sourceMaterials,
+    workbenchSourceLabel: stage?.workbenchSource === 'persisted'
+      ? 'sessões salvas no banco'
+      : stage?.workbenchSource === 'worker-defaults'
+        ? 'catálogo original do Worker · somente leitura até salvar'
+        : 'estado do Worker indisponível',
+    tabs: [
+      { key: 'materials', label: 'Materiais', active: input.activeTab === 'materials', count: materials.length + sourceMaterials.length },
+      { key: 'activities', label: 'Atividades esperadas', active: input.activeTab === 'activities', count: sessions.length },
+      { key: 'execution', label: 'Execução', active: input.activeTab === 'execution', count: null },
+    ],
+    usagePanelVisible: Boolean(input.usagePages.length && input.usageDensities.length && input.usageBusinessDefaults),
+  };
+}
 
 /** Build the persisted stage shape from raw Settings form values. */
 export function projectAtlasSettingsStageDraftV1(draft: AtlasSettingsStageDraftV1): AtlasSettingsProjectionV1<{ name: string; status: string; progress: number; week: string; owner: string }> {
@@ -38705,7 +39926,7 @@ export interface AtlasFirebaseAdminEntryPointsV1 {
   publishOperationalRealtime: AtlasFirebaseOperationalCommunicationsV1['publishRealtime'];
   publishOperationalEvent: (event?: Record<string, unknown>) => Promise<unknown>;
   subscribeOperationalControlCenter: AtlasFirebaseOperationalCommunicationsV1['subscribeControlCenter'];
-  saveOperationalProposal: (input?: Record<string, unknown>, files?: File[], actor?: Record<string, unknown>) => Promise<unknown>;
+  saveOperationalProposal: AtlasOperationalProposalSaveServiceV1;
 }
 
 let atlasFirebaseAdminEntryPointsPromiseV1: Promise<AtlasFirebaseAdminEntryPointsV1> | null = null;
@@ -40235,15 +41456,25 @@ export function startAtlasExecutionPlanningEntryV1(input: {
 
 export {
   installAtlasDashboardMapTabsV1,
-  installAtlasFinanceMobileCashV5358,
   installAtlasChatTabWidgetV5359,
   type AtlasDashboardMapTabsHostV1,
   type AtlasDashboardMapTabsControllerV1,
   type AtlasFinanceMobileCashHostV5358,
+  type AtlasFinanceMobileCashCatalogV5358,
   type AtlasFinanceMobileCashControllerV5358,
   type AtlasChatTabWidgetHostV5359,
   type AtlasChatTabWidgetControllerV5359,
 } from './components.js';
+
+/** Supply the business catalog to the view adapter while keeping the legacy module entrypoint. */
+export function installAtlasFinanceMobileCashV5358(
+  input: Omit<AtlasFinanceMobileCashHostV5358, 'catalog'> & { catalog?: AtlasFinanceMobileCashCatalogV5358 } = {},
+): AtlasFinanceMobileCashControllerV5358 {
+  return installAtlasFinanceMobileCashComponentV5358({
+    ...input,
+    catalog: input.catalog || atlasFinanceMobileCashCatalogV5358,
+  });
+}
 
 export interface AtlasStagesLandingStateV5361 {
   view?: string;
@@ -40500,8 +41731,6 @@ export async function composeAtlasAdminComponentApplicationV1(): Promise<Readonl
   const esc = escapeAtlasDomValueV1;
   const ico = renderAtlasIconMarkupV1;
   const notify = notifyAtlasActionV1;
-  const proposalVisionPromptTsV1 = PROPOSAL_VISION_PROMPT_V1;
-  const parseProposalVisionPayloadTsV1 = parseAtlasProposalVisionPayloadV1;
   const atlasFrontendProgram = program;
   const readProposalImageAsDataUrlTsV1 = readAtlasProposalImageAsDataUrlV1;
   const renderStageHomePageV1 = renderAtlasStageHomePage;
@@ -41000,7 +42229,7 @@ export async function composeAtlasAdminComponentApplicationV1(): Promise<Readonl
     commissionFileToDataUrlV1,
     lotDetailPageV1,
   } = commercialApplicationCompositionV1;
-  const { downloadBrandedLotExcelV1, lotExportRowV1 } = lotDetailPageV1;
+  const { downloadBrandedLotExcelV1 } = lotDetailPageV1;
 
   // Install the planning page family as one category while preserving every
   // renderer and event override in the historical registration sequence.
@@ -41192,7 +42421,6 @@ export async function composeAtlasAdminComponentApplicationV1(): Promise<Readonl
     formatBRL,
     ico,
     isAssistantVisualAdditionV1,
-    lotExportRowV1,
     notify,
     operationalHeaders: headers => operationalHeaders(headers),
     prepareAssistantLotStatusPromptV1,
@@ -41285,8 +42513,6 @@ export async function composeAtlasAdminComponentApplicationV1(): Promise<Readonl
       commissionProfiles, commissionDeals, normalizeOperationalRole,
       commercialScopeV1, brlToNumber, formatBRL, esc, ico, notify,
       readProposalImageAsDataUrl: readProposalImageAsDataUrlTsV1,
-      proposalVisionPrompt: proposalVisionPromptTsV1,
-      parseProposalVisionPayload: parseProposalVisionPayloadTsV1,
       saveOperationalProposal,
     },
     adminAiChat: {

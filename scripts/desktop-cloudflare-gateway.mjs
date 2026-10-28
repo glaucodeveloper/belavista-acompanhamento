@@ -1,21 +1,9 @@
-import { timingSafeEqual } from 'node:crypto';
 import http from 'node:http';
-
-const routerKey = String(process.env.BELAVISTA_PORT_ROUTER_KEY || '').trim();
-if (routerKey.length < 24) throw new Error('BELAVISTA_PORT_ROUTER_KEY precisa ter ao menos 24 caracteres.');
 
 const host = String(process.env.BELAVISTA_CLOUDFLARE_GATEWAY_HOST || '127.0.0.1');
 const port = Number(process.env.BELAVISTA_CLOUDFLARE_GATEWAY_PORT || 18888);
 const upstreamHost = String(process.env.BELAVISTA_DESKTOP_UPSTREAM_HOST || '127.0.0.1');
 const upstreamPort = Number(process.env.BELAVISTA_DESKTOP_UPSTREAM_PORT || 8080);
-const routePrefix = '/5000';
-const expectedKey = Buffer.from(routerKey);
-
-function hasRouterKey(value) {
-  const candidate = Buffer.from(String(value || ''));
-  return candidate.length === expectedKey.length && timingSafeEqual(candidate, expectedKey);
-}
-
 function sendJson(response, status, payload) {
   const body = Buffer.from(JSON.stringify(payload));
   response.writeHead(status, {
@@ -28,20 +16,19 @@ function sendJson(response, status, payload) {
 }
 
 const server = http.createServer((incoming, outgoing) => {
-  if (!hasRouterKey(incoming.headers['x-port-router-key'])) {
-    sendJson(outgoing, 401, { error: 'Chave do Router inválida ou ausente.' });
+  // The public Port Router validates X-Port-Router-Key and strips it before
+  // forwarding. This gateway is loopback-only, so forwarded host headers are
+  // the marker that a request passed through that authenticated router.
+  if (!incoming.headers['x-forwarded-host']) {
+    sendJson(outgoing, 401, { error: 'Acesso permitido somente pelo Router autenticado.' });
     return;
   }
 
   let incomingUrl;
   try { incomingUrl = new URL(incoming.url || '/', 'http://router.local'); }
   catch { sendJson(outgoing, 400, { error: 'Endereço de rota inválido.' }); return; }
-  if (incomingUrl.pathname !== routePrefix && !incomingUrl.pathname.startsWith(`${routePrefix}/`)) {
-    sendJson(outgoing, 404, { error: 'Rota do Router não encontrada.' });
-    return;
-  }
-
-  const upstreamPath = incomingUrl.pathname.slice(routePrefix.length) || '/';
+  // Port Router already removes its /<port> prefix before forwarding here.
+  const upstreamPath = incomingUrl.pathname || '/';
   const headers = { ...incoming.headers };
   delete headers['x-port-router-key'];
   headers.host = `${upstreamHost}:${upstreamPort}`;
@@ -66,7 +53,7 @@ const server = http.createServer((incoming, outgoing) => {
 });
 
 server.listen(port, host, () => {
-  process.stdout.write(`Gateway Cloudflare protegido ativo em http://${host}:${port} → ${upstreamHost}:${upstreamPort}${routePrefix}\n`);
+  process.stdout.write(`Gateway protegido ativo em http://${host}:${port} → ${upstreamHost}:${upstreamPort}\n`);
 });
 
 for (const signal of ['SIGINT', 'SIGTERM']) {

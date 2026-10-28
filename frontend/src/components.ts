@@ -29,8 +29,6 @@ import type {
   RepasseForecastRow,
   RepasseOperations,
   AtlasRepasseMutationCommandV1,
-  AtlasRepasseDestinationStageOptionV1,
-  AtlasRepasseWorkspaceSummaryV1,
   RepasseReport,
   RepasseSale,
   DashboardSnapshot,
@@ -114,6 +112,7 @@ import type {
   AtlasRaidItem,
   AtlasRaidWorkspaceSnapshot,
   AtlasLotBoardRow,
+  AtlasLotBoardPageProjectionV1,
   AtlasLotBoardReceivableV1,
   AtlasLotBoardSeller,
   AtlasLotCommercialStatus,
@@ -126,16 +125,16 @@ import type {
   AtlasCommissionAttachmentV1,
   AtlasCommissionAttachmentKindV1,
   AtlasCommissionNegotiationSaveCommandV1,
+  AtlasCommissionNegotiationPageActionV1,
   AtlasBrokerDirectoryProfileV1,
   AtlasBrokerCommissionReasonV1,
   AtlasBrokerCommissionReportV1,
   AtlasBrokerCommissionReportStateV1,
   AtlasBrokerProfileAttachmentV1,
   AtlasLeadExportSourceV1,
-  AtlasLotCashEntryV1,
   AtlasLotDetailStateV1,
   AtlasLotDocumentV1,
-  AtlasLotHistoryItemV1,
+  AtlasLotDetailPageProjectionV1,
   AtlasLotPaymentPlanV1,
   AtlasLotStatus,
   RepassePriceCatalogEntry,
@@ -204,14 +203,14 @@ import type { AtlasRecordsActivityCatalogStageV1, AtlasRecordsActivityDrillRoute
 import { buildAtlasReportBuilderDraftV1, projectAtlasReportCashUploadV1, projectAtlasReportExportV1, type AtlasReportsWorkspaceCommandsV1 } from "./program.js";
 import { buildAtlasDesktopSetupFormDraftV1, projectAtlasDesktopEnvironmentModeV1 } from "./program.js";
 import type { AtlasDesktopEnvironmentViewV1, AtlasDesktopSetupFormV1, AtlasDesktopSetupViewV1 } from "./program.js";
-import { projectAtlasSettingsAccessPolicyV1 } from "./program.js";
+import { moveAtlasSettingsWorkbenchSessionV1, projectAtlasSettingsPageV1, projectAtlasSettingsWorkbenchSessionV1 } from "./program.js";
 import type { AtlasMapFilterRailCommandsV1, AtlasMapSceneStateCommandsV1, AtlasMapSelectionCommandsV1 } from "./program.js";
 import { projectAtlasSalesHistoryPageV1 } from "./program.js";
 import { buildAtlasActivityRecordSubmissionV1, projectAtlasActivityAdminDraftV1, type AtlasStageActivityNavigationCommandV1, type AtlasStageDedicatedPageNavigationCommandV1, type AtlasWorkflowCanvasActionV1 } from "./program.js";
 import { projectAtlasProgressPageV1, projectAtlasProgressSelectedStageIdV1 } from "./program.js";
 import { projectAtlasActivitiesPageV1 } from "./program.js";
-import { buildAtlasMaterialInlineEditPayloadV1, buildAtlasMaterialSaveDraftV1, buildAtlasMaterialTransitionDraftV1, projectAtlasMaterialInlineEditorV1, projectAtlasMaterialsPageV1 } from "./program.js";
-import { projectAtlasLotBoardRows, projectAtlasLotBoardSellers } from "./program.js";
+import { atlasAgendaPageDateIsoV1, buildAtlasMaterialInlineEditPayloadV1, buildAtlasMaterialSaveDraftV1, buildAtlasMaterialTransitionDraftV1, projectAtlasAgendaPageV1, projectAtlasAgendaResourceOptionsV1, projectAtlasMaterialInlineEditorV1, projectAtlasMaterialsPageV1 } from "./program.js";
+import { projectAtlasLotBoardPageV1, projectAtlasLotBoardRows, projectAtlasLotBoardSellers, projectAtlasLotDetailPageV1 } from "./program.js";
 import { buildAtlasLotDevelopmentProfileSaveDraftV1, projectAtlasLotDevelopmentPageV1 } from "./program.js";
 import { projectAtlasRecordsPageV1 } from "./program.js";
 import { projectAtlasCommunicationsPageV1 } from "./program.js";
@@ -231,10 +230,15 @@ import { buildAtlasDataTableCsvV1 } from "./program.js";
 import { ATLAS_RECORD_ATTACHMENT_POLICY_V1, isAtlasRecordDropAttachmentAllowedV1 } from "./program.js";
 import { normalizeAtlasLeadToolbarFiltersV1, projectAtlasLeadExportRowsV1, projectAtlasLeadToolbarRowVisibleV1 } from "./program.js";
 import { createAtlasFloatingWidgetLayoutKeyV1, projectAtlasFloatingWidgetDragPositionV1, readAtlasFloatingWidgetPositionV1, updateAtlasFloatingWidgetLayoutV1 } from "./program.js";
-import { projectAtlasBrokerDirectoryProfilesV1, projectAtlasBrokerCommissionReportV1 } from "./program.js";
-import { createAtlasContractsPageCommandV1, createAtlasProposalFormSubmissionV1, inferAtlasProposalAttachmentV1, projectAtlasContractsPageV1 } from "./program.js";
-import type { AtlasCommercialScopeV1 } from "./program.js";
-import { buildAtlasRepasseMutationCommandV1, projectAtlasRepasseWorkspaceSummaryV1, projectAtlasRepasseDestinationStageOptionsV1, projectAtlasRepasseSaleEditorV1, projectAtlasRepasseSelectedSaleIdV1 } from "./program.js";
+import { createAtlasBrokerProfileSaveDraftV1, projectAtlasBrokerDirectoryPageV1, projectAtlasBrokerDirectoryProfilesV1, projectAtlasBrokerCommissionReportV1, resolveAtlasBrokerDirectoryProfileV1 } from "./program.js";
+import type { AtlasBrokerProfileFieldsV1 } from "./program.js";
+import { projectAtlasBrokerControlPageV1 } from "./program.js";
+import { projectAtlasCommissionNegotiationDealsV1, projectAtlasCommissionNegotiationLedgerV1, projectAtlasCommissionNegotiationTransactionsV1 } from "./program.js";
+import { createAtlasContractsPageCommandV1, createAtlasProposalPersistenceCommandV1, createAtlasProposalSaveCommandV1, inferAtlasProposalAttachmentV1, isAtlasProposalInferenceAttachmentV1, projectAtlasContractEditFormValuesV1, projectAtlasContractsCsvExportV1, projectAtlasContractsPageV1, projectAtlasContractsPageSurfaceV1, projectAtlasContractsRouteAccessV1, projectAtlasProposalVisionFormUpdateV1 } from "./program.js";
+import type { AtlasCommercialScopeV1, AtlasCommissionHistoryActionV1, AtlasCommissionProfileActionV1, AtlasOperationalProposalSaveServiceV1, AtlasProposalPersistenceCommandV1 } from "./program.js";
+import { buildAtlasRepasseMutationCommandV1, projectAtlasRepassePageV1, projectAtlasRepasseSaleEditorV1, projectAtlasRepasseSelectedSaleIdV1 } from "./program.js";
+import { buildAtlasSettingsAiAgendaDraftV1, buildAtlasSettingsComprehensionDraftV1, buildAtlasSettingsContactDraftV1, buildAtlasSettingsKeyDraftV1, buildAtlasSettingsRoleDraftV1, buildAtlasSettingsStageDraftV1, buildAtlasSettingsUsageDraftV1 } from "./program.js";
+import type { AtlasSettingsAiAgendaDraftV1, AtlasSettingsComprehensionDraftV1, AtlasSettingsContactDraftV1, AtlasSettingsKeyDraftV1, AtlasSettingsRoleDraftV1, AtlasSettingsStageDraftV1, AtlasSettingsUsageDraftV1 } from "./program.js";
 import { projectAtlasRecordOcrReviewPropertiesV1 } from "./program.js";
 import { buildAtlasCashRecordFormCommandV1, projectAtlasCashRecordPageV1 } from "./program.js";
 import type {
@@ -249,7 +253,6 @@ import instagramPolicyCatalogData from "./data/instagram-policy-catalog.json" wi
 import dashboardPresentationData from "./data/dashboard-presentation.json" with { type: "json" };
 import materialsPresentationData from "./data/materials-presentation.json" with { type: "json" };
 import activityInstallationStepsData from "./data/activity-installation-steps.json" with { type: "json" };
-import operationalPoliciesData from "./data/operational-policies.json" with { type: "json" };
 import publicLeadHighlightCopyData from "./data/public-lead-highlight-copy.json" with { type: "json" };
 import sidebarNavigationData from "./data/sidebar-navigation.json" with { type: "json" };
 import masterplanOverlayPolicyData from "./data/map-masterplan-overlay.json" with { type: "json" };
@@ -5382,9 +5385,7 @@ interface DashboardPresentationCatalog {
 }
 const dashboardPresentation = dashboardPresentationData as DashboardPresentationCatalog;
 type MaterialsPresentationCatalog = AtlasMaterialsPresentationCatalogV1;
-interface AgendaStatusPresentation { agendaStatusPriority: string[]; agendaStatusLabels: Record<string,string> }
 const materialsPresentation = materialsPresentationData as MaterialsPresentationCatalog;
-const agendaStatusPresentation = operationalPoliciesData as AgendaStatusPresentation;
 export interface PublicLeadHighlightCopy { index: string; title: string; text: string }
 export type PublicLeadHighlightCatalog = Record<"available" | "reserved" | "negotiation" | "sold", PublicLeadHighlightCopy>;
 export const publicLeadHighlightCatalog = publicLeadHighlightCopyData as PublicLeadHighlightCatalog;
@@ -9081,43 +9082,6 @@ type RepasseState = {
 };
 type RepasseSetter = (previous: RepasseState) => RepasseState;
 
-export interface AtlasRepassePageProjectionV1 extends AtlasRepasseWorkspaceSummaryV1 {
-  reasonOptions: RepasseOperations["reasons"];
-  registerableSaleOptions: Array<{ id: string; label: string }>;
-  saleEditors: Array<ReturnType<typeof projectAtlasRepasseSaleEditorV1>>;
-  destinationStageOptions: AtlasRepasseDestinationStageOptionV1[];
-  entryDate: string;
-}
-
-/** Assemble the Repasses page view from financial projections and form catalogs. */
-export function projectAtlasRepassePageV1(
-  data: RepasseOperations,
-  reports: readonly RepasseReport[],
-  selectedSaleId: string,
-  now: Date = new Date(),
-): AtlasRepassePageProjectionV1 {
-  const summary = projectAtlasRepasseWorkspaceSummaryV1(data, reports, selectedSaleId);
-  const reportsBySale = new Map(reports.map(report => [report.saleId, report]));
-  const reasonOrder: Record<string, number> = { signal: 0, intermediate: 1, monthly: 2 };
-  const reasonOptions = data.reasons.filter(reason => reason.active).sort((left, right) =>
-    (reasonOrder[left.id] ?? 9) - (reasonOrder[right.id] ?? 9));
-  return {
-    ...summary,
-    reasonOptions,
-    registerableSaleOptions: summary.registerableSales.map(sale => ({
-      id: sale.id,
-      label: [sale.lot || "Lote", sale.client || "Cliente", sale.broker || "Sem corretor"].join(" · "),
-    })),
-    saleEditors: data.sales.map(sale => projectAtlasRepasseSaleEditorV1(
-      sale,
-      reportsBySale.get(sale.id),
-      data.stages,
-    )),
-    destinationStageOptions: projectAtlasRepasseDestinationStageOptionsV1(data.stages),
-    entryDate: now.toISOString().slice(0, 10),
-  };
-}
-
 /** Cadastro, leitura e controles do caixa ficam no Web Element responsável pela rota. */
 export class AtlasRepasses extends AtlasHTMLElementBase {
   private readonly state: AtomicState<RepasseState>;
@@ -9432,47 +9396,6 @@ const brokerDirectoryStyles = `<style>
   @media(max-width:620px){.atlas-brokers-page h1{font-size:24px}.atlas-brokers-page header{display:grid}.atlas-brokers-page .atlas-toolbar{grid-template-columns:1fr}.atlas-brokers-page .atlas-broker-grid{grid-template-columns:1fr}.atlas-brokers-page .atlas-detail-summary{grid-template-columns:1fr 1fr}.atlas-brokers-page .atlas-page-actions button{flex:1}}
 </style>`;
 
-export interface AtlasBrokerDirectoryPageProjectionV1 {
-  profiles: AtlasBrokerDirectoryProfileV1[];
-  visibleProfiles: AtlasBrokerDirectoryProfileV1[];
-  selectedProfile: AtlasBrokerDirectoryProfileV1 | null;
-  selectedSales: Array<{ sale: RepasseSale; receivedCents: number }>;
-}
-
-/** Keep broker search and selected-profile rows beside the directory component. */
-export function projectAtlasBrokerDirectoryVisibleProfilesV1(
-  profiles: readonly AtlasBrokerDirectoryProfileV1[],
-  query: unknown,
-): AtlasBrokerDirectoryProfileV1[] {
-  const search = String(query || "").trim().toLocaleLowerCase("pt-BR");
-  return profiles.filter(profile =>
-    !search || [profile.name, profile.lots.join(" ")].join(" ").toLocaleLowerCase("pt-BR").includes(search),
-  );
-}
-
-/** Resolve the selected broker and join its portfolio rows for the detail view. */
-export function projectAtlasBrokerDirectoryPageV1(input: {
-  data: RepasseOperations | null;
-  reports: readonly RepasseReport[];
-  profileRecords: readonly BrokerProfile[];
-  query: string;
-  selectedBrokerId: string;
-}): AtlasBrokerDirectoryPageProjectionV1 {
-  const profiles = projectAtlasBrokerDirectoryProfilesV1(input.data, input.reports, input.profileRecords);
-  const selectedProfile = profiles.find(profile => profile.id === input.selectedBrokerId) || null;
-  return {
-    profiles,
-    visibleProfiles: projectAtlasBrokerDirectoryVisibleProfilesV1(profiles, input.query),
-    selectedProfile,
-    selectedSales: selectedProfile
-      ? selectedProfile.sales.map(sale => ({
-        sale,
-        receivedCents: selectedProfile.report.find(report => report.saleId === sale.id)?.receivedCents || 0,
-      }))
-      : [],
-  };
-}
-
 type BrokersState = {
   data: RepasseOperations | null;
   reports: RepasseReport[];
@@ -9502,7 +9425,7 @@ export interface AtlasCommissionNegotiationViewsV1 {
 }
 export interface AtlasCommissionNegotiationViewsInputV1 {
   readState(): AtlasCommissionNegotiationStateV1;
-  onStatePatch(patch: Partial<AtlasCommissionNegotiationStateV1>): void;
+  onAction(action: AtlasCommissionNegotiationPageActionV1): void;
   commissionDeals: AtlasCommissionNegotiationDealV1[];
   commissionProfiles: AtlasCommissionProfileCatalogEntry[];
   esc: (value: unknown) => string;
@@ -9519,7 +9442,7 @@ export interface AtlasCommissionNegotiationViewsInputV1 {
 /** Typed markup and interaction adapters for the commercial negotiation flow. */
 export function createAtlasCommissionNegotiationViewsV1({
   readState,
-  onStatePatch,
+  onAction,
   commissionDeals,
   commissionProfiles,
   esc,
@@ -9532,8 +9455,8 @@ export function createAtlasCommissionNegotiationViewsV1({
   FormData: BrowserFormData,
   windowRef,
 }: AtlasCommissionNegotiationViewsInputV1 = {} as AtlasCommissionNegotiationViewsInputV1): AtlasCommissionNegotiationViewsV1 {
-  if (typeof readState !== "function" || typeof onStatePatch !== "function")
-    throw new TypeError("Commission views require readState() and onStatePatch().");
+  if (typeof readState !== "function" || typeof onAction !== "function")
+    throw new TypeError("Commission views require readState() and onAction().");
   if (!Array.isArray(commissionDeals) || !Array.isArray(commissionProfiles))
     throw new TypeError("Commission views require the commercial catalog.");
   for (const [name, value] of Object.entries({ esc, ico, formatBRL, brlToNumber, contractStatusClassV1 }))
@@ -9545,21 +9468,7 @@ export function createAtlasCommissionNegotiationViewsV1({
     throw new TypeError("Commission views require form and print browser services.");
 
   const commissionNegotiationDealsV1 = (state: AtlasCommissionNegotiationStateV1 = readState()): AtlasCommissionNegotiationDealV1[] => {
-    const hidden = new Set(state.commissionHiddenIds || []),
-      merged = new Map<string, AtlasCommissionNegotiationDealV1>(commissionDeals.map((item) => [item.id, { ...item }]));
-    (state.commissionEntries || []).forEach((item) => {
-      if (item?.id)
-        merged.set(item.id, { ...(merged.get(item.id) || {}), ...item });
-    });
-    return [...merged.values()]
-      .filter((item) => !hidden.has(item.id))
-      .sort((a, b) => {
-        const parse = (value: string) => {
-          const match = String(value || "").match(/(\d{2})\/(\d{2})\/(\d{4})/);
-          return match ? Date.parse(`${match[3]}-${match[2]}-${match[1]}`) : 0;
-        };
-        return parse(b.date) - parse(a.date);
-      });
+    return projectAtlasCommissionNegotiationDealsV1({ state, canonicalDeals: commissionDeals });
   };
 
   const emptyCommissionProfile: AtlasCommissionProfileCatalogEntry = {
@@ -9580,28 +9489,7 @@ export function createAtlasCommissionNegotiationViewsV1({
     commissionProfiles.find((item) => item.id === id) || commissionProfiles[0] || emptyCommissionProfile;
 
   const commissionNegotiationTransactionsV1 = (deal: AtlasCommissionNegotiationDealV1, profile?: AtlasCommissionProfileCatalogEntry): AtlasCommissionNegotiationTransactionV1[] => {
-    const supplied = Array.isArray(deal.transactions)
-      ? deal.transactions
-      : Array.isArray(deal.latestTransactions)
-        ? deal.latestTransactions
-        : [];
-    if (supplied.length) return supplied.slice(0, 3);
-    return [
-      {
-        label: "Registro da negociação",
-        detail: deal.stage || deal.status || "Em acompanhamento",
-        value: deal.value || "—",
-        at: deal.date || "Data não informada",
-        status: deal.status || "Em acompanhamento",
-      },
-      {
-        label: "Comissão prevista",
-        detail: `${deal.rate || "Taxa cadastrada"} · ${profile?.name || "Corretor"}`,
-        value: deal.commission || "—",
-        at: deal.date || "Data não informada",
-        status: "Provisionada",
-      },
-    ];
+    return projectAtlasCommissionNegotiationTransactionsV1(deal, profile);
   };
 
   const commissionNegotiationDateV1 = (value: unknown): string => {
@@ -9610,37 +9498,16 @@ export function createAtlasCommissionNegotiationViewsV1({
   };
 
   const commissionNegotiationsMarkupV1 = (state: AtlasCommissionNegotiationStateV1): string => {
-    const deals = commissionNegotiationDealsV1(state),
-      filters = {
-        query: "",
-        status: "all",
-        profile: "all",
-        ...(state.commissionNegotiationFilters || {}),
-      },
-      shown = deals.filter((deal) => {
-        const query = String(filters.query || "").toLocaleLowerCase("pt-BR"),
-          haystack = JSON.stringify(deal).toLocaleLowerCase("pt-BR");
-        return (
-          (!query || haystack.includes(query)) &&
-          (filters.status === "all" || deal.status === filters.status) &&
-          (filters.profile === "all" || deal.profile === filters.profile)
-        );
-      }),
-      statusOptions = [
-        "Reserva",
-        "Em análise",
-        "Proposta",
-        "Assinado",
-        "Compra confirmada",
-      ],
-      list = shown
+    const ledger = projectAtlasCommissionNegotiationLedgerV1({ state, canonicalDeals: commissionDeals, brlToNumber });
+    const { deals, filters, shown, statusOptions } = ledger;
+    const list = shown
         .map((deal) => {
           const profile = commissionNegotiationProfileV1(deal.profile),
             transactions = commissionNegotiationTransactionsV1(deal, profile);
           return `<article class="commission-negotiation-row" data-commission-record="${esc(deal.id)}"><header class="commission-negotiation-row-head"><div class="commission-negotiation-broker"><span class="commission-avatar" style="background:${esc(profile.avatar)}">${esc(profile.initials)}</span><span><b>${esc(profile.name)}</b><small>${esc(profile.role)} · ${esc(profile.creci)}</small></span></div><div class="commission-negotiation-identity"><span>${esc(deal.id || "NEGOCIAÇÃO")}</span><h2>${esc(deal.client || "Cliente não informado")}</h2><small>${esc(deal.lot || "Lote a definir")} · ${esc(deal.quadra || "Quadra não informada")}</small></div><span class="deal-status ${contractStatusClassV1(deal.status || deal.stage)}">${esc(deal.status || deal.stage || "Em acompanhamento")}</span></header><div class="commission-negotiation-facts"><div><small>VALOR DO LOTE</small><b>${esc(deal.value || "—")}</b><span>${esc(deal.payment || "Condição a definir")}</span></div><div><small>COMISSÃO</small><b>${esc(deal.commission || "—")}</b><span>${esc(deal.rate || "Taxa cadastrada")}</span></div><div><small>ETAPA</small><b>${esc(deal.stage || "Em acompanhamento")}</b><span>${commissionNegotiationDateV1(deal.date)}</span></div><div><small>FINALIDADE</small><b>${esc(deal.purpose || "Não informada")}</b><span>${esc(deal.cpf || "Documento não informado")}</span></div></div><section class="commission-negotiation-transactions"><div class="commission-negotiation-transactions-head"><span>ÚLTIMAS TRANSAÇÕES DA NEGOCIAÇÃO</span><small>${transactions.length} registros sumarizados</small></div><ol>${transactions.map((transaction) => `<li><span><b>${esc(transaction.label || transaction.type || "Transação")}</b><small>${esc(transaction.detail || transaction.description || "")}</small></span><span><b>${esc(transaction.value || transaction.amount || "—")}</b><small>${esc(transaction.at || transaction.date || deal.date || "")}</small></span><em>${esc(transaction.status || "Registrada")}</em></li>`).join("")}</ol></section><footer class="commission-negotiation-row-footer"><span>Última atualização: ${commissionNegotiationDateV1(deal.date)} · vínculo lote → cliente → corretor</span><button type="button" class="toolbar-primary" data-commission-record-open="${esc(deal.id)}">Abrir negociação ${ico("arrow-up-right")}</button></footer></article>`;
         })
         .join("");
-    return `<section class="commission-negotiations-page"><header class="commission-negotiations-head"><div><span class="activity-kind">OPERAÇÃO COMERCIAL · COMISSÕES</span><h1>Negociações e comissões</h1><p>Uma linha por negociação, com o corretor, o lote, o cliente, os valores e as últimas transações registradas.</p></div><div class="commission-negotiations-head-actions"><button type="button" class="toolbar-action" data-view="brokers-board">${ico("users-round")} Corretores</button><button type="button" class="toolbar-primary" data-commission-new>${ico("plus")} Nova negociação</button></div></header><section class="commission-negotiation-kpis"><article><small>NEGOCIAÇÕES</small><b>${shown.length}</b><span>${deals.length} no histórico</span></article><article><small>VALOR EM NEGOCIAÇÃO</small><b>${formatBRL(shown.reduce((sum, item) => sum + brlToNumber(item.value), 0))}</b><span>lotes e reservas acompanhados</span></article><article><small>COMISSÃO PREVISTA</small><b>${formatBRL(shown.reduce((sum, item) => sum + brlToNumber(item.commission), 0))}</b><span>conforme a carteira visível</span></article><article><small>EM ANDAMENTO</small><b>${shown.filter((item) => item.status !== "Assinado" && item.status !== "Compra confirmada").length}</b><span>precisam de próxima ação</span></article></section><div class="commission-negotiation-toolbar"><label>Buscar negociação<input type="search" data-commission-negotiation-filter="query" value="${esc(filters.query)}" placeholder="Cliente, lote ou contrato"></label><label>Status<select data-commission-negotiation-filter="status"><option value="all">Todos os status</option>${statusOptions.map((status) => `<option value="${esc(status)}" ${filters.status === status ? "selected" : ""}>${esc(status)}</option>`).join("")}</select></label><label>Corretor<select data-commission-negotiation-filter="profile"><option value="all">Todos os corretores</option>${commissionProfiles.map((profile) => `<option value="${esc(profile.id)}" ${filters.profile === profile.id ? "selected" : ""}>${esc(profile.name)}</option>`).join("")}</select></label><button type="button" class="toolbar-action" data-commission-negotiation-clear>${ico("filter-x")} Limpar</button></div><section class="commission-negotiation-list" aria-label="Negociações comerciais"><header><div><span class="activity-kind">01 · REGISTROS DE NEGOCIAÇÃO</span><h2>Comissões por negociação</h2><p>Selecione uma linha para abrir o formulário completo, o contrato e os anexos do cliente.</p></div><span>${shown.length} registros</span></header>${list || '<p class="empty-data">Nenhuma negociação corresponde aos filtros atuais.</p>'}</section></section>`;
+    return `<section class="commission-negotiations-page"><header class="commission-negotiations-head"><div><span class="activity-kind">OPERAÇÃO COMERCIAL · COMISSÕES</span><h1>Negociações e comissões</h1><p>Uma linha por negociação, com o corretor, o lote, o cliente, os valores e as últimas transações registradas.</p></div><div class="commission-negotiations-head-actions"><button type="button" class="toolbar-action" data-view="brokers-board">${ico("users-round")} Corretores</button><button type="button" class="toolbar-primary" data-commission-new>${ico("plus")} Nova negociação</button></div></header><section class="commission-negotiation-kpis"><article><small>NEGOCIAÇÕES</small><b>${shown.length}</b><span>${deals.length} no histórico</span></article><article><small>VALOR EM NEGOCIAÇÃO</small><b>${formatBRL(ledger.valueTotal)}</b><span>lotes e reservas acompanhados</span></article><article><small>COMISSÃO PREVISTA</small><b>${formatBRL(ledger.commissionTotal)}</b><span>conforme a carteira visível</span></article><article><small>EM ANDAMENTO</small><b>${ledger.activeCount}</b><span>precisam de próxima ação</span></article></section><div class="commission-negotiation-toolbar"><label>Buscar negociação<input type="search" data-commission-negotiation-filter="query" value="${esc(filters.query)}" placeholder="Cliente, lote ou contrato"></label><label>Status<select data-commission-negotiation-filter="status"><option value="all">Todos os status</option>${statusOptions.map((status) => `<option value="${esc(status)}" ${filters.status === status ? "selected" : ""}>${esc(status)}</option>`).join("")}</select></label><label>Corretor<select data-commission-negotiation-filter="profile"><option value="all">Todos os corretores</option>${commissionProfiles.map((profile) => `<option value="${esc(profile.id)}" ${filters.profile === profile.id ? "selected" : ""}>${esc(profile.name)}</option>`).join("")}</select></label><button type="button" class="toolbar-action" data-commission-negotiation-clear>${ico("filter-x")} Limpar</button></div><section class="commission-negotiation-list" aria-label="Negociações comerciais"><header><div><span class="activity-kind">01 · REGISTROS DE NEGOCIAÇÃO</span><h2>Comissões por negociação</h2><p>Selecione uma linha para abrir o formulário completo, o contrato e os anexos do cliente.</p></div><span>${shown.length} registros</span></header>${list || '<p class="empty-data">Nenhuma negociação corresponde aos filtros atuais.</p>'}</section></section>`;
   };
 
   const commissionAttachmentListV1 = (
@@ -9712,13 +9579,7 @@ export function createAtlasCommissionNegotiationViewsV1({
     const applyFilter = (control: HTMLInputElement | HTMLSelectElement): void => {
       const filterKey = control.dataset.commissionNegotiationFilter;
       if (filterKey !== "query" && filterKey !== "status" && filterKey !== "profile") return;
-      onStatePatch({
-        commissionNegotiationFilters: {
-          ...(readState().commissionNegotiationFilters || {}),
-          [filterKey]: control.value,
-        },
-        lastAction: "Filtrou negociações por " + filterKey,
-      });
+      onAction({ kind: "set-filter", key: filterKey, value: control.value });
     };
 
     eventRoot.addEventListener("change", event => {
@@ -9759,48 +9620,27 @@ export function createAtlasCommissionNegotiationViewsV1({
       if (!(target instanceof Element) || !contains(target)) return;
       const negotiationPage = target.closest(".commission-negotiations-page");
       if (negotiationPage && target.closest("[data-commission-negotiation-clear]")) {
-        onStatePatch({
-          commissionNegotiationFilters: { query: "", status: "all", profile: "all" },
-          lastAction: "Limpou filtros de negociações",
-        });
+        onAction({ kind: "clear-filters" });
         return;
       }
       if (negotiationPage && target.closest('[data-view="brokers-board"]')) {
-        onStatePatch({
-          view: "brokers-board", selectedCommissionProfile: null,
-          selectedCommissionNegotiation: null, lastAction: "Abriu o quadro de corretores",
-        });
+        onAction({ kind: "open-brokers" });
         return;
       }
       const openRecord = negotiationPage
         ? target.closest<HTMLElement>("[data-commission-record-open]") : null;
       if (openRecord) {
         const id = openRecord.dataset.commissionRecordOpen;
-        onStatePatch({
-          view: "commission-deal", selectedCommissionNegotiation: id,
-          selectedCommissionProfile: null, selectedCommissionContract: null,
-          lastAction: "Abriu a negociação " + id,
-        });
+        onAction({ kind: "open-record", id });
         return;
       }
       if (negotiationPage && target.closest("[data-commission-new]")) {
-        const current = readState();
-        const id = "NEG-" + new BrowserDate().getFullYear() + "-" + String(BrowserDate.now()).slice(-5);
-        const draft = {
-          id, profile: commissionProfiles[0]?.id || "", client: "", lot: "", quadra: "",
-          value: "", commission: "", rate: "6,00%", status: "Reserva", stage: "Novo registro",
-          date: new BrowserDate().toLocaleDateString("pt-BR"), payment: "", purpose: "", notes: "",
-        };
-        onStatePatch({
-          commissionEntries: [...(current.commissionEntries || []), draft], view: "commission-deal",
-          selectedCommissionNegotiation: id, selectedCommissionProfile: null, selectedCommissionContract: null,
-          lastAction: "Abriu nova negociação",
-        });
+        onAction({ kind: "create-record" });
         return;
       }
       const dealPage = target.closest(".commission-deal-page");
       if (dealPage && target.closest("[data-commission-deal-back]")) {
-        onStatePatch({ view: "brokers", selectedCommissionNegotiation: null, lastAction: "Voltou para comissões" });
+        onAction({ kind: "return-to-ledger" });
         return;
       }
       if (dealPage && target.closest("[data-commission-deal-print]")) windowRef.print();
@@ -9904,10 +9744,10 @@ export interface AtlasBrokerControlPageDependenciesV1 {
 type AtlasBrokerControlViewLayer = HTMLElement & { bindCommercialPagesV7?: () => void };
 
 const renderAtlasBrokerReasonEditorV1 = (
-  reasons: AtlasBrokerCommissionReasonV1[],
+  rows: Array<{ reason: AtlasBrokerCommissionReasonV1; initialSharePercent: number }>,
   esc: (value: unknown) => string,
   ico: (name: string) => string,
-): string => `<section class="broker-rule-editor" aria-label="Editor de regras de repasse"><header><div><span class="activity-kind">REGRAS EDITÁVEIS · ADMINISTRADOR</span><h2>Razões de comissão e divisão</h2><p>Edite a participação da razão. A divisão declarada permanece: mensais 70% Warley / 30% contraparte; sinal e intermediária 50% / 50%.</p></div><span class="broker-rule-audit">Aplicação controlada</span></header><div class="broker-rule-grid">${reasons.map(reason => `<form data-v8-reason-form="${esc(reason.id)}"><div class="broker-rule-form-head"><b>${esc(reason.label)}</b><span>${esc(reason.payment)}</span></div><label>Nome da razão<input name="label" value="${esc(reason.label)}"></label><label>Participação na composição (%)<input name="sharePercent" type="number" min="0" max="100" step="0.1" value="${Number(reason.sharePercent ?? (reason.id === "signal" ? 40 : 30))}"></label><label>Warley (%)<input value="${reason.warley}" readonly></label><label>Contraparte (%)<input value="${reason.partner}" readonly></label><label class="wide">Descrição<input name="description" value="${esc(reason.description || "")}" placeholder="Quando esta razão libera o repasse"></label><button type="submit">${ico("save")} Salvar razão</button></form>`).join("")}</div></section>`;
+): string => `<section class="broker-rule-editor" aria-label="Editor de regras de repasse"><header><div><span class="activity-kind">REGRAS EDITÁVEIS · ADMINISTRADOR</span><h2>Razões de comissão e divisão</h2><p>Edite a participação da razão. A divisão declarada permanece: mensais 70% Warley / 30% contraparte; sinal e intermediária 50% / 50%.</p></div><span class="broker-rule-audit">Aplicação controlada</span></header><div class="broker-rule-grid">${rows.map(({ reason, initialSharePercent }) => `<form data-v8-reason-form="${esc(reason.id)}"><div class="broker-rule-form-head"><b>${esc(reason.label)}</b><span>${esc(reason.payment)}</span></div><label>Nome da razão<input name="label" value="${esc(reason.label)}"></label><label>Participação na composição (%)<input name="sharePercent" type="number" min="0" max="100" step="0.1" value="${initialSharePercent}"></label><label>Warley (%)<input value="${reason.warley}" readonly></label><label>Contraparte (%)<input value="${reason.partner}" readonly></label><label class="wide">Descrição<input name="description" value="${esc(reason.description || "")}" placeholder="Quando esta razão libera o repasse"></label><button type="submit">${ico("save")} Salvar razão</button></form>`).join("")}</div></section>`;
 
 /** Render the broker portfolio and commission ledger; the program owns all commands and persistence. */
 export function createAtlasBrokerControlPageV1(input: AtlasBrokerControlPageDependenciesV1): (this: AtlasBrokerControlViewLayer) => string {
@@ -9921,33 +9761,16 @@ export function createAtlasBrokerControlPageV1(input: AtlasBrokerControlPageDepe
 
   return function brokersControlV8(this: AtlasBrokerControlViewLayer): string {
     const state = readState();
-    const localDeals = Array.isArray(state.commissionEntries) ? state.commissionEntries as AtlasCommissionDealV1[] : [];
-    const deals = [...commissionDeals, ...localDeals];
-    const periodLabels = { monthly: "Mensal", annual: "Anual", cumulative: "Acumulado" };
-    const requestedPeriod = String(state.reportPeriod || "monthly") as keyof typeof periodLabels;
-    const period = periodLabels[requestedPeriod] ? requestedPeriod : "monthly";
-    const profileStats = (person: AtlasCommissionProfileCatalogEntry) => {
-      const rows = deals.filter(item => item.profile === person.id);
-      return {
-        rows,
-        sales: rows.reduce((sum, item) => sum + brlToNumber(item.value), 0),
-        commission: rows.reduce((sum, item) => sum + brlToNumber(item.commission), 0),
-        pending: rows.filter(item => item.status !== "Assinado").length,
-      };
-    };
-    const reasonLabel: Record<string, string> = {
-      signal: "Sinal", intermediate: "Parcela intermediária", monthly: "Mensal",
-    };
-    const reasons = brokerReasonsV9(state).filter(item => item.active !== false);
-    const ruleEditor = renderAtlasBrokerReasonEditorV1(reasons, esc, ico);
+    const projection = projectAtlasBrokerControlPageV1({
+      state, commissionDeals, commissionProfiles, reasons: brokerReasonsV9(state), brlToNumber,
+    });
+    const { period, periodLabels, reasons, reasonLabels } = projection;
+    const ruleEditor = renderAtlasBrokerReasonEditorV1(projection.reasonEditorRows, esc, ico);
     queueMicrotaskFn(() => this.bindCommercialPagesV7?.());
-    return `<section class="control-page broker-control-page"><header class="control-page-head"><div><span class="activity-kind">CENTRAL COMERCIAL · CONTROLE TOTAL</span><h1>Corretores e repasses</h1><p>Carteiras, contratos, razões de comissão, competências e arquivos gerados.</p></div><div class="control-head-actions"><button type="button" data-view="commissions">${ico("settings-2")} Regras de repasse</button><button type="button" class="toolbar-primary" data-v8-broker-reports>${ico("file-down")} PDF / Excel</button></div></header><nav class="control-period-tabs" aria-label="Período dos repasses">${Object.entries(periodLabels).map(([id, label]) => `<button type="button" class="${period === id ? "active" : ""}" data-v7-period="${id}">${label}</button>`).join("")}</nav><section class="control-rule-strip"><div><small>RAZÕES ATIVAS</small><b>${reasons.length}</b></div>${reasons.map(item => `<span><b>${esc(reasonLabel[item.id] || item.label)}</b><small>${Number(item.sharePercent || 0).toLocaleString("pt-BR")}% da composição · ${item.warley}/${item.partner}</small></span>`).join("")}<button type="button" data-broker-rule-focus>Editar regras</button></section>${ruleEditor}<div class="broker-control-grid">${commissionProfiles.map(person => {
-      const stats = profileStats(person);
+    return `<section class="control-page broker-control-page"><header class="control-page-head"><div><span class="activity-kind">CENTRAL COMERCIAL · CONTROLE TOTAL</span><h1>Corretores e repasses</h1><p>Carteiras, contratos, razões de comissão, competências e arquivos gerados.</p></div><div class="control-head-actions"><button type="button" data-view="commissions">${ico("settings-2")} Regras de repasse</button><button type="button" class="toolbar-primary" data-v8-broker-reports>${ico("file-down")} PDF / Excel</button></div></header><nav class="control-period-tabs" aria-label="Período dos repasses">${Object.entries(periodLabels).map(([id, label]) => `<button type="button" class="${period === id ? "active" : ""}" data-v7-period="${id}">${label}</button>`).join("")}</nav><section class="control-rule-strip"><div><small>RAZÕES ATIVAS</small><b>${reasons.length}</b></div>${reasons.map(item => `<span><b>${esc(reasonLabels[item.id] || item.label)}</b><small>${Number(item.sharePercent || 0).toLocaleString("pt-BR")}% da composição · ${item.warley}/${item.partner}</small></span>`).join("")}<button type="button" data-broker-rule-focus>Editar regras</button></section>${ruleEditor}<div class="broker-control-grid">${projection.profileCards.map(({ profile: person, stats }) => {
       return `<article class="broker-control-card"><header><span class="commission-avatar">${person.initials}</span><span><em>${stats.pending ? "EM ACOMPANHAMENTO" : "REGULAR"}</em><h2>${esc(person.name)}</h2><small>${esc(person.creci)} · ${esc(person.role)}</small></span></header><div class="broker-card-metrics"><span><small>Carteira</small><b>${stats.rows.length}</b></span><span><small>Vendas</small><b>${formatBRL(stats.sales)}</b></span><span><small>Comissão</small><b>${formatBRL(stats.commission)}</b></span><span><small>Pendências</small><b>${stats.pending}</b></span></div><div class="broker-card-lots">${person.lots.map(lot => `<i>${esc(lot)}</i>`).join("")}</div><footer><a href="https://wa.me/${esc(person.phone)}" target="_blank" rel="noopener">${ico("message-circle")} Contato</a><button type="button" data-v7-open-broker="${person.id}">Abrir página dedicada ${ico("arrow-right")}</button></footer></article>`;
-    }).join("")}</div><section class="control-ledger"><header><div><span class="activity-kind">TABELAÇÃO COMPLETA · ${periodLabels[period].toUpperCase()}</span><h2>Negócios, comissão e situação de repasse</h2></div><label>Buscar operação<input data-v8-broker-ledger-search placeholder="Contrato, corretor, cliente ou lote"></label></header><div class="control-table-wrap"><table><thead><tr><th>Contrato</th><th>Corretor</th><th>Cliente / lote</th><th>Venda</th><th>Comissão</th><th>Razão</th><th>Situação</th><th></th></tr></thead><tbody>${deals.map((deal, index) => {
-      const person = commissionProfiles.find(item => item.id === deal.profile);
-      const reason = reasons[index % Math.max(1, reasons.length)];
-      return `<tr data-v8-broker-ledger-row data-search="${esc(JSON.stringify(deal).toLowerCase() + " " + String(person?.name || "").toLowerCase())}"><td><b>${esc(deal.id)}</b><small>${esc(deal.date || "Sem competência")}</small></td><td>${esc(person?.name || "A definir")}</td><td><b>${esc(deal.client)}</b><small>${esc(deal.lot)} · ${esc(deal.quadra || "")}</small></td><td>${esc(deal.value)}</td><td><b>${esc(deal.commission)}</b><small>${esc(deal.rate)}</small></td><td>${esc(reason?.label || "Sinal")}</td><td><span class="control-status">${esc(deal.stage || deal.status)}</span></td><td><button type="button" data-commission-open="${esc(deal.id)}">Abrir</button></td></tr>`;
+    }).join("")}</div><section class="control-ledger"><header><div><span class="activity-kind">TABELAÇÃO COMPLETA · ${periodLabels[period].toUpperCase()}</span><h2>Negócios, comissão e situação de repasse</h2></div><label>Buscar operação<input data-v8-broker-ledger-search placeholder="Contrato, corretor, cliente ou lote"></label></header><div class="control-table-wrap"><table><thead><tr><th>Contrato</th><th>Corretor</th><th>Cliente / lote</th><th>Venda</th><th>Comissão</th><th>Razão</th><th>Situação</th><th></th></tr></thead><tbody>${projection.ledgerRows.map(({ deal, profile: person, reason, searchValue }) => {
+      return `<tr data-v8-broker-ledger-row data-search="${esc(searchValue)}"><td><b>${esc(deal.id)}</b><small>${esc(deal.date || "Sem competência")}</small></td><td>${esc(person?.name || "A definir")}</td><td><b>${esc(deal.client)}</b><small>${esc(deal.lot)} · ${esc(deal.quadra || "")}</small></td><td>${esc(deal.value)}</td><td><b>${esc(deal.commission)}</b><small>${esc(deal.rate)}</small></td><td>${esc(reason?.label || "Sinal")}</td><td><span class="control-status">${esc(deal.stage || deal.status)}</span></td><td><button type="button" data-commission-open="${esc(deal.id)}">Abrir</button></td></tr>`;
     }).join("")}</tbody></table></div></section><section class="broker-report-files" data-v8-broker-files><span>ARQUIVOS GERADOS</span><p>Carregando relatórios mensais e acumulados…</p></section></section>`;
   };
 }
@@ -10035,7 +9858,7 @@ export class AtlasBrokers extends AtlasHTMLElementBase {
     state: AtlasBrokerCommissionReportStateV1,
     attachmentsByProfile: Record<string, AtlasBrokerProfileAttachmentV1[]>,
   ): void {
-    const selected = this.profiles().find(profile => profile.id === this.snapshot.selectedBroker);
+    const selected = resolveAtlasBrokerDirectoryProfileV1(this.profiles(), this.snapshot.selectedBroker);
     const report = selected ? projectAtlasBrokerCommissionReportV1(selected.name, state) : null;
     this.state.next(previous => ({
       ...previous,
@@ -10218,7 +10041,7 @@ export class AtlasBrokers extends AtlasHTMLElementBase {
         return;
       }
       if (target.closest("[data-broker-profile-delete]")) {
-        const selected=this.profiles().find(profile=>profile.id===this.snapshot.selectedBroker);
+        const selected=resolveAtlasBrokerDirectoryProfileV1(this.profiles(),this.snapshot.selectedBroker);
         if(selected&&window.confirm(`Excluir o cadastro profissional de ${selected.name}? As vendas não serão alteradas.`))
           this.dispatchEvent(new CustomEvent<AtlasBrokerProfileDeleteCommandV1>("atlas:broker-profile-delete",{bubbles:true,detail:{element:this,name:selected.name}}));
         return;
@@ -10260,11 +10083,16 @@ export class AtlasBrokers extends AtlasHTMLElementBase {
       const form=event.target;
       if(!(form instanceof HTMLFormElement)||!form.matches("[data-broker-profile-form]"))return;
       event.preventDefault();
-      const selected=this.profiles().find(profile=>profile.id===this.snapshot.selectedBroker);
-      if(!selected||this.snapshot.savingProfile)return;
       const data=new FormData(form);
+      const draft=createAtlasBrokerProfileSaveDraftV1({
+        profiles:this.profiles(),
+        selectedBrokerId:this.snapshot.selectedBroker,
+        saving:this.snapshot.savingProfile,
+        fields:{creci:data.get("creci"),phone:data.get("phone"),email:data.get("email"),notes:data.get("notes")},
+      });
+      if(!draft)return;
       this.setProfileSaveState(true);
-      this.dispatchEvent(new CustomEvent<AtlasBrokerProfileSaveCommandV1>("atlas:broker-profile-save",{bubbles:true,detail:{element:this,name:selected.name,profile:{creci:String(data.get("creci")||"").trim(),phone:String(data.get("phone")||"").trim(),email:String(data.get("email")||"").trim(),notes:String(data.get("notes")||"").trim()}}}));
+      this.dispatchEvent(new CustomEvent<AtlasBrokerProfileSaveCommandV1>("atlas:broker-profile-save",{bubbles:true,detail:{element:this,...draft}}));
     });
     this.render();
     this.dispatchEvent(
@@ -10319,65 +10147,6 @@ const atlasLotBoardStyles = `<style>
   @media print{body.lot-catalog-print-mode atlas-lot-board{display:block!important}body.lot-catalog-print-mode .atlas-lot-board{padding:0!important;color:#111!important}body.lot-catalog-print-mode .atlas-lot-board>:not(.lot-price-catalog-card){display:none!important}body.lot-catalog-print-mode .atlas-lot-board .lot-price-catalog-card{display:block!important;border:0!important;padding:0!important;box-shadow:none!important}body.lot-catalog-print-mode .atlas-lot-board .lot-catalog-print-header,body.lot-catalog-print-mode .atlas-lot-board .lot-catalog-print-footer{display:block!important}body.lot-catalog-print-mode .atlas-lot-board .atlas-lot-tools,body.lot-catalog-print-mode .atlas-lot-board .lot-catalog-map-drawer,body.lot-catalog-print-mode .atlas-lot-board .atlas-lot-feedback,body.lot-catalog-print-mode .atlas-lot-modal{display:none!important}body.lot-catalog-print-mode .atlas-lot-board .atlas-lot-table-wrap{max-height:none;overflow:visible;border:0}body.lot-catalog-print-mode .atlas-lot-board table{width:100%;min-width:0;font-size:8pt}body.lot-catalog-print-mode .atlas-lot-board th,body.lot-catalog-print-mode .atlas-lot-board td{position:static;padding:2mm;border:1px solid #bbb;background:#fff;color:#111;white-space:normal}}
 </style>`;
 
-export interface AtlasLotBoardPageProjectionV1 {
-  filteredRows: AtlasLotBoardRow[];
-  totalValue: number;
-  controlledCount: number;
-  selectedRow: AtlasLotBoardRow | undefined;
-  activeRow: AtlasLotBoardRow | undefined;
-  quadrants: string[];
-  sellerNames: string[];
-  pickerMatches: AtlasLotBoardRow[];
-  pickerRows: AtlasLotBoardRow[];
-  pickerPage: number;
-  pickerPages: number;
-  markerMatches: AtlasLotBoardRow[];
-}
-
-/** Project the Lotes page filters, totals and picker pagination beside its view. */
-export function projectAtlasLotBoardPageV1(input: {
-  rows: readonly AtlasLotBoardRow[];
-  search: string;
-  quadra: string;
-  status: string;
-  payment: string;
-  seller: string;
-  selectedKey: string;
-  activeLotKey: string;
-  pickerQuadra: string;
-  pickerPage: number;
-  markerLotNumber: number;
-}): AtlasLotBoardPageProjectionV1 {
-  const query = input.search.trim().toLocaleLowerCase("pt-BR");
-  const filteredRows = input.rows.filter(row =>
-    (!query || [row.label, String(row.lot), row.quadra].join(" ").toLocaleLowerCase("pt-BR").includes(query)) &&
-    (!input.quadra || row.quadra === input.quadra) &&
-    (!input.status || row.status === input.status) &&
-    (!input.payment || row.paymentStatus === input.payment) &&
-    (!input.seller || row.sellerName === input.seller),
-  );
-  const pickerMatches = input.rows.filter(row =>
-    (!input.pickerQuadra || row.quadra === input.pickerQuadra) &&
-    (!input.markerLotNumber || row.lot === input.markerLotNumber),
-  );
-  const pickerPages = Math.max(1, Math.ceil(pickerMatches.length / 12));
-  const pickerPage = Math.max(0, Math.min(input.pickerPage, pickerPages - 1));
-  return {
-    filteredRows,
-    totalValue: input.rows.reduce((sum, row) => sum + row.price, 0),
-    controlledCount: input.rows.filter(row => row.hasControl).length,
-    selectedRow: input.rows.find(row => row.label === input.selectedKey),
-    activeRow: input.rows.find(row => row.label === input.activeLotKey),
-    quadrants: [...new Set(input.rows.map(row => row.quadra))].sort(),
-    sellerNames: [...new Set(input.rows.map(row => row.sellerName).filter(Boolean))].sort(),
-    pickerMatches,
-    pickerRows: pickerMatches.slice(pickerPage * 12, (pickerPage + 1) * 12),
-    pickerPage,
-    pickerPages,
-    markerMatches: input.rows.filter(row => row.lot === input.markerLotNumber),
-  };
-}
-
 /** Complete, typed lot catalog and commercial control workflow for the active sidebar route. */
 export class AtlasLotBoard extends AtlasHTMLElementBase {
   private snapshot: AtlasLotBoardState;
@@ -10423,7 +10192,7 @@ export class AtlasLotBoard extends AtlasHTMLElementBase {
     this.querySelector<HTMLSelectElement>("[data-lot-picker-quadra]")?.focus();
   }
   closeControl(): void { this.state.next(previous => ({ ...previous, modalOpen: false, markerLotNumber: 0 })); }
-  private pageProjection(state: AtlasLotBoardState = this.snapshot) {
+  private pageProjection(state: AtlasLotBoardState = this.snapshot): AtlasLotBoardPageProjectionV1 {
     return projectAtlasLotBoardPageV1({
       rows: state.rows,
       search: state.search,
@@ -10688,50 +10457,12 @@ export interface AtlasLotDetailPageInputV1 {
   ico(name: string): string;
 }
 
-/** Keep cash entries tied to the canonical lot label used by Repasses. */
-export function projectAtlasLotCashEntriesV1(state: AtlasLotDetailStateV1, lotKey: string): AtlasLotCashEntryV1[] {
-  return (state.cashFlowLocal || []).filter(entry => entry.kind === "entrada" && String(entry.lotKey || "") === lotKey);
-}
-
-function projectAtlasLotDetailHistoryV1(
-  state: AtlasLotDetailStateV1,
-  lotKey: string,
-  lotStatus: AtlasLotStatus,
-  history: AtlasLotHistoryItemV1[],
-  formatBRL: (value: unknown) => string,
-): AtlasLotHistoryItemV1[] {
-  const entries = projectAtlasLotCashEntriesV1(state, lotKey).map(entry => ({
-    id: String(entry.id || ""), at: String(entry.createdAt || entry.date || ""),
-    type: "Entrada no caixa",
-    detail: `${formatBRL(Number(entry.amountCents || 0) / 100)} · ${entry.category || entry.description || "Sem descrição"}`,
-  }));
-  const statusEvent: AtlasLotHistoryItemV1[] = lotStatus.updatedAt ? [{
-    id: `status-${lotStatus.updatedAt}`, at: lotStatus.updatedAt,
-    type: "Controle comercial atualizado",
-    detail: `${lotStatus.status || "Disponível"} · ${lotStatus.payment?.status || "Pendente"}`,
-  }] : [];
-  return [...history, ...entries, ...statusEvent].sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
-}
-
 /** Render the selected lot's existing status, payment, plans, documents, cash, map and history. */
 export function renderAtlasLotDetailPageV1(input: AtlasLotDetailPageInputV1): string {
-  const { state, priceCatalog, commissionProfiles, esc, formatBRL, ico } = input;
-  const fallbackLot = priceCatalog[0];
-  const lotKey = String(state.selectedLotDetailKey || fallbackLot?.label || "");
-  const lot = priceCatalog.find(item => String(item.label) === lotKey) || fallbackLot;
+  const { state, esc, formatBRL, ico } = input;
+  const projection: AtlasLotDetailPageProjectionV1 = projectAtlasLotDetailPageV1({ ...input, state });
+  const { lotKey, lot, lotStatus, plans, documents, history, partners, sellerId, payment, paymentTotal, derivedHistory, cashEntries, totalCashCents, canRegisterCash } = projection;
   if (!lot) return `<section class="lot-detail-page"><p class="empty-data">Nenhum lote disponível na tabela de preços.</p></section>`;
-  const lotStatus = state.lotStatuses?.[lotKey] || {};
-  const plans = state.lotPaymentPlans?.[lotKey] || [];
-  const documents = state.lotDocuments?.[lotKey] || [];
-  const history = state.lotHistory?.[lotKey] || [];
-  const partners = state.repassePartners || commissionProfiles.map(person => ({ id: person.id, name: person.name }));
-  const sellerId = lotStatus.sellerId || "";
-  const payment = lotStatus.payment || {};
-  const paymentTotal = plans.reduce((total, plan) => total + Math.max(0, Number(plan.amount) || 0), 0);
-  const derivedHistory = projectAtlasLotDetailHistoryV1(state, lotKey, lotStatus, history, formatBRL);
-  const cashEntries = projectAtlasLotCashEntriesV1(state, lotKey);
-  const totalCashCents = cashEntries.reduce((sum, entry) => sum + Number(entry.amountCents || 0), 0);
-  const canRegisterCash = state.currentActor?.role === "owner" || state.currentActor?.role === "developer";
   const cashMarkup = `<div class="lot-cash-summary"><div><small>RECEBIDO NO CAIXA</small><strong>${formatBRL(totalCashCents / 100)}</strong><span>${cashEntries.length} lançamento(s) vinculado(s)</span></div>${canRegisterCash ? `<button type="button" class="atlas-dark-button" data-lot-cash-entry="${esc(lotKey)}">${ico("plus")} Registrar em Repasses</button>` : ""}</div><ol class="lot-cash-entry-list">${cashEntries.map(entry => `<li><div><b>${esc(entry.category || "Entrada de caixa")}</b><small>${esc(entry.date || "Sem data")} · ${esc(entry.description || "Sem descrição")}</small></div><strong>${formatBRL(Number(entry.amountCents || 0) / 100)}</strong></li>`).join("") || '<li class="empty-data">Nenhuma entrada de caixa vinculada a este lote.</li>'}</ol>`;
   const statusOptions = ["Disponível", "Reservado", "Em negociação", "Vendido", "Repasse programado", "Quitado", "Bloqueado"];
   const paymentOptions = ["Pendente", "Parcial", "Pago", "Cancelado"];
@@ -10753,7 +10484,7 @@ export function renderAtlasLotDetailPageV1(input: AtlasLotDetailPageInputV1): st
         <section class="lot-detail-section"><header><span>01</span><div><h2>Dados e controle comercial</h2><p>Edite a situação do lote, o responsável e o recebimento principal.</p></div></header><div class="lot-detail-fields">
           <label>Lote<input value="${esc(lotKey)}" disabled></label><label>Quadra<input value="${esc(lot.quadra)}" disabled></label><label>Área (m²)<input value="${esc(lot.area)}" disabled></label><label>Valor de tabela<input value="${formatBRL(lot.price)}" disabled></label>
           <label>Status<select name="status">${statusOptions.map(value => `<option${selected(value, lotStatus.status || "Disponível")}>${esc(value)}</option>`).join("")}</select></label>
-          <label>Vendedor<select name="sellerId"><option value="">Não definido</option>${commissionProfiles.map(person => `<option value="${esc(person.id)}"${selected(person.id, sellerId)}>${esc(person.name)}</option>`).join("")}</select></label>
+          <label>Vendedor<select name="sellerId"><option value="">Não definido</option>${partners.map(person => `<option value="${esc(person.id)}"${selected(person.id, sellerId)}>${esc(person.name)}</option>`).join("")}</select></label>
           <label>Sócio do repasse<select name="repassePartnerId"><option value="">Não definido</option>${partners.map(person => `<option value="${esc(person.id)}"${selected(person.id, lotStatus.repasse?.partnerId || "")}>${esc(person.name)}</option>`).join("")}</select></label>
           <label>Cliente / interessado<input name="client" value="${esc(lotStatus.client || "")}" placeholder="Nome do cliente"></label>
           <label>Status do pagamento<select name="paymentStatus">${paymentOptions.map(value => `<option${selected(value, payment.status || "Pendente")}>${esc(value)}</option>`).join("")}</select></label>
@@ -10770,12 +10501,6 @@ export function renderAtlasLotDetailPageV1(input: AtlasLotDetailPageInputV1): st
       <section class="lot-detail-section lot-detail-history" data-lot-history><header><span>05</span><div><h2>Histórico do lote</h2><p>Alterações do controle, entradas e registros associados.</p></div></header><ol>${derivedHistory.map(item => `<li><time>${esc(detailDate(item.at))}</time><div><b>${esc(item.type)}</b><small>${esc(item.detail || "Sem detalhes")}</small></div></li>`).join("") || '<li class="empty-data">Nenhum evento registrado para este lote.</li>'}</ol></section>
     </div>
   </section>`;
-}
-
-/** Project the same table row shape used by lot reports and Excel export. */
-export function projectAtlasLotExportRowV1(lot: RepassePriceCatalogEntry, state: AtlasLotDetailStateV1): RepassePriceCatalogEntry & Record<string, unknown> {
-  const details = state.lotStatuses?.[lot.label] || {};
-  return { ...lot, status: details.status || "Disponível", paymentStatus: details.payment?.status || "Pendente", sellerName: details.sellerName || "", client: details.client || "", note: details.note || "" };
 }
 
 /** Preserve the branded HTML workbook export used by the old lot detail. */
@@ -11218,32 +10943,14 @@ if(!customElements.get("atlas-materials"))customElements.define("atlas-materials
 
 type AgendaState={events:OperationalAgendaEvent[];stages:OperationalStage[];materials:OperationalMaterial[];week:string;selectedDate:string;presentation:"status"|"timeline";calendarOpen:boolean;editor:OperationalAgendaEvent|null|false;relatedFrom:string;detailMode:boolean;notificationsEnabled:boolean;recordFormOpen:boolean;recordFeedback:string|null;error:string|null;loading:boolean;saving:boolean};
 type AgendaSetter=(previous:AgendaState)=>AgendaState;
-interface AgendaCalendarEventProjection {event:OperationalAgendaEvent;startHour:number;durationHours:number;spanDays:number;tone:"done"|"warning"|"planned";heightPixels:number;widthPercent:number;widthOffsetPixels:number;startLabel:string;durationLabel:string;spanLabel:string}
-interface AgendaPageProjection {dayNavigation:Array<{date:string;weekdayLabel:string;dayOfMonth:number;eventCount:number;selected:boolean}>;orderedEvents:OperationalAgendaEvent[];selected:OperationalAgendaEvent|null;editing:boolean;stage:OperationalStage|undefined;stageName:string;stageOptions:Array<{stage:OperationalStage;selected:boolean}>;activityOptions:Array<{activity:OperationalActivity;selected:boolean}>;materialOptions:Array<{material:OperationalMaterial;selected:boolean}>;timeLabels:Array<{hour:number;label:string}>;statusGroups:Array<{key:string;title:string;events:OperationalAgendaEvent[]}>;calendarDays:Array<{date:string;label:string;eventCount:number;events:AgendaCalendarEventProjection[]}>}
 type AgendaPageCommandState=Pick<AgendaState,"events"|"week"|"selectedDate"|"presentation"|"calendarOpen"|"editor"|"relatedFrom"|"detailMode"|"recordFormOpen"|"recordFeedback"|"error">;
 type AgendaPageCommand={kind:"toggle-calendar"}|{kind:"new-event"}|{kind:"close-editor"}|{kind:"navigate-week";delta:number}|{kind:"set-presentation";value:unknown}|{kind:"select-day";date:string}|{kind:"edit-event";id:string}|{kind:"create-related-event";sourceId:string}|{kind:"open-record-form"}|{kind:"close-record-form"};
-const agendaPageDateIso=(date:Date):string=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
-function projectAgendaResourceOptions(input:{stages:readonly OperationalStage[];materials:readonly OperationalMaterial[];stageName:string;selectedActivityId?:string;selectedMaterialIds?:readonly string[]}){
-  const selectedMaterialIds=input.selectedMaterialIds||[],stage=input.stages.find(item=>item.name===input.stageName);
-  return {activities:(stage?.activities||[]).map(activity=>({activity,selected:input.selectedActivityId===activity.id})),materials:input.materials.filter(item=>item.stageName===input.stageName).map(material=>({material,selected:selectedMaterialIds.includes(material.id)}))};
-}
-function projectAgendaPage(input:{events:readonly OperationalAgendaEvent[];stages:readonly OperationalStage[];materials:readonly OperationalMaterial[];week:string;selectedDate:string;editor:OperationalAgendaEvent|null|false;relatedFrom:string;statusPriority:readonly string[];statusLabels:Readonly<Record<string,string>>}):AgendaPageProjection{
-  const iso=agendaPageDateIso,start=new Date(`${input.week}T12:00:00`),days=Array.from({length:7},(_,index)=>{const day=new Date(start);day.setDate(day.getDate()+index);return day;}),keys=days.map(iso),weekEvents=input.events.filter(event=>keys.includes(event.date)),selected=input.editor&&typeof input.editor==="object"?input.editor:null;
-  const relatedStageName=input.events.find(event=>event.id===input.relatedFrom)?.stageName,stage=selected?input.stages.find(item=>item.name===selected.stageName):input.stages.find(item=>item.name===relatedStageName)||input.stages[0],stageName=selected?.stageName||stage?.name||"";
-  const orderedEvents=[...weekEvents].sort((left,right)=>`${left.date}T${left.start||"00:00"}`.localeCompare(`${right.date}T${right.start||"00:00"}`)),normalizeStatus=(value:string)=>value.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replaceAll("_"," ").trim();
-  const statusKeys=[...new Set(orderedEvents.map(event=>normalizeStatus(event.status)))].sort((left,right)=>{const leftIndex=input.statusPriority.indexOf(left),rightIndex=input.statusPriority.indexOf(right);return (leftIndex<0?input.statusPriority.length:leftIndex)-(rightIndex<0?input.statusPriority.length:rightIndex)||left.localeCompare(right,"pt-BR");});
-  const statusGroups=statusKeys.map(key=>({key,title:input.statusLabels[key]||key,events:orderedEvents.filter(event=>normalizeStatus(event.status)===key)}));
-  const dayNavigation=days.map(day=>{const date=iso(day);return {date,weekdayLabel:day.toLocaleDateString("pt-BR",{weekday:"short"}),dayOfMonth:day.getDate(),eventCount:weekEvents.filter(event=>event.date===date).length,selected:date===input.selectedDate};});
-  const stageOptions=input.stages.map(item=>({stage:item,selected:selected?selected.stageName===item.name:stage?.id===item.id})),resources=projectAgendaResourceOptions({stages:input.stages,materials:input.materials,stageName,selectedActivityId:selected?.activityId,selectedMaterialIds:selected?.materialIds}),timeLabels=[0,4,8,12,16,20].map(hour=>({hour,label:`${String(hour).padStart(2,"0")}:00`}));
-  const calendarDays=days.map(day=>{const date=iso(day),events=orderedEvents.filter(event=>event.date===date).map(event=>{const [hour,minute]=String(event.start||"08:00").split(":").map(Number),startHour=hour+minute/60,durationHours=Math.max(.5,Math.min(24-startHour,Number(event.durationHours)||1)),spanDays=Math.min(Math.max(1,Number(event.spanDays)||1),7-day.getDay()),tone:AgendaCalendarEventProjection["tone"]=/concl/i.test(event.status)?"done":/pend|risco|bloq/i.test(event.status)?"warning":"planned";return {event,startHour,durationHours,spanDays,tone,heightPixels:Math.max(24,durationHours*48),widthPercent:spanDays*100,widthOffsetPixels:(spanDays-1)*8,startLabel:String(event.start||""),durationLabel:`${durationHours} h`,spanLabel:`${spanDays} dia(s)`};});return {date,label:day.toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"short"}),eventCount:events.length,events};});
-  return {dayNavigation,orderedEvents,selected,editing:input.editor!==false,stage,stageName,stageOptions,activityOptions:resources.activities,materialOptions:resources.materials,timeLabels,statusGroups,calendarDays};
-}
 function createAgendaPageCommandController(ports:{readState:()=>AgendaPageCommandState;commit:(patch:Partial<AgendaPageCommandState>)=>void}):{dispatch:(command:AgendaPageCommand)=>boolean}{
   return Object.freeze({dispatch(command){const state=ports.readState();let patch:Partial<AgendaPageCommandState>={};
     if(command.kind==="toggle-calendar")patch={calendarOpen:!state.calendarOpen};
     else if(command.kind==="new-event")patch={editor:null,relatedFrom:"",error:null};
     else if(command.kind==="close-editor")patch={editor:false,relatedFrom:"",error:null};
-    else if(command.kind==="navigate-week"){const date=new Date(`${state.week}T12:00:00`);if(Number.isFinite(date.getTime())){date.setDate(date.getDate()+Number(command.delta||0)*7);const next=agendaPageDateIso(date);patch={week:next,selectedDate:next};}}
+    else if(command.kind==="navigate-week"){const date=new Date(`${state.week}T12:00:00`);if(Number.isFinite(date.getTime())){date.setDate(date.getDate()+Number(command.delta||0)*7);const next=atlasAgendaPageDateIsoV1(date);patch={week:next,selectedDate:next};}}
     else if(command.kind==="set-presentation"){if(command.value==="status"||command.value==="timeline")patch={presentation:command.value};}
     else if(command.kind==="select-day")patch={selectedDate:String(command.date||""),presentation:"timeline"};
     else if(command.kind==="edit-event"){const event=state.events.find(item=>String(item.id)===String(command.id));if(event)patch={editor:event,relatedFrom:event.relatedFrom||"",error:null};}
@@ -11279,7 +10986,7 @@ export class AtlasAgenda extends AtlasHTMLElementBase{
     super();
     const selected=new Date(),weekDate=new Date(selected.getFullYear(),selected.getMonth(),selected.getDate());
     weekDate.setDate(weekDate.getDate()-weekDate.getDay());
-    const week=agendaPageDateIso(weekDate),selectedDate=agendaPageDateIso(selected);
+    const week=atlasAgendaPageDateIsoV1(weekDate),selectedDate=atlasAgendaPageDateIsoV1(selected);
     const initial:AgendaState={events:[],stages:[],materials:[],week,selectedDate,presentation:"status",calendarOpen:false,editor:false,relatedFrom:"",detailMode:false,notificationsEnabled:false,recordFormOpen:false,recordFeedback:null,error:null,loading:true,saving:false};
     function* state(value:AgendaState):Generator<AgendaState,never,AgendaSetter>{while(true)value=(yield value)(value);}
     const iterator=state(initial);iterator.next();this.snapshot=initial;
@@ -11290,8 +10997,8 @@ export class AtlasAgenda extends AtlasHTMLElementBase{
     });
   }
   private esc(value:unknown):string{return String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]||char));}
-   private agendaActivityOptions(stageName:string,selectedId=""):string{return projectAgendaResourceOptions({stages:this.snapshot.stages,materials:this.snapshot.materials,stageName,selectedActivityId:selectedId}).activities.map(({activity,selected})=>`<option value="${this.esc(activity.id)}" ${selected?"selected":""}>${this.esc(activity.name)}</option>`).join("");}
-   private agendaMaterialOptions(stageName:string,selectedIds:string[]=[]):string{return projectAgendaResourceOptions({stages:this.snapshot.stages,materials:this.snapshot.materials,stageName,selectedMaterialIds:selectedIds}).materials.map(({material,selected})=>`<label><input type="checkbox" name="materialIds" value="${this.esc(material.id)}" ${selected?"checked":""}>${this.esc(material.name)} · ${this.esc(material.receivedQuantity)} ${this.esc(material.unit)}</label>`).join("");}
+   private agendaActivityOptions(stageName:string,selectedId=""):string{return projectAtlasAgendaResourceOptionsV1({stages:this.snapshot.stages,materials:this.snapshot.materials,stageName,selectedActivityId:selectedId}).activities.map(({activity,selected})=>`<option value="${this.esc(activity.id)}" ${selected?"selected":""}>${this.esc(activity.name)}</option>`).join("");}
+   private agendaMaterialOptions(stageName:string,selectedIds:string[]=[]):string{return projectAtlasAgendaResourceOptionsV1({stages:this.snapshot.stages,materials:this.snapshot.materials,stageName,selectedMaterialIds:selectedIds}).materials.map(({material,selected})=>`<label><input type="checkbox" name="materialIds" value="${this.esc(material.id)}" ${selected?"checked":""}>${this.esc(material.name)} · ${this.esc(material.receivedQuantity)} ${this.esc(material.unit)}</label>`).join("");}
    setData(events:OperationalAgendaEvent[],stages:OperationalStage[],materials:OperationalMaterial[],focusDate="",selectedEventId="",focusWeek="",detailMode=false,notificationsEnabled=this.snapshot.notificationsEnabled):void{
     const projection=projectAtlasAgendaDataRefreshV1({events,stages,materials,focusDate,selectedEventId,focusWeek,detailMode,notificationsEnabled,previousWeek:this.snapshot.week,previousSelectedDate:this.snapshot.selectedDate,previousEditor:this.snapshot.editor,previousRelatedFrom:this.snapshot.relatedFrom});
      this.state.next(s=>({...s,...projection,recordFormOpen:false,recordFeedback:null,loading:false,error:null,saving:false}));
@@ -11300,7 +11007,7 @@ export class AtlasAgenda extends AtlasHTMLElementBase{
    setRecordFeedback(message:string|null,closeForm=true):void{this.state.next(s=>({...s,recordFeedback:message,recordFormOpen:message&&closeForm?false:s.recordFormOpen,saving:false}));}
    setNotificationsEnabled(enabled:boolean):void{this.state.next(s=>({...s,notificationsEnabled:enabled}));}
   private render():void{
-      const s=this.snapshot,projection=projectAgendaPage({events:s.events,stages:s.stages,materials:s.materials,week:s.week,selectedDate:s.selectedDate,editor:s.editor,relatedFrom:s.relatedFrom,statusPriority:agendaStatusPresentation.agendaStatusPriority,statusLabels:agendaStatusPresentation.agendaStatusLabels});
+      const s=this.snapshot,projection=projectAtlasAgendaPageV1({events:s.events,stages:s.stages,materials:s.materials,week:s.week,selectedDate:s.selectedDate,editor:s.editor,relatedFrom:s.relatedFrom});
       const {dayNavigation,orderedEvents:ordered,selected,editing,stage,stageName,stageOptions,activityOptions:projectedActivityOptions,materialOptions:projectedMaterialOptions,timeLabels,statusGroups,calendarDays}=projection,esc=(v:unknown)=>this.esc(v);
       const days=calendarDays.map(({date})=>new Date(`${date}T12:00:00`)),events=ordered,normalize=(value:unknown)=>String(value??"").toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[_-]+/g," ").trim();
      const dayNav=dayNavigation.map(({date,weekdayLabel,dayOfMonth,eventCount,selected:isSelected})=>`<button type="button" data-day="${date}" aria-current="${isSelected?"date":"false"}"><span>${esc(weekdayLabel)}</span><strong>${dayOfMonth}</strong><small>${eventCount} compromisso(s)</small></button>`).join("");
@@ -11609,8 +11316,6 @@ function replaceAtlasFieldPageComponentBindingsV1(host: Document, key: AtlasFiel
   atlasFieldPageComponentBindingsV1.set(host, controllers);
   return { signal: controller.signal };
 }
-
-export type AtlasBrokerProfileFieldsV1 = Omit<BrokerProfile, 'id' | 'name' | 'createdAt' | 'updatedAt'>;
 
 export interface AtlasBrokerProfileSaveCommandV1 {
   element: AtlasBrokers;
@@ -14251,191 +13956,6 @@ export function installAtlasCashRecordComponentControllerV1(input: AtlasCashReco
   }, options);
 }
 
-export interface AtlasSettingsStageDraftV1 { name: string; status: string; progress: string; week: string; owner: string }
-export interface AtlasSettingsComprehensionDraftV1 {
-  requirements: string; conditions: string; typicalDescription: string; requestHints: string;
-  evidenceFocus: string; procurementFocus: string; organizationRequest: string; organizationContext: string;
-  notifyOwner: string; notifyAdmin: string; notifyForeman: string; expectedActivities: string;
-  productionQuantity: string; productionUnit: string; productionRate: string; productionRateUnit: string;
-  materialsTable: Array<{ name: string; description: string; quantity: string; unit: string; status: string }>;
-}
-export interface AtlasSettingsAiAgendaDraftV1 { reading: string; determination: string; generation: string; autoCreatePending: boolean }
-export interface AtlasSettingsContactDraftV1 { whatsappNumber: string }
-export interface AtlasSettingsUsageDraftV1 {
-  defaultPage: string; density: string; reduceMotion: boolean; voiceEnabled: boolean;
-  whatsappNumber: string; instagramAccount: string; autoNotify: boolean; pixKey: string;
-  signalAmount: string; pixReceiver: string; pixCity: string;
-}
-export interface AtlasSettingsRoleDraftV1 { id: string | null; name: string; permissions: string[] }
-export interface AtlasSettingsKeyDraftV1 { label: string; roleId: string }
-
-const atlasSettingsFormTextV1 = (values: Record<string, unknown>, name: string): string => String(values[name] || '');
-
-export function buildAtlasSettingsStageDraftV1(values: Record<string, unknown>): AtlasSettingsStageDraftV1 {
-  return {
-    name: atlasSettingsFormTextV1(values, 'name'), status: atlasSettingsFormTextV1(values, 'status'),
-    progress: atlasSettingsFormTextV1(values, 'progress'), week: atlasSettingsFormTextV1(values, 'week'),
-    owner: atlasSettingsFormTextV1(values, 'owner'),
-  };
-}
-
-export function buildAtlasSettingsComprehensionDraftV1(input: {
-  values: Record<string, unknown>;
-  materialsTable: AtlasSettingsComprehensionDraftV1['materialsTable'];
-}): AtlasSettingsComprehensionDraftV1 {
-  const value = (name: string): string => atlasSettingsFormTextV1(input.values, name);
-  return {
-    requirements: value('requirements'), conditions: value('conditions'), typicalDescription: value('typicalDescription'), requestHints: value('requestHints'),
-    evidenceFocus: value('evidenceFocus'), procurementFocus: value('procurementFocus'), organizationRequest: value('organizationRequest'), organizationContext: value('organizationContext'),
-    notifyOwner: value('notifyOwner'), notifyAdmin: value('notifyAdmin'), notifyForeman: value('notifyForeman'), expectedActivities: value('expectedActivities'),
-    productionQuantity: value('productionQuantity'), productionUnit: value('productionUnit'), productionRate: value('productionRate'), productionRateUnit: value('productionRateUnit'),
-    materialsTable: input.materialsTable,
-  };
-}
-
-export function buildAtlasSettingsAiAgendaDraftV1(values: Record<string, unknown>): AtlasSettingsAiAgendaDraftV1 {
-  return {
-    reading: atlasSettingsFormTextV1(values, 'reading'), determination: atlasSettingsFormTextV1(values, 'determination'),
-    generation: atlasSettingsFormTextV1(values, 'generation'), autoCreatePending: Boolean(values.autoCreatePending),
-  };
-}
-
-export function buildAtlasSettingsContactDraftV1(values: Record<string, unknown>): AtlasSettingsContactDraftV1 {
-  return { whatsappNumber: atlasSettingsFormTextV1(values, 'whatsappNumber') };
-}
-
-export function buildAtlasSettingsUsageDraftV1(values: Record<string, unknown>): AtlasSettingsUsageDraftV1 {
-  return {
-    defaultPage: atlasSettingsFormTextV1(values, 'defaultPage'), density: atlasSettingsFormTextV1(values, 'density'),
-    reduceMotion: Boolean(values.reduceMotion), voiceEnabled: Boolean(values.voiceEnabled), whatsappNumber: atlasSettingsFormTextV1(values, 'whatsappNumber'),
-    instagramAccount: atlasSettingsFormTextV1(values, 'instagramAccount'), autoNotify: Boolean(values.autoNotify), pixKey: atlasSettingsFormTextV1(values, 'pixKey'),
-    signalAmount: atlasSettingsFormTextV1(values, 'signalAmount'), pixReceiver: atlasSettingsFormTextV1(values, 'pixReceiver'), pixCity: atlasSettingsFormTextV1(values, 'pixCity'),
-  };
-}
-
-export function buildAtlasSettingsRoleDraftV1(input: { values: Record<string, unknown>; id: string | null; permissions: string[] }): AtlasSettingsRoleDraftV1 {
-  return { id: input.id, name: atlasSettingsFormTextV1(input.values, 'name'), permissions: input.permissions.map(String) };
-}
-
-export function buildAtlasSettingsKeyDraftV1(values: Record<string, unknown>): AtlasSettingsKeyDraftV1 {
-  return { label: atlasSettingsFormTextV1(values, 'label'), roleId: atlasSettingsFormTextV1(values, 'roleId') };
-}
-
-function projectAtlasSettingsWorkbenchSessionsV1(sessions: WorkbenchSession[]): WorkbenchSession[] {
-  return [...sessions].sort((left, right) => Number(left.order) - Number(right.order));
-}
-
-function projectAtlasSettingsWorkbenchSessionV1(
-  session: WorkbenchSession,
-  index: number,
-  count: number,
-  options: Array<{ key: string; label: string; group: string }>,
-) {
-  const materials = Array.isArray(session.materials) ? session.materials.map((item, materialIndex): WorkbenchMaterial =>
-    typeof item === "string"
-      ? { id: `material-${materialIndex}`, name: item, description: "", usage: "", quantity: "", unit: "" }
-      : item) : [];
-  const conditions = (session.inference?.conditions || session.operational?.entryConditions || []) as Array<Record<string, unknown> | string>;
-  const production = (session.inference?.production || session.operational?.production || {}) as Record<string, unknown>;
-  const automation = session.automation || {};
-  const programming = session.programming || {};
-  return {
-    id: session.id,
-    title: session.title || "Atividade",
-    unit: session.unit || "Unidade não definida",
-    release: session.release || "Sem requisito de liberação",
-    summary: (session.inference?.summary as string) || "Editar compreensão",
-    status: (session.inference?.summary as string) || "Alterações são salvas na compreensão original do Worker.",
-    moveUpDisabled: index === 0,
-    moveDownDisabled: index === count - 1,
-    materials,
-    properties: session.properties || [],
-    conditions: conditions.map(condition => typeof condition === "string"
-      ? { label: "Condição", trigger: condition, severity: "warning" }
-      : condition),
-    production,
-    automation,
-    programming,
-    options: options.map(option => ({
-      ...option,
-      checked: Boolean((option.group === "automation" ? automation[option.key] : programming[option.key])),
-    })),
-    custom: session.custom,
-  };
-}
-
-function projectAtlasSettingsPageV1(input: {
-  snapshot: SettingsSnapshot;
-  selectedStageId: string;
-  activeTab: "materials" | "activities" | "execution";
-  creatingStage: boolean;
-  usagePages: AtlasUsagePageOptionV1[];
-  usageDensities: AtlasUsageDensityOptionV1[];
-  usageBusinessDefaults: AtlasUsageBusinessDefaultsV1 | null;
-}) {
-  const { snapshot } = input;
-  const stage = snapshot.stages.find(item => String(item.id) === input.selectedStageId) || snapshot.stages[0];
-  const config = stage?.aiConfig || ({} as NonNullable<ConfiguredStage["aiConfig"]>);
-  const profile = config.executionProfile || {};
-  const sessions = stage ? projectAtlasSettingsWorkbenchSessionsV1(stage.workbenchSessions) : [];
-  const materials = profile.materialsTable || [];
-  const activities = profile.expectedActivities || sessions.map(session => session.title);
-  const production = profile.production || { quantity: null, unit: "", rate: null, rateUnit: "" };
-  const listText = (value: unknown) => Array.isArray(value)
-    ? value.map(item => typeof item === "string" ? item : "").filter(Boolean).join("\n")
-    : "";
-  const targetText = (value: unknown) => Array.isArray(value) ? value.join(", ") : "";
-  const sourceMaterials = sessions.flatMap(session => (Array.isArray(session.materials) ? session.materials : []).map((value, index) => ({
-    session,
-    material: typeof value === "string"
-      ? { id: `${session.id}-${index}`, name: value, description: "", usage: "", quantity: "", unit: "" }
-      : value,
-  })));
-  const actorRole = snapshot.actorRole;
-  return {
-    stage,
-    sessions,
-    materials,
-    fields: {
-      procurementFocus: listText(config.procurementFocus),
-      expectedActivities: listText(activities),
-      requestHints: listText(config.requestHints),
-      typicalDescription: String(config.typicalDescription || ""),
-      requirements: listText(config.requirements),
-      conditions: listText(config.conditions),
-      evidenceFocus: listText(config.evidenceFocus),
-      organizationContext: String(config.organizationContext || ""),
-      organizationRequest: String(config.organizationRequest || ""),
-      productionQuantity: String(production.quantity ?? ""),
-      productionUnit: String(production.unit ?? ""),
-      productionRate: String(production.rate ?? ""),
-      productionRateUnit: String(production.rateUnit ?? ""),
-      notifyOwner: targetText(config.notificationTargets?.owner),
-      notifyAdmin: targetText(config.notificationTargets?.admin),
-      notifyForeman: targetText(config.notificationTargets?.foreman),
-    },
-    ...projectAtlasSettingsAccessPolicyV1(snapshot),
-    stageChoices: snapshot.stages.map(item => ({
-      item,
-      selected: String(item.id) === String(stage?.id ?? ""),
-      progress: Number(item.progress) || 0,
-      disabled: input.creatingStage,
-    })),
-    sourceMaterials,
-    workbenchSourceLabel: stage?.workbenchSource === "persisted"
-      ? "sessões salvas no banco"
-      : stage?.workbenchSource === "worker-defaults"
-        ? "catálogo original do Worker · somente leitura até salvar"
-        : "estado do Worker indisponível",
-    tabs: [
-      { key: "materials", label: "Materiais", active: input.activeTab === "materials", count: materials.length + sourceMaterials.length },
-      { key: "activities", label: "Atividades esperadas", active: input.activeTab === "activities", count: sessions.length },
-      { key: "execution", label: "Execução", active: input.activeTab === "execution", count: null },
-    ],
-    usagePanelVisible: Boolean(input.usagePages.length && input.usageDensities.length && input.usageBusinessDefaults),
-  };
-}
-
 type SettingsState = SettingsSnapshot & {
   materialColumns: MaterialCustomColumn[];
   hiddenMaterialColumns: string[];
@@ -14610,7 +14130,7 @@ export class AtlasSettings extends AtlasHTMLElementBase {
       if(button.hasAttribute("data-settings-property-remove")&&stage&&session){const updated={...session,properties:session.properties.filter((_,i)=>i!==Number(button.dataset.index))},sessions=stage.workbenchSessions.map(item=>item.id===session.id?updated:item),nextStage={...stage,workbenchSessions:sessions,workbenchState:{...stage.workbenchState,inputSessions:sessions}};this.replaceStage(nextStage);this.scheduleWorkbenchSave(nextStage);return;}
       if(button.hasAttribute("data-settings-condition-add")&&stage&&session){const rows=(session.inference?.conditions||session.operational?.entryConditions||[]) as unknown[],updated={...session,inference:{...(session.inference||{}),conditions:[...rows,{kind:"operacional",label:"Nova condição",trigger:"",severity:"warning",notifyRoles:["owner"]}]}},sessions=stage.workbenchSessions.map(item=>item.id===session.id?updated:item),nextStage={...stage,workbenchSessions:sessions,workbenchState:{...stage.workbenchState,inputSessions:sessions}};this.replaceStage(nextStage);this.scheduleWorkbenchSave(nextStage);return;}
       if(button.hasAttribute("data-settings-condition-remove")&&stage&&session){const rows=(session.inference?.conditions||session.operational?.entryConditions||[]) as unknown[],updated={...session,inference:{...(session.inference||{}),conditions:rows.filter((_,i)=>i!==Number(button.dataset.index))}},sessions=stage.workbenchSessions.map(item=>item.id===session.id?updated:item),nextStage={...stage,workbenchSessions:sessions,workbenchState:{...stage.workbenchState,inputSessions:sessions}};this.replaceStage(nextStage);this.scheduleWorkbenchSave(nextStage);return;}
-      if(button.dataset.settingsSessionMove&&stage&&session){const rows=projectAtlasSettingsWorkbenchSessionsV1(stage.workbenchSessions),from=rows.findIndex(item=>item.id===session.id),to=from+(button.dataset.settingsSessionMove==="up"?-1:1);if(to<0||to>=rows.length)return;[rows[from],rows[to]]=[rows[to],rows[from]];rows.forEach((item,index)=>item.order=index);const nextStage={...stage,workbenchSessions:rows,workbenchState:{...stage.workbenchState,inputSessions:rows}};this.replaceStage(nextStage);const editor=this.querySelector<HTMLElement>(`[data-settings-session="${CSS.escape(session.id)}"]`);if(editor instanceof HTMLDetailsElement)editor.open=true;this.scheduleWorkbenchSave(nextStage);return;}
+    if(button.dataset.settingsSessionMove&&stage&&session){const rows=moveAtlasSettingsWorkbenchSessionV1({sessions:stage.workbenchSessions,sessionId:session.id,direction:button.dataset.settingsSessionMove==="up"?"up":"down"});if(!rows)return;const nextStage={...stage,workbenchSessions:rows,workbenchState:{...stage.workbenchState,inputSessions:rows}};this.replaceStage(nextStage);const editor=this.querySelector<HTMLElement>(`[data-settings-session="${CSS.escape(session.id)}"]`);if(editor instanceof HTMLDetailsElement)editor.open=true;this.scheduleWorkbenchSave(nextStage);return;}
       if(button.hasAttribute("data-settings-session-remove")&&stage&&session){const sessions=stage.workbenchSessions.filter(item=>item.id!==session.id),nextStage={...stage,workbenchSessions:sessions,workbenchState:{...stage.workbenchState,inputSessions:sessions}};this.replaceStage(nextStage);this.scheduleWorkbenchSave(nextStage);return;}
       if(button.hasAttribute("data-settings-infer")&&stage&&session){button.disabled=true;const status=this.querySelector<HTMLElement>(`[data-settings-session-status="${CSS.escape(session.id)}"]`);if(status)status.textContent="Consultando inferência do Worker…";this.emit("atlas:settings-infer",{stageKey:stage.stageKey,session});return;}
       if(button.hasAttribute("data-role-cancel")){this.state.next(s=>({...s,feedback:""}));const form=this.querySelector<HTMLFormElement>("[data-role-form]");form?.reset();form?.removeAttribute("data-edit-id");button.hidden=true;return;}
@@ -17433,12 +16953,6 @@ export function installAtlasCommercialDocumentRenderersV1(
   };
 }
 
-export type AtlasCommissionHistoryActionV1 =
-  | { kind: 'open-contract'; id: string; returnProfile: string }
-  | { kind: 'open-deal'; id: string }
-  | { kind: 'return-to-profile'; profileId: string }
-  | { kind: 'import-csv'; fileName: string; text: string };
-
 interface AtlasCommissionHistoryViewLayer extends HTMLElement {
   commissionContract(deal: AtlasCommissionDealV1): string;
   bind(...args: unknown[]): void;
@@ -17527,16 +17041,6 @@ export function installAtlasCommissionHistoryControlsV1(
     }, true);
   };
 }
-
-export type AtlasCommissionProfileActionV1 =
-  | { kind: 'select-profile'; profileId: string }
-  | { kind: 'open-proposal'; id: string }
-  | { kind: 'commission-back' }
-  | { kind: 'proposal-back' }
-  | { kind: 'proposal-save' }
-  | { kind: 'send-contract'; id: string }
-  | { kind: 'new-commission' }
-  | { kind: 'lead-lot-interest' };
 
 /** Bind commission profile cards and proposal/contract actions without owning application state. */
 export function installAtlasCommissionProfileBindingV1(
@@ -30783,6 +30287,22 @@ export interface AtlasContractsLedgerBindingDependenciesV1 {
   schedule(callback: () => void, delay?: number): unknown;
 }
 
+export interface AtlasContractsPageCommandDispatchInputV1 {
+  readState(): AtlasApplicationStoreState;
+  onStatePatch(patch: Partial<AtlasApplicationStoreState>): unknown;
+  notify(message: string, tone?: string): void;
+  command: Parameters<typeof createAtlasContractsPageCommandV1>[0]["command"];
+}
+
+/** Connect UI events to the contracts program command and apply its effects. */
+export function dispatchAtlasContractsPageCommandV1(input: AtlasContractsPageCommandDispatchInputV1): boolean {
+  const result = createAtlasContractsPageCommandV1({ state: input.readState(), command: input.command });
+  if (!result) return false;
+  input.onStatePatch(result.patch);
+  if (result.notification) input.notify(result.notification.message, result.notification.tone);
+  return true;
+}
+
 /** Bind search, filters, contract actions, and export to a rendered ledger component. */
 export function bindAtlasContractsLedgerV1(
   page: HTMLElement,
@@ -30791,13 +30311,8 @@ export function bindAtlasContractsLedgerV1(
   if (page.dataset.contractsTableBound === "true") return false;
   page.dataset.contractsTableBound = "true";
   const { readState, onStatePatch, commercialScopeV1, brlToNumber, notify, documentRef, BlobCtor, URLRef, schedule } = dependencies;
-  const dispatch = (command: Parameters<typeof createAtlasContractsPageCommandV1>[0]["command"]) => {
-    const result = createAtlasContractsPageCommandV1({ state: readState(), command });
-    if (!result) return false;
-    onStatePatch(result.patch);
-    if (result.notification) notify(result.notification.message, result.notification.tone);
-    return true;
-  };
+  const dispatch = (command: Parameters<typeof createAtlasContractsPageCommandV1>[0]["command"]) =>
+    dispatchAtlasContractsPageCommandV1({ readState, onStatePatch, notify, command });
   const findDeal = (id: string) => projectAtlasContractsPageV1({
     scope: commercialScopeV1(), state: readState(), brlToNumber,
   }).deals.find(item => item.id === id);
@@ -30856,14 +30371,11 @@ export function bindAtlasContractsLedgerV1(
     const { visible: deals } = projectAtlasContractsPageV1({
       scope: commercialScopeV1(), state: current, brlToNumber,
     });
-    const csv = [
-      ["Contrato", "Cliente", "Lote", "Status", "Recibo / condição", "Valor"],
-      ...deals.map(deal => [deal.id, deal.client || "", deal.lot || "", deal.status || "", deal.payment || "", deal.value || ""]),
-    ].map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(";")).join("\n");
-    const url = URLRef.createObjectURL(new BlobCtor(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }));
+    const exportFile = projectAtlasContractsCsvExportV1(deals);
+    const url = URLRef.createObjectURL(new BlobCtor([exportFile.content], { type: exportFile.contentType }));
     const link = documentRef.createElement("a");
     link.href = url;
-    link.download = "contratos-recibos.csv";
+    link.download = exportFile.fileName;
     link.click();
     schedule(() => URLRef.revokeObjectURL(url), 0);
     notify("Lista de contratos exportada em CSV.", "success");
@@ -30891,6 +30403,9 @@ export interface AtlasContractsPageDependenciesV1 extends Record<string, any> {
   readState?(): AtlasApplicationStoreState;
   onStatePatch?(patch: Partial<AtlasApplicationStoreState>): unknown;
   commercialScopeV1(): AtlasCommercialScopeV1;
+  persistProposal?: AtlasProposalPersistenceCommandV1;
+  /** Compatibility port for the still-present MJS registration fallback. */
+  saveOperationalProposal?: AtlasOperationalProposalSaveServiceV1;
   /** Compatibility port for the still-present MJS registration fallback. */
   appStore?: {
     get(): AtlasApplicationStoreState;
@@ -30911,14 +30426,20 @@ export function installAtlasContractsPageV1(ViewLayer: any, dependencies: AtlasC
   const {
     normalizeOperationalRole, commissionProfiles, commissionDeals,
     esc, ico, notify, commercialScopeV1, brlToNumber, formatBRL,
-    readProposalImageAsDataUrl, proposalVisionPrompt, parseProposalVisionPayload, saveOperationalProposal,
+    readProposalImageAsDataUrl,
     fetch: fetcher, document: documentRef,
     HTMLSelectElement: HTMLSelectElementCtor, Option: OptionCtor,
     Event: EventCtor, FormData: FormDataCtor, Blob: BlobCtor,
     URL: URLRef, setTimeout: schedule,
   } = dependencies;
-  for (const [name, value] of Object.entries({ readState, onStatePatch, normalizeOperationalRole, commissionProfiles, commissionDeals, esc, ico, notify, commercialScopeV1, brlToNumber, formatBRL, readProposalImageAsDataUrl, proposalVisionPrompt, parseProposalVisionPayload, saveOperationalProposal, fetcher, documentRef, HTMLSelectElementCtor, OptionCtor, EventCtor, FormDataCtor, BlobCtor, URLRef, schedule }))
+  const persistProposal = dependencies.persistProposal || (dependencies.saveOperationalProposal
+    ? createAtlasProposalPersistenceCommandV1({ saveOperationalProposal: dependencies.saveOperationalProposal })
+    : null);
+  for (const [name, value] of Object.entries({ readState, onStatePatch, normalizeOperationalRole, commissionProfiles, commissionDeals, esc, ico, notify, commercialScopeV1, brlToNumber, formatBRL, readProposalImageAsDataUrl, persistProposal, fetcher, documentRef, HTMLSelectElementCtor, OptionCtor, EventCtor, FormDataCtor, BlobCtor, URLRef, schedule }))
     if (value == null) throw new TypeError(`Contracts page requires injected dependency ${name}.`);
+  if (!persistProposal) throw new TypeError("Contracts page requires injected dependency persistProposal.");
+  const dispatchContractsCommand = (command: Parameters<typeof createAtlasContractsPageCommandV1>[0]["command"]) =>
+    dispatchAtlasContractsPageCommandV1({ readState, onStatePatch, notify, command });
 
 const viewLayerRenderAccessV1 = ViewLayer.prototype.render;
 ViewLayer.prototype.render = function (this: any, ...args: any) {
@@ -30926,38 +30447,10 @@ ViewLayer.prototype.render = function (this: any, ...args: any) {
     // A sessão de demonstração e sessões legadas podem não persistir o papel.
     // A aplicação trata esse caso como proprietário em toda a navegação; usar
     // a mesma regra aqui evita que a página Corretores seja desviada para Mapa.
-    role = normalizeOperationalRole(state.currentActor?.role || "owner"),
-    brokerOnly = ["sales", "commercial", "broker", "corretor"].includes(role),
-    privileged = ["owner", "admin", "developer"].includes(role);
-  const requestedView = String(state.view || "map");
-  if (brokerOnly && !["map", "contracts", "proposals"].includes(requestedView)) {
-    onStatePatch({
-      view: "map",
-      activityDedicated: false,
-      selectedActivity: null,
-      lastAction: "Acesso do corretor limitado ao dashboard e à carteira",
-    });
-    return;
-  }
-  if (!brokerOnly && state.view === "contracts" && !privileged) {
-    onStatePatch({
-      view: "map",
-      proposalFormOpen: false,
-      selectedCommissionProfile: null,
-      selectedCommissionContract: null,
-      selectedCommissionProposal: null,
-      lastAction: "Carteira comercial restrita ao corretor",
-    });
-    return;
-  }
-  if (!privileged && ["commissions", "brokers"].includes(requestedView)) {
-    onStatePatch({
-      view: "contracts",
-      selectedCommissionProfile: null,
-      selectedCommissionContract: null,
-      selectedCommissionProposal: null,
-      lastAction: "Acesso comercial redirecionado para minha carteira",
-    });
+    role = normalizeOperationalRole(state.currentActor?.role || "owner");
+  const accessRedirect = projectAtlasContractsRouteAccessV1({ state, normalizedRole: role });
+  if (accessRedirect) {
+    onStatePatch(accessRedirect);
     return;
   }
   const result = viewLayerRenderAccessV1.apply(this, args);
@@ -30987,22 +30480,11 @@ ViewLayer.prototype.bind = function (this: any, ...args: any) {
       );
   }
   this.querySelector("[data-proposal-new]")?.addEventListener("click", () =>
-    onStatePatch({
-      view: "contracts",
-      proposalFormOpen: true,
-      selectedCommissionProposal: null,
-      selectedCommissionContract: null,
-      lastAction: "Abriu formulário de nova proposta",
-    }),
+    dispatchContractsCommand({ type: "open-proposal-form" }),
   );
   this.querySelector("[data-proposal-form-back]")?.addEventListener(
     "click",
-    () =>
-      onStatePatch({
-        view: readState().view === "proposals" ? "commissions" : "contracts",
-        proposalFormOpen: false,
-        lastAction: "Voltou para a área comercial",
-      }),
+    () => dispatchContractsCommand({ type: "return-from-proposal-form" }),
   );
   const form = this.querySelector("[data-my-proposal-form]");
   if (form && !form.querySelector("[data-proposal-inference-status]")) {
@@ -31022,65 +30504,28 @@ ViewLayer.prototype.bind = function (this: any, ...args: any) {
     if (status) status.textContent = "Analisando o documento pela NVIDIA…";
     if (button) button.disabled = true;
     try {
-      const dataUrl = await readProposalImageAsDataUrl(file);
-      const response = await fetcher("/api/ai/vision-reasoning", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: proposalVisionPrompt,
-          view: "contracts",
-          context: {
-            purpose: "proposta de reserva de lote",
-            fields: ["client", "lot", "value", "payment"],
-          },
-          attachment: { name: file.name, type: file.type, dataUrl },
-        }),
+      const { draft, inference } = await inferAtlasProposalAttachmentV1({
+        file,
+        readAsDataUrl: readProposalImageAsDataUrl,
+        fetcher,
       });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(
-          payload.error || `Falha na inferência (${response.status})`,
-        );
-      }
-      const draft = parseProposalVisionPayload(payload);
-      if (!draft)
-        throw new Error("A NVIDIA não retornou campos reconhecíveis.");
       if (form.dataset.proposalInferenceRequest !== requestId) return;
-      [
-        "seller",
-        "lot",
-        "quadra",
-        "lotArea",
-        "value",
-        "client",
-        "payment",
-      ].forEach((name: any) => {
+      const formUpdate = projectAtlasProposalVisionFormUpdateV1(draft);
+      formUpdate.fields.forEach(({ name, value }) => {
         const input = form.querySelector(`[name="${name}"]`);
-        if (!input || !draft[name]) return;
+        if (!input) return;
         if (
           name === "payment" &&
           input instanceof HTMLSelectElementCtor &&
-          ![...input.options].some((option: any) => option.value === draft[name])
+          ![...input.options].some((option: any) => option.value === value)
         ) {
-          input.append(new OptionCtor(`Inferido: ${draft[name]}`, draft[name]));
+          input.append(new OptionCtor(`Inferido: ${value}`, value));
         }
-        input.value = draft[name];
+        input.value = value;
         input.dispatchEvent(new EventCtor("input", { bubbles: true }));
       });
-      form._proposalInference = {
-        provider: payload.provider || "nvidia",
-        model: payload.model || "",
-        sourceFile: file.name,
-        confidence: draft.confidence,
-        extracted: draft,
-        extractedAt: new Date().toISOString(),
-      };
-      const confidence =
-        draft.confidence == null
-          ? ""
-          : ` Confiança estimada: ${Math.round(draft.confidence * 100)}%.`;
-      if (status)
-        status.textContent = `Sugestões aplicadas. Revise os campos antes de salvar.${confidence}`;
+      form._proposalInference = inference;
+      if (status) status.textContent = formUpdate.statusMessage;
     } catch (error: any) {
       if (form.dataset.proposalInferenceRequest !== requestId) return;
       if (status)
@@ -31104,9 +30549,7 @@ ViewLayer.prototype.bind = function (this: any, ...args: any) {
             )
             .join(" | ")
         : "Nenhum anexo selecionado.";
-      const visualFile = files.find((file: any) =>
-        /^image\/(?:png|jpeg|webp)$/i.test(file.type),
-      );
+      const visualFile = files.find((file: any) => isAtlasProposalInferenceAttachmentV1(file));
       const inferButton = form.querySelector("[data-proposal-infer]");
       if (inferButton) inferButton.hidden = !visualFile;
       if (visualFile) void inferProposalAttachment(visualFile);
@@ -31116,19 +30559,24 @@ ViewLayer.prototype.bind = function (this: any, ...args: any) {
     ?.addEventListener("click", () => {
       const file = [
         ...(form.querySelector('[name="attachments"]')?.files || []),
-      ].find((item: any) => /^image\/(?:png|jpeg|webp)$/i.test(item.type));
+      ].find((item: any) => isAtlasProposalInferenceAttachmentV1(item));
       if (file) void inferProposalAttachment(file);
     });
   form?.addEventListener("submit", (event: any) => {
     event.preventDefault();
-    const result = createAtlasProposalFormSubmissionV1({
-      state: readState(),
+    const state = readState();
+    const values = Object.fromEntries(new FormDataCtor(form).entries());
+    const files = [...(form.querySelector('[name="attachments"]')?.files || [])];
+    const inference = form._proposalInference || null;
+    const result = createAtlasProposalSaveCommandV1({
+      state,
       scope: commercialScopeV1(),
-      values: Object.fromEntries(new FormDataCtor(form).entries()),
-      files: [...(form.querySelector('[name="attachments"]')?.files || [])],
-      inference: form._proposalInference || null,
+      values,
+      files,
+      inference,
       brlToNumber,
       formatBRL,
+      persist: persistProposal,
     });
     if (!result.accepted) {
       const status = form.querySelector("[data-proposal-form-status]") as HTMLElement | null;
@@ -31138,56 +30586,14 @@ ViewLayer.prototype.bind = function (this: any, ...args: any) {
     onStatePatch(result.patch);
     notify(result.notification.message, result.notification.tone);
   });
-  form?.addEventListener("submit", async (event: any) => {
-    const values = Object.fromEntries(
-        new FormDataCtor(event.currentTarget).entries(),
-      ),
-      scope = commercialScopeV1(),
-      profile =
-        scope.profiles.find((item: any) => item.id === values.profile) ||
-        scope.profile,
-      files = [
-        ...(event.currentTarget.querySelector('[name="attachments"]')?.files ||
-          []),
-      ];
-    if (!profile) return;
-    try {
-      await saveOperationalProposal(
-        {
-          ...values,
-          uid: readState().currentActor?.uid || "",
-          inference: event.currentTarget._proposalInference || null,
-        },
-        files,
-        readState().currentActor || {},
-      );
-    } catch (error) {
-      console.info(
-        "Proposta salva localmente; envio ao Firebase indisponível.",
-        error,
-      );
-    }
-  });
   this.querySelectorAll("[data-my-proposal]").forEach((button: any) =>
     button.addEventListener("click", () =>
-      onStatePatch({
-        view: "contracts",
-        selectedCommissionProposal: button.dataset.myProposal,
-        selectedCommissionProfile: null,
-        selectedCommissionContract: null,
-        lastAction: `Abriu proposta ${button.dataset.myProposal}`,
-      }),
+      dispatchContractsCommand({ type: "open-proposal", proposalId: button.dataset.myProposal }),
     ),
   );
   this.querySelectorAll("[data-my-contract]").forEach((button: any) =>
     button.addEventListener("click", () =>
-      onStatePatch({
-        view: "contracts",
-        selectedCommissionContract: button.dataset.myContract,
-        selectedCommissionProfile: null,
-        selectedCommissionProposal: null,
-        lastAction: `Abriu contrato ${button.dataset.myContract}`,
-      }),
+      dispatchContractsCommand({ type: "select-contract-detail", contractId: button.dataset.myContract }),
     ),
   );
   return result;
@@ -31202,21 +30608,17 @@ ViewLayer.prototype.contracts = function (this: any) {
   const state = readState();
   const scope = commercialScopeV1();
   const projection = projectAtlasContractsPageV1({ scope, state, brlToNumber });
-  const deals = projection.deals;
-  if (state.proposalFormOpen) return this.proposalFormV1(scope);
-  if (state.selectedCommissionProposal) {
-    const deal = deals.find(
-      (item: any) => item.id === state.selectedCommissionProposal,
-    );
-    return deal ? this.commissionProposal(deal) : this.contracts();
+  const surface = projectAtlasContractsPageSurfaceV1({ state, deals: projection.deals });
+  switch (surface.kind) {
+    case "proposal-form":
+      return this.proposalFormV1(scope);
+    case "proposal-detail":
+      return surface.deal ? this.commissionProposal(surface.deal) : this.contracts();
+    case "contract-detail":
+      return surface.deal ? this.commissionContract(surface.deal) : this.contracts();
+    case "ledger":
+      return renderAtlasContractsLedgerV1({ scope, projection, esc, ico, formatBRL });
   }
-  if (state.selectedCommissionContract) {
-    const deal = deals.find(
-      (item: any) => item.id === state.selectedCommissionContract,
-    );
-    return deal ? this.commissionContract(deal) : this.contracts();
-  }
-  return renderAtlasContractsLedgerV1({ scope, projection, esc, ico, formatBRL });
 };
 
 // Mantém links antigos funcionando, mas a entrada pública passa a ser sempre
@@ -31236,24 +30638,7 @@ ViewLayer.prototype.bind = function (this: any, ...args: any) {
 
   if (form && state.contractEditing && !form.dataset.contractEditingHydrated) {
     const deal = state.contractEditing;
-    const fields = {
-      seller: deal.seller || "",
-      sellerDocument: deal.sellerDocument || "",
-      lot: deal.lot || "",
-      quadra: deal.quadra || "",
-      lotArea: deal.lotArea || "",
-      value: String(deal.value || "").replace(/[^\d,.-]/g, ""),
-      rate: String(deal.rate || "6")
-        .replace("%", "")
-        .replace(",", "."),
-      payment: deal.payment || "",
-      profile: deal.profile || "",
-      client: deal.client || "",
-      cpf: deal.cpf || "",
-      email: deal.email || "",
-      phone: deal.phone || "",
-      purpose: deal.purpose || "Moradia",
-    };
+    const fields = projectAtlasContractEditFormValuesV1(deal);
     Object.entries(fields).forEach(([name, value]) => {
       const field = form.elements.namedItem(name);
       if (field && field.type !== "file") field.value = value;
@@ -31281,10 +30666,8 @@ ViewLayer.prototype.bind = function (this: any, ...args: any) {
       button.dataset.contractPreviewTab = state.contractEditing.id;
       button.textContent = "Visualizar contrato";
       header.querySelector("div")?.append(button);
-      button.addEventListener("click", () => onStatePatch({
-        view: "contracts", proposalFormOpen: false, contractEditing: null,
-        selectedCommissionContract: button.dataset.contractPreviewTab,
-        lastAction: `Visualizou contrato ${button.dataset.contractPreviewTab}`,
+      button.addEventListener("click", () => dispatchContractsCommand({
+        type: "preview-contract", contractId: button.dataset.contractPreviewTab || "",
       }));
     }
   }
@@ -31320,9 +30703,7 @@ export interface AtlasCommercialContractsRegistrationInputV1 {
   brlToNumber(value: unknown): number;
   formatBRL(value: unknown): string;
   readProposalImageAsDataUrl: unknown;
-  proposalVisionPrompt: string;
-  parseProposalVisionPayload: unknown;
-  saveOperationalProposal: unknown;
+  persistProposal: AtlasProposalPersistenceCommandV1;
   host: typeof globalThis;
 }
 
@@ -31342,9 +30723,7 @@ export function installAtlasCommercialContractsPageV1(input: AtlasCommercialCont
     brlToNumber: input.brlToNumber,
     formatBRL: input.formatBRL,
     readProposalImageAsDataUrl: input.readProposalImageAsDataUrl,
-    proposalVisionPrompt: input.proposalVisionPrompt,
-    parseProposalVisionPayload: input.parseProposalVisionPayload,
-    saveOperationalProposal: input.saveOperationalProposal,
+    persistProposal: input.persistProposal,
     fetch: host.fetch.bind(host),
     document: host.document,
     HTMLSelectElement: host.HTMLSelectElement,
@@ -53626,6 +53005,11 @@ export interface AtlasFinanceMobileCashFormV5358 {
   categories: string[];
 }
 
+export interface AtlasFinanceMobileCashCatalogV5358 {
+  defaultStage: string;
+  categories: readonly string[];
+}
+
 export function renderAtlasFinanceMobileCashFieldsV5358(model: AtlasFinanceMobileCashFormV5358): string {
   const esc = escapeAtlasStageAdministrationHtmlV1;
   return `<header class="cash-mobile-head-v5358"><div><span>CAIXA</span><h2>Adicionar caixa</h2><p>Entrada ou saída em poucos toques.</p></div><small>Dono</small></header><div class="cash-mobile-body-v5358"><label class="cash-amount-mobile-v5358"><span>Valor</span><div><small>R$</small><input name="amount" inputmode="decimal" autocomplete="off" enterkeyhint="next" placeholder="0,00" value="${esc(model.amount)}" required></div></label><fieldset class="cash-kind-mobile-v5358"><legend>Movimento</legend><label><input type="radio" name="kind" value="entrada" ${model.kind === 'entrada' ? 'checked' : ''}><span><b>＋ Entrada</b><small>Recebimento</small></span></label><label><input type="radio" name="kind" value="saida" ${model.kind === 'saida' ? 'checked' : ''}><span><b>− Saída</b><small>Pagamento</small></span></label></fieldset><div class="cash-main-fields-v5358"><label><span>Categoria</span><select name="category" required><option value="" ${!model.category ? 'selected' : ''} disabled>Escolha</option>${model.categories.map(value => `<option value="${esc(value)}" ${model.category === value ? 'selected' : ''}>${esc(value)}</option>`).join('')}</select></label><label><span>Etapa</span><select name="stage">${model.stages.map(stage => `<option value="${esc(stage)}" ${model.stage === stage ? 'selected' : ''}>${esc(stage)}</option>`).join('')}</select></label></div><label class="cash-description-mobile-v5358"><span>De onde veio / para onde foi?</span><textarea name="description" rows="2" enterkeyhint="done" placeholder="Ex.: Pix lote 077, concreto, combustível…" required>${esc(model.description)}</textarea></label><details class="cash-details-mobile-v5358"><summary>Mais detalhes</summary><label><span>Data</span><input type="date" name="date" value="${esc(model.date)}" required></label><p>Estorno e ajuste continuam preservando a trilha financeira.</p></details></div><footer class="cash-footer-mobile-v5358"><span data-v8-cash-status>Pronto para registrar.</span><button type="submit" data-v5358-cash-submit><span>${model.kind === 'saida' ? 'Registrar saída' : 'Adicionar entrada'}</span></button></footer>`;
@@ -54937,6 +54321,7 @@ export function installAtlasDashboardMapTabsV1(input: AtlasDashboardMapTabsHostV
 export interface AtlasFinanceMobileCashHostV5358 {
   document?: Document;
   window?: Window & typeof globalThis;
+  catalog: AtlasFinanceMobileCashCatalogV5358;
 }
 
 export interface AtlasFinanceMobileCashControllerV5358 {
@@ -54946,14 +54331,14 @@ export interface AtlasFinanceMobileCashControllerV5358 {
 const atlasFinanceMobileCashControllersV5358 = new WeakMap<Document, AtlasFinanceMobileCashControllerV5358>();
 
 /** Reformat the existing finance form without replacing its event-owning node or evidence controls. */
-export function installAtlasFinanceMobileCashV5358(input: AtlasFinanceMobileCashHostV5358 = {}): AtlasFinanceMobileCashControllerV5358 {
+export function installAtlasFinanceMobileCashV5358(input: AtlasFinanceMobileCashHostV5358): AtlasFinanceMobileCashControllerV5358 {
   const documentRef = input.document || globalThis.document;
   const windowRef = (input.window || documentRef?.defaultView || globalThis.window) as (Window & typeof globalThis) | undefined;
   if (!documentRef || !windowRef) throw new Error('O formulário móvel de caixa precisa de um documento ativo.');
+  const catalog = input.catalog;
   const mounted = atlasFinanceMobileCashControllersV5358.get(documentRef);
   if (mounted) return mounted;
   const selector = 'form[data-v8-cash-entry]';
-  const categories = ['Venda / recebimento', 'Obra', 'Material', 'Mão de obra', 'Máquinas / transporte', 'Ajuste', 'Outro'];
   let stopped = false;
 
   const syncKind = (form: HTMLFormElement): void => {
@@ -54974,13 +54359,13 @@ export function installAtlasFinanceMobileCashV5358(input: AtlasFinanceMobileCash
       kind: form.querySelector<HTMLInputElement>('input[name="kind"]:checked')?.value === 'saida' || kindSelect?.value === 'saida' ? 'saida' : 'entrada',
       date: form.querySelector<HTMLInputElement>('input[name="date"]')?.value || new Date().toISOString().slice(0, 10),
       category: form.querySelector<HTMLInputElement | HTMLSelectElement>('[name="category"]')?.value || '',
-      stage: stageSelect?.value || 'Geral',
+      stage: stageSelect?.value || catalog.defaultStage,
       amount: form.querySelector<HTMLInputElement>('input[name="amount"]')?.value || '',
       description: form.querySelector<HTMLInputElement | HTMLTextAreaElement>('[name="description"]')?.value || '',
       stages: Array.from(stageSelect?.querySelectorAll('option') || []).map(option => option.value || option.textContent || '').filter(Boolean),
-      categories: [...categories],
+      categories: [...catalog.categories],
     };
-    if (!current.stages.length) current.stages.push('Geral');
+    if (!current.stages.length) current.stages.push(catalog.defaultStage);
     if (current.category && !current.categories.includes(current.category)) current.categories.unshift(current.category);
     form.dataset.mobileCashV5358 = 'ready';
     form.classList.add('cash-entry-mobile-v5358');
