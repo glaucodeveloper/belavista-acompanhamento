@@ -6,7 +6,7 @@
   "widgets": [
     { "view": "map", "label": "Mapa", "icon": "◈" },
     { "view": "progress", "label": "Registros", "icon": "✎" },
-    { "view": "agenda", "label": "Agenda", "icon": "▦" },
+    { "view": "agenda", "label": "Calendário de obras", "icon": "▦" },
     { "view": "activities", "label": "Atividades", "icon": "☷" },
     { "view": "materials", "label": "Materiais", "icon": "◇" },
     { "view": "brokers-board", "label": "Corretores", "icon": "♧" },

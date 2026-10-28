@@ -144,7 +144,7 @@ import { installAtlasPertWorkspace } from './components.js';
 import { installAtlasExecutionPlanningComponentControllerV1, type AtlasExecutionPlanningComponentSnapshotV1, type AtlasExecutionPlanningBrokerReportV1, type AtlasExecutionPlanningCashPanelV1, type AtlasExecutionPlanningCommissionReasonV1, type AtlasExecutionPlanningOutsourcingReceiptV1 } from './components.js';
 import { mountAtlasAdminCashEvidenceFormV1, type AtlasAdminCashEvidenceFormViewV1 } from './components.js';
 import { installAtlasOperationalViewBindingsV1, type AtlasOperationalViewActionV1 } from './components.js';
-import { installAtlasOperationalMapPageV1, type AtlasOperationalMapLotOptionV1 } from './components.js';
+import { installAtlasOperationalMapPageV1 } from './components.js';
 import { installAtlasActivityMapLayerV1 } from './components.js';
 import { installAtlasAdminMapComponentControllerV1, type AtlasAdminMapContextPresentationInputV1 } from './components.js';
 import { installAtlasWorkerStageInputEditorComponentV1, type AtlasWorkerWorkbenchInputSessionViewV1 } from './components.js';
@@ -1008,6 +1008,11 @@ export interface AtlasWorkerContextChatAttachmentV1 extends Record<string, unkno
   dataUrl?: string;
   size?: number;
   lastModified?: number;
+  id?: string;
+  sizeBytes?: number;
+  stored?: boolean;
+  storage?: string;
+  transport?: string;
 }
 
 export interface AtlasWorkerContextChatRequestOptionsV1 extends Record<string, unknown> {
@@ -1051,19 +1056,31 @@ export interface AtlasWorkerContextChatInferenceRequestV1 {
 }
 
 export interface AtlasWorkerContextChatInferenceResponseV1 extends Record<string, unknown> {
-  text?: unknown;
-  toolCalls?: unknown;
-  recordOcr?: unknown;
-  attachment?: unknown;
-  vision?: unknown;
-  model?: unknown;
+  text: string;
+  toolCalls: AtlasWorkerContextChatToolCallV1[];
+  recordOcr: AtlasRecordOcrPayloadV1 | null;
+  attachment: AtlasWorkerContextChatInferenceAttachmentV1 | null;
+  vision: boolean;
+  reasoning: boolean;
+  model: string;
+  provider: string;
+  endpoint: string | null;
+  attachmentStorage: string | null;
+}
+
+/** File reference returned by the Worker after inference or invoice parsing. */
+export interface AtlasWorkerContextChatInferenceAttachmentV1 extends AtlasWorkerContextChatAttachmentV1 {
+  id?: string;
+  sizeBytes?: number;
+  storage?: string;
+  transport?: string;
 }
 
 export interface AtlasWorkerContextChatReplyV1 extends Record<string, unknown> {
   text: string;
   toolCalls?: AtlasWorkerContextChatToolCallV1[];
   recordOcr?: AtlasRecordOcrPayloadV1 | null;
-  attachment?: AtlasWorkerContextChatAttachmentV1 | null;
+  attachment?: AtlasWorkerContextChatInferenceAttachmentV1 | null;
   source: 'endpoint' | 'error';
   audit: string;
 }
@@ -1084,6 +1101,26 @@ export function normalizeAtlasWorkerContextChatToolCallsV1(value: unknown): Atla
       ...(argsValue ? { args: argsValue } : {}),
     };
   }).filter((call): call is AtlasWorkerContextChatToolCallV1 => call !== null);
+}
+
+/** Normalize the untrusted Worker response into the DTO consumed by chat orchestration. */
+export function normalizeAtlasWorkerContextChatInferenceResponseV1(value: unknown): AtlasWorkerContextChatInferenceResponseV1 {
+  const response = mapRecord(value) || {};
+  const ocr = mapRecord(response.recordOcr);
+  const attachment = mapRecord(response.attachment);
+  return {
+    ...response,
+    text: String(response.text || ''),
+    toolCalls: normalizeAtlasWorkerContextChatToolCallsV1(response.toolCalls),
+    recordOcr: ocr as AtlasRecordOcrPayloadV1 | null,
+    attachment: attachment as AtlasWorkerContextChatInferenceAttachmentV1 | null,
+    vision: Boolean(response.vision),
+    reasoning: Boolean(response.reasoning),
+    model: String(response.model || ''),
+    provider: String(response.provider || ''),
+    endpoint: typeof response.endpoint === 'string' ? response.endpoint : null,
+    attachmentStorage: typeof response.attachmentStorage === 'string' ? response.attachmentStorage : null,
+  };
 }
 
 /** Build the canonical Worker chat inference payload and normalize its response. */
@@ -1134,17 +1171,12 @@ export async function requestAtlasWorkerContextChatReplyV1(input: {
       body: JSON.stringify(payload),
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const result = mapRecord(await response.json()) as AtlasWorkerContextChatInferenceResponseV1 | null;
-    const normalizedResult = result || {};
+    const normalizedResult = normalizeAtlasWorkerContextChatInferenceResponseV1(await response.json());
     return {
       text: String(normalizedResult.text || '').trim() || 'O endpoint de IA retornou uma resposta vazia.',
-      toolCalls: normalizeAtlasWorkerContextChatToolCallsV1(normalizedResult.toolCalls),
-      recordOcr: normalizedResult.recordOcr && typeof normalizedResult.recordOcr === 'object'
-        ? normalizedResult.recordOcr as AtlasRecordOcrPayloadV1
-        : null,
-      attachment: normalizedResult.attachment && typeof normalizedResult.attachment === 'object'
-        ? normalizedResult.attachment as AtlasWorkerContextChatAttachmentV1
-        : null,
+      toolCalls: normalizedResult.toolCalls,
+      recordOcr: normalizedResult.recordOcr,
+      attachment: normalizedResult.attachment,
       source: 'endpoint',
       audit: `Endpoint consultado${normalizedResult.vision ? ` · NVIDIA ${String(normalizedResult.model || 'multimodal reasoning')}` : ''} · ${contextSummary}`,
     };
@@ -4649,7 +4681,6 @@ export interface AtlasOperationalMapPageCompositionInputV1 {
   ViewLayer: Parameters<typeof installAtlasOperationalMapPageV1>[0];
   appStore: Parameters<typeof installAtlasOperationalMapPageV1>[1]['appStore'];
   highlightStatus: Parameters<typeof installAtlasOperationalMapPageV1>[1]['highlightStatus'];
-  lotOptions: () => readonly AtlasOperationalMapLotOptionV1[];
   documentRef: Document;
   esc: (value: unknown) => string;
   ico?: (name: string) => string;
@@ -4668,7 +4699,6 @@ export function installAtlasOperationalMapPageCompositionV1(
   return installAtlasOperationalMapPageV1(input.ViewLayer, {
     appStore: input.appStore,
     highlightStatus: input.highlightStatus,
-    lotOptions: input.lotOptions,
     documentRef: input.documentRef,
     ico: input.ico,
   });
@@ -5143,10 +5173,6 @@ export async function installAtlasPlanningPagesApplicationV1(
     ViewLayer: ViewLayer as unknown as Parameters<typeof installAtlasOperationalMapPageV1>[0],
     appStore: appStore as AtlasOperationalMapPageCompositionInputV1['appStore'],
     highlightStatus: highlightStatus as AtlasOperationalMapPageCompositionInputV1['highlightStatus'],
-    lotOptions: () => projectAtlasLotBoardRows(
-      (appStore.get().lotStatuses || {}) as Record<string, AtlasLotStatus | undefined>,
-      REPASSE_PRICE_CATALOG,
-    ).map(({ label, quadra, lot, area, price, status }) => ({ label, quadra, lot: Number(lot), area: Number(area), price: Number(price), status })),
     documentRef: browserGlobal.document,
     esc: esc as (value: unknown) => string,
     ico: ico as (name: string) => string,
@@ -10790,7 +10816,7 @@ export interface AtlasWorkerContextChatExecutionPortsV1 {
   setLocalStorage(key: string, value: string): void;
   now(): number;
   getLotDevelopmentProfileUpsert(): ((args: Record<string, unknown>) => { title?: string }) | null;
-  allocateVisualRecord(): ((args: Record<string, unknown>, context: Record<string, unknown>) => Promise<string | void>) | null;
+  allocateVisualRecord(): ((args: AtlasWorkerContextChatVisualAllocationArgumentsV1, context: Record<string, unknown>) => Promise<string | void>) | null;
 }
 
 export interface AtlasWorkerContextChatUiWaitOptionsV1 {
@@ -10871,7 +10897,7 @@ export async function executeAtlasWorkerContextChatCommandsV1(
     if (call?.name === 'stage.allocate_visual_record') {
       const allocator = ports.allocateVisualRecord();
       if (!allocator) { results.push('Leitura visual recebida, mas o alocador do Dashboard ainda não terminou de carregar.'); continue; }
-      const message = await allocator(args, context);
+      const message = await allocator(normalizeAtlasWorkerContextChatVisualAllocationArgumentsV1(args), context);
       if (message) results.push(message);
       continue;
     }
@@ -10897,6 +10923,7 @@ export async function executeAtlasWorkerContextChatCommandsV1(
         apiFetch: ports.apiFetch,
         setLocalStorage: ports.setLocalStorage,
         now: ports.now,
+        executionStages: Array.isArray(context.stages) ? context.stages as AtlasAgendaCalendarStageV1[] : [],
       });
       if (!command.ok) {
         results.push(command.message);
@@ -11326,10 +11353,65 @@ export interface AtlasWorkerContextChatVisualAllocationInputV1 {
   applicationState?: Record<string, unknown>;
 }
 
+export type AtlasWorkerContextChatVisualAllocationTargetV1 = 'material' | 'service' | 'office';
+
+/** Arguments accepted by the existing visual-record allocation command. */
+export interface AtlasWorkerContextChatVisualAllocationArgumentsV1 extends Record<string, unknown> {
+  target: AtlasWorkerContextChatVisualAllocationTargetV1;
+  stageKey: string;
+  stageName: string;
+  activityId: string;
+  activityName: string;
+  materialName: string;
+  quantity?: number | string | null;
+  unit: string;
+  details: string;
+  pointer: string;
+  confidence?: number | null;
+}
+
+export interface AtlasWorkerContextChatVisualAllocationToolCallV1 extends AtlasWorkerContextChatToolCallV1 {
+  name: 'stage.allocate_visual_record';
+  arguments: AtlasWorkerContextChatVisualAllocationArgumentsV1;
+}
+
+/** Normalize the model's allocation arguments before they reach persistence. */
+export function normalizeAtlasWorkerContextChatVisualAllocationArgumentsV1(
+  value: unknown,
+): AtlasWorkerContextChatVisualAllocationArgumentsV1 {
+  const input = mapRecord(value) || {};
+  const text = (key: string): string => {
+    const field = input[key];
+    return typeof field === 'string' || typeof field === 'number' ? String(field).trim() : '';
+  };
+  const rawTarget = input.target;
+  const target: AtlasWorkerContextChatVisualAllocationTargetV1 = rawTarget === 'office'
+    ? 'office' : rawTarget === 'material' ? 'material' : 'service';
+  const rawQuantity = input.quantity;
+  const quantity = rawQuantity == null || rawQuantity === ''
+    ? null
+    : typeof rawQuantity === 'number' || typeof rawQuantity === 'string' ? rawQuantity : null;
+  const rawConfidence = input.confidence;
+  const confidenceValue = rawConfidence == null || rawConfidence === '' ? Number.NaN : Number(rawConfidence);
+  return {
+    target,
+    stageKey: text('stageKey'),
+    stageName: text('stageName'),
+    activityId: text('activityId'),
+    activityName: text('activityName'),
+    materialName: text('materialName'),
+    ...(quantity === null ? {} : { quantity }),
+    unit: text('unit'),
+    details: text('details'),
+    pointer: text('pointer'),
+    ...(Number.isFinite(confidenceValue) ? { confidence: confidenceValue } : {}),
+  };
+}
+
 /** Convert reviewed OCR/model evidence into explicit stage/activity allocation calls. */
 export function projectAtlasWorkerContextChatVisualAllocationCallsV1(
   input: AtlasWorkerContextChatVisualAllocationInputV1,
-): AtlasWorkerContextChatToolCallV1[] {
+): AtlasWorkerContextChatVisualAllocationToolCallV1[] {
   const reply = input.reply || {};
   const ocr = mapRecord(reply.recordOcr) as AtlasRecordOcrPayloadV1 | null;
   if (ocr?.error) return [];
@@ -11410,13 +11492,13 @@ export function projectAtlasWorkerContextChatVisualAllocationCallsV1(
     }) : []),
   ].map(value => String(value || '').trim()).filter(Boolean);
   const explicitlyRequestedMaterial = [...new Set(existingMaterials)].find(name => includesPhrase(message, name));
-  return allocationItems.map((item, index): AtlasWorkerContextChatToolCallV1 | null => {
+  return allocationItems.map((item, index): AtlasWorkerContextChatVisualAllocationToolCallV1 | null => {
     const args = proposalAt(index);
     const kind = String(item?.itemKind || item?.type || args.target || (purchaseDocument ? 'material' : ''))
       .toLocaleLowerCase('pt-BR');
     const description = String(item?.description || item?.name || item?.materialName || item?.materialId || `Item OCR ${index + 1}`).trim();
     const officeDestination=String(item?.destinationHint||'')==='office'||String(item?.stageKey||'').toLowerCase()==='office';
-    const target=officeDestination?'office':/servi[cç]|atividade|m[aã]o de obra/.test(kind)?'service':'material';
+    const target: AtlasWorkerContextChatVisualAllocationTargetV1 = officeDestination?'office':/servi[cç]|atividade|m[aã]o de obra/.test(kind)?'service':'material';
     const itemStageMatch = resolveAtlasWorkerContextChatStageMentionV1(
       [item?.stageName, item?.stageKey].filter(Boolean).join(' '), stages,
     );
@@ -11453,9 +11535,9 @@ export function projectAtlasWorkerContextChatVisualAllocationCallsV1(
       .map(Number).find(value => Number.isFinite(value) && value > 0);
     return {
       name: 'stage.allocate_visual_record',
-      arguments: {
+      arguments: normalizeAtlasWorkerContextChatVisualAllocationArgumentsV1({
         target,
-        stageKey: stage.key,
+        stageKey: String(stage.key),
         stageName: stage.name,
         activityId: String(canonicalActivity?.id || canonicalActivity?.key || ''),
         activityName: String(target==='office'?description:canonicalActivity?.name || canonicalActivity?.title || requestedActivityName || (target === 'service' ? serviceEvidence.actionDescription : '') || (target === 'service' ? description : 'Leitura de material')),
@@ -11465,9 +11547,9 @@ export function projectAtlasWorkerContextChatVisualAllocationCallsV1(
         details: String(details || args.details || 'Item identificado no anexo pelo OCR.'),
         pointer: String(target === 'material' ? description : item?.pointer || item?.description || description),
         ...(confidence == null ? {} : { confidence }),
-      },
+      }),
     };
-  }).filter((call): call is AtlasWorkerContextChatToolCallV1 => call !== null);
+  }).filter((call): call is AtlasWorkerContextChatVisualAllocationToolCallV1 => call !== null);
 }
 
 export interface AtlasWorkerContextChatSubmitInputV1 {
@@ -15417,7 +15499,8 @@ export interface DashboardSnapshot {
   materials: OperationalMaterial[];
   repasses: RepasseOperations;
   commercialInterestCount: number | null;
-  commercialInterestState: 'loading' | 'loaded' | 'unavailable';
+  commercialInterestState: 'loading' | 'loaded' | 'unavailable' | 'demo';
+  demoMode?: boolean;
   lotAnalysis: AtlasDashboardLotAnalysis;
 }
 
@@ -16686,6 +16769,11 @@ export function normalizeAtlasAgendaPendingProposalV1(value: unknown): AtlasAgen
     ? value as Record<string, unknown>
     : {};
   const title = String(args.title || args.activityName || 'Apontamento pendente da IA').trim().slice(0, 160);
+  const materialValues = [
+    ...(Array.isArray(args.materialIds) ? args.materialIds : []),
+    ...(Array.isArray(args.materials) ? args.materials : []),
+    ...(typeof args.materials === 'string' ? args.materials.split(/[\n,;]+/) : []),
+  ];
   return {
     title,
     date: String(args.date || '').trim(),
@@ -16698,9 +16786,7 @@ export function normalizeAtlasAgendaPendingProposalV1(value: unknown): AtlasAgen
     durationHours: Number(args.durationHours) || 1.5,
     spanDays: Number(args.spanDays) || 1,
     notes: String(args.notes || '').trim().slice(0, 1200),
-    materialIds: Array.isArray(args.materialIds)
-      ? args.materialIds.map(item => String(item).trim()).filter(Boolean)
-      : [],
+    materialIds: materialValues.map(item => String(item).trim()).filter(Boolean),
     detailsNeeded: String(args.detailsNeeded || '').trim().slice(0, 800),
     evidenceRequired: Boolean(args.evidenceRequired),
   };
@@ -16872,11 +16958,8 @@ export async function createAtlasWorkerAgendaPendingV1(input: {
     ? toMinutes(requestedStart)
     : Math.min(18 * 60, Math.max(8 * 60, Math.ceil(latest / 30) * 30));
   const start = `${String(Math.floor(slotMinutes / 60)).padStart(2, '0')}:${String(slotMinutes % 60).padStart(2, '0')}`;
-  const selectedStage = input.state.selectedStage && typeof input.state.selectedStage === 'object'
-    ? (input.state.selectedStage as Record<string, unknown>).key
-    : input.state.selectedStage;
-  const stageKey = String(proposal.stageKey || input.state.selectedStageV9 || selectedStage || '').trim();
-  const stageName = proposal.stageName;
+  const stageKey = String(proposal.stageKey || '').trim();
+  const stageName = String(proposal.stageName || '').trim();
   const event = projectAtlasAgendaPendingEventV1({
     proposal,
     id: `agenda-worker-ai-${input.now().toString(36)}`,
@@ -16910,12 +16993,22 @@ export async function applyAtlasAgendaPendingCommandV1(input: {
   apiFetch(path: string, init?: RequestInit): Promise<Response>;
   setLocalStorage(key: string, value: string): void;
   now(): number;
+  executionStages?: readonly AtlasAgendaCalendarStageV1[];
+  normalizeActivityRouteText?: (value: unknown) => string;
 }): Promise<AtlasAgendaPendingCommandResultV1> {
   if (!normalizeAiAgendaComprehensionV1(input.state.aiAgendaComprehensionV1).autoCreatePending)
     return { ok: false, message: 'Apontamento não criado: geração pela IA desativada em Configurações.' };
 
-  const creation = await createAtlasWorkerAgendaPendingV1({
+  const catalog = resolveAtlasAgendaPendingCatalogV1({
     proposal: normalizeAtlasAgendaPendingProposalV1(input.args),
+    executionStages: input.executionStages || [],
+    normalizeActivityRouteText: input.normalizeActivityRouteText,
+  });
+  if (!catalog.ok)
+    return { ok: false, message: `Apontamento não criado: ${catalog.message}` };
+
+  const creation = await createAtlasWorkerAgendaPendingV1({
+    proposal: catalog.proposal,
     state: input.state,
     apiFetch: input.apiFetch,
     setLocalStorage: input.setLocalStorage,
@@ -16969,6 +17062,108 @@ export interface AtlasAgendaCalendarStageV1 extends Record<string, unknown> {
   key?: string;
   name?: string;
   owner?: string;
+  activities?: Array<Record<string, unknown>>;
+  materials?: unknown[];
+}
+
+export interface AtlasAgendaCalendarActivityMaterialV1 {
+  id: string;
+  name: string;
+}
+
+export interface AtlasAgendaCalendarActivityV1 {
+  id: string;
+  title: string;
+  materials: AtlasAgendaCalendarActivityMaterialV1[];
+}
+
+export type AtlasAgendaPendingCatalogResolutionV1 =
+  | { ok: true; stage: AtlasAgendaCalendarStageV1; proposal: AtlasAgendaPendingProposalV1 }
+  | { ok: false; reason: 'stage' | 'activity' | 'material'; message: string };
+
+/** Resolve an AI agenda proposal only against the canonical stage/activity/material catalog. */
+export function resolveAtlasAgendaPendingCatalogV1(input: {
+  proposal: AtlasAgendaPendingProposalV1;
+  executionStages: readonly AtlasAgendaCalendarStageV1[];
+  normalizeActivityRouteText?: (value: unknown) => string;
+}): AtlasAgendaPendingCatalogResolutionV1 {
+  const normalize = input.normalizeActivityRouteText || ((value: unknown): string => String(value ?? '')
+    .toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ').trim());
+  const proposal = input.proposal;
+  const requestedStageName = normalize(proposal.stageName);
+  const stageByKey = proposal.stageKey
+    ? input.executionStages.find(item => String(item.key || '').trim() === proposal.stageKey)
+    : undefined;
+  const namedStages = requestedStageName
+    ? input.executionStages.filter(item => normalize(item.name || item.key) === requestedStageName)
+    : [];
+  const stage = stageByKey || (namedStages.length === 1 ? namedStages[0] : undefined);
+  if (!stage || !String(stage.key || '').trim())
+    return { ok: false, reason: 'stage', message: 'A IA precisa confirmar uma etapa cadastrada antes de criar o compromisso.' };
+
+  const stageKey = String(stage.key || '').trim();
+  const stageName = String(stage.name || stage.key || '').trim();
+  const activities = (Array.isArray(stage.activities) ? stage.activities : []).map(value => {
+    const row = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    const id = String(row.id || row.key || row.title || row.name || '').trim();
+    const title = String(row.title || row.name || row.id || '').trim();
+    const materials = (Array.isArray(row.materials) ? row.materials : []).map(materialValue => {
+      const material = materialValue && typeof materialValue === 'object' && !Array.isArray(materialValue) ? materialValue : {};
+      const name = String(material.name || material.title || material.materialName || material.description
+        || (typeof materialValue === 'string' ? materialValue : '')).trim();
+      const id = String(material.id || material.key || material.materialId || name).trim();
+      return name ? { id, name } : null;
+    }).filter((item): item is { id: string; name: string } => Boolean(item));
+    return { id, title, materials };
+  }).filter(item => item.id && item.title);
+  const requestedActivityId = String(proposal.activityId || '').trim();
+  const requestedActivityName = normalize(proposal.activityName || proposal.title);
+  const activityById = requestedActivityId ? activities.filter(item => item.id === requestedActivityId) : [];
+  const activityByName = requestedActivityName
+    ? activities.filter(item => normalize(item.title) === requestedActivityName)
+    : [];
+  const activity = activityById.length === 1 ? activityById[0]
+    : activityById.length > 1 ? undefined
+      : activityByName.length === 1 ? activityByName[0] : undefined;
+  if (!activity)
+    return { ok: false, reason: 'activity', message: `A etapa ${stageName} está identificada, mas a atividade não corresponde de forma única ao catálogo dessa etapa. Confirme uma atividade cadastrada.` };
+
+  const stageMaterials = (Array.isArray(stage.materials) ? stage.materials : []).map(value => {
+    const row = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+    const name = String(row.name || row.title || row.materialName || row.description
+      || (typeof value === 'string' ? value : '')).trim();
+    const id = String(row.id || row.key || row.materialId || name).trim();
+    return name ? { id, name } : null;
+  }).filter((item): item is { id: string; name: string } => Boolean(item));
+  const knownMaterials = activity.materials.length ? activity.materials : stageMaterials;
+  const references = [...new Set(proposal.materialIds.map(value => String(value || '').trim()).filter(Boolean))];
+  const requestedMaterials = references.length ? references : knownMaterials.map(item => item.id || item.name);
+  const materialIds: string[] = [];
+  for (const reference of requestedMaterials) {
+    const token = normalize(reference);
+    const exact = knownMaterials.filter(item => item.id === reference || normalize(item.id) === token || normalize(item.name) === token);
+    const candidates = exact.length ? exact : token.length >= 4
+      ? knownMaterials.filter(item => normalize(item.name).includes(token) || token.includes(normalize(item.name)))
+      : [];
+    if (candidates.length !== 1)
+      return { ok: false, reason: 'material', message: `O material "${reference}" não foi associado sem ambiguidade à atividade ${activity.title}. Revise o catálogo dessa atividade.` };
+    materialIds.push(candidates[0].id || candidates[0].name);
+  }
+
+  return {
+    ok: true,
+    stage,
+    proposal: {
+      ...proposal,
+      stageKey,
+      stageName,
+      activityId: activity.id,
+      activityName: activity.title,
+      owner: proposal.owner || String(stage.owner || '').trim(),
+      materialIds,
+    },
+  };
 }
 
 export interface AtlasAgendaCalendarWorkbenchActivityV1 extends Record<string, unknown> {
@@ -17055,7 +17250,7 @@ export interface AtlasAgendaCalendarProgramV1 extends AtlasAgendaCalendarSharedS
   agendaCalendarDeleteEventV1: (id: unknown) => Promise<OperationalAgendaEvent[]>;
   agendaCalendarSaveGestureEventV1: (input: AtlasAgendaCalendarGestureEventDraftV1) => Promise<OperationalAgendaEvent[]>;
   agendaCalendarFindStageV3: (value: unknown) => AtlasAgendaCalendarStageV1 | null;
-  agendaCalendarActivitiesForStageV3: (stageKey: unknown, stageName?: string) => Array<{ id: string; title: string }>;
+  agendaCalendarActivitiesForStageV3: (stageKey: unknown, stageName?: string) => AtlasAgendaCalendarActivityV1[];
   agendaCalendarDemoEventsV3: (stage?: AtlasAgendaCalendarStageV1 | null) => Array<Record<string, unknown>>;
   agendaCalendarStateV3: (state: Record<string, unknown>, stage?: AtlasAgendaCalendarStageV1 | null) => AgendaCalendarSnapshotV3;
   agendaCalendarInitialMonthV3: (state: Record<string, unknown>, data: { events: OperationalAgendaEvent[] }) => string;
@@ -17370,20 +17565,30 @@ export function createAtlasAgendaCalendarProgramV1(ports: AtlasAgendaCalendarPro
     return executionStages.find(stage => ports.normalizeActivityRouteText(stage.key) === token
       || ports.normalizeActivityRouteText(stage.name) === token) || executionStages[0] || null;
   };
-  const activitiesForStage = (stageKey: unknown, stageName = ''): Array<{ id: string; title: string }> => {
+  const activitiesForStage = (stageKey: unknown, stageName = ''): AtlasAgendaCalendarActivityV1[] => {
     const administrativeDestination = administrativeDestinations.find(destination =>
       String(destination.key || '').toLocaleLowerCase('pt-BR') === String(stageKey || '').toLocaleLowerCase('pt-BR')
       || String(destination.name || '').toLocaleLowerCase('pt-BR') === String(stageName || '').toLocaleLowerCase('pt-BR'));
-    if (administrativeDestination) return [{ id: `${administrativeDestination.key}-note`, title: 'Nota / atividade administrativa' }];
+    if (administrativeDestination) return [{ id: `${administrativeDestination.key}-note`, title: 'Nota / atividade administrativa', materials: [] }];
     const direct = workbenchStages.find(stage => String(stage.key) === String(stageKey)
       || ports.normalizeActivityRouteText(stage.title) === ports.normalizeActivityRouteText(stageName))
       || ports.workbenchStageFromValue?.(stageKey || stageName);
     const values = Array.isArray(direct?.activities) ? direct.activities : [];
-    if (values.length) return values.map(item => ({
-      id: String(item.id || item.title),
-      title: String(item.title || item.name || item.id),
-    }));
-    return [{ id: String(stageKey || 'atividade'), title: String(stageName || 'Atividade da etapa') }];
+    if (values.length) return values.map(item => {
+      const materialValues = Array.isArray(item.materials) ? item.materials : [];
+      const materials = materialValues.map(value => {
+        const row = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+        const name = String(row.name || row.title || row.materialName || row.description || (typeof value === 'string' ? value : '')).trim();
+        const id = String(row.id || row.key || row.materialId || name).trim();
+        return name ? { id, name } : null;
+      }).filter((value): value is AtlasAgendaCalendarActivityMaterialV1 => Boolean(value));
+      return {
+        id: String(item.id || item.title),
+        title: String(item.title || item.name || item.id),
+        materials,
+      };
+    });
+    return [{ id: String(stageKey || 'atividade'), title: String(stageName || 'Atividade da etapa'), materials: [] }];
   };
   const demoEvents = (stage?: AtlasAgendaCalendarStageV1 | null): Array<Record<string, unknown>> => {
     const stageKey = stage?.key || 'drainage';
@@ -20395,15 +20600,29 @@ export function installAtlasLotDetailProgramCommandsV1(input: AtlasLotDetailProg
     if (command.type === "status-save") {
       const fields = command.fields;
       const state = input.appStore.get();
+      const hasField = (name: string): boolean => Object.prototype.hasOwnProperty.call(fields, name);
       const seller = input.commissionProfiles.find(person => person.id === String(fields.sellerId || ""));
       const partner = (state.repassePartners || input.commissionProfiles).find(person => person.id === String(fields.repassePartnerId || ""));
       const existing = state.lotStatuses?.[lotKey] || {};
+      const existingPayment = existing.payment || {};
+      const paymentChanged = ["paymentStatus", "paymentAmount", "paymentDate"].some(hasField);
       const lotStatus: AtlasLotStatus = {
-        ...existing, status: String(fields.status || "Disponível"), sellerId: String(fields.sellerId || ""),
-        sellerName: seller?.name || "", client: String(fields.client || "").trim(),
-        repasse: { partnerId: String(fields.repassePartnerId || ""), partnerName: partner?.name || "" },
-        payment: { status: String(fields.paymentStatus || "Pendente"), amount: Math.max(0, Number(fields.paymentAmount) || 0), date: String(fields.paymentDate || "") },
-        note: String(fields.note || "").trim(), updatedAt: new host.Date().toISOString(),
+        ...existing,
+        status: hasField("status") ? String(fields.status || "Disponível") : String(existing.status || "Disponível"),
+        sellerId: hasField("sellerId") ? String(fields.sellerId || "") : String(existing.sellerId || ""),
+        sellerName: hasField("sellerId") ? seller?.name || "" : String(existing.sellerName || ""),
+        client: hasField("client") ? String(fields.client || "").trim() : String(existing.client || ""),
+        repasse: hasField("repassePartnerId")
+          ? { partnerId: String(fields.repassePartnerId || ""), partnerName: partner?.name || "" }
+          : existing.repasse,
+        payment: paymentChanged ? {
+          ...existingPayment,
+          ...(hasField("paymentStatus") ? { status: String(fields.paymentStatus || "Pendente") } : {}),
+          ...(hasField("paymentAmount") ? { amount: Math.max(0, Number(String(fields.paymentAmount || "").replace(",", ".")) || 0) } : {}),
+          ...(hasField("paymentDate") ? { date: String(fields.paymentDate || "") } : {}),
+        } : existing.payment,
+        note: hasField("note") ? String(fields.note || "").trim() : String(existing.note || ""),
+        updatedAt: new host.Date().toISOString(),
       };
       patchStore({ lotStatuses: { ...(state.lotStatuses || {}), [lotKey]: lotStatus },
         lotHistory: appendHistory(state, lotKey, { type: "Ficha comercial salva", detail: String(lotStatus.status) + " · " + String(lotStatus.payment?.status) }),
@@ -29539,6 +29758,7 @@ export interface AtlasRecordOcrItemV1 extends Record<string, unknown> {
   unit?: string;
   unitPriceCents?: number | string;
   totalPriceCents?: number | string;
+  destinationHint?: string;
 }
 
 export interface AtlasRecordOcrServiceEvidenceV1 extends Record<string, unknown> {
@@ -29553,16 +29773,43 @@ export interface AtlasRecordOcrServiceEvidenceV1 extends Record<string, unknown>
   confidence?: number | string;
 }
 
+export interface AtlasRecordOcrInferenceV1 {
+  provider: string;
+  model: string;
+  status: 'completed' | 'unparsed' | 'unavailable' | 'failed';
+  error?: string;
+}
+
 export interface AtlasRecordOcrPayloadV1 extends Record<string, unknown> {
   properties?: AtlasRecordOcrPropertyV1[];
   items?: AtlasRecordOcrItemV1[];
   documentType?: string;
+  invoiceNumber?: string;
+  series?: string;
+  issueDate?: string;
+  supplier?: string;
+  supplierCnpj?: string;
+  accessKey?: string;
+  totalAmountCents?: number | string;
+  totalPages?: number;
+  classification?: string;
+  destinationStageKey?: string;
+  destinationStageName?: string;
   reviewRequired?: boolean;
   text?: string;
   rawText?: string;
   serviceEvidence?: AtlasRecordOcrServiceEvidenceV1 | null;
   provider?: string;
   model?: string;
+  inference?: AtlasRecordOcrInferenceV1;
+  source?: string;
+  vision?: boolean;
+  endpoint?: string;
+  latencyMs?: number;
+  ocrProfile?: string;
+  ocrAttempts?: number;
+  ocrParseMode?: string;
+  ocrRepairModel?: string;
   confidence?: number;
   error?: string;
 }
@@ -29670,7 +29917,7 @@ export interface AtlasRecordOcrDynamicStageV1 {
   name: string;
   description: string;
   activityHints: string[];
-  activities: Array<{ id: string; name: string; description: string }>;
+  activities: Array<{ id: string; name: string; description: string; materials: string[] }>;
   unit: string;
   materials: string[];
 }
@@ -29741,14 +29988,22 @@ export function installAtlasRecordOcrDynamicBridgeV1(input: {
         ...labels(profile.expectedActivities),
         ...labels(profile.evidenceFocus),
       ].slice(0, 20);
-      const activitySource = Array.isArray(stage.activities) ? stage.activities : [];
+      const workbenchStage = WORKER_STAGE_WORKBENCH_CATALOG_V1.find(item => item.key === String(stage.key || ''));
+      const activitySource = Array.isArray(stage.activities) && stage.activities.length
+        ? stage.activities
+        : workbenchStage?.activities || [];
       const activities = activitySource.slice(0, 24).map((activity: any) => ({
         id: String(activity?.id || activity?.key || ''),
         name: String(activity?.name || activity?.title || '').slice(0, 180),
-        description: String(activity?.description || activity?.details || '').slice(0, 360),
+        description: String(activity?.description || activity?.details || activity?.operational?.description || '').slice(0, 360),
+        materials: labels(activity?.materials).slice(0, 16),
       })).filter(activity => activity.name || activity.description);
       const materialSource = Array.isArray(profile.materialsTable) && profile.materialsTable.length
         ? profile.materialsTable : stage.materials;
+      const materials = [...new Set([
+        ...labels(materialSource),
+        ...activities.flatMap(activity => activity.materials),
+      ])].slice(0, 30);
       return {
         key: String(stage.key || ''),
         name: String(stage.name || ''),
@@ -29756,7 +30011,7 @@ export function installAtlasRecordOcrDynamicBridgeV1(input: {
         activityHints,
         activities,
         unit: String((stage.production as Record<string, unknown> | undefined)?.unit || ''),
-        materials: labels(materialSource),
+        materials,
       };
     })
     .filter(stage => stage.key && stage.name);
@@ -31721,12 +31976,95 @@ export function* program(): Generator<SystemAPI, never, void> {
     });
   }
 
+  /** Compose the local demo from checked-in fixtures; never send those examples to the Worker. */
+  function createAtlasLocalDemoDashboardSnapshotV1(
+    lotStatuses: Record<string, AtlasLotStatus | undefined>,
+  ): DashboardSnapshot {
+    const demo = ATLAS_STATE_CATALOGS_V1.demoData as unknown as {
+      metrics?: { leads?: number; delayed?: number };
+      activities?: Array<{ id?: number | string; name?: string; status?: string; progress?: number; week?: string; owner?: string }>;
+      materials?: unknown[][];
+    };
+    const seed = ATLAS_STATE_CATALOGS_V1.cashFlowSeed as unknown as CashFlowRecord[];
+    const balanceCents = seed.reduce((balance, row) => balance + (row.kind === 'entrada' ? 1 : -1) * Number(row.amountCents || 0), 0);
+    const stages: OperationalStage[] = (demo.activities || []).map((item, index) => {
+      const id = Number(item.id) || index + 1;
+      const name = String(item.name || `Etapa ${index + 1}`);
+      return {
+        id, key: `demo-stage-${id}`, name, status: String(item.status || 'planejado'),
+        progress: Number(item.progress) || 0, week: String(item.week || ''), owner: String(item.owner || ''),
+        activities: [{ id: `demo-activity-${id}`, name } as unknown as OperationalActivity],
+      };
+    });
+    const today = new Date();
+    const localDate = (offsetDays: number): string => {
+      const date = new Date(today);
+      date.setDate(date.getDate() + offsetDays);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    };
+    const records: OperationalRecord[] = stages.slice(0, 3).map((stage, index) => ({
+      id: `DEMO-REG-${String(index + 1).padStart(3, '0')}`,
+      data: localDate(-index), hora: '09:00', obra: 'Aliança Park', etapa: stage.name,
+      stageId: stage.id, stageKey: stage.key, activityId: `demo-activity-${stage.id}`,
+      activityName: stage.name, atividade: stage.name, responsavel: stage.owner || 'Equipe de demonstração',
+      status: index === 0 ? 'Em andamento' : 'Concluído', progresso: stage.progress,
+      detalhes: 'Apontamento de exemplo do ambiente local de demonstração.', source: 'local-demo',
+    }));
+    const agendaEvents: OperationalAgendaEvent[] = stages.slice(0, 4).map((stage, index) => ({
+      id: `DEMO-AGENDA-${index + 1}`, title: stage.name, stageKey: stage.key || '', stageName: stage.name,
+      activityId: `demo-activity-${stage.id}`, activityName: stage.name,
+      owner: stage.owner || 'Equipe de demonstração', date: localDate(index + 1), start: '08:00',
+      durationHours: 3, spanDays: 1, status: 'Planejado', notes: 'Compromisso ilustrativo da demonstração.', materialIds: [],
+    }));
+    const quantity = (value: unknown): number => {
+      const text = String(value ?? '').trim().replace(/\.(?=\d{3}(?:\D|$))/g, '').replace(',', '.');
+      const parsed = Number(text);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+    const materials: OperationalMaterial[] = (demo.materials || []).map((row, index) => ({
+      id: `DEMO-MAT-${index + 1}`, name: String(row[0] || `Nota ${index + 1}`),
+      plannedQuantity: quantity(row[1]), receivedQuantity: quantity(row[2]), usedQuantity: quantity(row[3]),
+      unit: String(row[4] || 'un'), status: String(row[5] || 'planejado'), stageId: null,
+      stageName: 'Demonstração', activityName: 'Estoque de referência', scope: 'Dado local ilustrativo',
+      updatedAt: '', properties: {},
+    }));
+    const notifications: OperationalNotification[] = (Number(demo.metrics?.delayed) || 0) > 0
+      ? [{ id: 'DEMO-ALERTA-01', title: 'Compras com prazo de atenção', message: 'A demonstração inclui compras que exigem acompanhamento.', status: 'unread' },
+         { id: 'DEMO-ALERTA-02', title: 'Revisar materiais críticos', message: 'Confira quantidades e estados no catálogo ilustrativo.', status: 'unread' }]
+      : [];
+    const snapshot = projectAtlasDashboardSnapshotV1({
+      cashFlow: { summary: { balanceCents }, entries: seed }, stages: { stages }, records: { records },
+      notifications: { notifications }, agenda: { events: agendaEvents }, materials: { materials },
+      repasses: { sales: [], entries: [], brokerRules: [], reasons: [], stages: [] }, lotStatuses,
+    });
+    return {
+      ...snapshot,
+      commercialInterestCount: Number(demo.metrics?.leads) || 0,
+      commercialInterestState: 'demo',
+      demoMode: true,
+    };
+  }
+
   /** Read each dashboard metric from its owning operational service; never infer missing sources. */
   async function reloadDashboard(): Promise<void> {
     const target = dashboardElement;
     if (!target) return;
     const requestId = ++dashboardRequestId;
     try {
+      const runtime = globalThis as typeof globalThis & { BELAVISTA_ADMIN_ACTOR?: Record<string, unknown> | null };
+      const storedActor = dashboardAppStore?.get().currentActor;
+      const actor = storedActor && typeof storedActor === 'object'
+        ? storedActor as Record<string, unknown>
+        : runtime.BELAVISTA_ADMIN_ACTOR || {};
+      if (actor.mode === 'desktop-demo') {
+        const state = dashboardAppStore?.get() || {};
+        const snapshot = createAtlasLocalDemoDashboardSnapshotV1(
+          (state.lotStatuses || {}) as Record<string, AtlasLotStatus | undefined>,
+        );
+        dashboardStages = snapshot.stages;
+        target.setData(snapshot);
+        return;
+      }
       // The dashboard needs counts only. The Worker summary avoids transferring
       // contact and document fields from the CRM list endpoint into this route.
       const commercialSummaryTask: Promise<number | null> = readApi<PublicCommercialSummary>('/api/admin/public-lead-summary')
@@ -32536,6 +32874,11 @@ export function* program(): Generator<SystemAPI, never, void> {
         const detail=(event as CustomEvent<{element:AtlasLotDevelopment;lotKey:string}>).detail;
         if(!detail||detail.element!==lotDevelopmentElement)return;
         navigateRoute(appStore,{view:'repasses'},{repasseSelectedLotKey:detail.lotKey,repasseSelectedSaleId:null,lastAction:`Abriu Repasses para registrar entrada do lote ${detail.lotKey}`});
+      },
+      onLotDetailOpen:event=>{
+        const detail=(event as CustomEvent<{element:AtlasLotDevelopment;lotKey:string}>).detail;
+        if(!detail||detail.element!==lotDevelopmentElement||!lotDevelopmentProfilesCache.some(profile=>profile.kind==='lot'&&profile.lotLabel===detail.lotKey))return;
+        navigateRoute(appStore,{view:'lot-detail'},{selectedLotDetailKey:detail.lotKey,lastAction:`Abriu a ficha do lote ${detail.lotKey}`});
       },
     });
   }
@@ -33830,7 +34173,7 @@ export interface AtlasAiChatAgendaPortV1 {
 
 export type AtlasAiChatAgendaPendingCommandResultV1 =
   | { ok: true; event: OperationalAgendaEvent; message: string }
-  | { ok: false; reason: 'disabled' | 'stage' | 'read' | 'write'; message: string };
+  | { ok: false; reason: 'disabled' | 'stage' | 'activity' | 'material' | 'read' | 'write'; message: string };
 
 export interface AtlasAiChatToolCallV1 extends Record<string, unknown> {
   name?: unknown;
@@ -33926,7 +34269,7 @@ export interface AtlasAiChatPortsV1 {
   projectContext: AtlasAiChatProjectContextV1;
   assistant: { infer: AtlasAiChatPortFunctionV1; [key: string]: any };
   recordPersistence: { persistVisualAttachment: AtlasAiChatPortFunctionV1; createRecord: AtlasAiChatPortFunctionV1; [key: string]: any };
-  visualAllocation: { allocateRecord: (args: Record<string, unknown>, context: AtlasWorkerContextChatVisualRecordAllocationContextV1, addFeedback: AtlasWorkerContextChatVisualRecordAllocationPortsV1['addFeedback']) => Promise<string> };
+  visualAllocation: { allocateRecord: (args: AtlasWorkerContextChatVisualAllocationArgumentsV1, context: AtlasWorkerContextChatVisualRecordAllocationContextV1, addFeedback: AtlasWorkerContextChatVisualRecordAllocationPortsV1['addFeedback']) => Promise<string> };
   commands: {
     applyLotStatusCommand: (command: AtlasLotStatusCommandV1) => string;
     parseLotStatusCommand: (message: unknown) => AtlasLotStatusCommandResultV1 | null;
@@ -34513,13 +34856,54 @@ export function projectAtlasAiChatToolContextV1(input: {
 }
 
 export interface AtlasAiChatVisualAttachmentInputV1 {
-  stageKey?: unknown;
-  activityKey?: unknown;
-  target?: unknown;
-  title?: unknown;
-  notes?: unknown;
-  fileName?: unknown;
-  dataUrl?: unknown;
+  stageKey: string;
+  activityKey: string;
+  target: 'material-proof' | 'service-proof';
+  title: string;
+  notes: string;
+  fileName: string;
+  dataUrl: string;
+}
+
+export interface AtlasWorkerContextChatVisualRecordPropertyV1 {
+  id: string;
+  label: string;
+  type: 'text' | 'number';
+  value: string | number;
+}
+
+export interface AtlasWorkerContextChatVisualRecordAttachmentV1 {
+  name: string;
+  fileName: string;
+  label: string;
+  mimeType: string;
+  fileUrl: string;
+  url: string;
+  notes: string;
+}
+
+/** Existing POST /api/records body used for pending chat OCR allocations. */
+export interface AtlasWorkerContextChatVisualRecordCreateV1 extends Record<string, unknown> {
+  id: string;
+  obra: string;
+  etapa: string;
+  stageKey: string;
+  stageName: string;
+  atividade: string;
+  activityId: string;
+  responsavel: string;
+  data: string;
+  hora: string;
+  detalhes: string;
+  status: 'Pendente';
+  progresso: 0;
+  unit: string;
+  quantity: number | null;
+  allocationTarget: AtlasWorkerContextChatVisualAllocationTargetV1;
+  source: 'chat-visual';
+  properties: AtlasWorkerContextChatVisualRecordPropertyV1[];
+  attachments: AtlasWorkerContextChatVisualRecordAttachmentV1[];
+  evidenceUri: '';
 }
 
 export interface AtlasWorkerContextChatVisualRecordAllocationContextV1 extends Record<string, unknown> {
@@ -34532,7 +34916,7 @@ export interface AtlasWorkerContextChatVisualRecordAllocationPortsV1 {
   executionModel: { stages?: Array<Record<string, unknown>> };
   state: AtlasAiChatStatePortV1;
   persistVisualAttachment(input: AtlasAiChatVisualAttachmentInputV1): Promise<unknown>;
-  createRecord(record: Record<string, unknown>): Promise<unknown>;
+  createRecord(record: AtlasWorkerContextChatVisualRecordCreateV1): Promise<unknown>;
   refreshCalendar(): Promise<unknown>;
   now(): Date;
   addFeedback(message: string, tone: 'question' | 'warning' | 'pending'): unknown;
@@ -34541,11 +34925,11 @@ export interface AtlasWorkerContextChatVisualRecordAllocationPortsV1 {
 
 /** Persist OCR/chat evidence as a pending operational record using typed application ports. */
 export async function allocateAtlasWorkerContextChatVisualRecordV1(input: {
-  args?: Record<string, unknown>;
+  args?: AtlasWorkerContextChatVisualAllocationArgumentsV1;
   context?: AtlasWorkerContextChatVisualRecordAllocationContextV1;
   ports: AtlasWorkerContextChatVisualRecordAllocationPortsV1;
 }): Promise<string> {
-  const args = input.args || {};
+  const args = normalizeAtlasWorkerContextChatVisualAllocationArgumentsV1(input.args || {});
   const context = input.context || {};
   const ports = input.ports;
   const executionStages = Array.isArray(ports.executionModel?.stages) ? ports.executionModel.stages : [];
@@ -34563,7 +34947,7 @@ export async function allocateAtlasWorkerContextChatVisualRecordV1(input: {
     return question;
   }
 
-  const target = args.target === 'office' ? 'office' : args.target === 'material' ? 'material' : 'service';
+  const target = args.target;
   const sourceAttachment = context.sourceAttachment || context.payload?.attachment || null;
   const sourceName = String(sourceAttachment?.name || 'anexo visual').trim();
   let storedAttachment = (Array.isArray(context.serviceRequest?.files) ? context.serviceRequest.files : [])
@@ -34571,7 +34955,7 @@ export async function allocateAtlasWorkerContextChatVisualRecordV1(input: {
   if (!storedAttachment && sourceAttachment?.dataUrl && stage.key) {
     try {
       const persisted = await ports.persistVisualAttachment({
-        stageKey: stage.key,
+        stageKey: String(stage.key),
         activityKey: String(args.activityId || (stage.key==='office'?'office-note':args.materialName) || 'ocr'),
         target: target === 'material' ? 'material-proof' : 'service-proof',
         title: `OCR · ${sourceName}`,
@@ -34609,7 +34993,7 @@ export async function allocateAtlasWorkerContextChatVisualRecordV1(input: {
     : null;
   const production = mapRecord(stage.production) || {};
   const unit = String(args.unit || (target === 'material' ? production.unit || 'un.' : target==='office'?'registro administrativo':'registro')).trim().slice(0, 40);
-  const properties = [
+  const properties: AtlasWorkerContextChatVisualRecordPropertyV1[] = [
     { id: 'allocation_target', label: 'Destino da leitura visual', type: 'text', value: target === 'material' ? 'Materiais' : target==='office'?'Escritório':'Serviços' },
     { id: 'allocation_source', label: 'Origem', type: 'text', value: 'Assistente operacional · leitura visual no chat' },
     { id: 'allocation_stage_key', label: 'Chave da etapa', type: 'text', value: String(stage.key || '') },
@@ -34626,7 +35010,7 @@ export async function allocateAtlasWorkerContextChatVisualRecordV1(input: {
     { id: 'allocation_attachment_mime', label: 'Tipo do arquivo', type: 'text', value: String(storedAttachment?.mimeType || sourceAttachment?.mimeType || '') },
   ];
   const localId = `REG-VIS-${now.getTime().toString(36).toUpperCase()}`;
-  const payload: Record<string, unknown> = {
+  const payload: AtlasWorkerContextChatVisualRecordCreateV1 = {
     id: localId,
     obra: 'Aliança Park',
     etapa: String(stage.name || ''),
@@ -34833,7 +35217,7 @@ export function createAtlasAiChatApplicationV1(input: {
       },
     }),
     recordPersistence: Object.freeze({
-      async persistVisualAttachment({ stageKey, activityKey, target, title, notes, fileName, dataUrl }: AtlasAiChatVisualAttachmentInputV1 = {}) {
+      async persistVisualAttachment({ stageKey, activityKey, target, title, notes, fileName, dataUrl }: AtlasAiChatVisualAttachmentInputV1) {
         const query = `stage=${encodeURIComponent(String(stageKey || ''))}&activity=${encodeURIComponent(String(activityKey || 'ocr'))}`;
         const response = await apiFetch(`/api/workbench/attachments?${query}`, {
           method: 'POST', headers: services.operationalHeaders({ 'Content-Type': 'application/json' }),
@@ -34884,9 +35268,9 @@ export function createAtlasAiChatApplicationV1(input: {
     }),
   };
   const dependencies = createAtlasAiChatDependenciesV1({ browser, ports });
-  host.__BELAVISTA_ALLOCATE_VISUAL_RECORD_V1 = (args = {}, context = {}, feedback = () => {}) =>
+  host.__BELAVISTA_ALLOCATE_VISUAL_RECORD_V1 = (args: Record<string, unknown> = {}, context: Record<string, unknown> = {}, feedback: (message: string) => void = () => {}) =>
     dependencies.ports.visualAllocation.allocateRecord(
-      args as Record<string, unknown>,
+      args as AtlasWorkerContextChatVisualAllocationArgumentsV1,
       context as AtlasWorkerContextChatVisualRecordAllocationContextV1,
       feedback,
     );
@@ -34940,7 +35324,13 @@ export function registerAtlasAdminAiChatV1(input: AtlasAdminAiChatRegistrationIn
     return payload.events;
   };
   const executionStages = Array.isArray((executionModel as { stages?: unknown }).stages)
-    ? (executionModel as { stages: AtlasAgendaCalendarStageV1[] }).stages
+    ? (executionModel as { stages: AtlasAgendaCalendarStageV1[] }).stages.map(stage => {
+      const workbench = WORKER_STAGE_WORKBENCH_CATALOG_V1.find(item => item.key === String(stage.key || ''));
+      return {
+        ...stage,
+        activities: Array.isArray(stage.activities) && stage.activities.length ? stage.activities : workbench?.activities || [],
+      };
+    })
     : [];
   const agenda: AtlasAiChatAgendaPortV1 = {
     findLastAvailableSlot: agendaCalendar.lastAvailableSlot,
@@ -35024,12 +35414,57 @@ export async function createAtlasAiChatAgendaPendingCommandV1(input: {
   const stageKey = proposal.stageKey;
   const stageName = proposal.stageName;
   const normalizedStageName = input.agenda.normalizeActivityRouteText(stageName);
-  const selectedKey = String(state.selectedStageV9 || state.selectedStage || '');
   const stage = input.executionStages.find(item => String(item.key || '') === stageKey)
-    || (normalizedStageName ? input.executionStages.find(item => input.agenda.normalizeActivityRouteText(String(item.name || '')) === normalizedStageName) : undefined)
-    || input.executionStages.find(item => String(item.key || '') === selectedKey);
+    || (normalizedStageName ? input.executionStages.find(item => input.agenda.normalizeActivityRouteText(String(item.name || '')) === normalizedStageName) : undefined);
   if (!stage)
     return { ok: false, reason: 'stage', message: 'A IA precisa confirmar a etapa antes de criar o apontamento na agenda.' };
+
+  const normalize = input.agenda.normalizeActivityRouteText;
+  const activityRows = (Array.isArray(stage.activities) ? stage.activities : []).map(value => {
+    const row = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    const id = String(row.id || row.key || row.title || row.name || '').trim();
+    const title = String(row.title || row.name || row.id || '').trim();
+    const materials = (Array.isArray(row.materials) ? row.materials : []).map(materialValue => {
+      const material = materialValue && typeof materialValue === 'object' && !Array.isArray(materialValue) ? materialValue : {};
+      const name = String(material.name || material.title || material.materialName || material.description || (typeof materialValue === 'string' ? materialValue : '')).trim();
+      const id = String(material.id || material.key || material.materialId || name).trim();
+      return name ? { id, name } : null;
+    }).filter((value): value is { id: string; name: string } => Boolean(value));
+    return { id, title, materials };
+  }).filter(item => item.id && item.title);
+  const requestedActivity = String(proposal.activityId || proposal.activityName || proposal.title || '').trim();
+  const requestedActivityKey = normalize(requestedActivity);
+  const activity = activityRows.find(item => item.id === proposal.activityId)
+    || activityRows.find(item => normalize(item.title) === requestedActivityKey);
+  if (!activity)
+    return { ok: false, reason: 'activity', message: `A etapa ${String(stage.name || stage.key)} está identificada, mas a atividade "${requestedActivity || 'não informada'}" não corresponde ao catálogo dessa etapa. Confirme uma atividade cadastrada.` };
+
+  const stageMaterialRows = (Array.isArray(stage.materials) ? stage.materials : []).map(value => {
+    const row = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+    const name = String(row.name || row.title || row.materialName || row.description || (typeof value === 'string' ? value : '')).trim();
+    const id = String(row.id || row.key || row.materialId || name).trim();
+    return name ? { id, name } : null;
+  }).filter((value): value is { id: string; name: string } => Boolean(value));
+  const knownMaterials = activity.materials.length ? activity.materials : stageMaterialRows;
+  const materialReferences = [...new Set(proposal.materialIds.map(value => String(value || '').trim()).filter(Boolean))];
+  const chosenMaterials = materialReferences.length ? materialReferences : knownMaterials.map(item => item.id || item.name);
+  const materialIds: string[] = [];
+  for (const reference of chosenMaterials) {
+    const token = normalize(reference);
+    const exact = knownMaterials.filter(item => item.id === reference || normalize(item.name) === token || normalize(item.id) === token);
+    const candidates = exact.length ? exact : token.length >= 4
+      ? knownMaterials.filter(item => normalize(item.name).includes(token) || token.includes(normalize(item.name)))
+      : [];
+    if (candidates.length !== 1)
+      return { ok: false, reason: 'material', message: `O material "${reference}" não foi associado sem ambiguidade à atividade ${activity.title}. Revise a lista de materiais dessa atividade.` };
+    materialIds.push(candidates[0].id || candidates[0].name);
+  }
+  const canonicalProposal: AtlasAgendaPendingProposalV1 = {
+    ...proposal,
+    activityId: activity.id,
+    activityName: activity.title,
+    materialIds,
+  };
 
   try { await input.agenda.refreshCalendar(); }
   catch (error) {
@@ -35046,7 +35481,7 @@ export async function createAtlasAiChatAgendaPendingCommandV1(input: {
   const start = /^\d{2}:\d{2}$/.test(requestedStart) ? requestedStart : slot.start;
   const timestamp = input.now();
   const event = projectAtlasAgendaPendingEventV1({
-    proposal,
+    proposal: canonicalProposal,
     id: `agenda-ai-${timestamp.getTime().toString(36)}`,
     stageKey: String(stage.key || ''),
     stageName: String(stage.name || ''),
@@ -35167,7 +35602,7 @@ export async function executeAtlasAiChatToolCallsV1(input: {
     }
     if (name === 'stage.allocate_visual_record') {
       const message = await ports.visualAllocation.allocateRecord(
-        args,
+        args as AtlasWorkerContextChatVisualAllocationArgumentsV1,
         (input.context || {}) as AtlasWorkerContextChatVisualRecordAllocationContextV1,
         effects.addToolFeedback,
       );
@@ -36499,7 +36934,7 @@ export async function startAtlasDocumentEntryV1(root: HTMLElement): Promise<void
     rootDocument.documentElement.dataset.atlasAdminBootstrapOwnerV1 = 'typescript-pending';
     prepareAtlasAdminDocumentEnvironmentV1({ document: rootDocument, window: rootWindow });
     const authenticationUrl = new URL(
-      '../../admin-auth.mjs?v=github-pat-session-timeout-v18-leads-route-owner&ts-admin-auth-gate-projection-v1&ts-admin-auth-session-flow-v1&ts-admin-auth-runtime-owner-v1&ts-admin-auth-application-owner-v1&desktop-local-demo-v1&ts-dashboard-organic-layout-v1&ts-dashboard-crm-summary-v1&ts-progress-diary-form-v1',
+      '../../admin-auth.mjs?v=github-pat-session-timeout-v18-leads-route-owner&ts-admin-auth-gate-projection-v1&ts-admin-auth-session-flow-v1&ts-admin-auth-runtime-owner-v1&ts-admin-auth-application-owner-v1&desktop-local-demo-v1&ts-dashboard-organic-layout-v1&ts-dashboard-crm-summary-v1&ts-progress-diary-form-v1&local-demo-user-v1&local-demo-signout-v1',
       import.meta.url,
     ).href;
     await startAtlasAdminDocumentBootstrapV1({
@@ -37652,8 +38087,8 @@ export function installAtlasAdminAuthApplicationV1(ports: AtlasAdminAuthApplicat
   const mark = ports.mark || ((name: string, detail?: Record<string, unknown>) => runtime.BELAVISTA_LOGIN_PROFILE?.mark(name, detail));
   if (ports.desktopDemoMode) {
     const actor: AtlasAccessActorV1 & { userType: string; label: string; mode: string } = {
-      uid: 'desktop-local-test', role: 'developer', userType: '', label: 'Teste local', mode: 'desktop-demo',
-      name: 'Ambiente de teste',
+      uid: 'desktop-local-test', role: 'developer', userType: '', label: 'Ambiente local', mode: 'desktop-demo',
+      name: 'Demonstração',
     };
     runtime.BELAVISTA_ADMIN_AUTH_REQUIRED = false;
     runtime.BELAVISTA_ADMIN_ACTOR = actor;

@@ -7,8 +7,16 @@ let desktopRuntime=null;
 try{
   desktopRuntime=await globalThis.aliancaDesktop?.runtime?.()||null;
 }catch{}
-const desktopDemoMode=desktopRuntime?.mode==='local'&&new URLSearchParams(location.search).get('demo')==='1';
+const localDemoRequested=new URLSearchParams(location.search).get('demo')==='1';
+const localDemoHost=['localhost','127.0.0.1','::1','[::1]'].includes(location.hostname);
+const desktopDemoMode=localDemoRequested&&(desktopRuntime?desktopRuntime.mode==='local':localDemoHost);
 const mobileDemoMode=mobile&&globalThis.BELAVISTA_MOBILE_DEMO_MODE===true;
+const leaveDemoRouteBeforeSignOut=()=>{
+  if(!desktopDemoMode)return;
+  const destination=new URL(location.href);
+  destination.searchParams.delete('demo');
+  window.history.replaceState(window.history.state,'',`${destination.pathname}${destination.search}${destination.hash}`);
+};
 let nativeVaultPromise;
 const nativeVault=()=>nativeVaultPromise||=(async()=>{
   if(!mobile)throw new Error('Armazenamento seguro disponível apenas no aplicativo Android.');
@@ -348,7 +356,10 @@ try{
     globalThis.BELAVISTA_GET_WORKER_ID_TOKEN=()=>authRuntimeTs.getWorkerIdToken();
     globalThis.BELAVISTA_RESET_WORKER_SESSION=()=>authRuntimeTs.resetWorkerSession();
     globalThis.BELAVISTA_ADMIN_AUTH_INVALIDATE=()=>authRuntimeTs.invalidate();
-    globalThis.BELAVISTA_ADMIN_SIGN_OUT=()=>authRuntimeTs.signOut();
+    globalThis.BELAVISTA_ADMIN_SIGN_OUT=async()=>{
+      leaveDemoRouteBeforeSignOut();
+      await authRuntimeTs.signOut();
+    };
   }
 }catch(error){
   console.warn('[Belavista auth] O runtime TypeScript de sessão não iniciou.',error);
@@ -395,6 +406,7 @@ if(!authRuntimeTs){
     return authInvalidationCheck;
   };
   globalThis.BELAVISTA_ADMIN_SIGN_OUT=async()=>{
+    leaveDemoRouteBeforeSignOut();
     if(mobile)await (await nativeVault()).clear();
     else await clearGithubPat().catch(()=>{});
     const workerToken=workerSessionToken,origin=workerOrigin();

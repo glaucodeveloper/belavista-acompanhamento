@@ -6,26 +6,31 @@
   },
   "modeItems": {
     "tracking": [
-      ["map", "house", "Mapa"], ["lot-development", "land-plot", "Loteamento"],
-      ["control", "table-properties", "Dashboard"],
-      ["records", "clipboard-pen-line", "Registros"], ["materials", "package", "Notas"],
-      ["brokers-board", "map-pinned", "Lotes"], ["repasses", "wallet", "Repasses"],
+      ["control", "table-properties", "Dashboard"], ["map", "house", "Mapa"],
+      ["lot-development", "land-plot", "Lotes"], ["materials", "package", "Notas"],
+      ["records", "clipboard-pen-line", "Registros"],
+      ["agenda", "calendar-days", "Calendário de obras"],
+      ["brokers-board", "map-pinned", "Tabela de lotes"], ["repasses", "wallet", "Repasses"],
       ["brokers", "users-round", "Corretores"], ["sales-history", "history", "Histórico de movimentações"],
       ["finance", "wallet-cards", "Financeiro"], ["settings", "settings", "Configurações"]
     ],
     "commercial": [
-      ["map", "house", "Mapa"], ["lot-development", "land-plot", "Loteamento"],
-      ["materials", "package", "Notas"],
-      ["brokers-board", "map-pinned", "Lotes"], ["repasses", "wallet", "Repasses"],
+      ["control", "table-properties", "Dashboard"], ["map", "house", "Mapa"],
+      ["lot-development", "land-plot", "Lotes"], ["materials", "package", "Notas"],
+      ["brokers-board", "map-pinned", "Tabela de lotes"], ["repasses", "wallet", "Repasses"],
+      ["agenda", "calendar-days", "Calendário de obras"],
       ["brokers", "users-round", "Corretores"], ["sales-history", "history", "Histórico de movimentações"],
-      ["control", "table-properties", "Dashboard"], ["records", "clipboard-pen-line", "Registros"],
+      ["records", "clipboard-pen-line", "Registros"],
       ["finance", "wallet-cards", "Financeiro"], ["settings", "settings", "Configurações"]
     ],
     "social": [
-      ["map", "house", "Mapa"], ["lot-development", "land-plot", "Loteamento"],
+      ["control", "table-properties", "Dashboard"],
+      ["map", "house", "Mapa"], ["lot-development", "land-plot", "Lotes"],
       ["messages", "messages-square", "Mensagens", "messages"],
-      ["control", "table-properties", "Dashboard"], ["records", "clipboard-pen-line", "Registros"],
-      ["brokers-board", "map-pinned", "Lotes"], ["brokers", "users-round", "Corretores"],
+      ["materials", "package", "Notas"],
+      ["agenda", "calendar-days", "Calendário de obras"],
+      ["records", "clipboard-pen-line", "Registros"],
+      ["brokers-board", "map-pinned", "Tabela de lotes"], ["brokers", "users-round", "Corretores"],
       ["sales-history", "history", "Histórico de movimentações"], ["settings", "settings", "Configurações"]
     ]
   },

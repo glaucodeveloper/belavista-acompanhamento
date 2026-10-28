@@ -13,6 +13,6 @@ if (typeof adminProgram?.startAtlasAdminDocumentBootstrapV1 !== 'function') {
   await adminProgram.startAtlasAdminDocumentBootstrapV1({
     document,
     window,
-    loadAuthenticationGate: () => import('../admin-auth.mjs?v=github-pat-session-timeout-v18-leads-route-owner&ts-admin-auth-gate-projection-v1&ts-admin-auth-session-flow-v1&ts-admin-auth-runtime-owner-v1&ts-admin-auth-application-owner-v1&desktop-local-demo-v1&ts-dashboard-organic-layout-v1&ts-dashboard-crm-summary-v1&ts-progress-diary-form-v1'),
+    loadAuthenticationGate: () => import('../admin-auth.mjs?v=github-pat-session-timeout-v18-leads-route-owner&ts-admin-auth-gate-projection-v1&ts-admin-auth-session-flow-v1&ts-admin-auth-runtime-owner-v1&ts-admin-auth-application-owner-v1&desktop-local-demo-v1&ts-dashboard-organic-layout-v1&ts-dashboard-crm-summary-v1&ts-progress-diary-form-v1&local-demo-user-v1&local-demo-signout-v1'),
   });
 }
