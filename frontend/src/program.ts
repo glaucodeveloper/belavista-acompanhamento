@@ -34080,8 +34080,24 @@ export interface AtlasAiChatApplicationServicesV1 {
 }
 
 export interface AtlasAiChatInferenceRequestV1 {
-  modelRequest?: { endpoint?: unknown; body?: unknown } | null;
-  httpRequest?: { endpoint?: unknown; init?: RequestInit | null } | null;
+  modelRequest?: { endpoint: string; body: AtlasAiChatInferenceRequestBodyV1 } | null;
+  httpRequest?: { endpoint: string; init: RequestInit | null } | null;
+}
+
+export interface AtlasAiChatInferenceAttachmentInputV1 {
+  name: string;
+  mimeType: string;
+  dataUrl: string;
+}
+
+export interface AtlasAiChatInferenceRequestBodyV1 {
+  message: string;
+  view?: string;
+  mapContext: boolean;
+  instruction: string;
+  requestContext: Record<string, unknown> | null;
+  context: AtlasAiChatToolContextV1;
+  attachment: AtlasAiChatInferenceAttachmentInputV1 | null;
 }
 
 export interface AtlasAiChatInferenceAttachmentReferenceV1 extends Record<string, unknown> {
@@ -34144,11 +34160,11 @@ export interface AtlasAiChatToolContextV1 extends Record<string, unknown> {
 }
 
 export interface AtlasAiChatInferenceExecutionInputV1 {
-  message: unknown;
-  mapContext: unknown;
-  requestContext?: unknown;
+  message: string;
+  mapContext: boolean;
+  requestContext?: Record<string, unknown> | null;
   context: AtlasAiChatToolContextV1;
-  attachment?: { name?: unknown; mimeType?: unknown; dataUrl?: unknown } | null;
+  attachment?: AtlasAiChatInferenceAttachmentInputV1 | null;
   ports: Pick<AtlasAiChatPortsV1, 'assistant' | 'chat' | 'state'>;
 }
 
@@ -34165,9 +34181,9 @@ export async function requestAtlasAiChatInferenceV1(
   const attachment = input.attachment || null;
   const endpoint = attachment ? '/api/ai/vision-reasoning' : '/api/ai';
   const state = ports.state.get();
-  const requestBody: Record<string, unknown> = {
+  const requestBody: AtlasAiChatInferenceRequestBodyV1 = {
     message: input.message,
-    view: state.view,
+    view: typeof state.view === 'string' ? state.view : undefined,
     mapContext: input.mapContext,
     instruction: `${ports.chat.CHAT_OPERATIONAL_EXECUTION_INSTRUCTION_V1} ${ports.chat.CHAT_VISUAL_ALLOCATION_POLICY_V1} ${aiAgendaInstructionV1(state.aiAgendaComprehensionV1)}`,
     requestContext: input.requestContext && typeof input.requestContext === 'object' ? input.requestContext : null,
@@ -34181,7 +34197,7 @@ export async function requestAtlasAiChatInferenceV1(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(requestBody),
   };
-  const modelBody = JSON.parse(String(requestInit.body));
+  const modelBody = JSON.parse(String(requestInit.body)) as AtlasAiChatInferenceRequestBodyV1;
   const payload = await ports.assistant.infer({
     modelRequest: { endpoint: '/api/inference', body: modelBody },
     httpRequest: { endpoint, init: requestInit },
@@ -34341,9 +34357,9 @@ export interface AtlasAiChatInferenceCycleEffectsV1 {
 
 export interface AtlasAiChatInferenceCycleInputV1 {
   ports: Pick<AtlasAiChatPortsV1, 'assistant' | 'chat' | 'state'>;
-  message: unknown;
-  mapContext: unknown;
-  requestContext?: unknown;
+  message: string;
+  mapContext: boolean;
+  requestContext?: Record<string, unknown> | null;
   context: AtlasAiChatToolContextV1;
   attachment?: AtlasAiChatInferenceExecutionInputV1['attachment'];
   effects: AtlasAiChatInferenceCycleEffectsV1;
@@ -34384,9 +34400,9 @@ export interface AtlasAiChatSubmissionEffectsV1 {
 export async function submitAtlasAiChatMessageV1(input: {
   ports: Pick<AtlasAiChatPortsV1, 'assistant' | 'chat' | 'state'>;
   commands: AtlasAiChatPortsV1['commands'];
-  message: unknown;
-  mapContext: unknown;
-  requestContext?: unknown;
+  message: string;
+  mapContext: boolean;
+  requestContext?: Record<string, unknown> | null;
   context: () => AtlasAiChatToolContextV1;
   attachment?: AtlasAiChatInferenceExecutionInputV1['attachment'];
   effects: AtlasAiChatSubmissionEffectsV1;
