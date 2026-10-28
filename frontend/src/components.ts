@@ -224,7 +224,7 @@ import { projectAtlasActivityPhysicalMapCatalogV1, projectAtlasActivityLocationS
 import { AI_AGENDA_COMPREHENSION_DEFAULTS_V1, normalizeAiAgendaComprehensionV1, projectAtlasStageActivityDetailV1, projectAtlasStageActivityAdminRowsV1 } from "./program.js";
 import { normalizeAtlasPublicFieldRecordMapAreaV1, prepareAtlasPublicFieldRecordDraftV1, projectAtlasPublicFieldRecordEvidenceContextV1, projectAtlasPublicFieldRecordInferenceV1, PUBLIC_FIELD_RECORD_MAX_IMAGE_BYTES_V1 } from "./program.js";
 import { buildAtlasControlCenterPriorityChatRequestV1 } from "./program.js";
-import { applyAtlasAiChatAttachmentActionV1, executeAtlasAiChatToolCallsV1, projectAtlasAiChatAttachmentActionsV1, projectAtlasAiChatToolContextV1, submitAtlasAiChatMessageV1 } from "./program.js";
+import { applyAtlasAiChatAttachmentActionV1, executeAtlasAiChatToolCallsV1, projectAtlasAiChatAttachmentActionsV1, projectAtlasAiChatToolContextV1, submitAtlasAiChatMessageV1, type AtlasAiChatToolContextV1 } from "./program.js";
 import type { AtlasActivityInstallationCommandV1 } from "./program.js";
 import { buildAtlasDataTableCsvV1 } from "./program.js";
 import { ATLAS_RECORD_ATTACHMENT_POLICY_V1, isAtlasRecordDropAttachmentAllowedV1 } from "./program.js";
@@ -42085,7 +42085,7 @@ export function createAtlasAiChatV1(input: AtlasAiChatComponentInputV1): CustomE
       log.scrollTop = log.scrollHeight;
       createIcons();
     }
-    buildToolContext() {
+    buildToolContext(): AtlasAiChatToolContextV1 {
       const state = readState();
       const mapElement = browserDocument.querySelector<AtlasAiChatOperationalMapSceneV1>("map-scene:not([compact])");
       const map = mapElement ? {

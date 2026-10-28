@@ -18,6 +18,8 @@ async function startDocument(): Promise<void> {
   programModuleUrl.searchParams.set('ts-map-marker-overrides-program-storage-v1', '');
   programModuleUrl.searchParams.set('ts-admin-map-geometry-loader-required-v1', '');
   programModuleUrl.searchParams.set('ts-admin-map-startup-persistence-program-only-v1', '');
+  programModuleUrl.searchParams.set('ts-ai-chat-context-structured-program-v1', '');
+  programModuleUrl.searchParams.set('ts-ai-chat-capabilities-json-v1', '');
   const application = await import(programModuleUrl.href) as typeof import('./program.js');
   const root = document.querySelector<HTMLElement>('#app,[data-app-entry],belavista-app');
   if (!root) throw new Error('Elemento de entrada da aplicação não encontrado.');

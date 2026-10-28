@@ -1,0 +1,13 @@
+{
+  "navigation": "Navegar entre as páginas administrativas permitidas.",
+  "map-highlight": "Destacar uma etapa ou área no mapa.",
+  "map-view": "Consultar a vista e os dados atuais do mapa.",
+  "map-tiles": "Alterar a camada visual do mapa.",
+  "record-form": "Preparar formulário de registro operacional.",
+  "agenda-pending-entry": "Preparar compromisso pendente para revisão humana.",
+  "document-form": "Preparar formulário de documento do empreendimento.",
+  "report-selection": "Selecionar uma análise ou relatório disponível.",
+  "commission-filter": "Filtrar negociações e comissões.",
+  "lot-development-profile": "Consultar e editar perfis de desenvolvimento de lote.",
+  "print-confirmation": "Solicitar confirmação antes de imprimir."
+}

@@ -97,6 +97,7 @@ import stageOverlayCatalogData from './data/stage-overlay-catalog.json' with { t
 import adminDeferredModulesData from './data/admin-deferred-modules.json' with { type: 'json' };
 import aiChatStorageData from './data/ai-chat-storage.json' with { type: 'json' };
 import aiChatPoliciesData from './data/ai-chat-policies.json' with { type: 'json' };
+import aiChatCapabilitiesData from './data/ai-chat-capabilities.json' with { type: 'json' };
 import firebaseWebConfigData from './data/firebase-web-config.json' with { type: 'json' };
 import aiAgendaComprehensionDefaultsData from './data/ai-agenda-comprehension-defaults.json' with { type: 'json' };
 import workerDevelopmentStageCatalogData from './data/worker-development-stage-catalog.json' with { type: 'json' };
@@ -34113,11 +34114,40 @@ export interface AtlasAiChatInferenceResponseProjectionV1 {
   toolCalls: AtlasAiChatToolCallV1[];
 }
 
+export type AtlasAiChatCapabilityV1 = keyof typeof aiChatCapabilitiesData;
+
+/** Stable DTO sent as model context; presentation reads it but does not define its shape. */
+export interface AtlasAiChatToolContextV1 extends Record<string, unknown> {
+  view?: unknown;
+  selectedStage: string | null;
+  selectedRecord: unknown;
+  selectedLead: unknown;
+  report: { family: unknown; type: unknown; period: unknown };
+  records: Array<{ id: unknown; activity: unknown; status: unknown; responsible: unknown }>;
+  stages: Array<{ key: string; name: string; unit: string; materials: string[] }>;
+  map: {
+    ready: boolean;
+    selected: string | null;
+    highlight: string | null;
+    zoom: number;
+    rotation: number;
+    tilt?: string;
+  } | null;
+  lotDevelopment: Array<{
+    id: unknown;
+    kind: unknown;
+    title: unknown;
+    lotLabel: unknown;
+    status: unknown;
+  }>;
+  capabilities: readonly AtlasAiChatCapabilityV1[];
+}
+
 export interface AtlasAiChatInferenceExecutionInputV1 {
   message: unknown;
   mapContext: unknown;
   requestContext?: unknown;
-  context: Record<string, unknown>;
+  context: AtlasAiChatToolContextV1;
   attachment?: { name?: unknown; mimeType?: unknown; dataUrl?: unknown } | null;
   ports: Pick<AtlasAiChatPortsV1, 'assistant' | 'chat' | 'state'>;
 }
@@ -34314,7 +34344,7 @@ export interface AtlasAiChatInferenceCycleInputV1 {
   message: unknown;
   mapContext: unknown;
   requestContext?: unknown;
-  context: Record<string, unknown>;
+  context: AtlasAiChatToolContextV1;
   attachment?: AtlasAiChatInferenceExecutionInputV1['attachment'];
   effects: AtlasAiChatInferenceCycleEffectsV1;
 }
@@ -34357,7 +34387,7 @@ export async function submitAtlasAiChatMessageV1(input: {
   message: unknown;
   mapContext: unknown;
   requestContext?: unknown;
-  context: () => Record<string, unknown>;
+  context: () => AtlasAiChatToolContextV1;
   attachment?: AtlasAiChatInferenceExecutionInputV1['attachment'];
   effects: AtlasAiChatSubmissionEffectsV1;
 }): Promise<{ shortcutHandled: boolean; answerText: string | null }> {
@@ -34425,7 +34455,7 @@ export function projectAtlasAiChatToolContextV1(input: {
   executionStages: Array<Record<string, any>>;
   map: AtlasAiChatToolContextMapSnapshotV1 | null;
   lotDevelopmentProfiles: Array<Record<string, any>>;
-}): Record<string, unknown> {
+}): AtlasAiChatToolContextV1 {
   const { state, activities, executionStages, map } = input;
   return {
     view: state.view,
@@ -34462,11 +34492,7 @@ export function projectAtlasAiChatToolContextV1(input: {
       lotLabel: profile.lotLabel || '',
       status: profile.status || '',
     })),
-    capabilities: [
-      'navigation', 'map-highlight', 'map-view', 'map-tiles', 'record-form',
-      'agenda-pending-entry', 'document-form', 'report-selection', 'commission-filter',
-      'lot-development-profile', 'print-confirmation',
-    ],
+    capabilities: Object.keys(aiChatCapabilitiesData) as AtlasAiChatCapabilityV1[],
   };
 }
 
