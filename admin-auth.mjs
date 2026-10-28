@@ -9,8 +9,14 @@ try{
 }catch{}
 const localDemoRequested=new URLSearchParams(location.search).get('demo')==='1';
 const localDemoHost=['localhost','127.0.0.1','::1','[::1]'].includes(location.hostname);
-const desktopDemoMode=localDemoRequested&&(desktopRuntime?desktopRuntime.mode==='local':localDemoHost);
+const demoAccessAvailable=!mobile&&(desktopRuntime?desktopRuntime.mode==='local':localDemoHost);
+const desktopDemoMode=localDemoRequested&&demoAccessAvailable;
 const mobileDemoMode=mobile&&globalThis.BELAVISTA_MOBILE_DEMO_MODE===true;
+if(localDemoRequested&&!desktopDemoMode){
+  const destination=new URL(location.href);
+  destination.searchParams.delete('demo');
+  history.replaceState(history.state,'',`${destination.pathname}${destination.search}${destination.hash}`);
+}
 const leaveDemoRouteBeforeSignOut=()=>{
   if(!desktopDemoMode)return;
   const destination=new URL(location.href);
@@ -46,6 +52,7 @@ try{
     windowRef:window,
     mobile,
     desktopDemoMode:desktopDemoMode||mobileDemoMode,
+    demoAccessAvailable,
     desktopMode:desktopRuntime?.mode,
     desktopAvailableModes:desktopRuntime?.availableModes,
     desktopEnvironment:globalThis.aliancaDesktop?.runtime&&globalThis.aliancaDesktop?.switchEnvironment
@@ -70,7 +77,7 @@ const {apiUrl}=apiClientFallback;
 const {actorCanUseAiChat,normalizeUserType}=rolePolicyFallback;
 const {clearGithubPat,readGithubPat,saveGithubPat}=credentialVaultFallback;
 let gate=null;
-try{gate=authComponentsTs?.mountAtlasAdminAuthGateV1?.({documentRef:document,mobile})||null;}catch{}
+try{gate=authComponentsTs?.mountAtlasAdminAuthGateV1?.({documentRef:document,mobile,demoAccessAvailable})||null;}catch{}
 if(!gate){
 const style=document.createElement('style');
 style.textContent=`
@@ -80,23 +87,25 @@ style.textContent=`
   .belavista-auth-panel h1{margin:0 0 8px;font-size:25px;letter-spacing:-.035em}.belavista-auth-panel p{margin:0 0 24px;color:#aaa;font-size:13px;line-height:1.5}
   .belavista-auth-form{display:grid;gap:14px}.belavista-auth-form label{display:grid;gap:8px;color:#ddd;font-size:12px}.belavista-auth-form input{width:100%;box-sizing:border-box;padding:13px;border:1px solid #555;border-radius:12px;background:#292929;color:#fff;font:14px monospace}.belavista-auth-form input:focus{outline:2px solid #7d9bff;outline-offset:2px}
   .belavista-auth-form button{min-height:44px;border:0;border-radius:12px;background:#fff;color:#181818;font-weight:700;cursor:pointer}.belavista-auth-form button:disabled{opacity:.5;cursor:wait}
+  .belavista-auth-form .belavista-auth-demo{border:1px solid #536979;background:#1b2b39;color:#eff6fb}
   .belavista-auth-status{min-height:18px;margin:0;color:#ffacac;font-size:12px;line-height:1.4}.belavista-auth-note{color:#888;font-size:11px;line-height:1.45}
   html[data-belavista-auth-pending="true"] body>*:not(.belavista-auth-gate):not(script):not(style){visibility:hidden!important}
 `;
 document.head.appendChild(style);
 gate=document.createElement('section');
 gate.className='belavista-auth-gate';
-gate.setAttribute('aria-label','Acesso GitHub ao Aliança Park');
-gate.innerHTML=`<div class="belavista-auth-panel">
+  gate.setAttribute('aria-label',mobile?'Login de campo do Aliança Park':'Acesso GitHub ao Aliança Park');
+  gate.innerHTML=`<div class="belavista-auth-panel">
   <div class="belavista-auth-brand"><b>◈</b><span><strong>atlas.</strong><small>Aliança Park · acesso restrito</small></span></div>
-  <h1>Conectar ao Aliança Park</h1>
-  <p>Administrador: use o PAT do repositório para gerenciar chaves. Encarregado: use a chave de campo emitida pelo administrador; ela só libera as permissões selecionadas.</p>
+  <h1>${mobile?'Entrar no Aliança Park':'Conectar ao Aliança Park'}</h1>
+  <p>${mobile?'Entre com o nome e a chave da conta de campo criada pelo administrador em Configurações. O acesso respeita as permissões atribuídas à conta.':'Administrador: use o PAT do repositório para gerenciar chaves. Encarregado: use a chave de campo emitida pelo administrador; ela só libera as permissões selecionadas.'}</p>
   <form class="belavista-auth-form">
-    <label>PAT administrador ou chave de campo<input name="pat" type="password" autocomplete="off" spellcheck="false" required placeholder="github_pat_… ou bvk_…"></label>
-    <button type="submit">Continuar</button>
+    ${mobile?'<label>Nome do usuário<input name="account" type="text" autocomplete="username" spellcheck="false" required placeholder="Nome cadastrado no desktop"></label><label>Chave de acesso<input name="pat" type="password" autocomplete="current-password" spellcheck="false" required placeholder="Chave emitida em Configurações"></label>':'<label>PAT administrador ou chave de campo<input name="pat" type="password" autocomplete="off" spellcheck="false" required placeholder="github_pat_… ou bvk_…"></label>'}
+    <button type="submit">${mobile?'Entrar':'Continuar'}</button>
+    ${demoAccessAvailable&&!mobile?'<button type="button" class="belavista-auth-demo" data-demo-login>Entrar como Demonstração</button>':''}
     <output class="belavista-auth-status" aria-live="polite"></output>
     <small class="belavista-auth-note">${mobile
-      ?'A credencial fica cifrada no armazenamento seguro deste aparelho; a sessão é renovada automaticamente. O administrador pode revogar chaves de campo.'
+      ?'A chave fica cifrada no armazenamento seguro deste aparelho. O administrador pode revogar o acesso em Configurações.'
       :'A credencial fica cifrada neste navegador para renovar a sessão revogável. O administrador pode revogar chaves de campo.'}</small>
   </form>
 </div>`;
@@ -108,6 +117,11 @@ mark('auth.gate.visible',{owner:gate.dataset.authGateOwnerV1||'typescript'});
 const form=gate.querySelector('form');
 const status=gate.querySelector('.belavista-auth-status');
 const button=form.querySelector('button');
+gate.querySelector('[data-demo-login]')?.addEventListener('click',()=>{
+  const destination=new URL(location.href);
+  destination.searchParams.set('demo','1');
+  location.assign(`${destination.pathname}${destination.search}${destination.hash}`);
+});
 const savedToken=()=>{try{return localStorage.getItem(tokenKey)||'';}catch{return '';}};
 const storeToken=token=>{try{localStorage.setItem(tokenKey,token);}catch{throw new Error('Não foi possível guardar a sessão neste dispositivo.');}};
 const clearToken=()=>{try{localStorage.removeItem(tokenKey);}catch{}};
@@ -128,15 +142,15 @@ async function legacySessionRequest(method,token,body){
       ...(body?{body:JSON.stringify(body)}:{})
     });
   }catch(error){
-    if(controller.signal.aborted)throw new Error(`O serviço de autenticação em ${serviceOrigin} não respondeu em 30 segundos. Confirme que o servidor está ativo e tente novamente.`);
+    if(controller.signal.aborted)throw new Error(`O Cloudflare Worker em ${serviceOrigin} não respondeu em 30 segundos. Confira a conexão e tente novamente.`);
     const detail=String(error?.message||'').trim();
     const safeDetail=detail&&!/^(failed to fetch|load failed|networkerror when attempting to fetch resource\.)$/i.test(detail)
       ?` Detalhe: ${detail}`:'';
-    throw new Error(`Não foi possível conectar ao serviço de autenticação em ${serviceOrigin}. Confirme que o servidor está ativo e tente novamente.${safeDetail}`);
+    throw new Error(`Não foi possível conectar ao Cloudflare Worker em ${serviceOrigin}. Confira a conexão e tente novamente.${safeDetail}`);
   }finally{window.clearTimeout(timeout);}
   const contentType=String(response.headers.get('content-type')||'').toLowerCase();
   if(!contentType.includes('application/json')){
-    throw new Error(`O endereço aberto (${serviceOrigin}) respondeu HTML no endpoint de autenticação. Abra o CMS pela porta do servidor da aplicação, não pelo Hosting estático.`);
+    throw new Error(`O Cloudflare Worker em ${serviceOrigin} respondeu HTML no endpoint de autenticação. Confira o endereço e a rota do Worker.`);
   }
   const payload=await response.json().catch(()=>({}));
   if(!response.ok)throw Object.assign(new Error(payload.error||`Falha HTTP ${response.status}`),{status:response.status});
@@ -178,8 +192,8 @@ function activate(session,token,resolve){
   }
 }
 
-async function acceptPat(pat,resolve,{remember=true}={}){
-  const session=await sessionRequest('POST','',{pat});
+async function acceptPat(pat,resolve,{remember=true,account=''}={}){
+  const session=await sessionRequest('POST','',{pat,...(account?{account}:{})});
   if(!/^bvs_[a-f0-9]{64}$/.test(String(session.token||'')))throw new Error('O servidor retornou uma sessão inválida.');
   try{
     if(remember){
@@ -215,11 +229,12 @@ if(typeof authProgramTs?.installAtlasAdminAuthSessionFlowV1==='function'){
   document.documentElement.dataset.belavistaAuthSessionOwnerV1='legacy-fallback';
   form.addEventListener('submit',async event=>{
     event.preventDefault();
-    const pat=String(new FormData(form).get('pat')||'').trim();
+    const formData=new FormData(form),pat=String(formData.get('pat')||'').trim(),account=String(formData.get('account')||'').trim();
+    if(mobile&&!account){status.textContent='Informe o nome da conta de campo criada em Configurações.';form.elements.account?.focus();return;}
     button.disabled=true;
-    status.textContent='Validando acesso ao repositório…';
+    status.textContent=mobile?'Validando conta de campo…':'Validando acesso ao repositório…';
     try{
-      await acceptPat(pat,resolve);
+      await acceptPat(pat,resolve,{account});
       form.reset();
     }catch(error){
       status.textContent=error.message||'Não foi possível autenticar.';
@@ -264,9 +279,9 @@ if(typeof authProgramTs?.installAtlasAdminAuthSessionFlowV1==='function'){
               else await clearGithubPat().catch(()=>{});
               clearToken();
               form.elements.pat.value='';
-              status.textContent=error.message||'O PAT salvo foi recusado pelo GitHub ou não tem acesso ao repositório.';
+            status.textContent=error.message||(mobile?'A chave salva foi revogada ou expirou.':'O PAT salvo foi recusado pelo GitHub ou não tem acesso ao repositório.');
             }else if(error.status===403){
-              status.textContent=error.message||'O PAT salvo foi reconhecido, mas não tem permissão para este repositório.';
+            status.textContent=error.message||(mobile?'A chave salva não tem permissão para esta ação.':'O PAT salvo foi reconhecido, mas não tem permissão para este repositório.');
             }else status.textContent=error.message||'Não foi possível renovar a sessão.';
             mark('auth.restore.error',{message:status.textContent});
             return;
@@ -278,7 +293,7 @@ if(typeof authProgramTs?.installAtlasAdminAuthSessionFlowV1==='function'){
         return;
       }
     }
-    status.textContent='Informe um PAT com acesso ao repositório.';
+      status.textContent=mobile?'Informe a conta e a chave de campo.':'Informe um PAT com acesso ao repositório.';
   })();
 }
 
@@ -388,14 +403,14 @@ if(!authRuntimeTs){
     clearToken();
     clearAuthenticatedActor();
     document.documentElement.dataset.belavistaAuthPending='true';
-    showAuthGate('A sessão foi recusada pelo serviço. Informe novamente um PAT com acesso ao repositório.',true);
+    showAuthGate(mobile?'A sessão foi recusada. Entre novamente com o usuário e a chave de campo.':'A sessão foi recusada pelo serviço. Informe novamente um PAT com acesso ao repositório.',true);
     mark('auth.session.invalidated',{reason:'auth-session-401'});
   };
   globalThis.BELAVISTA_ADMIN_AUTH_INVALIDATE=()=>{
     if(document.documentElement.dataset.belavistaAuthPending==='true')return;
     if(authInvalidationCheck)return authInvalidationCheck;
     const token=savedToken();
-    if(!token){showAuthGate('Informe um PAT com acesso ao repositório.',false);return;}
+    if(!token){showAuthGate(mobile?'Informe o usuário e a chave de campo.':'Informe um PAT com acesso ao repositório.',false);return;}
     authInvalidationCheck=sessionRequest('GET',token)
       .then(()=>false)
       .catch(error=>{

@@ -5,6 +5,7 @@ import { foremanAccessKeyActorV1, normalizeForemanAccessPermissionsV1 } from './
 
 const fail = (message, statusCode) => Object.assign(new Error(message), { statusCode });
 const nowIso = () => new Date().toISOString();
+const NO_EXPIRY_AT = '9999-12-31T23:59:59.999Z';
 const tokenHash = value => createHash('sha256').update(String(value || '')).digest('hex');
 const newToken = prefix => `${prefix}_${randomBytes(32).toString('hex')}`;
 const repository = () => String(process.env.BELAVISTA_GITHUB_AUTH_REPO || 'glaucodeveloper/belavista-acompanhamento').trim();
@@ -31,6 +32,11 @@ db.exec(`
     created_at TEXT NOT NULL, expires_at TEXT NOT NULL, revoked_at TEXT, created_by TEXT NOT NULL DEFAULT '', role_id TEXT
   );
 `);
+
+// Access keys have no expiry by policy; old unexpired keys are upgraded once
+// at startup. Revoked and already expired keys keep their existing state.
+db.prepare(`UPDATE github_foreman_access_keys SET expires_at=? WHERE revoked_at IS NULL AND expires_at>?`)
+  .run(NO_EXPIRY_AT, nowIso());
 
 const sessionUser = db.prepare(`SELECT u.github_id AS githubId,u.github_login AS githubLogin,u.role,
   u.user_type AS userType,u.commercial_profile AS commercialProfile,u.active,
@@ -106,7 +112,7 @@ export function listForemanAccessKeys(githubId) {
     k.expires_at AS expiresAt,k.revoked_at AS revokedAt,k.created_by AS createdBy
     FROM github_foreman_access_keys k LEFT JOIN github_foreman_access_roles r ON r.id=k.role_id
     WHERE k.github_id=? ORDER BY k.created_at DESC`).all(Number(githubId))
-    .map(row => ({ ...row, permissions: JSON.parse(row.permissionsJson || '[]') }));
+    .map(row => ({ ...row, expiresAt: row.expiresAt === NO_EXPIRY_AT ? null : row.expiresAt, permissions: JSON.parse(row.permissionsJson || '[]') }));
 }
 
 export function createForemanAccessKey({ githubId, label, createdBy = '', roleId = '' } = {}) {
@@ -118,10 +124,10 @@ export function createForemanAccessKey({ githubId, label, createdBy = '', roleId
   if (cleanLabel.length < 2 || cleanLabel.length > 60) throw fail('Dê à chave um nome entre 2 e 60 caracteres.', 400);
   if (!permissions.length) throw fail('Selecione ao menos uma permissão.', 400);
   const id = `FKEY-${randomBytes(16).toString('hex')}`, token = newToken('bvk'), createdAt = nowIso();
-  const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+  const expiresAt = NO_EXPIRY_AT;
   db.prepare(`INSERT INTO github_foreman_access_keys(id,github_id,label,permissions_json,token_hash,created_at,expires_at,created_by,role_id)
     VALUES(?,?,?,?,?,?,?,?,?)`).run(id, Number(githubId), cleanLabel, JSON.stringify(permissions), tokenHash(token), createdAt, expiresAt, String(createdBy), String(roleId));
-  return { id, label: cleanLabel, roleId: String(roleId), permissions, token, createdAt, expiresAt, revokedAt: null };
+  return { id, label: cleanLabel, roleId: String(roleId), permissions, token, createdAt, expiresAt: null, revokedAt: null };
 }
 
 export function revokeForemanAccessKey(githubId, id) {

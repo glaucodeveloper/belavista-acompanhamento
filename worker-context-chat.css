@@ -209,3 +209,6 @@ body.admin-shell-page .worker-context-chat-form [data-worker-chat-submit]{width:
 body.admin-shell-page .worker-context-chat-form [data-worker-chat-submit]::before{content:"↑";font-size:22px;line-height:1}
 body.admin-shell-page .worker-context-chat-form [data-worker-chat-submit]:hover{background:#347bdc!important}
 body.admin-shell-page .worker-context-chat-image-input{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip-path:inset(50%)!important}
+
+/* MOBILE_CHAT_TAB_WITHOUT_FLOATING_LAUNCHER_V1 */
+@media(max-width:760px){body.admin-shell-page .worker-context-assistant.is-collapsed{display:none!important}}

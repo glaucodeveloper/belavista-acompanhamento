@@ -71,7 +71,6 @@ function startLocalServer(){
     env:{
       ...process.env,
       ELECTRON_RUN_AS_NODE:'1',
-      BELAVISTA_AUTH_MODE:'demo',
       PORT:String(desktopPort),
       HOST:'127.0.0.1',
       PUBLIC_ORIGIN:localBaseUrl,
@@ -88,7 +87,7 @@ function startLocalServer(){
 function currentRoute(){
   // Start at the app's existing access gate. The Instagram station setup stays
   // available as a separate route and must not replace the security-key screen.
-  return activeMode==='local'?'/admin?desktop=ready&demo=1':'/admin?desktop=ready';
+  return '/admin?desktop=ready';
 }
 
 function desktopModePath(){return join(app.getPath('userData'),'desktop-runtime-mode.json');}
@@ -116,9 +115,8 @@ function currentWindowRoute(){
       if(routerPrefix&&(pathname===routerPrefix||pathname.startsWith(`${routerPrefix}/`)))pathname=pathname.slice(routerPrefix.length)||'/';
     }
     current.searchParams.delete('demo');
-    if(activeMode==='local')current.searchParams.set('demo','1');
     return `${pathname}${current.search}${current.hash}`;
-  }catch{return activeMode==='local'?'/admin?desktop=ready&demo=1':'/admin?desktop=ready';}
+  }catch{return '/admin?desktop=ready';}
 }
 
 async function switchEnvironment(mode){
@@ -201,6 +199,6 @@ else{
 ipcMain.handle('desktop:runtime',()=>({mode:activeMode,baseUrl,availableModes:externalUrl?['local','router']:['local'],managedServer:Boolean(serverProcess),dataPath:join(app.getPath('userData'),'data')}));
 ipcMain.handle('desktop:switchEnvironment',(_event,mode)=>switchEnvironment(String(mode||'')));
 ipcMain.handle('desktop:openExternal',(_event,url)=>shell.openExternal(String(url||'')));
-ipcMain.handle('desktop:goAdmin',async()=>{const query=activeMode==='local'?'?desktop=ready&demo=1':'?desktop=ready';await mainWindow?.loadURL(`${baseUrl}/admin${query}`);return true;});
+ipcMain.handle('desktop:goAdmin',async()=>{await mainWindow?.loadURL(`${baseUrl}/admin?desktop=ready`);return true;});
 
 app.on('before-quit',()=>{if(serverProcess&&!serverProcess.killed)serverProcess.kill();});

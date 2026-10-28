@@ -120,7 +120,7 @@ import type { AtlasLegacyUtilityCommandV1 } from './components.js';
 import type { AtlasLegacyDedicatedStageOpenCommandV1 } from './components.js';
 import type { AtlasLegacyStageContextSaveCommandV1, AtlasLegacyStageContextSaveResultV1 } from './components.js';
 import type { AtlasLegacyStageUtilityCommandV1, AtlasLegacyStageTodoResultV1 } from './components.js';
-import { type AtlasActivityFormGroupsInputV1, type AtlasAgendaRouteFocusV1, type AtlasOperationalRecordCreateCommandDetailV1, type AtlasDashboardRecordCreateCommandDetailV1, type AtlasProgressRecordDraftDetailV1, type AtlasLegacyOperationalRecordSaveCommandV1, type AtlasLegacyOperationalRecordDeleteCommandV1, type AtlasLegacyRecordEditorComponentCommandV1, type AtlasLegacyProgressRecordCreateCommandV1, type AtlasLegacyActivityCommandV1, type AtlasLegacyViewNavigationCommandV1, AtlasActivities, installAtlasActivitiesComponentControllerV1, AtlasAgenda, installAtlasAgendaComponentControllerV1, AtlasBrokers, AtlasCashRecord, installAtlasCommunicationsComponentControllerV1, AtlasDashboard, installAtlasDashboardComponentControllerV1, AtlasDesktopSetup, AtlasForemen, AtlasLeads, type AtlasLeadsCommandV1, AtlasLotBoard, type AtlasLotBoardComponentCommandV1, installAtlasLotBoardComponentControllerV1, AtlasLotDevelopment, AtlasMaterials, installAtlasMaterialsComponentControllerV1, AtlasPersonnel, AtlasProgress, AtlasProjectDocuments, AtlasPublicFieldRecords, AtlasPublicLeadsSurface, createAtlasPublicMapRuntimeSurfaceV1, AtlasPublicReservationFlow, AtlasRecords, AtlasReports, AtlasRepasses, AtlasSalesHistory, AtlasSettings, createAtlasStageContextMarkupV1, createAtlasCardCanvasLinkV1, renderAtlasActivityFormGroupsV1 } from './components.js';
+import { type AtlasActivityFormGroupsInputV1, type AtlasAgendaRouteFocusV1, type AtlasDashboardAiGenerationV1, type AtlasDashboardGenerationKindV1, type AtlasOperationalRecordCreateCommandDetailV1, type AtlasDashboardRecordCreateCommandDetailV1, type AtlasProgressRecordDraftDetailV1, type AtlasLegacyOperationalRecordSaveCommandV1, type AtlasLegacyOperationalRecordDeleteCommandV1, type AtlasLegacyRecordEditorComponentCommandV1, type AtlasLegacyProgressRecordCreateCommandV1, type AtlasLegacyActivityCommandV1, type AtlasLegacyViewNavigationCommandV1, AtlasActivities, installAtlasActivitiesComponentControllerV1, AtlasAgenda, installAtlasAgendaComponentControllerV1, AtlasBrokers, AtlasCashRecord, installAtlasCommunicationsComponentControllerV1, AtlasDashboard, installAtlasDashboardComponentControllerV1, AtlasDesktopSetup, AtlasForemen, AtlasLeads, type AtlasLeadsCommandV1, AtlasLotBoard, type AtlasLotBoardComponentCommandV1, installAtlasLotBoardComponentControllerV1, AtlasLotDevelopment, AtlasMaterials, installAtlasMaterialsComponentControllerV1, AtlasPersonnel, AtlasProgress, AtlasProjectDocuments, AtlasPublicFieldRecords, AtlasPublicLeadsSurface, createAtlasPublicMapRuntimeSurfaceV1, AtlasPublicReservationFlow, AtlasRecords, AtlasReports, AtlasRepasses, AtlasSalesHistory, AtlasSettings, createAtlasStageContextMarkupV1, createAtlasCardCanvasLinkV1, renderAtlasActivityFormGroupsV1 } from './components.js';
 import type { AtlasOperationalRecordSubmissionV1 } from './components.js';
 import type { AtlasStageRecordCenterOutputV1 } from './components.js';
 import type { AtlasAgendaDeleteCommandV1, AtlasAgendaFormDraftCommandV1, AtlasAgendaGestureSaveCommandV1, AtlasAgendaRecordDraftCommandV1, AtlasAgendaSaveCommandV1, AtlasAgendaTransitionDraftCommandV1, AtlasProjectDocumentCellSaveCommandV1, AtlasProjectDocumentColumnCreateCommandV1, AtlasProjectDocumentColumnDeleteCommandV1, AtlasProjectDocumentDeleteCommandV1, AtlasProjectDocumentOpenCommandV1, AtlasProjectDocumentSaveCommandV1, AtlasProjectDocumentsImportCommandV1, AtlasProjectDocumentsOpenRequestDetailV1 } from './components.js';
@@ -719,6 +719,7 @@ export function stageOverlayLabelV1(value: unknown): string {
 }
 
 const ATLAS_API_SETTINGS_KEY_V1 = 'belavista.integrations.v1';
+const ATLAS_CLOUDFLARE_WORKER_BASE_V1 = 'https://belavista-cloudflare-worker.icaroglaucooliveira.workers.dev';
 const atlasApiClientTrimBaseV1 = (value: unknown): string => String(value || '').trim().replace(/\/$/, '');
 const atlasApiClientReadSettingsV1 = (): Record<string, unknown> => {
   try {
@@ -727,61 +728,42 @@ const atlasApiClientReadSettingsV1 = (): Record<string, unknown> => {
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
   } catch { return {}; }
 };
-const atlasApiClientTunnelProxyBaseV1 = (): string => {
-  if (typeof location === 'undefined') return '';
-  const hostname = String(location.hostname || '');
-  const ngrokTunnel = /\.ngrok-free\.dev$/i.test(hostname);
-  const cloudflareQuickTunnel = /(?:^|\.)trycloudflare\.com$/i.test(hostname);
-  if (!ngrokTunnel && !cloudflareQuickTunnel) return '';
-  const prefix = location.pathname.match(/^\/\d+(?=\/|$)/)?.[0] || '';
-  return `${location.origin}${prefix || (ngrokTunnel ? '/8080' : '')}`;
+const atlasApiClientCloudflareWorkerBaseV1 = (): string => {
+  const runtime = globalThis as AtlasApiClientRuntimeV1;
+  const candidates = [
+    runtime.BELAVISTA_API_BASE,
+    runtime.BELAVISTA_AI_BASE,
+    typeof document === 'undefined' ? '' : document.querySelector<HTMLMetaElement>('meta[name="belavista-api-base"]')?.content,
+    typeof document === 'undefined' ? '' : document.querySelector<HTMLMetaElement>('meta[name="belavista-ai-base"]')?.content,
+  ];
+  for (const candidate of candidates) {
+    const value = atlasApiClientTrimBaseV1(candidate);
+    if (!value) continue;
+    try {
+      const url = new URL(value);
+      if (url.protocol === 'https:' && url.hostname.endsWith('.workers.dev')) return value;
+    } catch { /* Ignore malformed or non-Worker API origins. */ }
+  }
+  return ATLAS_CLOUDFLARE_WORKER_BASE_V1;
 };
 const atlasApiClientIsAiPathV1 = (path: unknown): boolean =>
   /^\/api\/runtime$|^\/api\/ai(?:$|\/)|^\/api\/inference(?:$|\/)|^\/api\/ai-tools$|^\/api\/ai\/status$|^\/api\/ai\/tools$|^\/api\/gemini(?:$|\/)|^\/api\/media\/attachment(?:$|\/)|^\/api\/public\/lead-chat(?:$|\/)/.test(String(path || ''));
 
-/** Resolve operational requests for local, tunnel, web, and native clients. */
+/** Send operational API traffic only to the configured Cloudflare Worker. */
 export function apiBase(): string {
-  const runtime = globalThis as AtlasApiClientRuntimeV1;
-  const proxy = atlasApiClientTunnelProxyBaseV1();
-  if (proxy) return proxy;
-  const localHost = runtime.BELAVISTA_CAPACITOR_NATIVE !== true && typeof location !== 'undefined'
-    && /^(localhost|127\.0\.0\.1)$/i.test(String(location.hostname || ''));
-  if (localHost) return '';
-  const globalBase = atlasApiClientTrimBaseV1(runtime.BELAVISTA_API_BASE);
-  if (globalBase) return globalBase;
-  const savedBase = atlasApiClientTrimBaseV1(atlasApiClientReadSettingsV1().apiBase);
-  if (savedBase) return savedBase;
-  return typeof document === 'undefined' ? '' : atlasApiClientTrimBaseV1(
-    document.querySelector<HTMLMetaElement>('meta[name="belavista-api-base"]')?.content,
-  );
+  return atlasApiClientCloudflareWorkerBaseV1();
 }
 
-/** Resolve AI requests independently from the operational API origin. */
+/** Route AI and operational requests to the same Cloudflare Worker. */
 export function aiBase(): string {
-  const runtime = globalThis as AtlasApiClientRuntimeV1;
-  const proxy = atlasApiClientTunnelProxyBaseV1();
-  if (proxy) return proxy;
-  const globalBase = atlasApiClientTrimBaseV1(runtime.BELAVISTA_AI_BASE);
-  if (globalBase) return globalBase;
-  const saved = atlasApiClientReadSettingsV1();
-  const savedBase = atlasApiClientTrimBaseV1(saved.aiBase || saved.workerAiBase || saved.apiBase);
-  if (savedBase) return savedBase;
-  const metaBase = typeof document === 'undefined' ? '' : atlasApiClientTrimBaseV1(
-    document.querySelector<HTMLMetaElement>('meta[name="belavista-ai-base"]')?.content,
-  );
-  if (metaBase) return metaBase;
-  const localHost = runtime.BELAVISTA_CAPACITOR_NATIVE !== true && typeof location !== 'undefined'
-    && /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(String(location.hostname || ''));
-  return localHost ? '' : '';
+  return atlasApiClientCloudflareWorkerBaseV1();
 }
 
-/** Normalize a request path without moving same-origin or tunnel routing rules. */
+/** Resolve every API path against the Cloudflare Worker origin. */
 export function apiUrl(path: unknown = ''): string {
   const target = String(path || '');
   if (/^https?:\/\//i.test(target)) return target;
   const normalized = target.startsWith('/') ? target : `/${target}`;
-  const localHost = typeof location !== 'undefined' && /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(String(location.hostname || ''));
-  if (localHost && !atlasApiClientTunnelProxyBaseV1() && /^\/api\/instagram(?:\/|$)/i.test(normalized)) return normalized;
   const base = atlasApiClientIsAiPathV1(normalized) ? aiBase() : apiBase();
   return base ? `${base}${normalized}` : normalized;
 }
@@ -14241,7 +14223,7 @@ export interface DelegatedAccessKey {
   roleName: string;
   permissions: string[];
   createdAt: string;
-  expiresAt: string;
+  expiresAt: string | null;
   revokedAt: string | null;
   createdBy: string;
   /** Present only in the creation response; never returned by subsequent reads. */
@@ -20445,6 +20427,7 @@ export interface AtlasLotCashEntryV1 {
 }
 export interface AtlasLotDetailStateV1 extends Record<string, unknown> {
   selectedLotDetailKey?: string;
+  lotDetailReturnView?: 'lot-development' | 'brokers-board' | 'map' | string;
   lotStatuses?: Record<string, AtlasLotStatus | undefined>;
   lotPaymentPlans?: Record<string, AtlasLotPaymentPlanV1[] | undefined>;
   lotDocuments?: Record<string, AtlasLotDocumentV1[] | undefined>;
@@ -20585,7 +20568,7 @@ export function installAtlasLotDetailProgramCommandsV1(input: AtlasLotDetailProg
     if (command.type === "map-marker-select") {
       input.prepareAssistantLotStatusPromptV1(command.targetLotKey || command.label || command.lotId);
       if (command.targetLotKey && input.REPASSE_PRICE_CATALOG.some(lot => String(lot.label) === command.targetLotKey))
-        patchStore({ view: "lot-detail", selectedLotDetailKey: command.targetLotKey, lastAction: "Abriu a ficha do lote " + command.targetLotKey + " pelo mapa" });
+        patchStore({ view: "lot-detail", selectedLotDetailKey: command.targetLotKey, lotDetailReturnView: input.appStore.get().lotDetailReturnView || 'map', lastAction: "Abriu a ficha do lote " + command.targetLotKey + " pelo mapa" });
       return { ok: true };
     }
     const lot = input.REPASSE_PRICE_CATALOG.find(item => String(item.label) === lotKey);
@@ -22201,7 +22184,7 @@ export function applyAtlasLotBoardComponentCommandV1(input: {
     return;
   }
   if (command.view === 'lot-detail') {
-    appStore.set({ view: 'lot-detail', selectedLotDetailKey: command.lotKey, lastAction: `Abriu a ficha do lote ${command.lotKey}` });
+    appStore.set({ view: 'lot-detail', selectedLotDetailKey: command.lotKey, lotDetailReturnView: 'brokers-board', lastAction: `Abriu a ficha do lote ${command.lotKey}` });
     return;
   }
   appStore.set({ view: 'repasses', repasseSelectedLotKey: command.lotKey, repasseSelectedSaleId: '', lastAction: `Abriu Repasses para o lote ${command.lotKey}` });
@@ -26906,7 +26889,7 @@ export function createAtlasMapSceneStateCommandsV1(appStore: {
     openCatalogLot(catalogLabel: string): void {
       const label = String(catalogLabel || '').trim();
       if (!label) return;
-      appStore.set({ view: 'lot-detail', selectedLotDetailKey: label, lastAction: `Abriu a ficha do lote ${label} pelo mapa` });
+      appStore.set({ view: 'lot-detail', selectedLotDetailKey: label, lotDetailReturnView: 'map', lastAction: `Abriu a ficha do lote ${label} pelo mapa` });
     },
     createReservation(input: AtlasMapReservationCommandInput): AtlasMapReservationCommand {
       const command = createAtlasMapReservationCommand(input);
@@ -32219,6 +32202,28 @@ export function* program(): Generator<SystemAPI, never, void> {
     }
   }
 
+  /** Ask Cloudflare Workers AI for a non-persistent Dashboard preview. */
+  async function generateDashboardAiPlan(event: Event): Promise<void> {
+    const detail = (event as CustomEvent<{ element: AtlasDashboard; kind: AtlasDashboardGenerationKindV1 }>).detail;
+    if (!detail || detail.element !== dashboardElement) return;
+    detail.element.setAiGenerationLoading(detail.kind);
+    try {
+      const response = await apiFetch('/api/ai/dashboard-generation', {
+        method: 'POST', cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: detail.kind }),
+      });
+      const payload = await response.json().catch(() => null) as (AtlasDashboardAiGenerationV1 & { error?: string }) | null;
+      if (!response.ok) throw new Error(payload?.error || `Cloudflare Workers AI respondeu HTTP ${response.status}.`);
+      if (!payload || payload.inference?.provider !== 'cloudflare-workers-ai')
+        throw new Error('A resposta não confirmou geração por Cloudflare Workers AI.');
+      if (detail.element === dashboardElement) detail.element.setAiGenerationResult(payload);
+    } catch (error) {
+      if (detail.element === dashboardElement)
+        detail.element.setAiGenerationError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   /** Supply persisted service actions to the Dashboard component controller. */
   function installDashboardRoute(ViewLayer: { prototype: HTMLElement & Record<string, unknown> }, appStore: { get(): Record<string, unknown>; set(state: Record<string, unknown>): void }, host: Document): void {
     dashboardAppStore = appStore;
@@ -32227,6 +32232,7 @@ export function* program(): Generator<SystemAPI, never, void> {
       host,
       onConnected: element => { dashboardElement = element; void reloadDashboard(); },
       onRefresh: element => { if (element === dashboardElement) void reloadDashboard(); },
+      onGenerate: event => { void generateDashboardAiPlan(event); },
       onReport: event => { void exportDashboardReport(event); },
       onRecordCreate: event => { void createDashboardRecord(event); },
       onQuickRecord: event => { void createDashboardQuickRecord(event, appStore, host); },
@@ -32878,7 +32884,7 @@ export function* program(): Generator<SystemAPI, never, void> {
       onLotDetailOpen:event=>{
         const detail=(event as CustomEvent<{element:AtlasLotDevelopment;lotKey:string}>).detail;
         if(!detail||detail.element!==lotDevelopmentElement||!lotDevelopmentProfilesCache.some(profile=>profile.kind==='lot'&&profile.lotLabel===detail.lotKey))return;
-        navigateRoute(appStore,{view:'lot-detail'},{selectedLotDetailKey:detail.lotKey,lastAction:`Abriu a ficha do lote ${detail.lotKey}`});
+        navigateRoute(appStore,{view:'lot-detail'},{selectedLotDetailKey:detail.lotKey,lotDetailReturnView:'lot-development',lastAction:`Abriu a ficha do lote ${detail.lotKey}`});
       },
     });
   }
@@ -37645,8 +37651,8 @@ export function installAtlasAdminAuthSessionFlowV1(ports: AtlasAdminAuthSessionF
   const errorMessage = (error: unknown, fallback: string): string =>
     error instanceof Error && error.message ? error.message : fallback;
 
-  const acceptPat = async (pat: string, remember = true): Promise<void> => {
-    const session = await ports.sessionRequest('POST', '', { pat });
+  const acceptPat = async (pat: string, account = '', remember = true): Promise<void> => {
+    const session = await ports.sessionRequest('POST', '', { pat, ...(account ? { account } : {}) });
     if (!/^bvs_[a-f0-9]{64}$/.test(String(session.token || ''))) throw new Error('O servidor retornou uma sessão inválida.');
     try {
       if (remember) await ports.saveCredential(pat);
@@ -37662,11 +37668,18 @@ export function installAtlasAdminAuthSessionFlowV1(ports: AtlasAdminAuthSessionF
   ports.rootElement.dataset.belavistaAuthSessionOwnerV1 = 'typescript';
   ports.form.addEventListener('submit', async event => {
     event.preventDefault();
-    const pat = String(new FormData(ports.form).get('pat') || '').trim();
+    const formData = new FormData(ports.form);
+    const pat = String(formData.get('pat') || '').trim();
+    const account = String(formData.get('account') || '').trim();
+    if (ports.mobile && !account) {
+      ports.status.textContent = 'Informe o nome da conta de campo criada em Configurações.';
+      ports.form.querySelector<HTMLInputElement>('input[name="account"]')?.focus();
+      return;
+    }
     ports.button.disabled = true;
-    ports.status.textContent = 'Validando acesso ao repositório…';
+    ports.status.textContent = ports.mobile ? 'Validando conta de campo…' : 'Validando acesso ao repositório…';
     try {
-      await acceptPat(pat);
+      await acceptPat(pat, account);
       ports.form.reset();
     } catch (error) {
       const statusCode = errorStatus(error);
@@ -37675,9 +37688,9 @@ export function installAtlasAdminAuthSessionFlowV1(ports: AtlasAdminAuthSessionF
         await ports.clearCredential().catch(() => {});
         ports.clearSessionToken();
         ports.credentialInput.value = '';
-        ports.status.textContent = errorMessage(error, 'O GitHub recusou o PAT ou o acesso ao repositório.');
+        ports.status.textContent = errorMessage(error, ports.mobile ? 'Conta ou chave de campo inválida.' : 'O GitHub recusou o PAT ou o acesso ao repositório.');
       } else if (statusCode === 403) {
-        ports.status.textContent = errorMessage(error, 'O PAT foi reconhecido, mas não tem permissão para este repositório.');
+        ports.status.textContent = errorMessage(error, ports.mobile ? 'A conta não tem permissão para esta ação.' : 'O PAT foi reconhecido, mas não tem permissão para este repositório.');
       }
       ports.mark('auth.session.error', { message: ports.status.textContent });
     } finally {
@@ -37691,8 +37704,14 @@ export function installAtlasAdminAuthSessionFlowV1(ports: AtlasAdminAuthSessionF
     if (token) {
       ports.status.textContent = 'Restaurando sessão…';
       try {
-        ports.activate(await ports.sessionRequest('GET', token), token, ports.resolveReady);
-        return;
+        const session = await ports.sessionRequest('GET', token);
+        if (ports.mobile && session.actor?.mode !== 'delegated-foreman-key') {
+          ports.clearSessionToken();
+          tokenRejected = true;
+        } else {
+          ports.activate(session, token, ports.resolveReady);
+          return;
+        }
       } catch (error) {
         const statusCode = errorStatus(error);
         if (statusCode === 401 || statusCode === 403) {
@@ -37709,9 +37728,15 @@ export function installAtlasAdminAuthSessionFlowV1(ports: AtlasAdminAuthSessionF
       try {
         const pat = String(await ports.loadCredential() || '');
         if (pat) {
+          if (ports.mobile && !pat.startsWith('bvk_')) {
+            await ports.clearCredential().catch(() => {});
+            ports.clearSessionToken();
+            ports.status.textContent = 'Acesso antigo removido. Entre com o usuário e a chave de campo de Configurações.';
+            return;
+          }
           ports.status.textContent = 'Renovando sessão…';
           try {
-            await acceptPat(pat, false);
+            await acceptPat(pat, '', false);
             return;
           } catch (error) {
             const statusCode = errorStatus(error);
@@ -37719,9 +37744,9 @@ export function installAtlasAdminAuthSessionFlowV1(ports: AtlasAdminAuthSessionF
               await ports.clearCredential().catch(() => {});
               ports.clearSessionToken();
               ports.credentialInput.value = '';
-              ports.status.textContent = errorMessage(error, 'O PAT salvo foi recusado pelo GitHub ou não tem acesso ao repositório.');
+              ports.status.textContent = errorMessage(error, ports.mobile ? 'A chave salva foi revogada ou expirou.' : 'O PAT salvo foi recusado pelo GitHub ou não tem acesso ao repositório.');
             } else if (statusCode === 403) {
-              ports.status.textContent = errorMessage(error, 'O PAT salvo foi reconhecido, mas não tem permissão para este repositório.');
+              ports.status.textContent = errorMessage(error, ports.mobile ? 'A chave salva não tem permissão para esta ação.' : 'O PAT salvo foi reconhecido, mas não tem permissão para este repositório.');
             } else {
               ports.status.textContent = errorMessage(error, 'Não foi possível renovar a sessão.');
             }
@@ -37735,7 +37760,7 @@ export function installAtlasAdminAuthSessionFlowV1(ports: AtlasAdminAuthSessionF
         return;
       }
     }
-    ports.status.textContent = 'Informe um PAT com acesso ao repositório.';
+    ports.status.textContent = ports.mobile ? 'Informe a conta e a chave de campo.' : 'Informe um PAT com acesso ao repositório.';
   })();
 }
 
@@ -37793,13 +37818,13 @@ export function requestAtlasAdminAuthSessionV1(input: AtlasAdminAuthNetworkPorts
   const serviceOrigin = (() => { try { return new URL(input.endpoint, globalThis.location?.href).origin; } catch { return ''; } })();
   return requestAtlasAdminAuthJsonV1({
     ...input,
-    responseFormatMessage: origin => `O endereço aberto (${origin || serviceOrigin}) respondeu HTML no endpoint de autenticação. Abra o CMS pela porta do servidor da aplicação, não pelo Hosting estático.`,
-    timeoutMessage: origin => `O serviço de autenticação em ${origin || serviceOrigin} não respondeu em 30 segundos. Confirme que o servidor está ativo e tente novamente.`,
+    responseFormatMessage: origin => `O Cloudflare Worker em ${origin || serviceOrigin} respondeu HTML no endpoint de autenticação. Confira o endereço e a rota do Worker.`,
+    timeoutMessage: origin => `O Cloudflare Worker em ${origin || serviceOrigin} não respondeu em 30 segundos. Confira a conexão e tente novamente.`,
     networkMessage: (origin, error) => {
       const detail = String((error as { message?: unknown })?.message || '').trim();
       const safeDetail = detail && !/^(failed to fetch|load failed|networkerror when attempting to fetch resource\.)$/i.test(detail)
         ? ` Detalhe: ${detail}` : '';
-      return `Não foi possível conectar ao serviço de autenticação em ${origin || serviceOrigin}. Confirme que o servidor está ativo e tente novamente.${safeDetail}`;
+      return `Não foi possível conectar ao Cloudflare Worker em ${origin || serviceOrigin}. Confira a conexão e tente novamente.${safeDetail}`;
     },
   });
 }
@@ -37841,6 +37866,7 @@ export async function revokeAtlasAdminWorkerSessionV1(input: Pick<AtlasAdminAuth
 
 export interface AtlasAdminAuthRuntimePortsV1 extends AtlasAdminAuthNetworkPortsV1 {
   rootElement: HTMLElement;
+  mobile: boolean;
   readSessionToken(): string;
   clearSessionToken(): void;
   readActiveSessionToken(): string | null;
@@ -37906,7 +37932,7 @@ export function createAtlasAdminAuthRuntimeV1(ports: AtlasAdminAuthRuntimePortsV
     if (authInvalidationPromise) return authInvalidationPromise;
     const token = ports.readSessionToken();
     if (!token) {
-      ports.showAuthGate('Informe um PAT com acesso ao repositório.', false);
+      ports.showAuthGate(ports.mobile ? 'Informe o usuário e a chave de campo.' : 'Informe um PAT com acesso ao repositório.', false);
       return;
     }
     authInvalidationPromise = ports.sessionRequest('GET', token)
@@ -37917,7 +37943,9 @@ export function createAtlasAdminAuthRuntimeV1(ports: AtlasAdminAuthRuntimePortsV
           ports.clearSessionToken();
           ports.clearAuthenticatedActor();
           ports.rootElement.dataset.belavistaAuthPending = 'true';
-          ports.showAuthGate('A sessão foi recusada pelo serviço. Informe novamente um PAT com acesso ao repositório.', true);
+          ports.showAuthGate(ports.mobile
+            ? 'A sessão foi recusada. Entre novamente com o usuário e a chave de campo.'
+            : 'A sessão foi recusada pelo serviço. Informe novamente um PAT com acesso ao repositório.', true);
           ports.mark('auth.session.invalidated', { reason: 'auth-session-401' });
           return true;
         }
@@ -38037,7 +38065,7 @@ export interface AtlasAdminNativePatVaultV1 {
 }
 
 export interface AtlasAdminAuthGateComponentsV1 {
-  mountAtlasAdminAuthGateV1(input: { documentRef: Document; mobile: boolean }): HTMLElement;
+  mountAtlasAdminAuthGateV1(input: { documentRef: Document; mobile: boolean; demoAccessAvailable?: boolean }): HTMLElement;
   showAtlasAdminAuthGateMessageV1(input: {
     gate: HTMLElement;
     body: HTMLElement;
@@ -38053,6 +38081,7 @@ export interface AtlasAdminAuthApplicationPortsV1 {
   windowRef: Window & typeof globalThis;
   mobile: boolean;
   desktopDemoMode?: boolean;
+  demoAccessAvailable?: boolean;
   desktopMode?: string;
   desktopAvailableModes?: readonly string[];
   desktopEnvironment?: AtlasDesktopEnvironmentBridge;
@@ -38093,6 +38122,23 @@ export function installAtlasAdminAuthApplicationV1(ports: AtlasAdminAuthApplicat
     runtime.BELAVISTA_ADMIN_AUTH_REQUIRED = false;
     runtime.BELAVISTA_ADMIN_ACTOR = actor;
     runtime.BELAVISTA_GET_ID_TOKEN = () => null;
+    runtime.BELAVISTA_ADMIN_SIGN_OUT = async () => {
+      runtime.BELAVISTA_ADMIN_AUTH_REQUIRED = true;
+      try { await clearAtlasAdminPatV1(); } catch { /* logout must finish if the vault is unavailable */ }
+      try { windowRef.localStorage.removeItem('belavista.github.session.v1'); } catch { /* storage may be blocked */ }
+      runtime.BELAVISTA_RESET_WORKER_SESSION?.();
+      delete runtime.BELAVISTA_GET_WORKER_ID_TOKEN;
+      delete runtime.BELAVISTA_RESET_WORKER_SESSION;
+      delete runtime.BELAVISTA_ADMIN_AUTH_INVALIDATE;
+      delete runtime.BELAVISTA_ADMIN_ACTOR;
+      delete runtime.BELAVISTA_GET_ID_TOKEN;
+      delete rootElement.dataset.belavistaAuth;
+      delete rootElement.dataset.belavistaAuthRole;
+      delete rootElement.dataset.belavistaDesktopEnvironment;
+      const destination = new URL(windowRef.location.href);
+      destination.searchParams.delete('demo');
+      windowRef.location.replace(`${destination.pathname}${destination.search}${destination.hash}`);
+    };
     rootElement.dataset.belavistaAuth = 'ready';
     rootElement.dataset.belavistaAuthRole = actor.role;
     rootElement.dataset.belavistaDesktopEnvironment = 'local-test';
@@ -38106,13 +38152,21 @@ export function installAtlasAdminAuthApplicationV1(ports: AtlasAdminAuthApplicat
   mark('auth.module.start', { provider: 'github-pat', route: path });
 
   let gate: HTMLElement;
-  try { gate = ports.components.mountAtlasAdminAuthGateV1({ documentRef, mobile }); }
+  try { gate = ports.components.mountAtlasAdminAuthGateV1({ documentRef, mobile, demoAccessAvailable: ports.demoAccessAvailable }); }
   catch { return false; }
   const form = gate.querySelector<HTMLFormElement>('form');
   const credentialInput = form?.querySelector<HTMLInputElement>('input[name="pat"]');
   const status = form?.querySelector<HTMLOutputElement>('.belavista-auth-status');
   const button = form?.querySelector<HTMLButtonElement>('button[type="submit"], button');
   if (!form || !credentialInput || !status || !button) return false;
+  const demoButton = gate.querySelector<HTMLButtonElement>('[data-demo-login]');
+  if (demoButton && ports.demoAccessAvailable && !mobile) {
+    demoButton.addEventListener('click', () => {
+      const destination = new URL(windowRef.location.href);
+      destination.searchParams.set('demo', '1');
+      windowRef.location.assign(`${destination.pathname}${destination.search}${destination.hash}`);
+    });
+  }
   rootElement.dataset.belavistaAuthTransportOwnerV1 = 'typescript';
   mark('auth.gate.visible', { owner: gate.dataset.authGateOwnerV1 || 'typescript' });
   const environmentSwitch = gate.querySelector<HTMLElement>('[data-desktop-environment-switch]');
@@ -38216,7 +38270,7 @@ export function installAtlasAdminAuthApplicationV1(ports: AtlasAdminAuthApplicat
     delete rootElement.dataset.belavistaAuthProjectionOwnerV1;
   };
   const authRuntime = createAtlasAdminAuthRuntimeV1({
-    rootElement, readSessionToken, clearSessionToken,
+    rootElement, mobile, readSessionToken, clearSessionToken,
     readActiveSessionToken: () => runtime.BELAVISTA_GET_ID_TOKEN?.() || null,
     sessionRequest: (method, token) => sessionRequest(method, token),
     workerOrigin,

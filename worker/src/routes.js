@@ -49,6 +49,7 @@ import {getNvidiaRuntime,
 import {buildRecordInterpretationV1} from '../../record-stage-interpretation-v1.mjs';
 import {runPlanningCycle} from './planning-service.js';
 import {runOperationalLoop} from './operational-loop.js';
+import {generateDashboardPlanWithCloudflareAi} from './dashboard-generation.js';
 import {runPublicLeadConversation} from './public-lead-ai.js';
 import {getGitHubRuntime,readOperationalConfig,writeOperationalConfig,loadOperationalConfiguration,readRepositoryJson,writeRepositoryJson} from './github-store.js';
 import {requireAdminRequest,bearerToken} from './request-auth.js';
@@ -105,7 +106,10 @@ export async function routeRequest(request,env,ctx){
   const pathname=url.pathname.replace(/\/+$/,'')||'/';
 
   if(pathname==='/api/auth/session'){
-    if(request.method==='POST')return json(await openGithubSession(env,(await body(request)).pat),201,{'cache-control':'no-store'});
+    if(request.method==='POST'){
+      const payload=await body(request);
+      return json(await openGithubSession(env,payload.pat,{account:payload.account}),201,{'cache-control':'no-store'});
+    }
     if(request.method==='GET')return json({actor:await requireAdminRequest(request,env)},200,{'cache-control':'no-store'});
     if(request.method==='DELETE'){
       await requireAdminRequest(request,env);
@@ -510,6 +514,16 @@ export async function routeRequest(request,env,ctx){
       inference:{provider:'nvidia',strict:true,requireFullState:true,requireMetaTrace:true,noDeterministicFallback:true,...(payload.inference||{})}
     });
     return json(result,payload.persist===true?201:200);
+  }
+
+  if(pathname==='/api/ai/dashboard-generation'&&request.method==='POST'){
+    await requireAdminRequest(request,env);
+    try{
+      const payload=await body(request);
+      return json(await generateDashboardPlanWithCloudflareAi(env,{kind:payload.kind||'complete'}));
+    }catch(error){
+      return json({error:String(error?.message||error),provider:'cloudflare-workers-ai'},Number(error?.statusCode)||502);
+    }
   }
 
   if((pathname==='/api/ai'||pathname==='/api/ai/vision-reasoning'||pathname==='/api/gemini')&&request.method==='POST'){

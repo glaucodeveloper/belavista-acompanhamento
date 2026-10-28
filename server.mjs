@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
-import { readFile, readdir } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -54,6 +55,18 @@ const isLocalDevelopmentRequest=developmentMilestones?.isLocalDevelopmentRequest
 const listStageMilestones=developmentMilestones?.listStageMilestones||(()=>[]);
 const milestoneImage=developmentMilestones?.milestoneImage||(()=>null);
 const startStageMilestoneRun=developmentMilestones?.startStageMilestoneRun||(()=>null);
+const {DEFAULT_STAGES_CONFIG}=await import('./worker/src/demo-defaults.js');
+const operationalDataRoot=process.env.BELAVISTA_DATA_ROOT
+  ? join(resolve(process.env.BELAVISTA_DATA_ROOT),'operational')
+  : join(serverRoot,'data','operational');
+const operationalStagesFile=join(operationalDataRoot,'stages.json');
+await mkdir(operationalDataRoot,{recursive:true});
+try { await readFile(operationalStagesFile); }
+catch(error){
+  if(error?.code!=='ENOENT')throw error;
+  try { await writeFile(operationalStagesFile,`${JSON.stringify(DEFAULT_STAGES_CONFIG,null,2)}\n`,{flag:'wx'}); }
+  catch(writeError){if(writeError?.code!=='EEXIST')throw writeError;}
+}
 
 // A mesma fonte legível pelo time fica incorporada ao prompt operacional. Isso
 // evita que a interface, o worker e o modelo mantenham ordens de execução
@@ -181,6 +194,29 @@ function inferredToolCalls(message){
 async function body(req,maxBytes=16_000_000){ let data='',size=0,exceeded=false; for await (const chunk of req){size+=chunk.length;if(size>maxBytes){exceeded=true;continue;}if(!exceeded)data+=chunk;} if(exceeded){const error=new Error('Corpo da requisição excede o limite permitido.');error.statusCode=413;throw error;} return JSON.parse(data||'{}'); }
 async function rawBody(req,maxBytes=16_000_000){ const chunks=[]; let size=0; for await (const chunk of req){size+=chunk.length;if(size>maxBytes){const error=new Error('Corpo da requisição excede o limite permitido.');error.statusCode=413;throw error;}chunks.push(chunk);} return Buffer.concat(chunks); }
 const recordRoles=['owner','admin','foreman','sales','commercial','broker','corretor'];
+const operationalStagesConfigSha=content=>createHash('sha256').update(content).digest('hex');
+async function localOperationalStagesConfigApi(req,res){
+  if(req.method==='GET'){
+    await requireRoles(req,recordRoles);
+    const content=await readFile(operationalStagesFile,'utf8');
+    return send(res,200,{kind:'stages',path:'data/operational/stages.json',source:'local-data-file',sha:operationalStagesConfigSha(content),data:JSON.parse(content)},{'Cache-Control':'no-store'});
+  }
+  if(req.method==='PUT'){
+    await requireRoles(req,['owner','admin']);
+    const payload=await body(req,2*1024*1024);
+    if(!payload.data||typeof payload.data!=='object')return send(res,400,{error:'Informe um objeto de configuração de etapas.'});
+    const current=await readFile(operationalStagesFile,'utf8');
+    const currentSha=operationalStagesConfigSha(current);
+    if(payload.sha&&String(payload.sha)!==currentSha)return send(res,409,{error:'A configuração mudou desde a leitura. Atualize e tente novamente.'});
+    const content=`${JSON.stringify(payload.data,null,2)}\n`;
+    const nextSha=operationalStagesConfigSha(content);
+    const temporaryFile=join(operationalDataRoot,`.stages-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}.tmp`);
+    await writeFile(temporaryFile,content,{flag:'wx'});
+    await rename(temporaryFile,operationalStagesFile);
+    return send(res,200,{kind:'stages',path:'data/operational/stages.json',source:'local-data-file',sha:nextSha,data:payload.data},{'Cache-Control':'no-store'});
+  }
+  return send(res,405,{error:'Método não permitido.'},{Allow:'GET, PUT'});
+}
 const limitedApiPublicPaths=new Set(['/api/health','/api/runtime','/api/ai/status','/api/inference/status','/api/ai/tools','/api/public/catalog','/api/auth/session']);
 async function authorizeApiSurface(req,pathname){
   if(!pathname.startsWith('/api/')||limitedApiPublicPaths.has(pathname)||pathname.startsWith('/api/public/')||(pathname==='/api/desktop/setup'&&isLoopbackRequest(req)))return;
@@ -1352,6 +1388,14 @@ createServer(async (req,res)=>{
       return await githubAuthApi(req,res,pathname);
     }
     catch(error){return send(res,error?.statusCode||500,{error:error?.message||'Falha na autenticação GitHub.'});}
+  }
+  if(new URL(req.url,'http://localhost').pathname==='/api/admin/config/stages'){
+    const pathname='/api/admin/config/stages';
+    try{
+      await authorizeApiSurface(req,pathname);
+      if(shouldProxyApi(pathname))return await proxyApi(req,res,pathname);
+      return await localOperationalStagesConfigApi(req,res);
+    }catch(error){return send(res,error?.statusCode||500,{error:error?.message||'Falha na configuração operacional das etapas.'});}
   }
   if(new URL(req.url,'http://localhost').pathname.startsWith('/api/activities')){
     try{const pathname=new URL(req.url,'http://localhost').pathname;await authorizeApiSurface(req,pathname);return await activitiesApi(req,res,pathname);}
