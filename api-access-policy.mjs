@@ -11,6 +11,8 @@ export const limitedActorCanAccessApi = (actor, pathname, method = "GET", search
   const normalizedMethod = String(method || "GET").toUpperCase();
   const query = new URLSearchParams(String(search || "").replace(/^\?/, ""));
   const records = RECORD_ROUTE.test(String(pathname || "")) && ["GET", "POST", "PUT"].includes(normalizedMethod);
+  const attachments = (pathname === "/api/workbench/attachments" && ["GET", "POST"].includes(normalizedMethod)) ||
+    (/^\/api\/workbench\/attachments\/[^/]+\/file$/.test(String(pathname || "")) && normalizedMethod === "GET");
   const recordInference = ["/api/ai", "/api/ai/vision-reasoning", "/api/inference", "/api/records/ocr"]
     .includes(String(pathname || "")) && normalizedMethod === "POST";
   const timeline =
@@ -20,5 +22,5 @@ export const limitedActorCanAccessApi = (actor, pathname, method = "GET", search
     (STAGE_READ_ROUTE.test(String(pathname || "")) && normalizedMethod === "GET") ||
     (pathname === "/api/workbench/state" && normalizedMethod === "GET" && !query.has("resource")) ||
     (pathname === "/api/workbench/diary" && normalizedMethod === "GET" && !query.has("resource"));
-  return records || recordInference || timeline;
+  return records || attachments || recordInference || timeline;
 };

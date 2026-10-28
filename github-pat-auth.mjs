@@ -50,8 +50,13 @@ export async function verifyRepositoryPat(value,repository){
     }
     throw error;
   }
-  if(repositoryInfo.full_name?.toLowerCase()!==repo.toLowerCase()||repositoryInfo.private!==true){
-    throw authError(`O repositório ${repo} não corresponde ao repositório privado configurado para autenticação.`,403);
+  if(repositoryInfo.full_name?.toLowerCase()!==repo.toLowerCase()){
+    throw authError(`O repositório consultado não corresponde ao configurado para autenticação.`,403);
+  }
+  // The release repository is public, so repository visibility cannot prove
+  // collaborator access. In that case, restrict admin sessions to its owner.
+  if(repositoryInfo.private!==true&&user.login.toLowerCase()!==repo.split('/')[0].toLowerCase()){
+    throw authError(`O repositório ${repo} é público; somente a conta proprietária pode autenticar o painel.`,403);
   }
   return {githubId:user.id,githubLogin:String(user.login),name:String(user.name||user.login),
     avatarUrl:String(user.avatar_url||'')};

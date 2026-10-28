@@ -11,7 +11,7 @@ export default {
     const cors={
       ...(allowOrigin?{'access-control-allow-origin':allowOrigin}:{}),
       'access-control-allow-methods':'GET,POST,PUT,PATCH,DELETE,OPTIONS',
-      'access-control-allow-headers':'authorization,content-type,x-belavista-token',
+      'access-control-allow-headers':'authorization,content-type,x-belavista-token,x-belavista-role,x-belavista-user,x-belavista-name',
       'access-control-max-age':'86400',
       vary:'Origin'
     };

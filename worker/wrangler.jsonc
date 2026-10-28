@@ -32,7 +32,7 @@
     "NVIDIA_TIMEOUT_MS": "45000",
     "NVIDIA_TOP_P": "0.8",
     "NVIDIA_VISION_MODEL": "meta/llama-3.2-90b-vision-instruct",
-    "WORKERS_AI_MODEL": "@cf/nvidia/nemotron-3-120b-a12b"
+    "WORKERS_AI_MODEL": "@cf/meta/llama-3.1-8b-instruct-fp8"
   },
   "d1_databases": [
     {

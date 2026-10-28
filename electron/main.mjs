@@ -85,10 +85,9 @@ function startLocalServer(){
   serverProcess.once('exit',code=>{if(code&&code!==0)console.error('[desktop service] exited',code);serverProcess=null;});
 }
 
-async function currentRoute(){
-  const response=await fetchRuntime(`${baseUrl}/api/desktop/setup`,{signal:AbortSignal.timeout(2500)});
-  const payload=await response.json().catch(()=>({}));
-  if(!payload?.setup?.complete)return '/desktop/setup';
+function currentRoute(){
+  // Start at the app's existing access gate. The Instagram station setup stays
+  // available as a separate route and must not replace the security-key screen.
   return activeMode==='local'?'/admin?desktop=ready&demo=1':'/admin?desktop=ready';
 }
 
@@ -119,7 +118,7 @@ function currentWindowRoute(){
     current.searchParams.delete('demo');
     if(activeMode==='local')current.searchParams.set('demo','1');
     return `${pathname}${current.search}${current.hash}`;
-  }catch{return activeMode==='local'?'/desktop/setup?demo=1':'/desktop/setup';}
+  }catch{return activeMode==='local'?'/admin?desktop=ready&demo=1':'/admin?desktop=ready';}
 }
 
 async function switchEnvironment(mode){

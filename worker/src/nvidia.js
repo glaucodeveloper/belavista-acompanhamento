@@ -1,3 +1,5 @@
+import {extractPdfText,isConstructionSupply,parseInvoicePdfText} from './pdf-record-ocr.js';
+
 const WORKERS_MODEL='@cf/nvidia/nemotron-3-120b-a12b';
 const DEFAULT_NVIDIA_MODEL='google/diffusiongemma-26b-a4b-it';
 const DEFAULT_VISION_MODEL='meta/llama-3.2-90b-vision-instruct';
@@ -80,13 +82,16 @@ function normalizeVisionAttachment(attachment){
   return {name:truncate(attachment?.name||'imagem colada',120),mimeType,dataUrl:`data:${mimeType};base64,${base64}`};
 }
 
-async function callWorkersAI(env,prompt){
+async function callWorkersAI(env,prompt,{jsonMode=false,maxTokens=900,temperature=0.25}={}){
   if(!env.AI?.run)return null;
   const result=await env.AI.run(env.WORKERS_AI_MODEL||WORKERS_MODEL,{
     messages:[
  {role:'system',content:'Você é um assistente operacional do Aliança Park. Responda em JSON curto e objetivo.'},
       {role:'user',content:prompt}
-    ]
+    ],
+    max_tokens:maxTokens,
+    temperature,
+    ...(jsonMode?{response_format:{type:'json_object'}}:{})
   });
   return result?.response||result?.text||null;
 }
@@ -857,6 +862,47 @@ function parseOcrJsonV26b(value){
   }
 
   return {value:null,mode:'failed'};
+}
+
+/** Extract selectable invoice text, use Cloudflare Workers AI, and enforce office routing. */
+export async function extractInvoicePdfOcr(env,{attachment,context=null}={}){
+  const extracted=await extractPdfText(attachment);
+  const stages=Array.isArray(context?.stages)?context.stages:[];
+  const deterministic=parseInvoicePdfText(extracted.text,{stages});
+  if(!deterministic){const error=new Error('O arquivo foi aberto, mas o conteúdo não foi reconhecido como nota fiscal pesquisável.');error.statusCode=422;throw error;}
+  const prompt=[
+    'Leia o texto extraído da nota fiscal e devolva somente JSON válido.',
+    'Extraia número, série, data de emissão, fornecedor, CNPJ, chave de acesso, total em centavos e todos os itens com código, descrição, quantidade, unidade e valores em centavos.',
+    'Regra de destino obrigatória: somente insumos diretamente usados na construção ou no canteiro seguem para etapa de obra. Todo item de outra natureza — incluindo eletrônicos, itens pessoais, escritório e despesas administrativas — recebe stageKey="office" e stageName="Escritório". A seleção atual da interface não é destino implícito.',
+    'Não invente nem corrija valores. Use confidence de 0 a 1. Formato: {documentType,confidence,invoiceNumber,series,issueDate,supplier,supplierCnpj,accessKey,totalAmountCents,items:[{itemKind,materialId,description,quantity,unit,unitPriceCents,totalPriceCents,stageKey,stageName,confidence}]}.',
+    'Texto da nota fiscal:', extracted.text.slice(0,36_000)
+  ].join('\n');
+  let inference={provider:'cloudflare-workers-ai',model:String(env.WORKERS_AI_MODEL||WORKERS_MODEL),status:'unavailable',error:''};
+  try{
+    const response=await callWorkersAI(env,prompt,{jsonMode:true,maxTokens:1400,temperature:0});
+    const parsed=response&&typeof response==='object'&&!Array.isArray(response)
+      ?response
+      :response?parseOcrJsonV26b(response).value:null;
+    inference={provider:'cloudflare-workers-ai',model:String(env.WORKERS_AI_MODEL||WORKERS_MODEL),status:parsed?'completed':response?'unparsed':'unavailable',error:parsed?'':response?'O Cloudflare Workers AI respondeu, mas o JSON não pôde ser interpretado.':'Binding Cloudflare Workers AI indisponível no Worker.'};
+  }catch(error){
+    inference={provider:'cloudflare-workers-ai',model:String(env.WORKERS_AI_MODEL||WORKERS_MODEL),status:'failed',error:String(error?.message||error).slice(0,240)};
+  }
+  const officeStage=stages.find(stage=>String(stage.key||'').toLowerCase()==='office'||String(stage.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()==='escritorio');
+  const items=deterministic.items.map(item=>isConstructionSupply(item.description)
+    ?{...item,stageKey:'',stageName:'',destinationHint:'construction-stage-required'}
+    :{...item,stageKey:String(officeStage?.key||'office'),stageName:String(officeStage?.name||'Escritório'),destinationHint:'office'});
+  const office=items.some(item=>item.destinationHint==='office');
+  const properties=[...(deterministic.properties||[]),
+    {key:'pdfPageCount',label:'Páginas do PDF',type:'number',value:extracted.totalPages,confidence:1},
+    {key:'inferenceProvider',label:'Leitura assistida por',type:'text',value:`Cloudflare Workers AI · ${inference.model}`,confidence:1}
+  ];
+  return {
+    ...deterministic,items,properties,text:extracted.text.slice(0,12_000),rawText:extracted.text.slice(0,12_000),totalPages:extracted.totalPages,
+    provider:inference.provider,...(inference.model?{model:inference.model}:{}),
+    inference:{provider:inference.provider,model:inference.model,status:inference.status,...(inference.error?{error:inference.error}:{})},
+    classification:office?'administrative':'construction',destinationStageKey:office?String(officeStage?.key||'office'):'',
+    destinationStageName:office?String(officeStage?.name||'Escritório'):'',reviewRequired:true
+  };
 }
 
 // Alguns VLMs obedecem ao conteúdo do esquema, mas antecedem o JSON com uma

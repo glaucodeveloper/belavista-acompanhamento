@@ -43,6 +43,7 @@ import {getNvidiaRuntime,
   runVisualDigest,
   runInstagramCommercialLeadAssistant,
   runWholeWorkJourneyExplanation,
+  extractInvoicePdfOcr,
   extractInstantRecordOcr
 } from './nvidia.js';
 import {buildRecordInterpretationV1} from '../../record-stage-interpretation-v1.mjs';
@@ -62,6 +63,8 @@ import {saveLotDocument} from './lot-document-store.js';
 import {listProjectDocuments,getProjectDocument,saveProjectDocument,deleteProjectDocument,getProjectDocumentFile,createProjectDocumentColumn,deleteProjectDocumentColumn} from './project-document-store.js';
 import {webhookVerification,parseWebhook,saveInboundSocialMessages,socialRuntime,listSocialConversations,listSocialMessages,sendSocialMessage,saveInstagramCommercialLead,listInstagramFeed,replyInstagramComment,getInstagramAutomationPolicy,saveInstagramAutomationPolicy} from './social.js';
 import {getHeldImage,holdImageInWorker,readHeldImageDataUrl,normalizeImageAttachment} from './media-attachments.js';
+import {normalizePdfAttachment} from './pdf-record-ocr.js';
+import {createWorkbenchAttachment,getWorkbenchAttachmentFile,listWorkbenchAttachments} from './workbench-attachment-store.js';
 
 const JSON_HEADERS={'content-type':'application/json; charset=utf-8'};
 
@@ -110,6 +113,24 @@ export async function routeRequest(request,env,ctx){
       return json({ok:true},200,{'cache-control':'no-store'});
     }
     return methodNotAllowed();
+  }
+  if(pathname==='/api/workbench/attachments'){
+    const actor=await requireAdminRequest(request,env);
+    const stageKey=url.searchParams.get('stage')||'',activityId=url.searchParams.get('activity')||'';
+    if(request.method==='GET')return json({attachments:await listWorkbenchAttachments(env,stageKey,activityId)},200,{'cache-control':'no-store'});
+    if(request.method==='POST'){
+      const payload=await body(request);
+      const attachment=await createWorkbenchAttachment(env,{...payload,stageKey:payload.stageKey||stageKey,activityId:payload.activityId||activityId},actor);
+      return json({attachment},201,{'cache-control':'no-store'});
+    }
+    return methodNotAllowed();
+  }
+  const workbenchAttachmentFile=pathname.match(/^\/api\/workbench\/attachments\/([^/]+)\/file$/);
+  if(workbenchAttachmentFile&&request.method==='GET'){
+    await requireAdminRequest(request,env);
+    const file=await getWorkbenchAttachmentFile(env,decodeURIComponent(workbenchAttachmentFile[1]));
+    if(!file)return notFound('Anexo não encontrado.');
+    return new Response(file.content,{status:200,headers:{'content-type':file.mimeType,'content-length':String(file.content.byteLength),'content-disposition':`inline; filename*=UTF-8''${encodeURIComponent(file.fileName)}`,'cache-control':'private, no-store','x-content-type-options':'nosniff'}});
   }
   if(pathname==='/api/access-roles'){
     const actor=await requireAdminRequest(request,env);
@@ -502,10 +523,25 @@ export async function routeRequest(request,env,ctx){
       if((reasoningVision||payload.attachment)&&!permissions.has('ai.photos'))return json({error:'Esta chave não tem permissão para enviar fotos à IA.'},403);
       if(!reasoningVision&&!payload.attachment&&!permissions.has('ai.notes'))return json({error:'Esta chave não tem permissão para enviar notas à IA.'},403);
     }
-    if(reasoningVision&&!payload.attachment)return json({error:'A rota de reasoning exige uma imagem.'},400);
+    if(reasoningVision&&!payload.attachment)return json({error:'A rota de leitura visual exige uma imagem ou nota PDF.'},400);
     const snapshot=delegated?null:await getOperationalSnapshot(env).catch(()=>null);
     const image=payload.attachment?normalizeImageAttachment(payload.attachment):null;
-    if(payload.attachment&&!image)return json({error:'Imagem inválida. Use PNG, JPEG ou WEBP de até 6 MB.'},400);
+    const attachmentName=String(payload.attachment?.name||payload.attachment?.fileName||'');
+    const attachmentMime=String(payload.attachment?.mimeType||payload.attachment?.type||'').toLowerCase();
+    const isPdf=attachmentMime==='application/pdf'||/\.pdf$/i.test(attachmentName);
+    const pdf=isPdf?normalizePdfAttachment({name:attachmentName,mimeType:'application/pdf',dataUrl:payload.attachment?.dataUrl}):null;
+    if(payload.attachment&&!image&&!pdf)return json({error:isPdf?'PDF inválido ou maior que 1,45 MB.':'Imagem inválida. Use PNG, JPEG ou WEBP de até 6 MB.'},400);
+    if(isPdf){
+      let recordOcr;
+      try{recordOcr=await extractInvoicePdfOcr(env,{attachment:pdf,context:{userDescription:payload.message,stages:payload.context?.stages||[]}});}
+      catch(error){return json({error:String(error?.message||error),code:'invoice_pdf_read_failed'},Number(error?.statusCode)||422);}
+      const firstItem=recordOcr.items?.[0],amount=(Number(recordOcr.totalAmountCents)||0)/100;
+      const formattedAmount=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(amount);
+      const destination=recordOcr.destinationStageName||'Escritório';
+      const itemSummary=firstItem?`${firstItem.description} · ${Number(firstItem.quantity)||0} ${firstItem.unit||'un.'} · ${formattedAmount}`:'itens aguardando conferência';
+      const text=`Nota fiscal ${recordOcr.invoiceNumber||'sem número'} de ${recordOcr.supplier||'fornecedor não identificado'} lida com Cloudflare Workers AI: ${itemSummary}. Destino sugerido: ${destination}. Registro fica Pendente para revisão humana.`;
+      return json({text,toolCalls:[],provider:recordOcr.provider,model:recordOcr.model||'',vision:false,reasoning:false,recordOcr,attachment:{id:pdf.id,name:pdf.name,mimeType:pdf.mimeType,sizeBytes:pdf.sizeBytes,stored:false,storage:'request-ephemeral',transport:'inline-data-url'},attachmentStorage:'pending-durable-upload'});
+    }
     const serializedImage=image?{id:image.id,name:image.name,mimeType:image.mimeType,sizeBytes:image.sizeBytes,dataUrl:image.dataUrl,stored:false,storage:'request-ephemeral',transport:'inline-data-url'}:null;
     const recordOcrV21=image?await extractInstantRecordOcr(env,{attachment:serializedImage,context:{userDescription:payload.message,stages:payload.context?.stages||[],selectedStageKey:payload.context?.selectedStageKey||'',selectedStageName:payload.context?.selectedStageName||''}}).catch(error=>({error:String(error?.message||error),reviewRequired:true})):null;
     const recordInterpretationV21=image?buildRecordInterpretationV1({message:payload.message,stages:payload.context?.stages,selectedStageKey:payload.context?.selectedStageKey,recordOcr:recordOcrV21}):payload.context?.recordInterpretation||null;

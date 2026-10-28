@@ -58,6 +58,9 @@ export function delegatedForemanKeyCanAccessV1(actor, pathname, method = "GET", 
     return permissions.has("timeline.read");
   }
   if (pathname === "/api/records/ocr" && verb === "POST") return permissions.has("ai.photos");
+  if (pathname === "/api/workbench/attachments" && verb === "GET") return permissions.has("records.read");
+  if (pathname === "/api/workbench/attachments" && verb === "POST") return permissions.has("records.write");
+  if (/^\/api\/workbench\/attachments\/[^/]+\/file$/.test(String(pathname || "")) && verb === "GET") return permissions.has("records.read");
   if (pathname === "/api/records" || /^\/api\/records\/[^/]+$/.test(pathname)) {
     if (verb === "GET") return permissions.has("records.read");
     if (["POST", "PUT"].includes(verb)) return permissions.has("records.write");

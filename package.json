@@ -1,6 +1,6 @@
 {
   "name": "alianca-park-desktop",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Estação operacional e atendimento assistido do Aliança Park.",
   "author": "Aliança Park",
   "private": true,
@@ -139,7 +139,10 @@
       "!tmp/**/*",
       "!video/**/*",
       "!**/*.log",
+      "!**/*.zip",
       "!**/*.sqlite*",
+      "!eng.traineddata",
+      "!release-artifacts/**/*",
       "!dist/**/*",
       "dist/frontend/**/*",
       "docs/ai-construction-operational-playbook.md",
@@ -193,6 +196,7 @@
     "@capacitor/local-notifications": "^8.3.1",
     "firebase-admin": "^14.3.0",
     "tesseract.js": "^7.0.0",
-    "three": "^0.186.1"
+    "three": "^0.186.1",
+    "unpdf": "^1.9.1"
   }
 }
