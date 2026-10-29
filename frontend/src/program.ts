@@ -8368,7 +8368,7 @@ export function initializeAtlasApplicationRuntimeV1(input: AtlasApplicationRunti
   restoredUiState: AtlasUiMemoryState;
 } {
   const globalRef = input.globalRef || globalThis as unknown as AtlasApplicationRuntimeGlobalV1;
-  const restoredUiState = restoreAtlasUiState(input.localStorage || undefined);
+  const restoredUiState = input.localStorage === null ? {} : restoreAtlasUiState(input.localStorage);
   let storedSessionId: string | null = null;
   try {
     storedSessionId = input.sessionStorage?.getItem('belavista.session') || null;
@@ -30436,6 +30436,12 @@ export function* program(): Generator<SystemAPI, never, void> {
   let materialsElement: AtlasMaterials | null = null;
   let materialsRequestId = 0;
   let materialsStages: OperationalStage[] = [];
+  let demoMaterials: OperationalMaterial[] | null = null;
+  let demoMaterialColumns: MaterialCustomColumn[] = [];
+  let demoConfiguredStages: ConfiguredStage[] | null = null;
+  let demoAccessRoles: DelegatedAccessRole[] = [];
+  let demoAccessKeys: DelegatedAccessKey[] = [];
+  let demoLotProfiles: LotDevelopmentProfile[] | null = null;
   let materialsStageOperationalModel: AtlasStageOperationalModelV1 | null = null;
   let materialsExecutionStages: AtlasStageOperationalStageV1[] = [];
   let agendaElement: AtlasAgenda | null = null;
@@ -30448,6 +30454,10 @@ export function* program(): Generator<SystemAPI, never, void> {
   let agendaLegacyMetadataMerged = false;
   let agendaNotificationsRescheduled = false;
   const enqueueAgendaMutation = createSerialMutationQueue();
+  const isLocalDemo = (): boolean => {
+    const actor=(agendaRouteStore?.get().currentActor || (runtime as unknown as {BELAVISTA_ADMIN_ACTOR?:unknown}).BELAVISTA_ADMIN_ACTOR || {}) as Record<string,unknown>;
+    return actor.mode==='desktop-demo';
+  };
   let dashboardElement: AtlasDashboard | null = null;
   let dashboardStages: OperationalStage[] = [];
   let dashboardRequestId = 0;
@@ -31013,6 +31023,15 @@ export function* program(): Generator<SystemAPI, never, void> {
     if(!target)return;
     const requestId=++materialsRequestId;
     try {
+      if(isLocalDemo()){
+        const snapshot=createAtlasLocalDemoDashboardSnapshotV1({});
+        demoMaterials ??= snapshot.materials.map(item=>({...item,properties:{...item.properties}}));
+        materialsStages=demoConfiguredStages||snapshot.stages;
+        target.setAttribute('data-demo','');
+        target.setData(demoMaterials,materialsStages,demoMaterialColumns,demoAgendaEvents||snapshot.agendaEvents,[],{},Boolean(runtime.BELAVISTA_CAPACITOR_NATIVE));
+        return;
+      }
+      demoMaterials=null;demoMaterialColumns=[];target.removeAttribute('data-demo');
       const [materialPayload,stagePayload,columnPayload,agendaPayload,documentPayload]=await Promise.all([
         readApi<{materials:OperationalMaterial[]}>('/api/materials'),
         readApi<{stages:OperationalStage[]}>('/api/stages-admin'),
@@ -31178,7 +31197,7 @@ export function* program(): Generator<SystemAPI, never, void> {
         const snapshot=createAtlasLocalDemoDashboardSnapshotV1({});
         demoAgendaEvents ??= snapshot.agendaEvents;
         agendaEvents=demoAgendaEvents;
-        agendaStages=snapshot.stages;
+        agendaStages=demoConfiguredStages||snapshot.stages;
         const route=agendaRouteStore?.get()||{};
         target.setData(agendaEvents,agendaStages,snapshot.materials,focus.date||String(route.agendaFocusedDateV1||''),focus.eventId||String(route.agendaFocusedEventId||route.selectedAgendaEventV3||''),focus.week||String(route.agendaCalendarWeekV8||''),focus.detailMode??route.view==='agenda-detail',false);
         return true;
@@ -31365,8 +31384,15 @@ export function* program(): Generator<SystemAPI, never, void> {
     const detail=event.detail;
     if(!detail||detail.element!==materialsElement)return;
     try {
+      if(isLocalDemo()){
+        const previous=demoMaterials?.find(item=>item.id===detail.id);
+        const stage=materialsStages.find(item=>item.id===detail.payload.stageId);
+        const next={id:detail.id||`demo-material-${crypto.randomUUID()}`,name:'',unit:'un',plannedQuantity:0,receivedQuantity:0,usedQuantity:0,status:'Planejado',stageId:null,activityName:'',scope:'',properties:{},...previous,...detail.payload,stageName:stage?.name||null,updatedAt:new Date().toISOString()} as OperationalMaterial;
+        demoMaterials=previous?(demoMaterials||[]).map(item=>item.id===next.id?next:item):[...(demoMaterials||[]),next];
+        detail.element.closeEditor();await reloadMaterials();return;
+      }
       await mutateApi(`/api/materials${detail.id?'/'+encodeURIComponent(detail.id):''}`,detail.id?'PUT':'POST',detail.payload);
-      await reloadMaterials();
+      detail.element.closeEditor();await reloadMaterials();
     } catch(error) { detail.element.setError(error instanceof Error?error.message:String(error)); }
   }
 
@@ -31374,7 +31400,7 @@ export function* program(): Generator<SystemAPI, never, void> {
   async function deleteMaterial(event:CustomEvent<AtlasMaterialDeleteCommandV1>):Promise<void> {
     const detail=event.detail;
     if(!detail||detail.element!==materialsElement)return;
-    try { await mutateApi(`/api/materials/${encodeURIComponent(detail.id)}`,'DELETE'); await reloadMaterials(); }
+    try { if(isLocalDemo()){demoMaterials=(demoMaterials||[]).filter(item=>item.id!==detail.id);await reloadMaterials();return;} await mutateApi(`/api/materials/${encodeURIComponent(detail.id)}`,'DELETE'); await reloadMaterials(); }
     catch(error) { detail.element.setError(error instanceof Error?error.message:String(error)); }
   }
 
@@ -31382,7 +31408,7 @@ export function* program(): Generator<SystemAPI, never, void> {
   async function allocateMaterial(event:CustomEvent<AtlasMaterialAllocationCommandV1>):Promise<void>{
     const detail=event.detail;
     if(!detail||detail.element!==materialsElement)return;
-    try{const material=detail.element.getMaterial(detail.id);if(!material)throw new Error('Material não encontrado.');await mutateApi(`/api/materials/${encodeURIComponent(material.id)}`,'PUT',{...material,stageId:detail.stageId});await reloadMaterials();}
+    try{const material=detail.element.getMaterial(detail.id);if(!material)throw new Error('Material não encontrado.');if(isLocalDemo()){const stage=materialsStages.find(item=>item.id===detail.stageId);demoMaterials=(demoMaterials||[]).map(item=>item.id===detail.id?{...item,stageId:detail.stageId,stageName:stage?.name||null}:item);await reloadMaterials();return;}await mutateApi(`/api/materials/${encodeURIComponent(material.id)}`,'PUT',{...material,stageId:detail.stageId});await reloadMaterials();}
     catch(error){detail.element.setError(error instanceof Error?error.message:String(error));}
   }
 
@@ -32185,7 +32211,7 @@ export function* program(): Generator<SystemAPI, never, void> {
     };
     const seed = ATLAS_STATE_CATALOGS_V1.cashFlowSeed as unknown as CashFlowRecord[];
     const balanceCents = seed.reduce((balance, row) => balance + (row.kind === 'entrada' ? 1 : -1) * Number(row.amountCents || 0), 0);
-    const stages: OperationalStage[] = (demo.activities || []).map((item, index) => {
+    const stages: OperationalStage[] = demoConfiguredStages || (demo.activities || []).map((item, index) => {
       const id = Number(item.id) || index + 1;
       const name = String(item.name || `Etapa ${index + 1}`);
       return {
@@ -32210,7 +32236,7 @@ export function* program(): Generator<SystemAPI, never, void> {
     }));
     const agendaEvents: OperationalAgendaEvent[] = stages.slice(0, 4).map((stage, index) => ({
       id: `DEMO-AGENDA-${index + 1}`, title: stage.name, stageKey: stage.key || '', stageName: stage.name,
-      activityId: `demo-activity-${stage.id}`, activityName: stage.name,
+      activityId: stage.activities?.[0]?.id || `demo-activity-${stage.id}`, activityName: stage.activities?.[0]?.name || stage.name,
       owner: stage.owner || 'Equipe de demonstração', date: localDate(index + 1), start: '08:00',
       durationHours: 3, spanDays: 1, status: 'Planejado', notes: 'Compromisso ilustrativo da demonstração.', materialIds: [],
     }));
@@ -32219,7 +32245,7 @@ export function* program(): Generator<SystemAPI, never, void> {
       const parsed = Number(text);
       return Number.isFinite(parsed) ? parsed : 0;
     };
-    const materials: OperationalMaterial[] = (demo.materials || []).map((row, index) => ({
+    const materials: OperationalMaterial[] = demoMaterials || (demo.materials || []).map((row, index) => ({
       id: `DEMO-MAT-${index + 1}`, name: String(row[0] || `Nota ${index + 1}`),
       plannedQuantity: quantity(row[1]), receivedQuantity: quantity(row[2]), usedQuantity: quantity(row[3]),
       unit: String(row[4] || 'un'), status: String(row[5] || 'planejado'), stageId: null,
@@ -32432,7 +32458,7 @@ export function* program(): Generator<SystemAPI, never, void> {
         stages: demoSnapshot.stages.map(stage => ({
           id: `demo-stage-${String(stage.id)}`, name: stage.name, status: stage.status, owner: stage.owner,
           activities: (stage.activities || []).map(activity => ({
-            id: `demo-activity-${String(stage.id)}`, name: activity.name, status: activity.status || stage.status,
+            id: String(activity.id || `demo-activity-${String(stage.id)}`), name: activity.name, status: activity.status || stage.status,
             owner: activity.owner || stage.owner, durationDays: 1,
             durationBasis: 'estimativa ilustrativa de 1 dia, exclusiva da demonstração',
             description: `Atividade ilustrativa da etapa ${stage.name}; ajustar duração e sequência antes de uso real.`,
@@ -32748,6 +32774,25 @@ export function* program(): Generator<SystemAPI, never, void> {
     const actor = (globalThis as Runtime & { BELAVISTA_ADMIN_ACTOR?: { role?: string } }).BELAVISTA_ADMIN_ACTOR;
     const actorRole = String(actor?.role || settingsActorRoleOverride || '');
     try {
+      if(isLocalDemo()){
+        const demo=createAtlasLocalDemoDashboardSnapshotV1({});
+        demoConfiguredStages ??= demo.stages.map(stage=>{
+          const stageKey=settingsStageKey(stage);
+          const definition=originalWorkbenchCatalog.find(item=>item.key===stageKey || item.aliases.includes(stageKey));
+          const sessions:WorkbenchSession[]=(definition?.activities||[]).map((activity,index)=>{
+            const session:WorkbenchSession={id:`input-${activity.id}`,activityId:activity.id,title:activity.title,text:`Entrada base: ${activity.release}. Equipamentos e materiais: ${activity.materials.join(', ')}.`,unit:activity.unit,materials:activity.materials,release:activity.release,responsible:String((activity.operational.responsibility as Record<string,unknown>|undefined)?.primary||''),operational:activity.operational,properties:[],automation:{propagateRelations:true,generateSchedule:true,generateResources:true,notifyWorker:true},programming:{},inference:null,order:index,custom:false};
+            return {...session,programming:defaultWorkbenchProgramming(session),properties:defaultWorkbenchProperties(session)};
+          });
+          const activities:OperationalActivity[]=sessions.length?sessions.map(session=>({id:session.activityId||session.id,stageId:stage.id,name:session.title,category:'Obra',status:stage.status,progress:stage.progress,owner:session.responsible})):stage.activities||[];
+          const workbenchState:StageWorkbenchState={stageKey,layout:{},links:[],activityLocations:{},inputSessions:sessions,calendarDate:null,updatedAt:null};
+          return {...stage,activities,stageKey,aiConfig:null,workbenchState,workbenchSessions:sessions,workbenchSource:'worker-defaults' as const};
+        });
+        settingsStages=demoConfiguredStages;
+        target.setAttribute('data-demo','');
+        target.setData({stages:settingsStages,roles:demoAccessRoles,keys:demoAccessKeys,contact:null,actorRole:'owner',isNative:false});
+        return;
+      }
+      target.removeAttribute('data-demo');demoConfiguredStages=null;demoAccessRoles=[];demoAccessKeys=[];
       const stagePayload = await readApi<{ stages: OperationalStage[] }>('/api/stages-admin');
       if (!Array.isArray(stagePayload.stages)) throw new Error('O serviço de etapas não retornou a lista persistida.');
       const stages: ConfiguredStage[] = await Promise.all(stagePayload.stages.map(async raw => {
@@ -32813,6 +32858,7 @@ export function* program(): Generator<SystemAPI, never, void> {
   async function reloadSettingsMaterialColumns(target = settingsElement): Promise<void> {
     if (!target) return;
     try {
+      if(isLocalDemo()){target.setMaterialColumns(demoMaterialColumns);return;}
       const payload = await readApi<{ columns: MaterialCustomColumn[] }>('/api/materials/schema');
       if (target === settingsElement) target.setMaterialColumns(payload.columns);
     } catch (error) {
@@ -32824,6 +32870,11 @@ export function* program(): Generator<SystemAPI, never, void> {
     const detail = (event as CustomEvent<{ element: AtlasSettings; label: string }>).detail;
     if (!detail || detail.element !== settingsElement) return;
     try {
+      if(isLocalDemo()){
+        const now=new Date().toISOString(),label=detail.label.trim();if(!label)throw new Error('Informe o nome da propriedade.');
+        demoMaterialColumns=[...demoMaterialColumns,{id:`demo-property-${crypto.randomUUID()}`,label,position:demoMaterialColumns.length,createdAt:now,updatedAt:now}];
+        await reloadSettingsMaterialColumns(detail.element);detail.element.setFeedback('Propriedade adicionada à demonstração.');return;
+      }
       const result = await mutateApi<{ column: MaterialCustomColumn }>('/api/materials/schema', 'POST', { label: detail.label });
       await reloadSettingsMaterialColumns(detail.element);
       if (materialsElement?.isConnected) await reloadMaterials();
@@ -32835,6 +32886,7 @@ export function* program(): Generator<SystemAPI, never, void> {
     const detail = (event as CustomEvent<{ element: AtlasSettings; id: string }>).detail;
     if (!detail || detail.element !== settingsElement || !detail.id) return;
     try {
+      if(isLocalDemo()){demoMaterialColumns=demoMaterialColumns.filter(item=>item.id!==detail.id);await reloadSettingsMaterialColumns(detail.element);detail.element.setFeedback('Propriedade removida da demonstração.');return;}
       await mutateApi(`/api/materials/schema/${encodeURIComponent(detail.id)}`, 'DELETE');
       await reloadSettingsMaterialColumns(detail.element);
       if (materialsElement?.isConnected) await reloadMaterials();
@@ -32847,10 +32899,17 @@ export function* program(): Generator<SystemAPI, never, void> {
     const detail = (event as CustomEvent<{ element: AtlasSettings; stageId: number | null; draft: AtlasSettingsStageDraftV1 }>).detail;
     if (!detail || detail.element !== settingsElement) return;
     const actor = appStore.get().currentActor as { role?: string } | undefined;
-    if (!['owner', 'admin'].includes(String(actor?.role || ''))) { detail.element.setError('Seu perfil não pode alterar o cadastro das etapas.'); return; }
+    if (!isLocalDemo() && !['owner', 'admin'].includes(String(actor?.role || ''))) { detail.element.setError('Seu perfil não pode alterar o cadastro das etapas.'); return; }
     const projection = projectAtlasSettingsStageDraftV1(detail.draft);
     if (!projection.ok) { detail.element.setFeedback(projection.error); return; }
     try {
+      if(isLocalDemo()){
+        const old=(demoConfiguredStages||[]).find(item=>item.id===detail.stageId),id=detail.stageId??Math.max(0,...(demoConfiguredStages||[]).map(item=>item.id))+1;
+        const stageKey=old?.stageKey||`demo-stage-${id}`;
+        const next={...old,id,key:old?.key||stageKey,stageKey,...projection.value,aiConfig:old?.aiConfig||null,workbenchState:old?.workbenchState||{stageKey,layout:{},links:[],activityLocations:{},inputSessions:[],calendarDate:null,updatedAt:null},workbenchSessions:old?.workbenchSessions||[],workbenchSource:'worker-defaults' as const};
+        demoConfiguredStages=old?(demoConfiguredStages||[]).map(item=>item.id===id?next:item):[...(demoConfiguredStages||[]),next];
+        await reloadSettings();detail.element.setFeedback('Etapa salva nesta demonstração.');return;
+      }
       const path = detail.stageId == null ? '/api/stages-admin' : `/api/stages-admin/${encodeURIComponent(String(detail.stageId))}`;
       const result = await mutateApi<{ stage: OperationalStage }>(path, detail.stageId == null ? 'POST' : 'PUT', projection.value);
       await reloadSettings();
@@ -32863,6 +32922,7 @@ export function* program(): Generator<SystemAPI, never, void> {
     const detail = (event as CustomEvent<{ element: AtlasSettings; stageId: number }>).detail;
     if (!detail || detail.element !== settingsElement) return;
     try {
+      if(isLocalDemo()){demoConfiguredStages=(demoConfiguredStages||[]).filter(stage=>stage.id!==detail.stageId);await reloadSettings();detail.element.setFeedback('Etapa removida da demonstração.');return;}
       await mutateApi(`/api/stages-admin/${encodeURIComponent(String(detail.stageId))}`, 'DELETE');
       await reloadSettings();
       detail.element.setFeedback('Etapa removida; a fonte persistente confirmou a exclusão.');
@@ -32878,6 +32938,10 @@ export function* program(): Generator<SystemAPI, never, void> {
     const projection = projectAtlasSettingsComprehensionDraftV1(detail.draft, stage.aiConfig?.executionProfile);
     if (!projection.ok) { detail.element.setFeedback(projection.error); return; }
     try {
+      if(isLocalDemo()){
+        demoConfiguredStages=(demoConfiguredStages||[]).map(item=>item.id===detail.stageId?{...item,aiConfig:{...projection.value,updatedAt:new Date().toISOString()}}:item);
+        await reloadSettings();detail.element.setFeedback('Compreensão salva nesta demonstração.');return;
+      }
       await mutateApi(`/api/stages-admin/${encodeURIComponent(String(detail.stageId))}/ai`, 'PUT', projection.value);
       await reloadSettings();
       detail.element.setFeedback('Compreensão da etapa salva e relida do banco operacional.');
@@ -32888,6 +32952,14 @@ export function* program(): Generator<SystemAPI, never, void> {
   async function saveSettingsWorkbench(event: Event): Promise<void> {
     const detail = (event as CustomEvent<{ element: AtlasSettings; stageId: string; stageKey: string; state: StageWorkbenchState; sessions: WorkbenchSession[] }>).detail;
     if (!detail || detail.element !== settingsElement) return;
+    if(isLocalDemo()){
+      const updated={...detail.state,inputSessions:detail.sessions,updatedAt:new Date().toISOString()};
+      demoConfiguredStages=(demoConfiguredStages||[]).map(stage=>String(stage.id)===String(detail.stageId)?{...stage,workbenchState:updated,workbenchSessions:detail.sessions,activities:detail.sessions.map(session=>({id:session.activityId||session.id,stageId:stage.id,name:session.title,category:'Obra',status:stage.status,progress:stage.progress,owner:session.responsible}))}:stage);
+      settingsStages=demoConfiguredStages;
+      detail.element.setStageWorkbench(detail.stageId,updated,detail.sessions);
+      detail.element.setFeedback('Atividades salvas nesta demonstração.');
+      return;
+    }
     const prior = workbenchSaveQueues.get(detail.stageKey) || Promise.resolve();
     const save = prior.catch(() => undefined).then(async () => {
       const path = `/api/workbench/state?stage=${encodeURIComponent(detail.stageKey)}`;
@@ -32975,6 +33047,12 @@ export function* program(): Generator<SystemAPI, never, void> {
     const projection = projectAtlasSettingsRoleDraftV1(detail.draft);
     if (!projection.ok) { detail.element.setRoleFormError(projection.error); return; }
     try {
+      if(isLocalDemo()){
+        const now=new Date().toISOString(),id=projection.value.id||`demo-role-${crypto.randomUUID()}`,old=demoAccessRoles.find(role=>role.id===id);
+        const next={id,name:projection.value.name,permissions:projection.value.permissions,createdAt:old?.createdAt||now,updatedAt:now};
+        demoAccessRoles=old?demoAccessRoles.map(role=>role.id===id?next:role):[...demoAccessRoles,next];
+        await reloadSettings();detail.element.setFeedback('Papel fictício salvo na demonstração.');return;
+      }
       await mutateApi('/api/access-roles', projection.value.id ? 'PUT' : 'POST', { ...(projection.value.id ? { id: projection.value.id } : {}), name: projection.value.name, permissions: projection.value.permissions });
       await reloadSettings();
       detail.element.setFeedback('Papel persistido e confirmado no Worker.');
@@ -32984,7 +33062,7 @@ export function* program(): Generator<SystemAPI, never, void> {
   async function deleteAccessRole(event: Event): Promise<void> {
     const detail = (event as CustomEvent<{ element: AtlasSettings; id: string }>).detail;
     if (!detail || detail.element !== settingsElement) return;
-    try { await mutateApi(`/api/access-roles/${encodeURIComponent(detail.id)}`, 'DELETE'); await reloadSettings(); detail.element.setFeedback('Papel removido do Worker.'); }
+    try { if(isLocalDemo()){demoAccessRoles=demoAccessRoles.filter(role=>role.id!==detail.id);await reloadSettings();detail.element.setFeedback('Papel fictício removido.');return;} await mutateApi(`/api/access-roles/${encodeURIComponent(detail.id)}`, 'DELETE'); await reloadSettings(); detail.element.setFeedback('Papel removido do Worker.'); }
     catch (error) { detail.element.setError(error instanceof Error ? error.message : String(error)); }
   }
 
@@ -32993,6 +33071,11 @@ export function* program(): Generator<SystemAPI, never, void> {
     if (!detail || detail.element !== settingsElement) return;
     try {
       const payload = projectAtlasSettingsKeyDraftV1(detail.draft);
+      if(isLocalDemo()){
+        const role=demoAccessRoles.find(item=>item.id===payload.roleId);if(!role||!payload.label)throw new Error('Informe o usuário e selecione um papel.');
+        const key:DelegatedAccessKey={id:`demo-key-${crypto.randomUUID()}`,label:payload.label,roleId:role.id,roleName:role.name,permissions:role.permissions,createdAt:new Date().toISOString(),expiresAt:null,revokedAt:null,createdBy:'Demonstração'};
+        demoAccessKeys=[...demoAccessKeys,key];await reloadSettings();detail.element.setFeedback('Chave fictícia: não concede acesso ao aplicativo.');detail.element.showCreatedKey(`DEMONSTRACAO-${crypto.randomUUID()}`);return;
+      }
       const result = await mutateApi<{ key: DelegatedAccessKey }>('/api/access-keys', 'POST', payload);
       if (!result.key?.token) throw new Error('O Worker não retornou o segredo de uso único da chave.');
       await reloadSettings();
@@ -33003,7 +33086,7 @@ export function* program(): Generator<SystemAPI, never, void> {
   async function revokeAccessKey(event: Event): Promise<void> {
     const detail = (event as CustomEvent<{ element: AtlasSettings; id: string }>).detail;
     if (!detail || detail.element !== settingsElement) return;
-    try { await mutateApi(`/api/access-keys/${encodeURIComponent(detail.id)}`, 'DELETE'); await reloadSettings(); detail.element.setFeedback('Chave revogada no Worker.'); }
+    try { if(isLocalDemo()){demoAccessKeys=demoAccessKeys.map(key=>key.id===detail.id?{...key,revokedAt:new Date().toISOString()}:key);await reloadSettings();detail.element.setFeedback('Chave fictícia revogada.');return;} await mutateApi(`/api/access-keys/${encodeURIComponent(detail.id)}`, 'DELETE'); await reloadSettings(); detail.element.setFeedback('Chave revogada no Worker.'); }
     catch (error) { detail.element.setError(error instanceof Error ? error.message : String(error)); }
   }
 
@@ -33050,6 +33133,14 @@ export function* program(): Generator<SystemAPI, never, void> {
     if (!lotDevelopmentElement) return;
     const target=lotDevelopmentElement,requestId=++lotDevelopmentRequestId;
     try {
+      if(isLocalDemo()){
+        demoLotProfiles ??= [...ATLAS_REPASSE_PRICE_CATALOG_V1.filter(item=>Number(item.lot)>0).map(item=>({id:`lot:${item.label}`,kind:'lot' as const,title:`Lote ${item.label}`,lotLabel:String(item.label),quadra:String(item.quadra||''),area:Number(item.area)||0,value:Number(item.price)||0,status:'Disponível',description:'Perfil de demonstração vinculado à tabela oficial.',source:'Tabela oficial',customized:false,inferredAt:null,createdAt:null,updatedAt:null})),...(lotDevelopmentCommonAreasData as LotDevelopmentProfile[]).map(item=>({...item}))];
+        lotDevelopmentProfilesCache=demoLotProfiles;
+        target.setAttribute('data-demo','');
+        target.setData(demoLotProfiles,[],selectedId);
+        return;
+      }
+      demoLotProfiles=null;target.removeAttribute('data-demo');
       const [profiles,ledger]=await Promise.all([
         readApi<{profiles:LotDevelopmentProfile[]}>('/api/lot-development/profiles'),
         readApi<{entries:CashFlowRecord[]}>('/api/cash-flow'),
@@ -33068,6 +33159,12 @@ export function* program(): Generator<SystemAPI, never, void> {
     const detail=(event as CustomEvent<{element:AtlasLotDevelopment;id:string;payload:Record<string,unknown>}>).detail;
     if(!detail||detail.element!==lotDevelopmentElement)return;
     try{
+      if(isLocalDemo()){
+        const old=demoLotProfiles?.find(item=>item.id===detail.id);
+        const next={id:detail.id||`common:demo-${crypto.randomUUID()}`,kind:'common-area',title:'',lotLabel:'',quadra:'',area:0,value:0,status:'Planejado',description:'',source:'Demonstração',inferredAt:null,createdAt:null,...old,...detail.payload,customized:true,updatedAt:new Date().toISOString()} as LotDevelopmentProfile;
+        demoLotProfiles=old?(demoLotProfiles||[]).map(item=>item.id===next.id?next:item):[...(demoLotProfiles||[]),next];
+        await reloadLotDevelopment(next.id);detail.element.setFeedback('Alteração salva na demonstração desta sessão.');return;
+      }
       const path=detail.id?`/api/lot-development/profiles/${encodeURIComponent(detail.id)}`:'/api/lot-development/profiles';
       const result=await mutateApi<{profile:LotDevelopmentProfile}>(path,detail.id?'PUT':'POST',detail.payload);
       if(detail.element!==lotDevelopmentElement)return;
@@ -33080,7 +33177,14 @@ export function* program(): Generator<SystemAPI, never, void> {
   async function deleteLotDevelopmentProfile(event:Event,appStore:{get():Record<string,unknown>;set(state:Record<string,unknown>):void}):Promise<void>{
     const detail=(event as CustomEvent<{element:AtlasLotDevelopment;id:string}>).detail;
     if(!detail||detail.element!==lotDevelopmentElement)return;
-    try{await mutateApi(`/api/lot-development/profiles/${encodeURIComponent(detail.id)}`,'DELETE');if(detail.element!==lotDevelopmentElement)return;navigateRoute(appStore,{view:'lot-development',lotProfileId:null},{selectedDevelopmentProfileId:null});await reloadLotDevelopment();if(detail.element===lotDevelopmentElement)detail.element.setFeedback('Alteração persistida; catálogo atualizado.');}
+    try{if(isLocalDemo()){
+        const selected=(demoLotProfiles||[]).find(item=>item.id===detail.id);
+        if(selected?.kind==='lot'){
+          const official=ATLAS_REPASSE_PRICE_CATALOG_V1.find(item=>String(item.label)===selected.lotLabel);
+          if(official)demoLotProfiles=(demoLotProfiles||[]).map(item=>item.id===detail.id?{...item,title:`Lote ${official.label}`,quadra:String(official.quadra||''),area:Number(official.area)||0,value:Number(official.price)||0,status:'Disponível',description:'Perfil de demonstração vinculado à tabela oficial.',customized:false,updatedAt:null}:item);
+        }else demoLotProfiles=(demoLotProfiles||[]).filter(item=>item.id!==detail.id);
+        navigateRoute(appStore,{view:'lot-development',lotProfileId:null},{selectedDevelopmentProfileId:null});await reloadLotDevelopment();return;
+      }await mutateApi(`/api/lot-development/profiles/${encodeURIComponent(detail.id)}`,'DELETE');if(detail.element!==lotDevelopmentElement)return;navigateRoute(appStore,{view:'lot-development',lotProfileId:null},{selectedDevelopmentProfileId:null});await reloadLotDevelopment();if(detail.element===lotDevelopmentElement)detail.element.setFeedback('Alteração persistida; catálogo atualizado.');}
     catch(error){if(detail.element===lotDevelopmentElement)detail.element.setError(error instanceof Error?error.message:String(error));}
   }
 
@@ -33467,10 +33571,11 @@ export function* program(): Generator<SystemAPI, never, void> {
       host,
       currentActor: () => services.currentActor?.() || globals.BELAVISTA_ADMIN_ACTOR || { uid: 'local-admin', name: 'Administrador', role: 'admin' },
       waitForAuthentication: () => globals.BELAVISTA_ADMIN_AUTH_READY || Promise.resolve(true),
-      subscribeContacts: services.subscribeContacts,
-      subscribeConversation: services.subscribeConversation,
-      sendMessage: services.sendMessage,
+      subscribeContacts: async (actor,onChange) => { if(isLocalDemo()){onChange([]);return ()=>{};}return services.subscribeContacts(actor,onChange); },
+      subscribeConversation: async (actor,contact,onChange) => { if(isLocalDemo()){onChange([]);return ()=>{};}return services.subscribeConversation(actor,contact,onChange); },
+      sendMessage: async (actor,contact,message) => { if(isLocalDemo())throw new Error('Mensagens externas não estão disponíveis na demonstração.');return services.sendMessage(actor,contact,message); },
       loadInstagramConversations: async () => {
+        if(isLocalDemo())return [];
         const payload = await readApi<{ conversations?: InstagramConversation[] }>('/api/communications/conversations?channel=instagram');
         return Array.isArray(payload.conversations) ? payload.conversations : [];
       },
@@ -37554,9 +37659,13 @@ export async function startAtlasAdminApplicationCompositionV1(
     try { return windowRef[key]; }
     catch { return null; }
   };
+  const demoSession = new URL(windowRef.location.href).searchParams.get('demo') === '1'
+    || (globalRef.BELAVISTA_ADMIN_ACTOR as {mode?:string}|undefined)?.mode === 'desktop-demo';
+  const uiMemoryStorage = readBrowserStorage(demoSession ? 'sessionStorage' : 'localStorage');
+  if(demoSession && uiMemoryStorage?.getItem('belavista.demo-ended.v1')){uiMemoryStorage.removeItem(ATLAS_UI_MEMORY_KEY);uiMemoryStorage.removeItem('belavista.demo-ended.v1');}
   const { appStore } = initializeAtlasApplicationRuntimeV1({
     globalRef: globalRef as unknown as AtlasApplicationRuntimeGlobalV1,
-    localStorage: readBrowserStorage('localStorage'),
+    localStorage: uiMemoryStorage,
     sessionStorage: readBrowserStorage('sessionStorage'),
   });
   installAtlasShellCommandControllerV1({ appStore, document: documentRef, window: windowRef });
@@ -37564,7 +37673,7 @@ export async function startAtlasAdminApplicationCompositionV1(
   const viewThemes = ATLAS_STATE_CATALOGS_V1.viewThemes;
   const runtime = createAtlasAdminApplicationRuntime({
     appStore,
-    restoreUiState: () => restoreAtlasUiState(readBrowserStorage('localStorage') || undefined),
+    restoreUiState: () => uiMemoryStorage ? restoreAtlasUiState(uiMemoryStorage) : {},
     readDefaultPage: () => readPreferences().defaultPage,
     apiFetch,
     authenticatedActor: globalRef.BELAVISTA_ADMIN_ACTOR,
@@ -37594,7 +37703,7 @@ export async function startAtlasAdminApplicationCompositionV1(
   await composeAtlasAdminComponentApplicationV1();
   registerShell({
     appStore,
-    persistUiState: persistAtlasUiState,
+    persistUiState: (state: AtlasUiMemoryState) => { if(uiMemoryStorage && !(demoSession && uiMemoryStorage.getItem('belavista.demo-ended.v1'))) persistAtlasUiState(state,uiMemoryStorage); },
     loadAdminExtensions: () => runtime.loadDeferredModules({ force: true }),
     window: windowRef,
     document: documentRef,
@@ -38360,8 +38469,7 @@ export function installAtlasAdminAuthApplicationV1(ports: AtlasAdminAuthApplicat
     runtime.BELAVISTA_GET_ID_TOKEN = () => null;
     runtime.BELAVISTA_ADMIN_SIGN_OUT = async () => {
       runtime.BELAVISTA_ADMIN_AUTH_REQUIRED = true;
-      try { await clearAtlasAdminPatV1(); } catch { /* logout must finish if the vault is unavailable */ }
-      try { windowRef.localStorage.removeItem('belavista.github.session.v1'); } catch { /* storage may be blocked */ }
+      try { windowRef.sessionStorage.setItem('belavista.demo-ended.v1','1'); windowRef.sessionStorage.removeItem(ATLAS_UI_MEMORY_KEY); } catch { /* storage may be blocked */ }
       runtime.BELAVISTA_RESET_WORKER_SESSION?.();
       delete runtime.BELAVISTA_GET_WORKER_ID_TOKEN;
       delete runtime.BELAVISTA_RESET_WORKER_SESSION;
