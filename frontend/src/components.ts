@@ -11109,6 +11109,8 @@ const agendaCss=`<style>
 .atlas-agenda .agenda-groups{display:grid;gap:12px}.atlas-agenda .agenda-group{overflow:hidden;border:1px solid #e3e8ef;border-radius:13px;background:#fff;color:#263149}.atlas-agenda .agenda-group>header{padding:12px 16px;background:#f7f9fc;color:#263149}.atlas-agenda .agenda-group h2{margin:0;font-size:16px;color:#202638}.atlas-agenda .agenda-group>div{display:grid}
 .atlas-agenda .agenda-row{display:grid;grid-template-columns:minmax(145px,.7fr) minmax(180px,1.4fr) minmax(160px,1fr) auto;align-items:center;gap:12px;padding:13px 16px;border:0;border-top:1px solid #edf0f4;border-radius:0;text-align:left;color:#263149}.atlas-agenda .agenda-row strong,.atlas-agenda .agenda-row small{display:block;overflow:hidden;text-overflow:ellipsis}.atlas-agenda .agenda-row strong{color:#202638}.atlas-agenda .agenda-row small{color:#68758b}
 .atlas-agenda .agenda-status{padding:4px 8px;border-radius:99px;background:#f1f4f8;color:#56647a;font-size:11px}.atlas-agenda .agenda-events{display:grid;gap:9px}.atlas-agenda .agenda-event{display:grid;gap:7px;text-align:left;width:100%;height:auto;padding:13px;border-left:3px solid #4b83d4;color:#263149}.atlas-agenda .agenda-event time{color:#3f6eaf;font-weight:700}
+.scene:has(.agenda-editor-wrap:not([hidden])){z-index:150!important}
+view-layer:has(.agenda-editor-wrap:not([hidden])){z-index:150!important}
 .atlas-agenda .agenda-editor-wrap{position:fixed;inset:0;z-index:1300;display:grid;place-items:center;padding:16px;background:#18243b70}.atlas-agenda .agenda-editor-wrap[hidden]{display:none}.atlas-agenda .agenda-editor{width:min(900px,100%);max-height:92vh;overflow:auto}.atlas-agenda .agenda-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}.atlas-agenda label{display:grid;gap:6px;color:#56647a;font-size:12px}
 @media(min-width:1000px){.atlas-agenda .agenda-editor-wrap{padding:110px 16px 16px 316px}.atlas-agenda .agenda-editor{max-height:calc(100vh - 126px)}}
 .atlas-agenda input,.atlas-agenda select,.atlas-agenda textarea{width:100%;min-width:0;padding:9px 11px;border:1px solid #d7deea;border-radius:9px;background:#fff;color:#18243e}.atlas-agenda .agenda-wide{grid-column:1/-1}.atlas-agenda textarea{min-height:76px}.atlas-agenda .agenda-materials{max-height:120px;overflow:auto;display:flex;gap:12px;flex-wrap:wrap;padding:12px;border:1px solid #e3e8ef;border-radius:10px}.atlas-agenda .agenda-materials label{display:flex;align-items:center;gap:5px}.atlas-agenda .agenda-materials input{width:auto}
@@ -39840,14 +39842,8 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
                 lotProgressGroup.replaceChildren();
                 const rows = Array.isArray(highlights) ? highlights : [];
                 const normalized = (value: unknown) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
-                const numericId = (value: unknown) => String(value || "").match(/\d+/g)?.at(-1)?.replace(/^0+/, "") || "";
-                const lotRows = rows.filter(row => /lote|lot/.test(normalized(`${row.kind} ${row.partId} ${row.label}`)));
-                const forLot = (lotId: string): AtlasMapStageProgressHighlightV1 | undefined => {
-                    const exact = rows.find(row => normalized(row.partId) === normalized(lotId));
-                    if (exact) return exact;
-                    const number = numericId(lotId);
-                    return number ? lotRows.find(row => numericId(row.partId) === number || numericId(row.label) === number) : undefined;
-                };
+                const forLot = (lotId: string): AtlasMapStageProgressHighlightV1 | undefined =>
+                    rows.find(row => normalized(row.partId) === normalized(lotId));
                 const paint = (path: SVGPathElement, row: AtlasMapStageProgressHighlightV1, kind: "lot" | "road" | "curb"): void => {
                     path.dataset.progress = String(row.progress);
                     path.dataset.progressColor = row.color;

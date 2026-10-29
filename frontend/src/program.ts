@@ -31310,6 +31310,17 @@ export function* program(): Generator<SystemAPI, never, void> {
   /** Create a field record linked to the selected agenda event. */
   async function persistAgendaRecord(element:AtlasAgenda,payload:AtlasOperationalRecordSubmissionV1,activity:string,appStore:{get():Record<string,unknown>;set(state:Record<string,unknown>):void}):Promise<void>{
     try{
+      const demoState=appStore.get(),actor=(demoState.currentActor||(runtime as unknown as { BELAVISTA_ADMIN_ACTOR?: unknown }).BELAVISTA_ADMIN_ACTOR||{}) as Record<string,unknown>;
+      if(actor.mode==='desktop-demo'){
+        const recordId=`demo-record-${crypto.randomUUID()}`;
+        const record={...payload,id:recordId,createdAt:new Date().toISOString()};
+        const existing=Array.isArray(demoState.records)?demoState.records:[];
+        const message=`Registro de demonstração adicionado à atividade ${activity}.`;
+        appStore.set({records:[record,...existing],lastAction:message});
+        element.setRecordFeedback(message);
+        agendaRouteServices.notify?.(message,'success');
+        return;
+      }
       const created=await createOperationalRecord(payload),record=created.record,recordId=created.id||String(record.id||'salvo');
       const agendaReloaded=await reloadAgenda();
       const message=`Registro ${recordId} adicionado à atividade ${activity}.`,state=appStore.get(),existing=Array.isArray(state.records)?state.records as Array<{id?:string}>:[];
