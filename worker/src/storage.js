@@ -224,9 +224,14 @@ export async function listAgendaEvents(env){
 
 function normalizeAgendaMetadata(input){
   const list=value=>Array.isArray(value)?value.map(item=>text(item).trim().slice(0,240)).filter(Boolean).slice(0,100):String(value||'').split(/\r?\n/).map(item=>item.trim().slice(0,240)).filter(Boolean).slice(0,100);
+  const mapAreas=Array.isArray(input?.mapAreas)?input.mapAreas.map(value=>{
+    const area=value&&typeof value==='object'&&!Array.isArray(value)?value:{};
+    const partId=text(area.partId).trim().slice(0,160);
+    return partId?{partId,label:text(area.label||partId).trim().slice(0,240),kind:text(area.kind||'other').trim().slice(0,40)}:null;
+  }).filter(Boolean).slice(0,500):[];
   const offset=Number(input?.notificationOffsetMinutes??30);
   return {
-    requirements:list(input?.requirements),materials:list(input?.materials),
+    requirements:list(input?.requirements),materials:list(input?.materials),mapAreas,
     customStatus:text(input?.customStatus).slice(0,120),
     cancellationReason:text(input?.cancellationReason).slice(0,1000),
     cancelledAt:text(input?.cancelledAt).slice(0,40),
@@ -283,7 +288,7 @@ export async function saveAgendaSnapshot(env,events){
       let previousMetadata={},nextMetadata=JSON.parse(item.agendaMetadataJson||'{}');
       try{previousMetadata=JSON.parse(previous.agendaMetadataJson||'{}');}catch{}
       const raw=inputById.get(item.id)||{};
-      for(const key of ['requirements','materials','customStatus','cancellationReason','cancelledAt','cancellationConfirmed','notificationOffsetMinutes']){
+      for(const key of ['requirements','materials','mapAreas','customStatus','cancellationReason','cancelledAt','cancellationConfirmed','notificationOffsetMinutes']){
         if(!Object.prototype.hasOwnProperty.call(raw,key)&&Object.prototype.hasOwnProperty.call(previousMetadata,key))nextMetadata[key]=previousMetadata[key];
       }
       item.agendaMetadataJson=JSON.stringify(nextMetadata);

@@ -16559,6 +16559,7 @@ export interface AtlasAgendaEventFormValuesV1 {
   cancellationReason: string;
   cancellationConfirmed: boolean;
   notificationOffsetMinutes: string;
+  mapAreas?: AtlasMapProgressArea[];
 }
 
 export interface AtlasAgendaRecordFormValuesV1 {
@@ -16608,6 +16609,7 @@ export function buildAtlasAgendaEventPayloadV1(input: {
     cancellationReason: String(values.cancellationReason || '').trim(),
     cancellationConfirmed: values.cancellationConfirmed === true,
     notificationOffsetMinutes: Number(values.notificationOffsetMinutes ?? 30),
+    mapAreas: (Array.isArray(values.mapAreas) ? values.mapAreas : []).map(projectAtlasMapProgressArea).filter((area): area is AtlasMapProgressArea => Boolean(area)),
   };
   const normalizeStatus = (value: unknown): string => String(value || '').toLocaleLowerCase('pt-BR')
     .normalize('NFD').replace(/[\u0300-\u034f]/g, '').replaceAll('_', ' ').trim();
@@ -31226,7 +31228,7 @@ export function* program(): Generator<SystemAPI, never, void> {
          agendaEvents=saved.events;
          const savedEvent=saved.events.find(item=>item.id===next.id);
           if(savedEvent)try{await syncAgendaNotification(savedEvent);}catch(error){agendaRouteServices.notify?.(`Compromisso salvo; lembrete não programado: ${error instanceof Error?error.message:String(error)}`,'warning');}
-          appStore.set({...appStore.get(),operationalAgenda:saved.events,lastAction:`Atualizou compromisso ${next.title}`});
+          appStore.set({...appStore.get(),operationalAgenda:saved.events,agendaDatabaseEventsV3:saved.events,agendaCalendarLoadedV3:true,lastAction:`Atualizou compromisso ${next.title}`});
           element.closeEditor();
           await reloadAgenda();
        });
@@ -31299,7 +31301,7 @@ export function* program(): Generator<SystemAPI, never, void> {
          agendaEvents=saved.events;
          const removed=latest.events.find(item=>item.id===detail.id);
          if(removed&&agendaIsNative()&&Boolean(appStore.get().agendaMobileNotificationsEnabled))try{await cancelAgendaNotification(removed);}catch(error){agendaRouteServices.notify?.(`Compromisso excluído; lembrete local não cancelado: ${error instanceof Error?error.message:String(error)}`,'warning');}
-         appStore.set({...appStore.get(),operationalAgenda:saved.events,lastAction:`Excluiu compromisso ${detail.id}`});
+         appStore.set({...appStore.get(),operationalAgenda:saved.events,agendaDatabaseEventsV3:saved.events,agendaCalendarLoadedV3:true,lastAction:`Excluiu compromisso ${detail.id}`});
          await reloadAgenda();
       });
     }catch(error){detail.element.setError(error instanceof Error?error.message:String(error));}
@@ -32046,7 +32048,13 @@ export function* program(): Generator<SystemAPI, never, void> {
           week: String(route.agendaCalendarWeekV8 || ''),
           detailMode: route.view === 'agenda-detail',
         };
-        void reloadAgenda(focus);
+        void reloadAgenda(focus).then(loaded => {
+          const current=appStore.get();
+          if(loaded && current.agendaMapPickerReturnV1 && current.agendaEventEditorDraftV1 && element===agendaElement){
+            element.restoreMapDraft(current.agendaEventEditorDraftV1 as Record<string,unknown>,current.agendaMapAreaDraftV1);
+            appStore.set({agendaMapPickerReturnV1:false,agendaEventEditorDraftV1:null,agendaMapAreaDraftV1:[]});
+          }
+        });
         if (focus.date || focus.eventId)
           appStore.set({ ...route, agendaFocusedDateV1: null, agendaFocusedEventId: null, selectedAgendaEventV3: null });
       },
@@ -32061,6 +32069,11 @@ export function* program(): Generator<SystemAPI, never, void> {
         appStore.set({ ...current, agendaFocusedDateV1: null, agendaFocusedEventId: null, selectedAgendaEventV3: null });
       },
       onRefresh: () => { void reloadAgenda(); },
+      onMapPick: (element,draft,areas) => {
+        if(element!==agendaElement)return;
+        const selected=(Array.isArray(areas)?areas:[]).map(projectAtlasMapProgressArea).filter((area):area is AtlasMapProgressArea=>Boolean(area));
+        appStore.set({view:'map',agendaMapAreaPickerActiveV1:true,agendaEventEditorDraftV1:draft,agendaMapAreaDraftV1:selected,agendaMapAreaPreviousSelectionV1:[],mapProgressSelection:selected});
+      },
       onSave: event => { void saveAgendaEvent(event, appStore); },
       onSaveDraft: event => { void saveAgendaDraft(event, appStore); },
       onDelete: event => { void deleteAgendaEvent(event, appStore); },

@@ -392,8 +392,9 @@ body.map-pdf-interface-open .app-shell .scene .map-selection-tools,
 body.map-pdf-interface-open .app-shell .scene .map-selection-panel{display:none!important}
 
 /* MAP_WIDGETS_RETIRED_V1: proteção durante atualizações de cache/navegação. */
-map-filter-rail,
+map-filter-rail:not([data-map-agenda-picker-host]),
 #belavista-map-widgets-v5{display:none!important}
+map-filter-rail[data-map-agenda-picker-host]:not([hidden]){display:block!important;position:absolute;top:16px;left:16px;z-index:50;max-width:calc(100% - 32px)}
 
 /* MAP_PRINT_WIDGETS_V1: a versão impressa leva somente a cena e seus dados;
    atalhos, launchers e janelas interativas ficam fora da composição. */

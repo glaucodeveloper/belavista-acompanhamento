@@ -723,7 +723,7 @@ export function installAtlasMapPdfLegendStylesV1(documentRef: Document = globalT
     .map-pdf-interface-toolbar .map-pdf-legend-bar{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:5px}
     .map-pdf-interface-toolbar .map-pdf-legend-bar span{display:inline-flex;align-items:center;gap:6px;font:11px "IBM Plex Sans",system-ui,sans-serif;color:#f4f4f4;letter-spacing:0}
     .map-pdf-swatch{display:inline-block;width:10px;height:10px;border:1px solid #ffffff80;flex:0 0 10px}
-    body.map-pdf-interface-open [data-worker-context-assistant],body.map-pdf-interface-open .admin-message-launch,body.map-pdf-interface-open map-filter-rail,body.map-pdf-interface-open [data-map-3d-loading]{display:none!important}
+    body.map-pdf-interface-open [data-worker-context-assistant],body.map-pdf-interface-open .admin-message-launch,body.map-pdf-interface-open map-filter-rail:not([data-map-agenda-picker-host]),body.map-pdf-interface-open [data-map-3d-loading]{display:none!important}
     @media print{
       @page{size:A4 landscape;margin:0}
       body.map-pdf-interface-open .map-pdf-interface{display:block!important;position:fixed!important;inset:0!important;height:100vh!important}
@@ -950,7 +950,7 @@ export function installAtlasMapFilterRail(input: AtlasMapFilterRailInstallInput)
     private progressSignatureFor(state: Record<string, unknown>): string {
       const records = Array.isArray(state.records) ? state.records : [];
       const events = Array.isArray(state.agendaDatabaseEventsV3) ? state.agendaDatabaseEventsV3 : Array.isArray(state.operationalAgenda) ? state.operationalAgenda : [];
-      return JSON.stringify({ selection: state.mapProgressSelection || [], agendaPicker: Boolean(state.agendaMapPickerActiveV1), events: events.map((value: any) => [value?.id, value?.mapAreas]), records: records.map((value: any) => [value?.id, value?.progress, value?.progressPercent, value?.progresso, value?.status, value?.properties, value?.propertiesJson, value?.createdAt, value?.data, value?.hora]) });
+      return JSON.stringify({ selection: state.mapProgressSelection || [], agendaPicker: Boolean(state.agendaMapAreaPickerActiveV1), events: events.map((value: any) => [value?.id, value?.mapAreas]), records: records.map((value: any) => [value?.id, value?.progress, value?.progressPercent, value?.progresso, value?.status, value?.properties, value?.propertiesJson, value?.createdAt, value?.data, value?.hora]) });
     }
     private syncProgressHighlights(): void {
       const state = input.appStore.get();
@@ -963,7 +963,7 @@ export function installAtlasMapFilterRail(input: AtlasMapFilterRailInstallInput)
       const target = event.target as Element | null;
       if (!target?.closest) return;
       const pickerState = input.appStore.get();
-      if (pickerState.agendaMapPickerActiveV1 && this.contains(target)) {
+      if (pickerState.agendaMapAreaPickerActiveV1 && this.contains(target)) {
         const confirm = target.closest<HTMLElement>("[data-agenda-map-picker-confirm]");
         const cancel = target.closest<HTMLElement>("[data-agenda-map-picker-cancel]");
         const clear = target.closest<HTMLElement>("[data-agenda-map-picker-clear]");
@@ -978,7 +978,7 @@ export function installAtlasMapFilterRail(input: AtlasMapFilterRailInstallInput)
           findMap()?.paintProgressAreaSelectionV1?.([]);
           input.appStore.set({
             view: "agenda",
-            agendaMapPickerActiveV1: false,
+            agendaMapAreaPickerActiveV1: false,
             agendaMapPickerReturnV1: true,
             agendaMapAreaDraftV1: areas,
             agendaMapAreaPreviousSelectionV1: null,
@@ -1053,7 +1053,7 @@ export function installAtlasMapFilterRail(input: AtlasMapFilterRailInstallInput)
       const summary = widgetKey ? mapFilterSummaryMarkupV1(widgetKey, state) : "";
       this.progressSignature = this.progressSignatureFor(state);
       this.dataset.dashboardMode = mode;
-      if (state.agendaMapPickerActiveV1) {
+      if (state.agendaMapAreaPickerActiveV1) {
         this.hidden = false;
         const map = findMap();
         if (map && map.dataset.mapSelectionMode !== "progress") map.setMapSelectionMode?.("progress");
@@ -11143,6 +11143,31 @@ export class AtlasAgenda extends AtlasHTMLElementBase{
     const projection=projectAtlasAgendaDataRefreshV1({events,stages,materials,focusDate,selectedEventId,focusWeek,detailMode,notificationsEnabled,previousWeek:this.snapshot.week,previousSelectedDate:this.snapshot.selectedDate,previousEditor:this.snapshot.editor,previousRelatedFrom:this.snapshot.relatedFrom});
      this.state.next(s=>({...s,...projection,recordFormOpen:false,recordFeedback:null,loading:false,error:null,saving:false}));
    }
+   restoreMapDraft(draft:Record<string,unknown>,areas:unknown):void{
+    const id=String(draft.id||'');
+    this.pageCommands.dispatch(id?{kind:"edit-event",id}:{kind:"new-event"});
+    const form=this.querySelector<HTMLFormElement>("[data-agenda-form]");
+    if(!form)return;
+    for(const [name,value] of Object.entries(draft)){
+      if(name==='materialIds'||name==='mapAreas')continue;
+      const element=form.elements.namedItem(name);
+      if(element instanceof HTMLInputElement||element instanceof HTMLTextAreaElement||element instanceof HTMLSelectElement){
+        if(element instanceof HTMLInputElement&&element.type==='checkbox')element.checked=Boolean(value);
+        else element.value=String(value??'');
+        if(name==='stageKey')element.dispatchEvent(new Event('change',{bubbles:true}));
+      }
+    }
+    const ids=Array.isArray(draft.materialIds)?draft.materialIds.map(String):[];
+    form.querySelectorAll<HTMLInputElement>('input[name="materialIds"]').forEach(element=>{element.checked=ids.includes(element.value);});
+    this.updateMapAreas(form,areas);
+   }
+   private updateMapAreas(form:HTMLFormElement,areas:unknown):void{
+    const valid=Array.isArray(areas)?areas:[];
+    const input=form.elements.namedItem('mapAreas') as HTMLInputElement|null;
+    const list=form.querySelector<HTMLElement>('[data-agenda-map-list]');
+    if(input)input.value=JSON.stringify(valid);
+    if(list)list.textContent=valid.length?valid.map(area=>String((area as {label?:unknown}).label||'Área')).join(' · '):'Nenhuma área selecionada.';
+   }
    closeEditor():void{this.state.next(s=>({...s,editor:false,relatedFrom:"",saving:false}));}
    setError(error:string):void{this.state.next(s=>({...s,error,loading:false,saving:false}));}
    setRecordFeedback(message:string|null,closeForm=true):void{this.state.next(s=>({...s,recordFeedback:message,recordFormOpen:message&&closeForm?false:s.recordFormOpen,saving:false}));}
@@ -11156,7 +11181,7 @@ export class AtlasAgenda extends AtlasHTMLElementBase{
     const body=s.presentation==="status"?statusGroups.map(({key,title,events:list})=>`<section class="agenda-group"><header><h2>${esc(title||key)}</h2><span>${list.length}</span></header><div>${list.map(row).join("")}</div></section>`).join(""):`<div class="agenda-events">${ordered.map(event=>`<button type="button" class="agenda-event" data-event-date="${esc(event.date)}" data-event-edit="${esc(event.id)}"><header><time>${esc(event.date.split("-").reverse().join("/"))} · ${esc(event.start||"Horário a definir")}</time><span class="agenda-status">${esc(event.status)}</span></header><strong>${esc(event.title)}</strong><p>${esc(event.activityName)} · ${esc(event.stageName)}</p><footer><span>${esc(event.owner||"Responsável não informado")}</span><small>${Number(event.durationHours||0)} h · ${Number(event.spanDays||1)} dia(s)</small></footer></button>`).join("")||`<p class="agenda-empty">Nenhum compromisso registrado nesta semana.</p>`}</div>`;
      const calendarMarkup=`<section class="agenda-calendar" aria-label="Calendário semanal para ajuste de horários"><div class="agenda-calendar-grid">${calendarDays.map(({date,label,eventCount,events:dayEvents})=>`<article class="agenda-calendar-day" data-calendar-date="${date}"><header><strong>${esc(label)}</strong><small>${eventCount} compromisso(s)</small></header><div class="agenda-calendar-body">${timeLabels.map(({hour,label:timeLabel})=>`<span class="agenda-time-label" style="--hour:${hour}">${timeLabel}</span>`).join("")}${dayEvents.map(({event:item,startHour,durationHours,spanDays,tone,heightPixels,widthPercent,widthOffsetPixels,startLabel,durationLabel,spanLabel})=>`<button type="button" class="agenda-calendar-event" data-calendar-event="${esc(item.id)}" data-status-tone="${tone}" data-date="${date}" data-start="${esc(startLabel)}" data-duration="${durationHours}" data-span="${spanDays}" style="top:${startHour*48}px;height:${heightPixels}px;width:calc(${widthPercent}% + ${widthOffsetPixels}px)" aria-label="Mover ou ajustar ${esc(item.title)}"><strong>${esc(item.title)}</strong><small>${esc(startLabel)} · ${durationLabel} · ${spanLabel}</small><span data-calendar-resize="duration" aria-label="Ajustar duração"></span><span data-calendar-resize="span" aria-label="Ajustar dias"></span></button>`).join("")}</div></article>`).join("")}</div></section>`;
        const options=stageOptions.map(({stage:item,selected:isSelected})=>`<option value="${esc(item.name)}" ${isSelected?"selected":""}>${esc(item.name)}</option>`).join(""),activityOptions=projectedActivityOptions.map(({activity,selected:isSelected})=>`<option value="${esc(activity.id)}" ${isSelected?"selected":""}>${esc(activity.name)}</option>`).join(""),materialOptions=projectedMaterialOptions.map(({material,selected:isSelected})=>`<label><input type="checkbox" name="materialIds" value="${esc(material.id)}" ${isSelected?"checked":""}>${esc(material.name)} · ${esc(material.receivedQuantity)} ${esc(material.unit)}</label>`).join(""),field=(name:string,label:string,value:unknown,type="text",required=false)=>`<label>${label}<input name="${name}" type="${type}" value="${esc(value)}"${required?" required":""}></label>`,relation=selected?.relatedFrom||s.relatedFrom;
-      const editor=`<div class="agenda-editor-wrap" ${editing?"":"hidden"}><section class="agenda-editor"><header><div><span class="agenda-kicker">AGENDA · ${selected?"EDIÇÃO":"NOVO COMPROMISSO"}</span><h2>${selected?"Editar compromisso":"Adicionar compromisso"}</h2><p>Associe o compromisso à etapa, atividade, requisitos e materiais.</p></div><button type="button" data-editor-close>${s.detailMode?"Voltar à agenda":"Fechar"}</button></header><form data-agenda-form data-agenda-stage-name="${esc(stageName)}"><input type="hidden" name="id" value="${esc(selected?.id||"")}"><input type="hidden" name="relatedFrom" value="${esc(relation)}"><div class="agenda-fields">${field("title","Título",selected?.title||"","text",true)}<label>Etapa<select name="stageKey" required>${options}</select></label><label>Atividade<select name="activityId" data-agenda-activity-select>${activityOptions}</select></label>${field("owner","Responsável",selected?.owner||"")}${field("date","Data",selected?.date||s.selectedDate,"date",true)}${field("start","Hora inicial",selected?.start||"08:00","time",true)}${field("durationHours","Duração em horas",selected?.durationHours||1.5,"number")}${field("spanDays","Duração em dias",selected?.spanDays||1,"number")}<label>Status<select name="status">${["Planejado","Em andamento","Pendente","Aguardando material","Bloqueado","Concluído","Anulado"].map(value=>`<option ${normalize(selected?.status||"Planejado")===normalize(value)?"selected":""}>${value}</option>`).join("")}</select></label>${field("customStatus","Status personalizado",selected?.customStatus||"")}${field("notificationOffsetMinutes","Lembrete antes (minutos)",selected?.notificationOffsetMinutes??30,"number")}<label class="agenda-wide">Descrição e orientação<textarea name="notes" maxlength="2000">${esc(selected?.notes||"")}</textarea></label><label class="agenda-wide">Requisitos<textarea name="requirements" maxlength="4000">${esc((selected?.requirements||[]).join("\n"))}</textarea></label><label class="agenda-wide">Materiais adicionais<textarea name="materials" maxlength="4000">${esc((selected?.materials||[]).join("\n"))}</textarea></label></div>${relation?`<p class="agenda-linked-note">Vinculado a ${esc(s.events.find(event=>event.id===relation)?.title||relation)}.</p>`:""}<fieldset class="agenda-materials"><legend>Materiais alocados do cadastro</legend><div data-agenda-material-options style="display:contents">${materialOptions||`<small>Sem materiais registrados nesta etapa.</small>`}</div></fieldset>${selected?`<fieldset class="agenda-cancel"><legend>Cancelamento</legend><label>Motivo<textarea name="cancellationReason" maxlength="1000">${esc(selected.cancellationReason||"")}</textarea></label><label><input type="checkbox" name="cancellationConfirmed" ${selected.cancellationConfirmed?"checked":""}> Confirmo o cancelamento deste compromisso</label></fieldset>`:""}<footer>${selected?`<button type="button" data-agenda-complete="${esc(selected.id)}">Marcar concluída</button><button type="button" data-agenda-record-open="${esc(selected.id)}">Novo registro relacionado</button><button type="button" data-related="${esc(selected.id)}">Novo compromisso relacionado</button><button type="button" data-delete="${esc(selected.id)}">Excluir</button><button type="button" data-agenda-cancel="${esc(selected.id)}">Confirmar cancelamento</button>`:""}<button type="button" data-editor-close>Cancelar</button><button type="submit" class="agenda-primary" ${s.saving?"disabled":""}>${s.saving?"Salvando…":"Salvar compromisso"}</button></footer></form>${selected&&s.recordFormOpen?`<form class="agenda-record-form" data-agenda-record-form><input type="hidden" name="activityEventId" value="${esc(selected.id)}"><h3>Novo registro relacionado</h3><div class="agenda-fields">${field("date","Data",selected.date,"date",true)}${field("time","Hora",selected.start,"time")}${field("responsible","Responsável",selected.owner)}<label>Status<select name="status"><option>Em andamento</option><option>Concluído</option><option selected>Pendente</option><option>Bloqueado</option></select></label><label class="agenda-wide">Relato<textarea name="details" maxlength="2000" required></textarea></label></div><footer><button type="button" data-record-close>Voltar</button><button type="submit" class="agenda-primary" ${s.saving?"disabled":""}>Adicionar registro</button></footer></form>`:""}${s.recordFeedback?`<p role="status">${esc(s.recordFeedback)}</p>`:""}</section></div>`;
+      const editor=`<div class="agenda-editor-wrap" ${editing?"":"hidden"}><section class="agenda-editor"><header><div><span class="agenda-kicker">AGENDA · ${selected?"EDIÇÃO":"NOVO COMPROMISSO"}</span><h2>${selected?"Editar compromisso":"Adicionar compromisso"}</h2><p>Associe o compromisso à etapa, atividade, requisitos e materiais.</p></div><button type="button" data-editor-close>${s.detailMode?"Voltar à agenda":"Fechar"}</button></header><form data-agenda-form data-agenda-stage-name="${esc(stageName)}"><input type="hidden" name="id" value="${esc(selected?.id||"")}"><input type="hidden" name="relatedFrom" value="${esc(relation)}"><div class="agenda-fields">${field("title","Título",selected?.title||"","text",true)}<label>Etapa<select name="stageKey" required>${options}</select></label><label>Atividade<select name="activityId" data-agenda-activity-select>${activityOptions}</select></label>${field("owner","Responsável",selected?.owner||"")}${field("date","Data",selected?.date||s.selectedDate,"date",true)}${field("start","Hora inicial",selected?.start||"08:00","time",true)}${field("durationHours","Duração em horas",selected?.durationHours||1.5,"number")}${field("spanDays","Duração em dias",selected?.spanDays||1,"number")}<label>Status<select name="status">${["Planejado","Em andamento","Pendente","Aguardando material","Bloqueado","Concluído","Anulado"].map(value=>`<option ${normalize(selected?.status||"Planejado")===normalize(value)?"selected":""}>${value}</option>`).join("")}</select></label>${field("customStatus","Status personalizado",selected?.customStatus||"")}${field("notificationOffsetMinutes","Lembrete antes (minutos)",selected?.notificationOffsetMinutes??30,"number")}<label class="agenda-wide">Descrição e orientação<textarea name="notes" maxlength="2000">${esc(selected?.notes||"")}</textarea></label><label class="agenda-wide">Requisitos<textarea name="requirements" maxlength="4000">${esc((selected?.requirements||[]).join("\n"))}</textarea></label><label class="agenda-wide">Materiais adicionais<textarea name="materials" maxlength="4000">${esc((selected?.materials||[]).join("\n"))}</textarea></label></div>${relation?`<p class="agenda-linked-note">Vinculado a ${esc(s.events.find(event=>event.id===relation)?.title||relation)}.</p>`:""}<fieldset class="agenda-materials"><legend>Materiais alocados do cadastro</legend><div data-agenda-material-options style="display:contents">${materialOptions||`<small>Sem materiais registrados nesta etapa.</small>`}</div></fieldset><fieldset class="agenda-materials"><legend>Áreas do mapa</legend><input type="hidden" name="mapAreas" value="${esc(JSON.stringify(selected?.mapAreas||[]))}"><p data-agenda-map-list>${selected?.mapAreas?.length?esc(selected.mapAreas.map(area=>area.label).join(" · ")):"Nenhuma área selecionada."}</p><button type="button" data-agenda-map-pick>Selecionar no mapa</button> <button type="button" data-agenda-map-clear>Limpar áreas</button></fieldset>${selected?`<fieldset class="agenda-cancel"><legend>Cancelamento</legend><label>Motivo<textarea name="cancellationReason" maxlength="1000">${esc(selected.cancellationReason||"")}</textarea></label><label><input type="checkbox" name="cancellationConfirmed" ${selected.cancellationConfirmed?"checked":""}> Confirmo o cancelamento deste compromisso</label></fieldset>`:""}<footer>${selected?`<button type="button" data-agenda-complete="${esc(selected.id)}">Marcar concluída</button><button type="button" data-agenda-record-open="${esc(selected.id)}">Novo registro relacionado</button><button type="button" data-related="${esc(selected.id)}">Novo compromisso relacionado</button><button type="button" data-delete="${esc(selected.id)}">Excluir</button><button type="button" data-agenda-cancel="${esc(selected.id)}">Confirmar cancelamento</button>`:""}<button type="button" data-editor-close>Cancelar</button><button type="submit" class="agenda-primary" ${s.saving?"disabled":""}>${s.saving?"Salvando…":"Salvar compromisso"}</button></footer></form>${selected&&s.recordFormOpen?`<form class="agenda-record-form" data-agenda-record-form><input type="hidden" name="activityEventId" value="${esc(selected.id)}"><h3>Novo registro relacionado</h3><div class="agenda-fields">${field("date","Data",selected.date,"date",true)}${field("time","Hora",selected.start,"time")}${field("responsible","Responsável",selected.owner)}<label>Status<select name="status"><option>Em andamento</option><option>Concluído</option><option selected>Pendente</option><option>Bloqueado</option></select></label><label class="agenda-wide">Relato<textarea name="details" maxlength="2000" required></textarea></label></div><footer><button type="button" data-record-close>Voltar</button><button type="submit" class="agenda-primary" ${s.saving?"disabled":""}>Adicionar registro</button></footer></form>`:""}${s.recordFeedback?`<p role="status">${esc(s.recordFeedback)}</p>`:""}</section></div>`;
      this.innerHTML=`${agendaCss}<section class="atlas-agenda"><header class="agenda-head"><div><span class="agenda-kicker">PLANEJAMENTO · COMPROMISSOS</span><h1>${s.detailMode?"Detalhe do compromisso":"Agenda"}</h1><p>${s.detailMode?"Edite o compromisso, registre a execução e ajuste os recursos da etapa.":"Compromissos operacionais organizados por estado e linha do tempo semanal."}</p></div><div class="agenda-actions">${s.detailMode?`<button type="button" data-agenda-back>Voltar à agenda</button>`:""}<button type="button" data-notifications-toggle>${s.notificationsEnabled?"Desativar lembretes":"Ativar lembretes"}</button><button type="button" data-refresh>Atualizar</button>${s.detailMode?"":`<button type="button" data-calendar-toggle aria-expanded="${s.calendarOpen}">${s.calendarOpen?"Fechar calendário":"Ajustar horários no calendário"}</button><button type="button" class="agenda-primary" data-new>Novo compromisso</button>`}</div></header>${s.loading?`<p>Carregando agenda persistida…</p>`:""}${s.error?`<p role="alert">${esc(s.error)}</p>`:""}${s.detailMode?selected?editor:`<p role="alert">Compromisso não encontrado na agenda.</p>`:`<section class="agenda-panel"><div class="agenda-controls"><div class="agenda-nav"><button type="button" data-week="-1">‹</button><b>${days[0].toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})} — ${days[6].toLocaleDateString("pt-BR",{day:"2-digit",month:"short",year:"numeric"})}</b><button type="button" data-week="1">›</button></div><div class="agenda-modes"><button type="button" data-presentation="status" aria-pressed="${s.presentation==="status"}">Por estado</button><button type="button" data-presentation="timeline" aria-pressed="${s.presentation==="timeline"}">Linha do tempo</button></div></div><nav class="agenda-days">${dayNav}</nav><p>${events.length} compromisso(s) nesta semana · ${s.events.length} compromissos carregados</p></section>${s.calendarOpen?calendarMarkup:""}<section class="agenda-groups">${s.loading?"":body||`<p class="agenda-empty">Nenhum compromisso nesta semana.</p>`}</section>${editor}`}</section>`;
   }
   connectedCallback():void{
@@ -11173,7 +11198,7 @@ export class AtlasAgenda extends AtlasHTMLElementBase{
       const next=projectAtlasAgendaWeekGestureV1({source:g.original,mode:g.mode,date,pointerHours});
       if(g.mode==="move"){const el=document.elementFromPoint(event.clientX,event.clientY);const targetBody=el instanceof Element?el.closest<HTMLElement>(".agenda-calendar-body"):null;if(targetBody&&targetBody!==body){targetBody.append(card);}}
       g.date=date;g.pointerHours=pointerHours;g.preview=next;const [hour,minute]=String(next.start||"08:00").split(":").map(Number),duration=Math.max(.5,Number(next.durationHours)||1);card.style.top=`${(hour+minute/60)*48}px`;card.style.height=`${Math.max(24,duration*48)}px`;card.style.width=`calc(${Math.max(1,Number(next.spanDays)||1)*100}% + ${(Math.max(1,Number(next.spanDays)||1)-1)*8}px)`;};
-    this.addEventListener("click",event=>{const target=event.target;if(!(target instanceof Element))return;const button=target.closest<HTMLButtonElement>("button");if(!button)return;if(button.hasAttribute("data-refresh")){this.dispatchEvent(new CustomEvent("atlas:agenda-refresh",{bubbles:true,detail:{element:this}}));return;}if(button.hasAttribute("data-calendar-toggle")){this.pageCommands.dispatch({kind:"toggle-calendar"});return;}if(button.hasAttribute("data-new")){this.pageCommands.dispatch({kind:"new-event"});return;}if(button.hasAttribute("data-editor-close")){this.pageCommands.dispatch({kind:"close-editor"});return;}if(button.dataset.week){this.pageCommands.dispatch({kind:"navigate-week",delta:Number(button.dataset.week)});return;}if(button.dataset.presentation){this.pageCommands.dispatch({kind:"set-presentation",value:button.dataset.presentation});return;}if(button.dataset.day){const date=button.dataset.day||"";this.pageCommands.dispatch({kind:"select-day",date});requestAnimationFrame(()=>this.querySelector<HTMLElement>(`[data-event-date="${CSS.escape(date)}"]`)?.scrollIntoView({behavior:"smooth",block:"nearest"}));return;}if(button.dataset.calendarEvent&&suppressCalendarClick){event.preventDefault();return;}const eventId=button.dataset.eventEdit||button.dataset.calendarEvent;if(eventId){this.pageCommands.dispatch({kind:"edit-event",id:eventId});return;}if(button.dataset.related){this.pageCommands.dispatch({kind:"create-related-event",sourceId:button.dataset.related||""});return;}if(button.dataset.delete&&confirm("Excluir este compromisso da agenda?"))this.dispatchEvent(new CustomEvent("atlas:agenda-delete",{bubbles:true,detail:{element:this,id:button.dataset.delete}}));});
+    this.addEventListener("click",event=>{const target=event.target;if(!(target instanceof Element))return;const button=target.closest<HTMLButtonElement>("button");if(!button)return;if(button.hasAttribute("data-agenda-map-clear")){const form=this.querySelector<HTMLFormElement>("[data-agenda-form]");if(form)this.updateMapAreas(form,[]);return;}if(button.hasAttribute("data-agenda-map-pick")){const form=this.querySelector<HTMLFormElement>("[data-agenda-form]");if(!form)return;const data=new FormData(form),draft:Record<string,unknown>=Object.fromEntries(data.entries());draft.materialIds=data.getAll("materialIds").map(String);draft.cancellationConfirmed=data.get("cancellationConfirmed")==="on";let areas:unknown=[];try{areas=JSON.parse(String(data.get("mapAreas")||"[]"));}catch{}this.dispatchEvent(new CustomEvent("atlas:agenda-map-pick",{bubbles:true,detail:{element:this,draft,areas}}));return;}if(button.hasAttribute("data-refresh")){this.dispatchEvent(new CustomEvent("atlas:agenda-refresh",{bubbles:true,detail:{element:this}}));return;}if(button.hasAttribute("data-calendar-toggle")){this.pageCommands.dispatch({kind:"toggle-calendar"});return;}if(button.hasAttribute("data-new")){this.pageCommands.dispatch({kind:"new-event"});return;}if(button.hasAttribute("data-editor-close")){this.pageCommands.dispatch({kind:"close-editor"});return;}if(button.dataset.week){this.pageCommands.dispatch({kind:"navigate-week",delta:Number(button.dataset.week)});return;}if(button.dataset.presentation){this.pageCommands.dispatch({kind:"set-presentation",value:button.dataset.presentation});return;}if(button.dataset.day){const date=button.dataset.day||"";this.pageCommands.dispatch({kind:"select-day",date});requestAnimationFrame(()=>this.querySelector<HTMLElement>(`[data-event-date="${CSS.escape(date)}"]`)?.scrollIntoView({behavior:"smooth",block:"nearest"}));return;}if(button.dataset.calendarEvent&&suppressCalendarClick){event.preventDefault();return;}const eventId=button.dataset.eventEdit||button.dataset.calendarEvent;if(eventId){this.pageCommands.dispatch({kind:"edit-event",id:eventId});return;}if(button.dataset.related){this.pageCommands.dispatch({kind:"create-related-event",sourceId:button.dataset.related||""});return;}if(button.dataset.delete&&confirm("Excluir este compromisso da agenda?"))this.dispatchEvent(new CustomEvent("atlas:agenda-delete",{bubbles:true,detail:{element:this,id:button.dataset.delete}}));});
     this.addEventListener("change",event=>{const target=event.target;if(!(target instanceof HTMLSelectElement)||target.name!=="stageKey")return;const form=target.form;if(!form)return;const nextStageName=target.value,stage=this.snapshot.stages.find(item=>item.name===nextStageName),activitySelect=form.querySelector<HTMLSelectElement>("[data-agenda-activity-select]"),materialOptions=form.querySelector<HTMLElement>("[data-agenda-material-options]");if(!stage||!activitySelect||!materialOptions)return;let selections=this.materialSelections.get(form);if(!selections){selections=new Map();this.materialSelections.set(form,selections);}const currentStageName=form.dataset.agendaStageName||"";selections.set(currentStageName,[...form.querySelectorAll<HTMLInputElement>('input[name="materialIds"]:checked')].map(input=>input.value));const editor=this.snapshot.editor,initialSelection=editor&&typeof editor==="object"&&editor.stageName===nextStageName?editor.materialIds||[]:[],selectedIds=selections.get(nextStageName)||initialSelection,activities=stage.activities||[],activityId=activities.some(item=>item.id===activitySelect.value)?activitySelect.value:activities[0]?.id||"";activitySelect.innerHTML=this.agendaActivityOptions(nextStageName,activityId);materialOptions.innerHTML=this.agendaMaterialOptions(nextStageName,selectedIds)||`<small>Sem materiais registrados nesta etapa.</small>`;form.dataset.agendaStageName=nextStageName;});
      this.addEventListener("submit",event=>{
        const form=event.target;
@@ -11196,7 +11221,7 @@ export class AtlasAgenda extends AtlasHTMLElementBase{
           spanDays:value("spanDays"),status:value("status"),relatedFrom:value("relatedFrom"),notes:value("notes"),
           materialIds:data.getAll("materialIds").map(String),customStatus:value("customStatus"),
           requirements:value("requirements"),materials:value("materials"),cancellationReason:value("cancellationReason"),
-          cancellationConfirmed:data.get("cancellationConfirmed")==="on",notificationOffsetMinutes:value("notificationOffsetMinutes"),
+          cancellationConfirmed:data.get("cancellationConfirmed")==="on",notificationOffsetMinutes:value("notificationOffsetMinutes"), mapAreas: (()=>{try{return JSON.parse(value("mapAreas")||"[]");}catch{return [];}})(),
         };
         this.state.next(s=>({...s,saving:true,error:null,recordFeedback:null}));
         this.dispatchEvent(new CustomEvent("atlas:agenda-save-draft",{bubbles:true,detail:{element:this,values}}));
@@ -11257,6 +11282,7 @@ export interface AtlasAgendaComponentControllerInputV1 {
   onBack(element: AtlasAgenda): void;
   onFocusClear(element: AtlasAgenda): void;
   onRefresh(element: AtlasAgenda): void;
+  onMapPick(element: AtlasAgenda, draft: Record<string,unknown>, areas: unknown): void;
   onSave(event: CustomEvent<AtlasAgendaSaveCommandV1>): void;
   onSaveDraft(event: CustomEvent<AtlasAgendaFormDraftCommandV1>): void;
   onDelete(event: CustomEvent<AtlasAgendaDeleteCommandV1>): void;
@@ -11288,6 +11314,10 @@ export function installAtlasAgendaComponentControllerV1(input: AtlasAgendaCompon
     if (!element) return;
     activeElement = element;
     input.onConnected(element);
+  }, options);
+  input.host.addEventListener('atlas:agenda-map-pick', event => {
+    const detail=(event as CustomEvent<{element:AtlasAgenda;draft:Record<string,unknown>;areas:unknown}>).detail;
+    if(detail?.element===activeElement)input.onMapPick(detail.element,detail.draft,detail.areas);
   }, options);
   input.host.addEventListener('atlas:agenda-refresh', event => {
     const element = elementFrom(event);
@@ -15147,7 +15177,14 @@ export function installAtlasMapSelection(MapScene: CustomElementConstructor, dep
         let lastRoadPointer: { x: number; y: number; at: number } | null = null;
         const toggleStaticArea = (event: Event): void => {
           const target = event.target as Element | null;
-          const lot = target?.closest<SVGPathElement>(".satellite-lot-hit-area[data-lot]") || null;
+          let lot = target?.closest<SVGPathElement>(".satellite-lot-hit-area[data-lot]") || null;
+          if (!lot && event instanceof MouseEvent) {
+            lot = [...this.querySelectorAll<SVGPathElement>(".satellite-lot-hit-area[data-lot]")].find(path => {
+              const matrix=path.getScreenCTM(),owner=path.ownerSVGElement;if(!matrix||!owner)return false;
+              const point=owner.createSVGPoint();point.x=event.clientX;point.y=event.clientY;
+              return path.isPointInFill(point.matrixTransform(matrix.inverse()));
+            }) || null;
+          }
           let road = target?.closest<SVGPathElement>("[data-map-road-part-id]") || null;
           const svg = this.querySelector<SVGSVGElement>(".satellite-lot-plan-fit svg");
           if (!lot && !road && event instanceof MouseEvent && svg && !target?.closest("map-filter-rail")) {
@@ -15177,7 +15214,7 @@ export function installAtlasMapSelection(MapScene: CustomElementConstructor, dep
           const roadNo = String(road?.dataset.mapRoadOrdinal || "").padStart(2, "0");
           const segmentNo = String(partId.match(/slice-(\d+)/)?.[1] || "").padStart(2, "0");
           const label = lot
-            ? String(detail?.label || `Lote ${String(partId.match(/\d+/g)?.at(-1) || "").padStart(3, "0")}`)
+            ? String(detail?.label || `Lote ${this.querySelector<HTMLElement>(`[data-lot-id="${CSS.escape(partId)}"] [data-lot-number]`)?.dataset.lotNumber || String(partId.match(/\d+/g)?.at(-1) || "").padStart(3, "0")}`)
             : `Rua ${roadNo} · trecho ${segmentNo}`;
           this.toggleProgressAreaSelectionV1({
             name: label,
@@ -15189,6 +15226,12 @@ export function installAtlasMapSelection(MapScene: CustomElementConstructor, dep
           const target = event.target as Element | null;
           if (target?.closest("map-filter-rail")) return;
           const directRoad = target?.closest<SVGPathElement>("[data-map-road-part-id]");
+          const onLot=[...this.querySelectorAll<SVGPathElement>(".satellite-lot-hit-area[data-lot]")].some(path=>{
+            const matrix=path.getScreenCTM(),owner=path.ownerSVGElement;if(!matrix||!owner)return false;
+            const point=owner.createSVGPoint();point.x=event.clientX;point.y=event.clientY;
+            return path.isPointInFill(point.matrixTransform(matrix.inverse()));
+          });
+          if(onLot)return;
           if (!directRoad) {
             const svg = this.querySelector<SVGSVGElement>(".satellite-lot-plan-fit svg");
             const matrix = svg?.getScreenCTM();
@@ -41807,7 +41850,7 @@ export function installAtlasAgendaCalendarPageV8(ViewLayer: any, dependencies: A
       const state=readState(),draft=captureAgendaEditorDraft(form);
       const selected=normalizeEditorMapAreas(draft.mapAreas);
       dependencies.appStore.set({
-        view:"map",agendaMapPickerActiveV1:true,agendaEventEditorDraftV1:draft,
+        view:"map",agendaMapAreaPickerActiveV1:true,agendaEventEditorDraftV1:draft,
         agendaMapAreaDraftV1:selected,agendaMapAreaPreviousSelectionV1:[],
         mapProgressSelection:selected,lastAction:"Selecionando áreas do evento no mapa",
       });
@@ -48308,7 +48351,7 @@ export function createAtlasLegacyViewLayerV1(
           content,
           timeLabel: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
         }) ?? content;
-        this.querySelectorAll("map-filter-rail").forEach((rail: any) => rail.remove());
+        this.querySelectorAll("map-filter-rail:not([data-map-agenda-picker-host])").forEach((rail: any) => rail.remove());
         document.getElementById("belavista-map-widgets-v5")?.remove();
         (window as any).lucide?.createIcons();
         this.bind();
@@ -48404,7 +48447,7 @@ export function createAtlasLegacyViewLayerV1(
         : `<div class="activity-header"><div><span>${title}</span><small>${subtitle}</small></div><div class="activity-state"><i></i> Em acompanhamento <b>·</b> ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</div></div>`;
       this.innerHTML = `${pageHeader}${stagePanorama || (view === "stages" ? (state.activityDedicated ? this.activityDedicatedPage() : this.stagesCanvas()) : this[view]?.() || this.assistant())}`;
       // Não reter trilhos de filtro de versões anteriores em nenhuma visão.
-      this.querySelectorAll("map-filter-rail").forEach((rail: any) => rail.remove());
+      this.querySelectorAll("map-filter-rail:not([data-map-agenda-picker-host])").forEach((rail: any) => rail.remove());
       document.getElementById("belavista-map-widgets-v5")?.remove();
       if (view === "stages" && !state.activityDedicated) {
         this.addActivityNodes();

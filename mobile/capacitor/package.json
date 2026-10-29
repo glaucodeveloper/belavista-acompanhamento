@@ -1,6 +1,6 @@
 {
   "name": "alianca-park-capacitor",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "private": true,
   "description": "Shell Android Capacitor da aplicação Aliança Park.",
   "scripts": {
