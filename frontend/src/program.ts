@@ -3368,6 +3368,7 @@ export interface AtlasSatelliteLotPlanOverlayDependenciesV1 {
   ADMIN_MASTERPLAN_LOT_POLYGONS_URL_V2: string;
   ADMIN_MASTERPLAN_SATELLITE_FRAME_V1: PublicMapFrame;
   ADMIN_REFERENCE_AERIAL_LOT_TRACE_URL_V1: string;
+  ADMIN_REFERENCE_AERIAL_ROAD_TRACE_URL_V1: string;
   CANONICAL_LOT_TRACE_OVERLAY_ALIGNMENT_V1: string;
   DWG_GEOREFERENCE_URL: string;
   INVALID_MASTERPLAN_LOT_IDS_V1: ReadonlySet<string>;
@@ -3625,6 +3626,7 @@ export function installAtlasMapSceneInteractionCompositionV1(
         mapFilterWidget: state.mapFilterWidget,
         mapFilters: state.mapFilters,
         selectedStage: state.selectedStage,
+        agendaMapAreaPickerActiveV1: Boolean(state.agendaMapAreaPickerActiveV1),
       };
     },
     commands: createAtlasMapSelectionCommandsV1(appStore),
@@ -4078,6 +4080,7 @@ export async function installAtlasMapSceneAssetCompositionV1(
     ADMIN_MASTERPLAN_LOT_POLYGONS_URL_V2: value('ADMIN_MASTERPLAN_LOT_POLYGONS_URL_V2'),
     ADMIN_MASTERPLAN_SATELLITE_FRAME_V1: value('ADMIN_MASTERPLAN_SATELLITE_FRAME_V1'),
     ADMIN_REFERENCE_AERIAL_LOT_TRACE_URL_V1: value('ADMIN_REFERENCE_AERIAL_LOT_TRACE_URL_V1'),
+    ADMIN_REFERENCE_AERIAL_ROAD_TRACE_URL_V1: value('ADMIN_REFERENCE_AERIAL_ROAD_TRACE_URL_V1'),
     CANONICAL_LOT_TRACE_OVERLAY_ALIGNMENT_V1: value('CANONICAL_LOT_TRACE_OVERLAY_ALIGNMENT_V1'),
     DWG_GEOREFERENCE_URL: value('DWG_GEOREFERENCE_URL'),
     INVALID_MASTERPLAN_LOT_IDS_V1: value('INVALID_MASTERPLAN_LOT_IDS_V1'),
@@ -7174,6 +7177,7 @@ export interface AtlasApplicationStoreState extends Record<string, unknown> {
   view?: string;
   solarHour?: number;
   mapProgressSelection?: AtlasMapProgressArea[];
+  mapProgressStage?: string | null;
   selectedStage?: string | number | null;
   commercialSales?: CommercialSale[];
   dashboardMode?: string;
@@ -8204,6 +8208,7 @@ export function createAtlasApplicationInitialState(input: AtlasApplicationInitia
   return {
     ...baseState,
     ...restoredUiState,
+    mapProgressSelection: [],
     dashboardMode: 'tracking',
     documentCatalog: mergeAtlasProjectDocumentSeeds(restoredUiState.documentCatalog),
   } as AtlasApplicationInitialState;
@@ -16211,6 +16216,7 @@ export interface OperationalAgendaEvent {
   relatedPacket?: string;
   notes: string;
   materialIds: string[];
+  mapAreas?: AtlasMapProgressArea[];
   stageAgendaCustomV1?: boolean;
   userEdited?: boolean;
   /** Legacy aliases retained while persisted agenda state is normalized. */
@@ -17180,6 +17186,7 @@ export interface AtlasAgendaCalendarEventDraftV1 {
   status?: unknown;
   notes?: unknown;
   materialIds?: unknown[];
+  mapAreas?: unknown[];
 }
 
 export interface AtlasAgendaCalendarEventSaveResultV1 {
@@ -17488,6 +17495,9 @@ export function createAtlasAgendaCalendarProgramV1(ports: AtlasAgendaCalendarPro
       relatedFrom: String(previous?.relatedFrom || ''),
       notes: String(draft.notes || ''),
       materialIds: (Array.isArray(draft.materialIds) ? draft.materialIds : []).map(String),
+      mapAreas: (Array.isArray(draft.mapAreas) ? draft.mapAreas : previous?.mapAreas || [])
+        .map(value => projectAtlasMapProgressArea(value as AtlasMapPartInput))
+        .filter((value): value is AtlasMapProgressArea => Boolean(value)),
     };
     const events = await write({ events: [...current.events.filter(entry => entry.id !== id), item] });
     return { event: events.find(entry => entry.id === id) || item, events, created: !previous };
@@ -17822,6 +17832,7 @@ export async function installAtlasStageAgendaApplicationCompositionV1(
   });
   const agendaCalendarV1 = installAtlasAgendaCalendarPageV8(ViewLayer as any, {
     readState: () => appStore.get(),
+    appStore,
     agendaCalendarProgramV1,
     beginCardCanvasLinkV1, demoData, esc,
     executionModel, extensionStage, host: globalRef, ico,
@@ -22210,6 +22221,7 @@ export interface PublicMapLotFacts {
 }
 export interface PublicMapLotWidgetContextInput {
   lotId: string;
+  pdfNumber?: unknown;
   pdfArea?: number | null;
   lotStatuses?: Record<string, { status?: unknown } | undefined>;
   pinned?: boolean;
@@ -23461,7 +23473,7 @@ export interface PublicMapSatelliteLotMarkerBatch {
   fallbackMarkers: Array<PublicMapFallbackLotMarkerModel & { lotId: string }>;
 }
 
-export interface PublicMapLotPdfAreaLink { lotId: string; greenPolygonId: string }
+export interface PublicMapLotPdfAreaLink { lotId: string; greenPolygonId: string; officialAreaM2?: unknown }
 export type PublicMapLotPdfAreaIndex = Map<string, number | null>;
 
 export interface PublicMapGeometryAssetUrls {
@@ -23470,6 +23482,7 @@ export interface PublicMapGeometryAssetUrls {
   masterplanPolygons: string;
   lotLabels: string;
   greenMapping: string;
+  roadTrace?: string;
 }
 export interface PublicMapGeometryAssetBundle {
   trace: Record<string, unknown> & { lots: Record<string, unknown>; imageSize?: readonly number[] };
@@ -23477,6 +23490,7 @@ export interface PublicMapGeometryAssetBundle {
   masterplanPolygons: Record<string, unknown> | null;
   lotLabels: Record<string, unknown> | null;
   greenMapping: Record<string, unknown> | null;
+  roadTrace?: Record<string, unknown> | null;
 }
 
 export interface PublicDwgSatelliteFrame {
@@ -23527,12 +23541,13 @@ export async function loadPublicMapGeometryAssets(urls: PublicMapGeometryAssetUr
       throw new Error(`Falha ao carregar geometria do mapa (${url}): ${error instanceof Error ? error.message : String(error)}`);
     }
   };
-  const [trace, georeference, masterplanPolygons, lotLabels, greenMapping] = await Promise.all([
+  const [trace, georeference, masterplanPolygons, lotLabels, greenMapping, roadTrace] = await Promise.all([
     read(urls.trace, false), read(urls.georeference, false), read(urls.masterplanPolygons, true), read(urls.lotLabels, true), read(urls.greenMapping, true),
+    urls.roadTrace ? read(urls.roadTrace, true) : Promise.resolve(null),
   ]);
   if (!trace || !trace.lots || typeof trace.lots !== 'object' || Array.isArray(trace.lots)) throw new Error('Prancha PDF sem polígonos de lote.');
   if (!georeference) throw new Error('Georreferência do mapa inválida.');
-  return { trace: trace as PublicMapGeometryAssetBundle['trace'], georeference, masterplanPolygons, lotLabels, greenMapping };
+  return { trace: trace as PublicMapGeometryAssetBundle['trace'], georeference, masterplanPolygons, lotLabels, greenMapping, roadTrace };
 }
 
 /** Join official PDF lot areas to reviewed green-polygon mappings by source ID. */
@@ -23547,8 +23562,10 @@ export function publicMapLotPdfAreas(
       geometryByPolygonId.set(String(row[0]), row);
     }
   }
-  return new Map(links.map(({ lotId, greenPolygonId }) => {
-    const area = Number(geometryByPolygonId.get(String(greenPolygonId))?.[5]);
+  return new Map(links.map(({ lotId, greenPolygonId, officialAreaM2 }) => {
+    const official = Number(officialAreaM2);
+    const geometry = Number(geometryByPolygonId.get(String(greenPolygonId))?.[5]);
+    const area = Number.isFinite(official) && official > 0 ? official : geometry;
     return [lotId, Number.isFinite(area) && area > 0 ? area : null];
   }));
 }
@@ -24087,28 +24104,9 @@ export function publicMapLotMarkerPlacement(input: PublicMapLotMarkerPlacementIn
   const centerPoint = publicMapPolygonCentroid(input.projected.map(point => [point.u, point.v]));
   if (!centerPoint) return null;
   const center = { u: centerPoint.x, v: centerPoint.y };
-  const bounds = input.projectedBounds;
-  if (!input.useMappedAnchors || !(bounds.maxU > bounds.minU) || !(bounds.maxV > bounds.minV)) return { ...center, center };
-  const relativeU = input.greenMapping
-    ? Number(input.greenMapping.u)
-    : input.canonicalMarker
-      ? Number(input.canonicalMarker.u)
-      : input.officialMarker
-        ? Number(input.officialMarker.u)
-        : input.usesNativeMasterplanPolygons
-          ? center.u
-          : (center.u - bounds.minU) / (bounds.maxU - bounds.minU);
-  const relativeV = input.greenMapping
-    ? Number(input.greenMapping.v)
-    : input.canonicalMarker
-      ? Number(input.canonicalMarker.v)
-      : input.officialMarker
-        ? Number(input.officialMarker.v)
-        : input.usesNativeMasterplanPolygons
-          ? center.v
-          : (center.v - bounds.minV) / (bounds.maxV - bounds.minV);
-  const positioned = publicMapFramePosition(relativeU, relativeV, input.frame);
-  return { ...positioned, center, relativeU, relativeV };
+  if (!input.useMappedAnchors) return { ...center, center };
+  const positioned = publicMapFramePosition(center.u, center.v, input.frame);
+  return { ...positioned, center, relativeU: center.u, relativeV: center.v };
 }
 
 /** Resolve the complete, stable view model for one vector lot marker. */
@@ -25313,6 +25311,8 @@ export function projectAtlasMapFilterSelectionKey(stateValue: unknown, filters: 
 export interface AtlasMapFilterRailCommandsV1 {
   closeSummary(label: unknown): void;
   startProgressSelection(): void;
+  selectProgressStage(stageId: string, stageName: string): void;
+  clearProgressStage(): void;
   openWidgetContext(view: unknown, key: unknown, label: unknown): void;
   selectFilter(key: string, label: unknown): void;
   clearSummary(): void;
@@ -25326,19 +25326,25 @@ export function createAtlasMapFilterRailCommandsV1(
 ): AtlasMapFilterRailCommandsV1 {
   return Object.freeze({
     closeSummary(label: unknown): void {
-      appStore.set({ mapFilters: [], mapFilter: null, mapFilterWidget: null, lastAction: `Fechou resumo de ${String(label || 'camada')}` });
+      appStore.set({ mapFilters: [], mapFilter: null, mapFilterWidget: null, mapProgressStage: null, lastAction: `Fechou resumo de ${String(label || 'camada')}` });
     },
     startProgressSelection(): void {
       appStore.set({ mapFilterWidget: 'progress', lastAction: 'Ativou seleção de áreas para leitura de progresso' });
+    },
+    selectProgressStage(stageId: string, stageName: string): void {
+      appStore.set({ mapFilter: 'progress', mapFilterWidget: 'progress', mapProgressStage: stageId, lastAction: `Exibiu avanço de ${stageName} no mapa` });
+    },
+    clearProgressStage(): void {
+      appStore.set({ mapProgressStage: null, lastAction: 'Limpou o destaque de progresso por etapa' });
     },
     openWidgetContext(view: unknown, key: unknown, label: unknown): void {
       appStore.set({ view: String(view || 'map'), mapFilterWidget: String(key || ''), lastAction: `Abriu contexto de ${String(label || 'camada')} no mapa` });
     },
     selectFilter(key: string, label: unknown): void {
-      appStore.set({ mapFilters: [key], mapFilter: key, mapFilterWidget: key, lastAction: `Exibiu resumo de ${String(label || key)}` });
+      appStore.set({ mapFilters: [key], mapFilter: key, mapFilterWidget: key, ...(key === 'progress' ? {} : { mapProgressStage: null }), lastAction: `Exibiu resumo de ${String(label || key)}` });
     },
     clearSummary(): void {
-      appStore.set({ mapFilters: [], mapFilter: null, mapFilterWidget: null, lastAction: 'Limpou o resumo selecionado' });
+      appStore.set({ mapFilters: [], mapFilter: null, mapFilterWidget: null, mapProgressStage: null, lastAction: 'Limpou o resumo selecionado' });
     },
     recordStageHighlight(key: string, label: string, applied: boolean): void {
       appStore.set({ mapFilter: key, lastAction: `${applied ? 'Aplicou' : 'Ativou'} highlight de ${label}` });
@@ -25376,13 +25382,19 @@ export function projectAtlasMapFilterSummaryMetrics(keyValue: unknown, stateValu
 /** Project selected polygon names and stage progress for the map's progress widget. */
 export function projectAtlasMapProgressSummary(stateValue: unknown, activitiesValue: unknown): {
   areas: Array<{ label: string; partId: string }>;
-  stages: Array<{ id: string; name: string; progress: number; state: string; selected: boolean }>;
+  stages: Array<{ id: string; name: string; progress: number; state: string; selected: boolean; mappedAreas: number }>;
   selectedStage: string;
+  selectedStageName: string;
+  highlights: AtlasMapStageProgressHighlightV1[];
 } {
   const state = stateValue && typeof stateValue === 'object' ? stateValue as Record<string, unknown> : {};
   const areas = Array.isArray(state.mapProgressSelection) ? state.mapProgressSelection : [];
-  const selectedStage = String(state.selectedStage ?? '');
+  const selectedStage = String(state.mapProgressStage ?? '');
   const activities = Array.isArray(activitiesValue) ? activitiesValue : [];
+  const stageRow = activities.map(value => value && typeof value === 'object' ? value as Record<string, unknown> : {})
+    .find(stage => String(stage.id || '') === selectedStage || String(stage.name || '') === selectedStage);
+  const selectedStageName = String(stageRow?.name || '');
+  const highlights = projectAtlasMapStageProgressHighlightsV1(state.records, selectedStage, selectedStageName);
   return Object.freeze({
     areas: areas.map(areaValue => {
       const area = areaValue && typeof areaValue === 'object' ? areaValue as Record<string, unknown> : {};
@@ -25390,15 +25402,161 @@ export function projectAtlasMapProgressSummary(stateValue: unknown, activitiesVa
     }),
     stages: activities.map(stageValue => {
       const stage = stageValue && typeof stageValue === 'object' ? stageValue as Record<string, unknown> : {};
-      const progress = Math.max(0, Math.min(100, Number(stage.progress) || 0));
+      const stageHighlights = projectAtlasMapStageProgressHighlightsV1(state.records, stage.id, stage.name);
+      const progress = stageHighlights.length
+        ? Math.round(stageHighlights.reduce((sum, item) => sum + item.progress, 0) / stageHighlights.length)
+        : Math.max(0, Math.min(100, Number(stage.progress) || 0));
       return {
         id: String(stage.id || ''), name: String(stage.name || ''), progress,
         state: progress >= 100 ? 'Concluída' : progress > 0 ? 'Em andamento' : 'Planejada',
-        selected: String(stage.id) === selectedStage,
+        selected: String(stage.id) === selectedStage || String(stage.name) === selectedStage,
+        mappedAreas: stageHighlights.length,
       };
     }),
     selectedStage,
+    selectedStageName,
+    highlights,
   });
+}
+
+export interface AtlasMapStageProgressHighlightV1 {
+  partId: string;
+  label: string;
+  kind: string;
+  progress: number;
+  color: string;
+  recordId: string;
+}
+
+const atlasMapProgressColorV1 = (progress: number): string => progress >= 100 ? '#24a148'
+  : progress >= 75 ? '#0f62fe'
+    : progress >= 50 ? '#f1c21b'
+      : progress >= 25 ? '#ff832b' : '#da1e28';
+
+/** Color only areas marked on agenda events with their linked field records. */
+export function projectAtlasMapAgendaProgressHighlightsV1(
+  recordsValue: unknown,
+  agendaEventsValue: unknown,
+): AtlasMapStageProgressHighlightV1[] {
+  const records = Array.isArray(recordsValue) ? recordsValue as Array<Record<string, unknown>> : [];
+  const events = Array.isArray(agendaEventsValue) ? agendaEventsValue as Array<Record<string, unknown>> : [];
+  const normalize = (value: unknown): string => String(value || '').trim().normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
+  const parseList = (value: unknown): unknown[] => {
+    if (Array.isArray(value)) return value;
+    if (typeof value !== 'string' || !value.trim()) return [];
+    try {
+      const parsed: unknown = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : parsed && typeof parsed === 'object' ? [parsed] : [];
+    } catch { return []; }
+  };
+  const linkedAgendaId = (record: Record<string, unknown>): string => {
+    const direct = record.agendaEventId || record.relatedAgendaEventId || record.eventId;
+    if (direct) return String(direct).trim();
+    let properties: unknown = record.properties ?? record.propertiesJson;
+    if (typeof properties === 'string') {
+      try { properties = JSON.parse(properties); } catch { properties = []; }
+    }
+    const rows = Array.isArray(properties) ? properties : properties && typeof properties === 'object'
+      ? Object.entries(properties as Record<string, unknown>).map(([label, value]) => ({ label, value })) : [];
+    const entry = rows.map(value => value && typeof value === 'object' ? value as Record<string, unknown> : {})
+      .find(value => ['id da atividade', 'id do compromisso', 'agenda event id'].includes(normalize(value.label || value.key)));
+    return String(entry?.value || '').trim();
+  };
+  const latest = new Map<string, AtlasMapStageProgressHighlightV1 & { timestamp: number; order: number }>();
+  events.forEach(event => {
+    const eventId = String(event.id || '').trim();
+    if (!eventId) return;
+    const areas = parseList(event.mapAreas);
+    if (!areas.length) return;
+    records.forEach((record, order) => {
+      if (linkedAgendaId(record) !== eventId) return;
+      const rawProgress = record.progress ?? record.progressPercent ?? record.progresso;
+      const parsedProgress = Number(String(rawProgress ?? '').replace('%', ''));
+      const progress = Math.max(0, Math.min(100, Number.isFinite(parsedProgress) && String(rawProgress ?? '').trim() !== ''
+        ? parsedProgress : /conclu|finaliz|feito/i.test(String(record.status || '')) ? 100 : 0));
+      const timestamp = Date.parse(`${String(record.data || '')}T${String(record.hora || '00:00')}`)
+        || Date.parse(String(record.createdAt || '')) || 0;
+      for (const areaValue of areas) {
+        if (!areaValue || typeof areaValue !== 'object') continue;
+        const area = areaValue as Record<string, unknown>;
+        const ids = Array.isArray(area.partIds) ? area.partIds
+          : Array.isArray(area.parts) ? area.parts.map(value => value && typeof value === 'object'
+            ? (value as Record<string, unknown>).partId || (value as Record<string, unknown>).id : value)
+            : area.partId != null ? [area.partId] : [];
+        const label = String(area.label || area.partLabel || 'Área vinculada à agenda');
+        for (const idValue of ids) {
+          const partId = String(idValue || '').trim();
+          if (!partId) continue;
+          const current = latest.get(partId);
+          if (current && (current.timestamp > timestamp || (current.timestamp === timestamp && current.order <= order))) continue;
+          latest.set(partId, {
+            partId, label, kind: String(area.kind || area.partKind || 'other'), progress,
+            color: atlasMapProgressColorV1(progress), recordId: String(record.id || ''), timestamp, order,
+          });
+        }
+      }
+    });
+  });
+  return [...latest.values()].map(({ timestamp: _timestamp, order: _order, ...highlight }) => Object.freeze(highlight));
+}
+
+/** Join the latest persisted progress per selected stage and map area. */
+export function projectAtlasMapStageProgressHighlightsV1(
+  recordsValue: unknown,
+  stageIdValue: unknown,
+  stageNameValue: unknown,
+): AtlasMapStageProgressHighlightV1[] {
+  const records = Array.isArray(recordsValue) ? recordsValue : [];
+  const stageId = String(stageIdValue || '').trim();
+  const stageName = String(stageNameValue || '').trim();
+  if (!stageId && !stageName) return [];
+  const normalize = (value: unknown): string => String(value || '').trim().normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
+  const stageKeys = new Set([stageId, stageName].map(normalize).filter(Boolean));
+  const latest = new Map<string, AtlasMapStageProgressHighlightV1 & { timestamp: number; order: number }>();
+  records.forEach((recordValue, order) => {
+    if (!recordValue || typeof recordValue !== 'object') return;
+    const record = recordValue as Record<string, unknown>;
+    const recordStages = [record.stageId, record.stageKey, record.etapa, record.stage, record.stageName]
+      .map(normalize).filter(Boolean);
+    if (!recordStages.some(value => stageKeys.has(value))) return;
+    let rawArea: unknown = record.mapArea;
+    if (typeof rawArea === 'string') {
+      try { rawArea = rawArea ? JSON.parse(rawArea) : null; } catch { rawArea = null; }
+    }
+    const areas = Array.isArray(rawArea) ? rawArea : rawArea && typeof rawArea === 'object' ? [rawArea] : [];
+    const rawProgress = record.progress ?? record.progressPercent ?? record.progresso;
+    const parsedProgress = Number(rawProgress);
+    const progress = Math.max(0, Math.min(100, Number.isFinite(parsedProgress) ? parsedProgress
+      : /conclu|finaliz|feito/i.test(String(record.status || '')) ? 100 : 0));
+    const timestamp = Date.parse(String(record.createdAt || `${record.data || ''}T${record.hora || '00:00'}`)) || 0;
+    for (const areaValue of areas) {
+      if (!areaValue || typeof areaValue !== 'object') continue;
+      const area = areaValue as Record<string, unknown>;
+      const ids = Array.isArray(area.partIds) ? area.partIds
+        : Array.isArray(area.parts) ? area.parts.map(value => value && typeof value === 'object' ? (value as Record<string, unknown>).partId || (value as Record<string, unknown>).id : value)
+          : area.partId != null ? [area.partId] : [];
+      const areaLabel = String(area.label || area.partLabel || 'Área vinculada');
+      for (const idValue of ids) {
+        const partId = String(idValue || '').trim();
+        if (!partId) continue;
+        const current = latest.get(partId);
+        if (current && (current.timestamp > timestamp || (current.timestamp === timestamp && current.order <= order))) continue;
+        latest.set(partId, {
+          partId,
+          label: areaLabel,
+          kind: String(area.kind || area.partKind || 'other'),
+          progress,
+          color: atlasMapProgressColorV1(progress),
+          recordId: String(record.id || ''),
+          timestamp,
+          order,
+        });
+      }
+    }
+  });
+  return [...latest.values()].map(({ timestamp: _timestamp, order: _order, ...highlight }) => Object.freeze(highlight));
 }
 
 export interface AtlasMapReservationOptions {
@@ -25809,8 +25967,9 @@ export function createAtlasStaticSatelliteViewCommand(input: {
   const offsetX = input.anchorX - input.width / 2;
   const offsetY = input.anchorY - input.height / 2;
   const ratio = targetZoom / input.zoom;
-  const limitX = input.width * Math.max(0, targetZoom - 1) / 2;
-  const limitY = input.height * Math.max(0, targetZoom - 1) / 2;
+  const side = Math.max(input.width, input.height);
+  const limitX = Math.max(0, (side * targetZoom - input.width) / 2);
+  const limitY = Math.max(0, (side * targetZoom - input.height) / 2);
   return Object.freeze({
     zoom: targetZoom,
     panX: Math.max(-limitX, Math.min(limitX, offsetX - (offsetX - input.panX) * ratio)),
@@ -25838,8 +25997,8 @@ export function createAtlasStaticSatelliteFitCommand(input: {
   ));
   const frameCenterX = (input.width - side) / 2 + (Number(input.frame.left) + Number(input.frame.width) / 2) * side;
   const frameCenterY = (input.height - side) / 2 + (Number(input.frame.top) + Number(input.frame.height) / 2) * side;
-  const limitX = input.width * Math.max(0, targetZoom - 1) / 2;
-  const limitY = input.height * Math.max(0, targetZoom - 1) / 2;
+  const limitX = Math.max(0, (side * targetZoom - input.width) / 2);
+  const limitY = Math.max(0, (side * targetZoom - input.height) / 2);
   return Object.freeze({
     zoom: targetZoom,
     panX: Math.max(-limitX, Math.min(limitX, (input.width / 2 - frameCenterX) * targetZoom)),
@@ -25857,8 +26016,9 @@ export function createAtlasStaticSatellitePanCommand(input: {
   width: number;
   height: number;
 }): Pick<AtlasStaticSatelliteViewCommand, 'panX' | 'panY'> {
-  const limitX = input.width * Math.max(0, input.zoom - 1) / 2;
-  const limitY = input.height * Math.max(0, input.zoom - 1) / 2;
+  const side = Math.max(input.width, input.height);
+  const limitX = Math.max(0, (side * input.zoom - input.width) / 2);
+  const limitY = Math.max(0, (side * input.zoom - input.height) / 2);
   return Object.freeze({
     panX: Math.max(-limitX, Math.min(limitX, input.panX + input.deltaX)),
     panY: Math.max(-limitY, Math.min(limitY, input.panY + input.deltaY)),
@@ -26010,14 +26170,13 @@ export function projectAtlasMapThreePointerStartCommand(input: {
   shiftKey: boolean;
   ctrlKey: boolean;
 }): AtlasMapThreePointerStartCommand {
-  const altSelection = input.altKey && input.button === 0;
-  const selecting = (input.recordPaintMode || input.mapSelectionMode === 'progress' || altSelection) && input.button === 0;
+  const selecting = (input.recordPaintMode || input.mapSelectionMode === 'progress') && input.button === 0;
   const zooming = !selecting && input.button === 0 && (input.shiftKey || input.ctrlKey);
   const rotating = !selecting && input.button === 2;
   const panning = !selecting && !zooming && !rotating && (input.button === 0 || input.button === 1);
   return Object.freeze({
     selecting,
-    enableProgressSelection: altSelection && !input.recordPaintMode && input.mapSelectionMode !== 'progress',
+    enableProgressSelection: false,
     zooming,
     tilting: false,
     rotating,
@@ -28811,8 +28970,7 @@ export function projectPublicSatelliteLots(input: PublicSatelliteLotProjection):
   const canRepairPdfGeometry = Object.keys(traceLots).length > 0 && usesCanonicalTraceMarkers;
   const sourceLots: Array<{ lotId: string; polygon: unknown; greenMapping: PublicMapGreenLotMapping | null; usesCanonicalTracePolygon: boolean }> = usesGreenLotMapping
     ? [...greenMappingByLot.entries()].map(([lotId, mapping]) => {
-        const repair = canRepairPdfGeometry && input.geometryRepairLotIds.includes(lotId);
-        return { lotId, polygon: repair ? traceLots[lotId] : masterplanLots?.[mapping.greenPolygonId || ''], greenMapping: mapping, usesCanonicalTracePolygon: repair };
+        return { lotId, polygon: masterplanLots?.[mapping.greenPolygonId || ''], greenMapping: mapping, usesCanonicalTracePolygon: false };
       })
     : Object.entries(masterplanLots || input.fallbackLots || {}).map(([lotId, polygon]) => ({ lotId, polygon, greenMapping: null, usesCanonicalTracePolygon: false }));
   const projectTracePoint = (point: unknown): PublicMapProjectionPoint | null => {
@@ -28907,7 +29065,9 @@ export function publicMapLotMarkerStatuses(
 /** Project the original PDF area and unique commercial price row into the map panel DTO. */
 export function publicMapLotCommercialFacts(input: PublicMapLotFactsInput): PublicMapLotFacts {
   const lotNumber = String(input.lotNumber || '').match(/\d+/g)?.at(-1)?.padStart(3, '0') || '';
-  const match = uniquePublicMapPriceRow(lotNumber);
+  const ordinal = Number(input.lotId.match(/^Lote_(\d+)$/)?.[1]);
+  const indexed = Number.isFinite(ordinal) && ordinal > 0 ? publicMapPriceCatalog[ordinal - 1] : null;
+  const match = indexed && Number(indexed.lot) === Number(lotNumber) ? indexed : uniquePublicMapPriceRow(lotNumber);
   const pdfArea = Number(input.pdfArea);
   const area = Number.isFinite(pdfArea) && pdfArea > 0 ? pdfArea : Number(match?.area);
   const areaText = Number.isFinite(area) && area > 0
@@ -28930,9 +29090,10 @@ export function publicMapLotCommercialFacts(input: PublicMapLotFactsInput): Publ
 
 /** Combine canonical PDF area, official price catalog and current status for the selected-lot widget. */
 export function projectPublicMapLotWidgetContext(input: PublicMapLotWidgetContextInput): PublicMapLotWidgetContext {
-  const identity = publicMapLotMarkerIdentity(input.lotId);
+  const identity = publicMapLotMarkerIdentity(input.lotId, input.pdfNumber);
   const status = publicMapLotMarkerStatus({ lotNumber: identity.lotNumber, lotStatuses: input.lotStatuses });
   const facts = publicMapLotCommercialFacts({ lotId: input.lotId, lotNumber: identity.lotNumber, pdfArea: input.pdfArea, status: status.status });
+  if (facts.catalogLabel) facts.status = String(input.lotStatuses?.[facts.catalogLabel]?.status || '').trim() || 'Não informado';
   const catalogLabel = facts.canOpenFicha ? facts.catalogLabel : '';
   return {
     ...facts,
@@ -30279,6 +30440,7 @@ export function* program(): Generator<SystemAPI, never, void> {
   let agendaRequestId = 0;
   let agendaEvents: OperationalAgendaEvent[] = [];
   let agendaStages: OperationalStage[] = [];
+  let demoAgendaEvents: OperationalAgendaEvent[] | null = null;
   let agendaRouteServices: AgendaRouteServices = {};
   let agendaRouteStore: { get(): Record<string, unknown>; set(state: Record<string, unknown>): void } | null = null;
   let agendaLegacyMetadataMerged = false;
@@ -31009,6 +31171,17 @@ export function* program(): Generator<SystemAPI, never, void> {
     if(!target)return false;
     const requestId=++agendaRequestId;
     try{
+      const demoActor = (agendaRouteStore?.get().currentActor || (runtime as unknown as { BELAVISTA_ADMIN_ACTOR?: unknown }).BELAVISTA_ADMIN_ACTOR || {}) as Record<string, unknown>;
+      if(demoActor.mode === 'desktop-demo'){
+        const snapshot=createAtlasLocalDemoDashboardSnapshotV1({});
+        demoAgendaEvents ??= snapshot.agendaEvents;
+        agendaEvents=demoAgendaEvents;
+        agendaStages=snapshot.stages;
+        const route=agendaRouteStore?.get()||{};
+        target.setData(agendaEvents,agendaStages,snapshot.materials,focus.date||String(route.agendaFocusedDateV1||''),focus.eventId||String(route.agendaFocusedEventId||route.selectedAgendaEventV3||''),focus.week||String(route.agendaCalendarWeekV8||''),focus.detailMode??route.view==='agenda-detail',false);
+        return true;
+      }
+      demoAgendaEvents=null;
       const [agenda,stages,materials]=await Promise.all([
         readApi<{events:OperationalAgendaEvent[]}>('/api/agenda-events'),
         readApi<{stages:OperationalStage[]}>('/api/stages-admin'),
@@ -31035,6 +31208,15 @@ export function* program(): Generator<SystemAPI, never, void> {
     if(element!==agendaElement)return;
     try{
       await enqueueAgendaMutation(async()=>{
+        const actor=(appStore.get().currentActor||(runtime as unknown as { BELAVISTA_ADMIN_ACTOR?: unknown }).BELAVISTA_ADMIN_ACTOR||{}) as Record<string, unknown>;
+        if(actor.mode==='desktop-demo'){
+          const previous=agendaEvents.find(item=>item.id===payload.id),next={...previous,...payload};
+          demoAgendaEvents=previous?agendaEvents.map(item=>item.id===next.id?next:item):[...agendaEvents,next];
+          appStore.set({operationalAgenda:demoAgendaEvents,agendaDatabaseEventsV3:demoAgendaEvents,agendaCalendarLoadedV3:true,lastAction:`Atualizou compromisso ${next.title}`});
+          element.closeEditor();
+          await reloadAgenda();
+          return;
+        }
         const latest=await readApi<{events:OperationalAgendaEvent[]}>('/api/agenda-events');
         if(!Array.isArray(latest.events))throw new Error('O serviço não retornou o snapshot atual da agenda.');
         const previous=latest.events.find(item=>item.id===payload.id),next={...previous,...payload};
@@ -31045,6 +31227,7 @@ export function* program(): Generator<SystemAPI, never, void> {
          const savedEvent=saved.events.find(item=>item.id===next.id);
           if(savedEvent)try{await syncAgendaNotification(savedEvent);}catch(error){agendaRouteServices.notify?.(`Compromisso salvo; lembrete não programado: ${error instanceof Error?error.message:String(error)}`,'warning');}
           appStore.set({...appStore.get(),operationalAgenda:saved.events,lastAction:`Atualizou compromisso ${next.title}`});
+          element.closeEditor();
           await reloadAgenda();
        });
      }catch(error){element.setError(error instanceof Error?error.message:String(error));}
@@ -31101,6 +31284,14 @@ export function* program(): Generator<SystemAPI, never, void> {
     if(!detail||detail.element!==agendaElement)return;
     try{
       await enqueueAgendaMutation(async()=>{
+        const actor=(appStore.get().currentActor||(runtime as unknown as { BELAVISTA_ADMIN_ACTOR?: unknown }).BELAVISTA_ADMIN_ACTOR||{}) as Record<string, unknown>;
+        if(actor.mode==='desktop-demo'){
+          demoAgendaEvents=agendaEvents.filter(item=>item.id!==detail.id);
+          appStore.set({operationalAgenda:demoAgendaEvents,agendaDatabaseEventsV3:demoAgendaEvents,agendaCalendarLoadedV3:true,lastAction:`Excluiu compromisso ${detail.id}`});
+          detail.element.closeEditor();
+          await reloadAgenda();
+          return;
+        }
         const latest=await readApi<{events:OperationalAgendaEvent[]}>('/api/agenda-events');
         if(!Array.isArray(latest.events))throw new Error('O serviço não retornou o snapshot atual da agenda.');
          const saved=await writeApi<{events:OperationalAgendaEvent[]}>('/api/agenda-events',{events:latest.events.filter(item=>item.id!==detail.id)});
@@ -32208,10 +32399,31 @@ export function* program(): Generator<SystemAPI, never, void> {
     if (!detail || detail.element !== dashboardElement) return;
     detail.element.setAiGenerationLoading(detail.kind);
     try {
-      const response = await apiFetch('/api/ai/dashboard-generation', {
+      const runtime = globalThis as typeof globalThis & { BELAVISTA_ADMIN_ACTOR?: Record<string, unknown> | null };
+      const actor = dashboardAppStore?.get().currentActor as Record<string, unknown> | undefined || runtime.BELAVISTA_ADMIN_ACTOR || {};
+      const demoMode = actor.mode === 'desktop-demo';
+      const demoSnapshot = demoMode ? createAtlasLocalDemoDashboardSnapshotV1({}) : null;
+      const demoCatalog = demoSnapshot ? {
+        projectName: 'Aliança Park · demonstração',
+        stages: demoSnapshot.stages.map(stage => ({
+          id: `demo-stage-${String(stage.id)}`, name: stage.name, status: stage.status, owner: stage.owner,
+          activities: (stage.activities || []).map(activity => ({
+            id: `demo-activity-${String(stage.id)}`, name: activity.name, status: activity.status || stage.status,
+            owner: activity.owner || stage.owner, durationDays: 1,
+            durationBasis: 'estimativa ilustrativa de 1 dia, exclusiva da demonstração',
+            description: `Atividade ilustrativa da etapa ${stage.name}; ajustar duração e sequência antes de uso real.`,
+          })),
+        })),
+        materials: demoSnapshot.materials.map(material => ({
+          name: material.name, unit: material.unit, plannedQuantity: material.plannedQuantity,
+          stockQuantity: Math.max(0, Number(material.receivedQuantity || 0) - Number(material.usedQuantity || 0)),
+          orderedQuantity: 0,
+        })),
+      } : null;
+      const response = await apiFetch(demoMode ? '/api/ai/dashboard-demo-generation' : '/api/ai/dashboard-generation', {
         method: 'POST', cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind: detail.kind }),
+        body: JSON.stringify({ kind: detail.kind, ...(demoCatalog ? { catalog: demoCatalog } : {}) }),
       });
       const payload = await response.json().catch(() => null) as (AtlasDashboardAiGenerationV1 & { error?: string }) | null;
       if (!response.ok) throw new Error(payload?.error || `Cloudflare Workers AI respondeu HTTP ${response.status}.`);
@@ -42453,6 +42665,40 @@ export async function composeAtlasAdminComponentApplicationV1(): Promise<Readonl
     patch: Partial<RouteState>,
     nonRouteState: Record<string, unknown> = {},
   ): void => store.set({ ...patch, ...nonRouteState } as Partial<AtlasApplicationInitialState>);
+  let mapAgendaProgressDataTaskV1: Promise<void> | null = null;
+  const loadMapAgendaProgressDataV1 = (): Promise<void> => {
+    if (mapAgendaProgressDataTaskV1) return mapAgendaProgressDataTaskV1;
+    const state = appStore.get() as Record<string, unknown>;
+    const actor = state.currentActor && typeof state.currentActor === 'object'
+      ? state.currentActor as Record<string, unknown> : {};
+    if (actor.mode === 'desktop-demo') {
+      const events = Array.isArray(state.agendaDatabaseEventsV3) && state.agendaCalendarLoadedV3
+        ? state.agendaDatabaseEventsV3
+        : Array.isArray(state.operationalAgenda) ? state.operationalAgenda : [];
+      appStore.set({ agendaDatabaseEventsV3: events, agendaCalendarLoadedV3: true, agendaCalendarErrorV3: '' } as Partial<AtlasApplicationInitialState>);
+      mapAgendaProgressDataTaskV1 = Promise.resolve();
+      return mapAgendaProgressDataTaskV1;
+    }
+    mapAgendaProgressDataTaskV1 = Promise.all([
+      apiFetch('/api/agenda-events', { cache: 'no-store' }),
+      apiFetch('/api/records', { cache: 'no-store' }),
+    ]).then(async ([agendaResponse, recordResponse]) => {
+      const agendaPayload = await agendaResponse.json().catch(() => ({})) as { events?: unknown[]; error?: string };
+      const recordPayload = await recordResponse.json().catch(() => ({})) as { records?: unknown[]; error?: string };
+      if (!agendaResponse.ok || !Array.isArray(agendaPayload.events)) throw new Error(agendaPayload.error || `Agenda HTTP ${agendaResponse.status}`);
+      if (!recordResponse.ok || !Array.isArray(recordPayload.records)) throw new Error(recordPayload.error || `Registros HTTP ${recordResponse.status}`);
+      appStore.set({
+        agendaDatabaseEventsV3: agendaPayload.events,
+        agendaCalendarLoadedV3: true,
+        agendaCalendarErrorV3: '',
+        operationalAgenda: agendaPayload.events,
+        records: recordPayload.records,
+      } as Partial<AtlasApplicationInitialState>);
+    }).catch(error => {
+      console.info('Agenda ou registros indisponíveis para destacar áreas do mapa.', error);
+    });
+    return mapAgendaProgressDataTaskV1;
+  };
   const installMapSceneCompositionV1 = createAtlasMapSceneComposerV1(
     createAtlasMapSceneRuntimeStateV1(appStore),
   );
@@ -42477,6 +42723,7 @@ export async function composeAtlasAdminComponentApplicationV1(): Promise<Readonl
       demoData,
       appStore,
       commands: createAtlasMapFilterRailCommandsV1(appStore),
+      loadAgendaProgressDataV1: loadMapAgendaProgressDataV1,
       REPASSE_PRICE_CATALOG,
       dashboardModes,
       esc,

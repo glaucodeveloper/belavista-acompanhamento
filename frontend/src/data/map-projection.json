@@ -7,8 +7,8 @@
   },
   "publicSatellite": {
     "dwgZoom": 18,
-    "pdfLotLabelsUrl": "/assets/data/pdf-lot-labels-v1.json?v=pdf-lot-centers-v5-complete-298",
-    "pdfLotGreenMappingUrl": "/assets/data/pdf-lot-green-mapping-v1.json?v=pdf-yellow-circles-v7-complete-298"
+    "pdfLotLabelsUrl": "/assets/data/pdf-lot-labels-v1.json?v=pdf-lot-centers-v6-quadras",
+    "pdfLotGreenMappingUrl": "/assets/data/pdf-lot-green-mapping-v1.json?v=pdf-yellow-circles-v8-quadras"
   },
   "adminGeoreferenceScene": {
     "dwgGeoreferencePath": "/assets/data/dwg-georeference.json",
@@ -17,8 +17,8 @@
     "geoWarpVersion": "dwg-utm-to-image-traced-lots-v1",
     "aerialLotTraceUrl": "/assets/data/aerial-lot-trace-v1.json?v=2",
     "masterplanLotPolygonsUrl": "/assets/data/masterplan-lot-polygons-v2.json?v=pdf-traced-boundaries-v3-complete-298",
-    "pdfLotLabelsUrl": "/assets/data/pdf-lot-labels-v1.json?v=pdf-lot-centers-v5-complete-298",
-    "pdfLotGreenMappingUrl": "/assets/data/pdf-lot-green-mapping-v1.json?v=pdf-yellow-circles-v7-complete-298",
+    "pdfLotLabelsUrl": "/assets/data/pdf-lot-labels-v1.json?v=pdf-lot-centers-v6-quadras",
+    "pdfLotGreenMappingUrl": "/assets/data/pdf-lot-green-mapping-v1.json?v=pdf-yellow-circles-v8-quadras",
     "roadTraceUrl": "/assets/data/aerial-road-trace-v1.json?v=18-vector-curb-normalized",
     "commonAreaLabel": "Área comum do loteamento",
     "visualRecoveryLotNumberRange": {

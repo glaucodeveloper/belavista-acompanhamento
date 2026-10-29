@@ -49,7 +49,7 @@ import {getNvidiaRuntime,
 import {buildRecordInterpretationV1} from '../../record-stage-interpretation-v1.mjs';
 import {runPlanningCycle} from './planning-service.js';
 import {runOperationalLoop} from './operational-loop.js';
-import {generateDashboardPlanWithCloudflareAi} from './dashboard-generation.js';
+import {generateDashboardPlanWithCloudflareAi,generateDashboardDemoPlanWithCloudflareAi} from './dashboard-generation.js';
 import {runPublicLeadConversation} from './public-lead-ai.js';
 import {getGitHubRuntime,readOperationalConfig,writeOperationalConfig,loadOperationalConfiguration,readRepositoryJson,writeRepositoryJson} from './github-store.js';
 import {requireAdminRequest,bearerToken} from './request-auth.js';
@@ -68,6 +68,29 @@ import {normalizePdfAttachment} from './pdf-record-ocr.js';
 import {createWorkbenchAttachment,getWorkbenchAttachmentFile,listWorkbenchAttachments} from './workbench-attachment-store.js';
 
 const JSON_HEADERS={'content-type':'application/json; charset=utf-8'};
+const demoGenerationWindows=new Map();
+
+function demoGenerationOriginAllowed(request,env){
+  const origin=String(request.headers.get('origin')||'').trim();
+  if(!origin)return false;
+  if(origin==='null')return String(env.DEMO_GENERATION_ALLOWED_ORIGINS||'').split(',').map(item=>item.trim()).includes('null');
+  try{
+    const parsed=new URL(origin);
+    if(parsed.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(parsed.hostname))return true;
+  }catch{return false;}
+  return String(env.DEMO_GENERATION_ALLOWED_ORIGINS||'').split(',').map(item=>item.trim()).includes(origin);
+}
+
+function demoGenerationRateLimit(request){
+  const now=Date.now(),client=String(request.headers.get('cf-connecting-ip')||'unknown').slice(0,80);
+  for(const [key,value] of demoGenerationWindows)if(value.resetAt<=now)demoGenerationWindows.delete(key);
+  let window=demoGenerationWindows.get(client);
+  if(!window||window.resetAt<=now){window={count:0,resetAt:now+60_000};demoGenerationWindows.set(client,window);}
+  if(window.count>=5)return Math.max(1,Math.ceil((window.resetAt-now)/1000));
+  window.count++;
+  if(demoGenerationWindows.size>2_000){const oldest=[...demoGenerationWindows.keys()].slice(0,500);for(const key of oldest)demoGenerationWindows.delete(key);}
+  return 0;
+}
 
 function json(data,status=200,headers={}){
   return new Response(JSON.stringify(data),{status,headers:{...JSON_HEADERS,...headers}});
@@ -523,6 +546,21 @@ export async function routeRequest(request,env,ctx){
       return json(await generateDashboardPlanWithCloudflareAi(env,{kind:payload.kind||'complete'}));
     }catch(error){
       return json({error:String(error?.message||error),provider:'cloudflare-workers-ai'},Number(error?.statusCode)||502);
+    }
+  }
+
+  if(pathname==='/api/ai/dashboard-demo-generation'){
+    if(request.method!=='POST')return methodNotAllowed();
+    if(!demoGenerationOriginAllowed(request,env))return json({error:'Origem não autorizada para geração de demonstração.'},403,{'cache-control':'no-store'});
+    const retryAfter=demoGenerationRateLimit(request);
+    if(retryAfter)return json({error:'Limite temporário de gerações de demonstração atingido. Tente novamente em instantes.'},429,{'cache-control':'no-store','retry-after':String(retryAfter)});
+    try{
+      const raw=await request.text();
+      if(raw.length>64_000)return json({error:'Catálogo de demonstração excede o limite permitido.'},413,{'cache-control':'no-store'});
+      const payload=raw?JSON.parse(raw):{};
+      return json(await generateDashboardDemoPlanWithCloudflareAi(env,{kind:payload.kind||'complete',catalog:payload.catalog}),200,{'cache-control':'no-store'});
+    }catch(error){
+      return json({error:String(error?.message||error),provider:'cloudflare-workers-ai'},Number(error?.statusCode)||502,{'cache-control':'no-store'});
     }
   }
 

@@ -5,6 +5,7 @@
   "compatibility_date": "2026-08-27",
   "vars": {
     "ALLOWED_ORIGINS": "*",
+    "DEMO_GENERATION_ALLOWED_ORIGINS": "https://belavista-3f887.web.app,https://belavista-3f887.firebaseapp.com,null",
     "FIREBASE_ADMIN_EMAILS": "",
     "FIREBASE_DATABASE_URL": "https://belavista-3f887-default-rtdb.firebaseio.com",
     "FIREBASE_NOTIFICATION_CHANNELS": "owner,admin,foreman,supplies,commercial",

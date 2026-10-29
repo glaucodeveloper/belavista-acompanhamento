@@ -21,7 +21,7 @@ export default {
       const publicApi=pathname==='/api/health'||pathname==='/api/runtime'
         ||pathname==='/api/ai/status'||pathname==='/api/inference/status'
         ||pathname==='/api/ai/tools'||pathname.startsWith('/api/public/')
-        ||pathname==='/api/auth/session';
+        ||pathname==='/api/auth/session'||pathname==='/api/ai/dashboard-demo-generation';
       if(pathname.startsWith('/api/')&&!publicApi){
         const actor=await requireAdminRequest(request,env);
         if(!limitedActorCanAccessApi(actor,pathname,request.method,new URL(request.url).search)){

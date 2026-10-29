@@ -2684,14 +2684,15 @@ view-layer[data-view="activity-installation"]{background:#161616;color:#f4f4f4;o
 .map-filter-progress-areas span{padding:4px 6px;border:1px solid rgba(120,169,255,.42);background:rgba(15,98,254,.2);color:#dce9ff;font-size:8px}
 .map-filter-progress-empty{margin:0!important;padding:7px 8px;border:1px dashed rgba(120,169,255,.34);color:#aebdce!important;font-size:8px!important;line-height:1.4!important}
 .map-filter-progress-list{display:grid;gap:4px;max-height:164px;overflow:auto;padding-right:3px;scrollbar-color:#42658e rgba(4,12,24,.4)}
-.map-filter-progress-stage{display:grid;grid-template-columns:minmax(0,1fr) 68px auto;align-items:center;gap:6px;padding:5px 6px;border:1px solid rgba(120,169,255,.14);background:rgba(4,12,24,.28)}
+.map-filter-progress-stage{appearance:none;width:100%;display:grid;grid-template-columns:18px minmax(0,1fr) 68px auto;align-items:center;gap:6px;padding:5px 6px;border:1px solid rgba(120,169,255,.14);background:rgba(4,12,24,.28);color:inherit;text-align:left;cursor:pointer}
+.map-filter-progress-stage:hover{border-color:rgba(120,169,255,.58);background:rgba(4,12,24,.48)}
 .map-filter-progress-stage.selected{border-color:#78a9ff;background:rgba(15,98,254,.2);box-shadow:inset 2px 0 #78a9ff}
-.map-filter-progress-stage>div{display:grid;grid-template-columns:18px minmax(0,1fr);align-items:center;gap:4px;min-width:0}
-.map-filter-progress-stage>div>span{color:#7890ac;font:8px "IBM Plex Mono",monospace}
+.map-filter-progress-stage-index{color:#7890ac;font:8px "IBM Plex Mono",monospace}
+.map-filter-progress-stage-name{display:grid;grid-column:2;grid-row:1;align-items:center;gap:2px;min-width:0}
 .map-filter-progress-stage b{overflow:hidden;color:#e7eff8;font-size:8px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
-.map-filter-progress-stage em{grid-column:2;color:#8ea2b8;font-size:7px;font-style:normal}
+.map-filter-progress-stage em{color:#8ea2b8;font-size:7px;font-style:normal}
 .map-filter-progress-stage i{height:4px;background:#263b55;overflow:hidden}
-.map-filter-progress-stage i strong{display:block;height:100%;background:linear-gradient(90deg,#78a9ff,#42be65)}
+.map-filter-progress-stage i strong{display:block;height:100%;background:var(--stage-progress-color,#78a9ff);transition:width .18s ease}
 .map-filter-progress-stage>small{color:#dce9ff;font:8px "IBM Plex Mono",monospace;text-align:right}
 .map-filter-progress-actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .map-filter-progress-actions button{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:6px 7px;border:1px solid #78a9ff;background:#193b70;color:#fff;font-size:8px;cursor:pointer}
@@ -2699,6 +2700,21 @@ view-layer[data-view="activity-installation"]{background:#161616;color:#f4f4f4;o
 .map-filter-progress-actions button.ghost{background:rgba(4,12,24,.45);border-color:#42658e}
 .map-filter-progress-actions button.map-filter-progress-clear{margin-left:auto;padding:5px 6px;border-color:#42658e;background:transparent;color:#aebdce}
 .map-filter-progress-actions svg{width:11px;height:11px}
+.agenda-map-area-picker{max-width:420px;padding:12px;border:1px solid rgba(120,169,255,.42);border-radius:12px;background:rgba(7,17,31,.94);box-shadow:0 10px 30px #0005;color:#f4f7fb}
+.agenda-map-area-picker h3{margin:2px 0;color:inherit;font-size:15px}
+.agenda-map-area-picker>p{margin:0;color:#bdc9d8;font-size:11px;line-height:1.45}
+.agenda-map-area-picker .map-filter-progress-areas{max-height:100px}
+.agenda-map-area-picker .map-filter-progress-actions{margin-top:4px}
+.agenda-map-area-picker [data-agenda-map-picker-confirm]{font-weight:700}
+.satellite-progress-lot-highlights{pointer-events:none!important}
+map-scene .satellite-progress-lot-highlight{fill:var(--area-progress-color,#0f62fe);fill-opacity:var(--area-progress-opacity,.36);stroke:var(--area-progress-color,#0f62fe);stroke-width:1.45;vector-effect:non-scaling-stroke;stroke-linejoin:round;pointer-events:none!important;filter:drop-shadow(0 0 2px rgba(0,0,0,.78))}
+map-scene .satellite-progress-road-mask{fill:var(--area-progress-color,#0f62fe);fill-opacity:var(--area-progress-opacity,.5);mix-blend-mode:screen}
+map-scene .satellite-progress-curb-mask{fill:none;stroke:var(--area-progress-color,#0f62fe);stroke-width:3.2;stroke-opacity:var(--area-progress-opacity,.65);vector-effect:non-scaling-stroke;stroke-linejoin:round;filter:drop-shadow(0 0 1px rgba(0,0,0,.9))}
+map-scene[data-map-selection-mode="progress"] .satellite-progress-road-highlights{pointer-events:auto!important}
+map-scene[data-map-selection-mode="progress"] .satellite-progress-road-highlights [data-map-road-part-id]{pointer-events:all!important;visibility:visible!important;--area-progress-opacity:.16;cursor:crosshair}
+map-scene .satellite-progress-road-mask.is-progress-selected{fill:#0f62fe!important;fill-opacity:.54!important;mix-blend-mode:screen}
+map-scene .satellite-progress-curb-mask.is-progress-selected{stroke:#78a9ff!important;stroke-opacity:1!important;stroke-width:5!important;filter:drop-shadow(0 0 3px rgba(15,98,254,.95))}
+map-scene .satellite-lot-plan-polygons .satellite-lot-hit-area.is-progress-selected{fill:rgba(15,98,254,.48)!important;stroke:#78a9ff!important;stroke-width:2!important;filter:drop-shadow(0 0 3px rgba(15,98,254,.9))!important}
 map-scene[data-overlay-layer-count]:not([data-overlay-layer-count="0"]) .map-badge span{color:#dce9ff}
 
 /* MAP_HUD_CONTROLS_REMOVED_V1: o mapa continua navegável por gesto, mas o
@@ -3462,6 +3478,8 @@ map-scene[data-admin-masterplan-overlay] .satellite-lot-plan-overlay .satellite-
 .satellite-lot-plan-polygons path:hover{fill:rgba(89,226,160,.25);stroke:#fff}
 .satellite-lot-plan-markers{position:absolute;inset:0;pointer-events:none}
 .satellite-lot-plan-marker{position:absolute;display:grid;place-items:center;min-width:15px;height:15px;padding:0 2px;transform:translate(-50%,-50%);border:1px solid rgba(255,255,255,.94);border-radius:999px;background:#0f62fe;box-shadow:0 0 0 1px rgba(2,13,25,.8),0 1px 4px rgba(0,0,0,.55);color:#fff;font:700 6px/1 "IBM Plex Mono",monospace;letter-spacing:-.08em;pointer-events:auto;cursor:pointer;user-select:none}
+.satellite-lot-plan-marker-number{display:grid;place-items:center;width:100%;height:100%;line-height:1;text-align:center}
+.satellite-lot-plan-marker-area{position:absolute;left:calc(100% + 2px);top:50%;z-index:1;transform:translateY(-50%);padding:1px 2px;border:1px solid rgba(255,255,255,.68);border-radius:2px;background:rgba(2,12,20,.88);color:#fff;font:700 3px/1.1 "IBM Plex Sans",sans-serif;letter-spacing:0;white-space:nowrap;text-shadow:0 1px 1px #000;pointer-events:none}
 .satellite-lot-plan-marker{line-height:15px;text-align:center;vertical-align:middle}
 map-scene[data-public-static-only="true"]:not(.static-lot-markers-visible) .satellite-lot-plan-marker{visibility:hidden;pointer-events:none}
 .satellite-lot-plan-marker{min-width:8px;height:8px;padding:0;font-size:3px;line-height:8px}
@@ -3689,6 +3707,7 @@ map-scene[data-public-static-only="true"] .satellite-lot-plan-overlay{
   transform-origin:50% 50%!important;
   transition:none!important;
 }
+map-scene[data-public-static-only="true"] .admin-masterplan-overlay{overflow:visible}
 /* A tela administrativa usa a fotografia como base da planta estática. Uma
    regra antiga de boot 3D reduzia `.map-host` a opacidade zero e fazia o
    loteamento parecer flutuar sobre fundo preto até o primeiro gesto. */

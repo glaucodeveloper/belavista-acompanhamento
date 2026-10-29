@@ -98,6 +98,7 @@ import type {
   AtlasMapFilterHighlight,
   AtlasMapFilterMetric,
   AtlasMapProgressArea,
+  AtlasMapStageProgressHighlightV1,
   AtlasMapRecordArea,
   AtlasPertCommand,
   AtlasPertWorkspaceSnapshot,
@@ -197,6 +198,7 @@ import type {
   AtlasDashboardHomeCommandV1,
 } from "./program.js";
 import { createAtlasInstagramReplyDraftV1, projectAtlasLeadRecordsV1, projectAtlasLeadSelectionIdV1, projectAtlasLeadsPageV1 } from "./program.js";
+import { projectAtlasMapAgendaProgressHighlightsV1 } from "./program.js";
 import { buildAtlasProjectDocumentSaveDraftV1, projectAtlasDocumentFieldValueV1 } from "./program.js";
 import { projectAtlasMobileOperationalRecordsPageV5360, projectAtlasRecordPropertyTypesV1, projectAtlasRecordsActivityDrillRouteV1, projectAtlasRecordsStageShellV1 } from "./program.js";
 import type { AtlasRecordsActivityCatalogStageV1, AtlasRecordsActivityDrillRouteStateV1 } from "./program.js";
@@ -338,6 +340,7 @@ interface AtlasSatelliteLotPlanOverlayTargetV1 extends HTMLElement {
   _satelliteLotPlanObserverV1?: ResizeObserver;
   _satelliteLotPlanRequestedMarkersV1?: boolean;
   _satelliteLotStatusUnsubscribeV1?: () => void;
+  applyMapProgressStageHighlightsV1?: (highlights: AtlasMapStageProgressHighlightV1[]) => void;
   isAdminStandalone3DV5370?: () => boolean;
   installAdminMasterplanOverlayV1?: () => unknown;
   paintMasterplanLotLabelsV1?: (rows: Array<Record<string, unknown>>) => unknown;
@@ -637,7 +640,7 @@ export function renderAtlasMapSceneShell(input: {
   const solarMarkup = `<div class="map-solar-control" data-solar-control aria-label="Iluminação solar do mapa"><div class="map-solar-head"><span>${ico("sun")} SOL</span><b data-solar-time>09:00</b></div><input type="range" min="5.5" max="17.8" step="0.25" value="9" data-solar-hour aria-label="Horário solar, do amanhecer ao entardecer"><div class="map-solar-scale"><span data-solar-sunrise>05:30</span><span>AMANHECER → ENTARDECER</span><span data-solar-sunset>17:45</span></div><small data-solar-location>DWG · localização solar</small></div>`;
   const overlays = Object.entries(labels).map(([key, label]) => `<button type="button" data-scene-overlay="${key}" class="overlay-${key}">${label}</button>`).join("");
   const printMap = input.persistent ? `<button type="button" data-scene-print-map class="map-print-launch">${ico("printer")} Imprimir mapa</button>` : "";
-  const mapMarkup = `<div class="map-host" aria-hidden="true"></div><div class="scene-world"><canvas class="three-overlay"></canvas></div><div class="map-tint"></div><div class="map-background-loading" data-map-background-loading role="status" aria-live="polite"><span class="map-background-loading-spinner" aria-hidden="true"></span><span>Carregando imagem de fundo…</span></div><div class="map-badge">${ico("layers-3")} <span>Captura satélite local · visão temática</span></div><div class="map-category-switcher" role="group" aria-label="Categorias de visualização do mapa">${overlays}<button type="button" data-scene-selection="progress" class="map-selection-launch">${ico("paintbrush")} Progresso</button>${printMap}</div><div class="map-rotation-controls" data-map-controls="connected" aria-label="Controles da cena compartilhada"><span>MAPA · VISTA 3D</span><div class="map-tile-switcher" role="group" aria-label="Base cartográfica"><button type="button" data-map-tiles="satellite">Satélite realista</button><button type="button" data-map-tiles="generated">Captura tratada · DWG</button><button type="button" data-map-tiles="osm">Mapa OSM</button></div><div class="map-pan-pad" aria-label="Panorâmica"><button type="button" data-scene-pan="up" aria-label="Mover mapa para cima">↑</button><button type="button" data-scene-pan="left" aria-label="Mover mapa para a esquerda">←</button><button type="button" data-scene-pan="reset" aria-label="Centralizar mapa">⌖</button><button type="button" data-scene-pan="right" aria-label="Mover mapa para a direita">→</button><button type="button" data-scene-pan="down" aria-label="Mover mapa para baixo">↓</button></div><div class="map-view-row"><button type="button" data-scene-zoom="-0.08" aria-label="Afastar mapa">−</button><button type="button" data-scene-zoom="0.08" aria-label="Aproximar mapa">＋</button><button type="button" data-scene-tilt="-4" aria-label="Reduzir inclinação">▿</button><button type="button" data-scene-tilt="4" aria-label="Aumentar inclinação">▵</button></div><div class="map-tilt-control" data-scene-tilt-control><label for="map-scene-tilt">INCLINAÇÃO <output data-scene-tilt-value>37°</output></label><input id="map-scene-tilt" type="range" min="0" max="72" step="1" value="37" data-scene-tilt-range aria-label="Inclinação da cena em graus"><small>0° superior · 72° baixa</small></div><div class="map-rotation-row"><button type="button" data-scene-rotate="-15" aria-label="Girar para a esquerda">↺</button><button type="button" data-scene-rotate="15" aria-label="Girar para a direita">↻</button><button type="button" data-scene-rotate="reset" aria-label="Restaurar orientação">N</button></div><button type="button" class="map-fit-button" data-scene-fit aria-label="Ajustar enquadramento">⌗ Ajustar enquadramento</button></div><div class="map-gesture-legend" role="group" tabindex="0" aria-label="Gestos de navegação do mapa"><span>Arraste para mover</span><b>Botão direito + arraste</b><span>girar</span><b>Shift + arraste</b><span>zoom vertical</span><b>Roda do mouse</b><span>zoom</span><b>Ctrl + roda</b><span>zoom preciso</span><b>Alt + clique / arraste</b><span>selecionar progresso</span></div>`;
+  const mapMarkup = `<div class="map-host" aria-hidden="true"></div><div class="scene-world"><canvas class="three-overlay"></canvas></div><div class="map-tint"></div><div class="map-background-loading" data-map-background-loading role="status" aria-live="polite"><span class="map-background-loading-spinner" aria-hidden="true"></span><span>Carregando imagem de fundo…</span></div><div class="map-badge">${ico("layers-3")} <span>Captura satélite local · visão temática</span></div><div class="map-category-switcher" role="group" aria-label="Categorias de visualização do mapa">${overlays}${printMap}</div><div class="map-rotation-controls" data-map-controls="connected" aria-label="Controles da cena compartilhada"><span>MAPA · VISTA 3D</span><div class="map-tile-switcher" role="group" aria-label="Base cartográfica"><button type="button" data-map-tiles="satellite">Satélite realista</button><button type="button" data-map-tiles="generated">Captura tratada · DWG</button><button type="button" data-map-tiles="osm">Mapa OSM</button></div><div class="map-pan-pad" aria-label="Panorâmica"><button type="button" data-scene-pan="up" aria-label="Mover mapa para cima">↑</button><button type="button" data-scene-pan="left" aria-label="Mover mapa para a esquerda">←</button><button type="button" data-scene-pan="reset" aria-label="Centralizar mapa">⌖</button><button type="button" data-scene-pan="right" aria-label="Mover mapa para a direita">→</button><button type="button" data-scene-pan="down" aria-label="Mover mapa para baixo">↓</button></div><div class="map-view-row"><button type="button" data-scene-zoom="-0.08" aria-label="Afastar mapa">−</button><button type="button" data-scene-zoom="0.08" aria-label="Aproximar mapa">＋</button><button type="button" data-scene-tilt="-4" aria-label="Reduzir inclinação">▿</button><button type="button" data-scene-tilt="4" aria-label="Aumentar inclinação">▵</button></div><div class="map-tilt-control" data-scene-tilt-control><label for="map-scene-tilt">INCLINAÇÃO <output data-scene-tilt-value>37°</output></label><input id="map-scene-tilt" type="range" min="0" max="72" step="1" value="37" data-scene-tilt-range aria-label="Inclinação da cena em graus"><small>0° superior · 72° baixa</small></div><div class="map-rotation-row"><button type="button" data-scene-rotate="-15" aria-label="Girar para a esquerda">↺</button><button type="button" data-scene-rotate="15" aria-label="Girar para a direita">↻</button><button type="button" data-scene-rotate="reset" aria-label="Restaurar orientação">N</button></div><button type="button" class="map-fit-button" data-scene-fit aria-label="Ajustar enquadramento">⌗ Ajustar enquadramento</button></div><div class="map-gesture-legend" role="group" tabindex="0" aria-label="Gestos de navegação do mapa"><span>Arraste para mover</span><b>Botão direito + arraste</b><span>girar</span><b>Shift + arraste</b><span>zoom vertical</span><b>Roda do mouse</b><span>zoom</span><b>Ctrl + roda</b><span>zoom preciso</span></div>`;
   return Object.freeze({ solarMarkup, mapMarkup });
 }
 
@@ -681,7 +684,7 @@ export function renderAtlasMapOverview(input: {
   const page = projectAtlasOperationalMapOverviewV1(input.status);
   const {status, progress} = page;
   const esc = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[char] || char));
-  return `<map-scene data-operational-map-page="true" data-base-map data-public-map="true" data-admin-public-map="true" data-public-static-only="true" data-public-static-capture="/assets/public/dwg-satellite-treated-v5411.png" data-stage="Aliança Park" data-overlay="urbanizacao" aria-label="Mapa operacional do loteamento sobre imagem de satélite"></map-scene><section class="admin-public-map-interface-v5352 operational-map-highlights-v5370" data-highlight-family="operational" data-highlight-key="${esc(status.key)}" aria-label="Mapa operacional com destaques físicos"><aside class="admin-public-map-status-v5352" data-highlight-status="${esc(status.key)}" aria-live="polite"><span>${esc(status.eyebrow)}</span><header><div><h2>${esc(status.title)}</h2><small>${esc(status.status)}</small></div><b>${progress}%</b></header><i><em style="width:${progress}%"></em></i><p>${esc(status.detail)}</p><div class="operational-map-highlight-meta-v5370"><span>APLICADO NO MAPA</span><b>${esc(status.priority)}</b></div><footer><small>${esc(status.next)}</small><button type="button" data-map-widget-context="${esc(status.view)}">Abrir contexto</button></footer></aside><map-filter-rail></map-filter-rail></section>`;
+  return `<map-scene data-operational-map-page="true" data-base-map data-public-map="true" data-admin-public-map="true" data-public-static-only="true" data-public-static-capture="/assets/public/dwg-satellite-treated-v5411.png" data-stage="Aliança Park" data-overlay="urbanizacao" aria-label="Mapa operacional do loteamento sobre imagem de satélite"></map-scene><section class="admin-public-map-interface-v5352 operational-map-highlights-v5370" data-highlight-family="operational" data-highlight-key="${esc(status.key)}" aria-label="Mapa operacional"><aside class="admin-public-map-status-v5352" data-highlight-status="${esc(status.key)}" aria-live="polite"><span>${esc(status.eyebrow)}</span><header><div><h2>${esc(status.title)}</h2><small>${esc(status.status)}</small></div><b>${progress}%</b></header><i><em style="width:${progress}%"></em></i><p>${esc(status.detail)}</p><div class="operational-map-highlight-meta-v5370"><span>APLICADO NO MAPA</span><b>${esc(status.priority)}</b></div><footer><small>${esc(status.next)}</small><button type="button" data-map-widget-context="${esc(status.view)}">Abrir contexto</button></footer></aside><map-filter-rail data-map-agenda-picker-host hidden></map-filter-rail></section>`;
 }
 
 /** Install the operational map renderer and keep its quick navigation with the map view. */
@@ -874,13 +877,15 @@ export function renderAtlasSidebarPageShell(input: {
 }
 
 type AtlasMapFilterSceneElement = HTMLElement & {
-  setMapSelectionMode?: (mode?: string) => void;
+  setMapSelectionMode?: (mode?: string | boolean) => void;
   clearProgressAreaSelectionV1?: (announce?: boolean) => void;
+  paintProgressAreaSelectionV1?: (records?: AtlasMapProgressArea[]) => void;
   progressSelectionParts?: unknown[];
   progressAreaPartsFromStoreV1?: () => unknown[];
   renderProgressSelectionPanel?: (parts?: unknown[]) => void;
   applyDashboardModeHighlightV1?: (key: string) => void;
   clearDashboardModeHighlightV1?: () => void;
+  applyMapProgressStageHighlightsV1?: (highlights: AtlasMapStageProgressHighlightV1[]) => void;
 };
 interface AtlasMapFilterStore {
   get: () => Record<string, unknown>;
@@ -890,6 +895,7 @@ interface AtlasMapFilterStore {
 interface AtlasMapFilterRailInstallInput {
   appStore: AtlasMapFilterStore;
   commands: AtlasMapFilterRailCommandsV1;
+  loadAgendaProgressDataV1?: () => Promise<void>;
   demoData: Record<string, unknown>;
   dashboardModes: Record<string, { label?: string; description?: string }>;
   dashboardModeKeyV1: (mode?: unknown) => string;
@@ -900,7 +906,7 @@ interface AtlasMapFilterRailInstallInput {
   customElementsRef?: CustomElementRegistry;
 }
 
-/** Own the map's filter rail, its summaries, and progress-selection controls. */
+/** Own the map's filter rail, summaries, and agenda-only area picker. */
 export function installAtlasMapFilterRail(input: AtlasMapFilterRailInstallInput): AtlasMapFilterCatalogV1 {
   const documentRef = input.documentRef || globalThis.document;
   const windowRef = (input.windowRef || globalThis.window) as Window & { lucide?: { createIcons?: () => void } };
@@ -923,25 +929,14 @@ export function installAtlasMapFilterRail(input: AtlasMapFilterRailInstallInput)
   const mapFilterSummaryMetricsV1 = (key: unknown, state: Record<string, unknown>): Array<[string, string, string]> =>
     projectAtlasMapFilterSummaryMetrics(key, state, input.demoData).map(({ label, value, detail }) => [label, value, detail]);
   const esc = (value: unknown): string => input.esc(value);
-  const renderProgressSummary = (state: Record<string, unknown>): string => {
-    const model = projectAtlasMapProgressSummary(state, input.demoData.activities);
-    const areaMarkup = model.areas.length
-      ? `<div class="map-filter-progress-areas">${model.areas.slice(0, 5).map(area => `<span>${esc(area.label)}</span>`).join("")}${model.areas.length > 5 ? `<span>+${model.areas.length - 5} áreas</span>` : ""}</div>`
-      : '<p class="map-filter-progress-empty">Nenhuma área poligonal selecionada. Clique em “Selecionar áreas” e marque um ou mais polígonos no mapa.</p>';
-    const stages = model.stages.map((stage, index) => `<div class="map-filter-progress-stage ${stage.selected ? "selected" : ""}"><div><span>${String(index + 1).padStart(2, "0")}</span><b>${esc(stage.name)}</b><em>${stage.state}</em></div><i><strong style="width:${stage.progress}%"></strong></i><small>${stage.progress}%</small></div>`).join("");
-    const buttons = model.areas.length
-      ? `<button type="button" class="ghost" data-map-progress-start>${input.ico("scan-search")} Adicionar áreas</button><button type="button" class="primary" data-map-progress-entry>${input.ico("clipboard-pen-line")} Registrar avanço</button><button type="button" class="map-filter-progress-clear" data-map-progress-clear>Limpar</button>`
-      : `<button type="button" class="ghost" data-map-progress-start>${input.ico("scan-search")} Selecionar áreas</button>`;
-    return `<section class="map-filter-progress-context" data-map-progress-context><header><span>ÁREAS POLIGONAIS SELECIONADAS</span><b>${model.areas.length}</b></header>${areaMarkup}<div class="map-filter-progress-list" aria-label="Progresso das etapas">${stages}</div><div class="map-filter-progress-actions">${buttons}</div></section>`;
-  };
-  const mapProgressSummaryMarkupV1 = (state: Record<string, unknown>): string => renderProgressSummary(state);
+  const mapProgressSummaryMarkupV1 = (_state: Record<string, unknown>): string => "";
   const mapFilterSummaryMarkupV1 = (keyValue: unknown, state: Record<string, unknown>): string => {
     const key = String(keyValue || "execution");
     const filter = dashboardFilterForModeV1(key, state.dashboardMode) || dashboardFilters[0];
     if (!filter) return "";
     const status = getCatalog(state.dashboardMode).highlights[key] || getCatalog(state.dashboardMode).highlights.execution;
     const metrics = projectAtlasMapFilterSummaryMetrics(key, state, input.demoData);
-    return `<aside class="map-filter-summary-widget" id="map-filter-summary-${esc(key)}" data-map-summary-widget data-map-summary-key="${esc(key)}" aria-live="polite"><header><div><span>RESUMO DA CAMADA</span><h3>${input.ico(filter[2])} ${esc(filter[1])}</h3></div><button type="button" data-map-widget-close aria-label="Fechar resumo de ${esc(filter[1])}">×</button></header><div class="map-filter-summary-metrics">${metrics.map(metric => `<div><small>${esc(metric.label)}</small><b>${esc(metric.value)}</b><span>${esc(metric.detail)}</span></div>`).join("")}</div><p>${esc(status.detail)}</p>${key === "progress" ? renderProgressSummary(state) : ""}<footer><small>${esc(status.next)}</small><button type="button" data-map-widget-context="${esc(status.view)}">Abrir contexto ${input.ico("arrow-up-right")}</button></footer></aside>`;
+    return `<aside class="map-filter-summary-widget" id="map-filter-summary-${esc(key)}" data-map-summary-widget data-map-summary-key="${esc(key)}" aria-live="polite"><header><div><span>RESUMO DA CAMADA</span><h3>${input.ico(filter[2])} ${esc(filter[1])}</h3></div><button type="button" data-map-widget-close aria-label="Fechar resumo de ${esc(filter[1])}">×</button></header><div class="map-filter-summary-metrics">${metrics.map(metric => `<div><small>${esc(metric.label)}</small><b>${esc(metric.value)}</b><span>${esc(metric.detail)}</span></div>`).join("")}</div><p>${esc(status.detail)}</p><footer><small>${esc(status.next)}</small><button type="button" data-map-widget-context="${esc(status.view)}">Abrir contexto ${input.ico("arrow-up-right")}</button></footer></aside>`;
   };
   const findMap = (): AtlasMapFilterSceneElement | null =>
     documentRef.querySelector<AtlasMapFilterSceneElement>('map-scene[data-persistent-map="true"]') ||
@@ -952,9 +947,53 @@ export function installAtlasMapFilterRail(input: AtlasMapFilterRailInstallInput)
   const MapFilterRail = class AtlasMapFilterRailElement extends AtlasHTMLElementBase {
     private unsubscribe: (() => void) | null = null;
     private progressSignature = "";
+    private progressSignatureFor(state: Record<string, unknown>): string {
+      const records = Array.isArray(state.records) ? state.records : [];
+      const events = Array.isArray(state.agendaDatabaseEventsV3) ? state.agendaDatabaseEventsV3 : Array.isArray(state.operationalAgenda) ? state.operationalAgenda : [];
+      return JSON.stringify({ selection: state.mapProgressSelection || [], agendaPicker: Boolean(state.agendaMapPickerActiveV1), events: events.map((value: any) => [value?.id, value?.mapAreas]), records: records.map((value: any) => [value?.id, value?.progress, value?.progressPercent, value?.progresso, value?.status, value?.properties, value?.propertiesJson, value?.createdAt, value?.data, value?.hora]) });
+    }
+    private syncProgressHighlights(): void {
+      const state = input.appStore.get();
+      const events = Array.isArray(state.agendaDatabaseEventsV3) ? state.agendaDatabaseEventsV3 : Array.isArray(state.operationalAgenda) ? state.operationalAgenda : [];
+      const highlights = projectAtlasMapAgendaProgressHighlightsV1(state.records, events);
+      findMap()?.applyMapProgressStageHighlightsV1?.(highlights);
+    }
+    private readonly onProgressOverlayReady = (): void => this.syncProgressHighlights();
     private readonly onClick = (event: Event): void => {
       const target = event.target as Element | null;
       if (!target?.closest) return;
+      const pickerState = input.appStore.get();
+      if (pickerState.agendaMapPickerActiveV1 && this.contains(target)) {
+        const confirm = target.closest<HTMLElement>("[data-agenda-map-picker-confirm]");
+        const cancel = target.closest<HTMLElement>("[data-agenda-map-picker-cancel]");
+        const clear = target.closest<HTMLElement>("[data-agenda-map-picker-clear]");
+        if (confirm || cancel) {
+          event.preventDefault(); event.stopImmediatePropagation();
+          findMap()?.setMapSelectionMode?.(false);
+          const areas = confirm
+            ? (Array.isArray(pickerState.mapProgressSelection) ? pickerState.mapProgressSelection : [])
+              .map(value => projectAtlasMapProgressArea(value as Record<string, unknown>))
+              .filter((value): value is AtlasMapProgressArea => Boolean(value))
+            : Array.isArray(pickerState.agendaMapAreaDraftV1) ? pickerState.agendaMapAreaDraftV1 : [];
+          findMap()?.paintProgressAreaSelectionV1?.([]);
+          input.appStore.set({
+            view: "agenda",
+            agendaMapPickerActiveV1: false,
+            agendaMapPickerReturnV1: true,
+            agendaMapAreaDraftV1: areas,
+            agendaMapAreaPreviousSelectionV1: null,
+            mapProgressSelection: [],
+            lastAction: confirm ? "Vinculou áreas ao compromisso da agenda" : "Cancelou a seleção de áreas do compromisso",
+          });
+          return;
+        }
+        if (clear) {
+          event.preventDefault(); event.stopImmediatePropagation();
+          findMap()?.clearProgressAreaSelectionV1?.(false);
+          return;
+        }
+        return;
+      }
       const filter = target.closest<HTMLElement>("[data-map-filter]");
       if (filter && this.contains(filter)) { this.select(filter.dataset.mapFilter || ""); return; }
       if (target.closest("[data-map-filter-clear]") && this.contains(target.closest("[data-map-filter-clear]"))) { this.clear(); return; }
@@ -968,28 +1007,6 @@ export function installAtlasMapFilterRail(input: AtlasMapFilterRailInstallInput)
         renderAllRails();
         return;
       }
-      const start = target.closest<HTMLElement>("[data-map-progress-start]");
-      if (start && this.contains(start)) {
-        event.preventDefault(); event.stopPropagation();
-        findMap()?.setMapSelectionMode?.("progress");
-        input.commands.startProgressSelection();
-        return;
-      }
-      const clearProgress = target.closest<HTMLElement>("[data-map-progress-clear]");
-      if (clearProgress && this.contains(clearProgress)) {
-        event.preventDefault(); event.stopPropagation();
-        findMap()?.clearProgressAreaSelectionV1?.(true);
-        return;
-      }
-      const entry = target.closest<HTMLElement>("[data-map-progress-entry]");
-      if (entry && this.contains(entry)) {
-        event.preventDefault(); event.stopPropagation();
-        const map = findMap();
-        const parts = map?.progressSelectionParts?.length ? map.progressSelectionParts : map?.progressAreaPartsFromStoreV1?.();
-        if (parts?.length) map?.renderProgressSelectionPanel?.(parts);
-        else map?.setMapSelectionMode?.("progress");
-        return;
-      }
       const context = target.closest<HTMLElement>("[data-map-widget-context]");
       if (context && this.contains(context)) {
         event.preventDefault(); event.stopImmediatePropagation();
@@ -997,22 +1014,26 @@ export function installAtlasMapFilterRail(input: AtlasMapFilterRailInstallInput)
         const key = summary?.dataset.mapSummaryKey || "";
         const state = input.appStore.get();
         const summaryFilter = dashboardFilterForModeV1(key, state.dashboardMode) || dashboardFilters[0];
-        if (key === "progress") findMap()?.setMapSelectionMode?.("progress");
         input.commands.openWidgetContext(context.dataset.mapWidgetContext, key, summaryFilter?.[1]);
       }
     };
     connectedCallback(): void {
       this.addEventListener("click", this.onClick);
-      this.progressSignature = JSON.stringify(input.appStore.get().mapProgressSelection || []);
+      documentRef.addEventListener("atlas:map-progress-overlay-ready", this.onProgressOverlayReady);
+      this.progressSignature = this.progressSignatureFor(input.appStore.get());
       this.unsubscribe?.();
       this.unsubscribe = input.appStore.subscribe(state => {
-        const signature = JSON.stringify(state.mapProgressSelection || []);
+        const signature = this.progressSignatureFor(state);
         if (signature !== this.progressSignature) this.render();
       });
       this.render();
+      if (this.hasAttribute("data-map-agenda-picker-host")) {
+        void input.loadAgendaProgressDataV1?.().catch(error => console.info("Agenda e registros do mapa ainda indisponíveis.", error));
+      }
     }
     disconnectedCallback(): void {
       this.removeEventListener("click", this.onClick);
+      documentRef.removeEventListener("atlas:map-progress-overlay-ready", this.onProgressOverlayReady);
       this.unsubscribe?.();
       this.unsubscribe = null;
     }
@@ -1030,10 +1051,28 @@ export function installAtlasMapFilterRail(input: AtlasMapFilterRailInstallInput)
         ? `<div class="dashboard-social-contact-bar" aria-label="Highlights por contato da conversa"><span>DESTAQUE DA CONVERSA</span><div>${catalog.socialContacts.map(([key, label]) => `<button type="button" data-map-filter="${esc(key)}" class="${active.includes(key) ? "active" : ""}" aria-pressed="${active.includes(key)}">${esc(label)}</button>`).join("")}</div></div>`
         : "";
       const summary = widgetKey ? mapFilterSummaryMarkupV1(widgetKey, state) : "";
-      this.progressSignature = JSON.stringify(state.mapProgressSelection || []);
+      this.progressSignature = this.progressSignatureFor(state);
       this.dataset.dashboardMode = mode;
+      if (state.agendaMapPickerActiveV1) {
+        this.hidden = false;
+        const map = findMap();
+        if (map && map.dataset.mapSelectionMode !== "progress") map.setMapSelectionMode?.("progress");
+        const areas = Array.isArray(state.mapProgressSelection) ? state.mapProgressSelection as AtlasMapProgressArea[] : [];
+        map?.paintProgressAreaSelectionV1?.(areas);
+        this.innerHTML = `<section class="map-filter-progress-context agenda-map-area-picker" data-agenda-map-area-picker><header><span>AGENDA · ÁREAS DO EVENTO</span><b>${areas.length}</b></header><h3>Selecione no mapa</h3><p>Clique nos lotes e trechos viários para vinculá-los ao compromisso. A seleção fica destacada em azul.</p>${areas.length ? `<div class="map-filter-progress-areas">${areas.slice(0, 8).map(area => `<span>${esc(area.label)}</span>`).join("")}${areas.length > 8 ? `<span>+${areas.length - 8} áreas</span>` : ""}</div>` : '<p class="map-filter-progress-empty">Nenhuma área selecionada.</p>'}<div class="map-filter-progress-actions"><button type="button" class="primary" data-agenda-map-picker-confirm>Usar ${areas.length} área${areas.length === 1 ? "" : "s"}</button><button type="button" class="ghost" data-agenda-map-picker-clear>Limpar</button><button type="button" class="ghost" data-agenda-map-picker-cancel>Cancelar</button></div></section>`;
+        this.syncProgressHighlights();
+        windowRef.lucide?.createIcons?.();
+        return;
+      }
+      if (this.hasAttribute("data-map-agenda-picker-host")) {
+        this.hidden = true;
+        this.innerHTML = "";
+        this.syncProgressHighlights();
+        windowRef.lucide?.createIcons?.();
+        return;
+      }
       this.innerHTML = `${summary}<div class="map-filter-rail-head"><span>${esc(String(modeMeta.label || mode).toUpperCase())} · WIDGETS DO MAPA</span><small>${esc(modeMeta.description || "")} · selecione um item para abrir seu resumo e destacar os lotes correspondentes</small><button type="button" class="map-filter-clear" data-map-filter-clear ${active.length ? "" : "disabled"}>Limpar</button></div><div class="map-filter-rail-items">${filters.map(([key, label, icon]) => `<button type="button" class="map-filter-chip ${active.includes(key) ? "active" : ""}" data-map-filter="${esc(key)}" aria-pressed="${active.includes(key)}" aria-expanded="${widgetKey === key}">${input.ico(icon)}<span>${esc(label)}</span></button>`).join("")}</div>${contactBar}<div class="map-filter-rail-status" aria-live="polite">${selectedKey ? `Exibição ativa · ${esc(filters.find(([key]) => key === selectedKey)?.[1] || selectedKey)}` : "Nenhum widget selecionado"}${widgetKey ? ` · resumo de ${esc(filters.find(([key]) => key === widgetKey)?.[1] || widgetKey)}` : ""}</div>`;
-      this.querySelectorAll<HTMLElement>("[data-map-progress-start],[data-map-progress-clear],[data-map-progress-entry]").forEach(button => { button.dataset.mapProgressActionBound = "true"; });
+      this.syncProgressHighlights();
       windowRef.lucide?.createIcons?.();
     }
     select(key: string): void {
@@ -1741,6 +1780,7 @@ export async function installAtlasMapApplicationRegistrationV1(
   const filterCatalog = installFilterRail({
     appStore: input.appStore,
     commands: input.commands,
+    loadAgendaProgressDataV1: input.loadAgendaProgressDataV1,
     demoData: input.demoData,
     dashboardModes: input.dashboardModes,
     dashboardModeKeyV1: input.dashboardModeKeyV1,
@@ -5679,10 +5719,6 @@ export function installAtlasDashboardHomeContextV1(
       button.addEventListener('click', event => {
         event.preventDefault(); event.stopImmediatePropagation();
         const source = button.closest<HTMLElement>('[data-map-summary-widget],[data-highlight-status]'), state = input.readState(), key = source?.dataset.mapSummaryKey || source?.dataset.highlightStatus || String(state.mapFilter || 'execution'), filter = input.dashboardFilters.find(item => item[0] === key) || input.dashboardFilters[0], nextView = button.dataset.mapWidgetContext || 'map';
-        if (key === 'progress') {
-          const map = documentRef.querySelector<HTMLElement>('map-scene[data-dashboard-operational-map]') || documentRef.querySelector<HTMLElement>('map-scene:not([compact])');
-          (map as (HTMLElement & { setMapSelectionMode?(mode: string): void }) | null)?.setMapSelectionMode?.('progress');
-        }
         input.onCommand({ type: 'open-map-context', key, view: nextView, label: filter?.[1] || 'camada' });
       });
     });
@@ -7796,13 +7832,12 @@ export class AtlasDashboard extends AtlasHTMLElementBase {
   private renderAiGenerationPanel(): string {
     const s = this.snapshot, esc = (value: unknown) => this.esc(value);
     const loading = s.aiGenerationStatus === 'loading';
-    const unavailable = Boolean(s.demoMode);
     const buttons: Array<[AtlasDashboardGenerationKindV1, string]> = [
       ['agenda', 'Gerar agenda'],
       ['materials', 'Gerar lista de compra de materiais'],
       ['complete', 'Gerar plano completo'],
     ];
-    const actions = buttons.map(([kind, label]) => `<button type="button" data-atlas-dashboard-generate="${kind}" data-kind="${kind}" ${loading || unavailable ? 'disabled' : ''}>${loading && s.aiGenerationKind === kind ? 'Gerando…' : label}</button>`).join('');
+    const actions = buttons.map(([kind, label]) => `<button type="button" data-atlas-dashboard-generate="${kind}" data-kind="${kind}" ${loading ? 'disabled' : ''}>${loading && s.aiGenerationKind === kind ? 'Gerando…' : label}</button>`).join('');
     let output = '';
     const result = s.aiGeneration;
     if (s.aiGenerationStatus === 'loading') {
@@ -7833,8 +7868,8 @@ export class AtlasDashboard extends AtlasHTMLElementBase {
       const generatedLabel = Number.isFinite(generatedAt.getTime()) ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(generatedAt) : '';
       output = `<div class="atlas-ai-generation-result"><header><div><strong>${esc(result.summary)}</strong><p>${esc(result.source)}</p></div><small>Cloudflare Workers AI · ${esc(result.inference.model)}${generatedLabel ? ` · ${esc(generatedLabel)}` : ''}</small></header>${showSchedule ? `<section class="atlas-ai-output"><h3>Agenda sugerida · ${result.schedule.length} atividade(s)</h3>${scheduleMarkup}</section>` : ''}${showMaterials ? `<section class="atlas-ai-output"><h3>Lista de compra sugerida · ${result.materials.length} item(ns)</h3>${materialMarkup}</section>` : ''}${result.kind !== 'materials' && blockerMarkup ? `<section class="atlas-ai-output"><h3>Pendências para revisão</h3>${blockerMarkup}</section>` : ''}<p class="atlas-ai-generation-note">Prévia para revisão humana. Nenhum compromisso ou pedido foi gravado.</p></div>`;
     }
-    const status = unavailable
-      ? 'Entre em uma sessão autenticada para usar a geração operacional.'
+    const status = s.demoMode
+      ? 'Demonstração sem login: a IA recebe só o catálogo ilustrativo. O resultado é temporário e desaparece ao sair.'
       : 'As gerações usam o modelo de etapas e atividades e aparecem aqui para revisão.';
     return `<section class="atlas-panel atlas-ai-generation" aria-labelledby="atlas-ai-generation-title"><header><div><span class="atlas-eyebrow">PLANEJAMENTO · CLOUDFLARE WORKERS AI</span><h2 id="atlas-ai-generation-title">Gerações operacionais</h2><p class="atlas-muted">Prepare agenda e necessidades de compra a partir das etapas, atividades, dependências e materiais cadastrados.</p></div></header><div class="atlas-ai-actions" role="group" aria-label="Gerar conteúdo operacional">${actions}</div><p class="atlas-ai-generation-status">${status}</p>${output}</section>`;
   }
@@ -11075,6 +11110,7 @@ const agendaCss=`<style>
 .atlas-agenda .agenda-row{display:grid;grid-template-columns:minmax(145px,.7fr) minmax(180px,1.4fr) minmax(160px,1fr) auto;align-items:center;gap:12px;padding:13px 16px;border:0;border-top:1px solid #edf0f4;border-radius:0;text-align:left;color:#263149}.atlas-agenda .agenda-row strong,.atlas-agenda .agenda-row small{display:block;overflow:hidden;text-overflow:ellipsis}.atlas-agenda .agenda-row strong{color:#202638}.atlas-agenda .agenda-row small{color:#68758b}
 .atlas-agenda .agenda-status{padding:4px 8px;border-radius:99px;background:#f1f4f8;color:#56647a;font-size:11px}.atlas-agenda .agenda-events{display:grid;gap:9px}.atlas-agenda .agenda-event{display:grid;gap:7px;text-align:left;width:100%;height:auto;padding:13px;border-left:3px solid #4b83d4;color:#263149}.atlas-agenda .agenda-event time{color:#3f6eaf;font-weight:700}
 .atlas-agenda .agenda-editor-wrap{position:fixed;inset:0;z-index:1300;display:grid;place-items:center;padding:16px;background:#18243b70}.atlas-agenda .agenda-editor-wrap[hidden]{display:none}.atlas-agenda .agenda-editor{width:min(900px,100%);max-height:92vh;overflow:auto}.atlas-agenda .agenda-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}.atlas-agenda label{display:grid;gap:6px;color:#56647a;font-size:12px}
+@media(min-width:1000px){.atlas-agenda .agenda-editor-wrap{padding:110px 16px 16px 316px}.atlas-agenda .agenda-editor{max-height:calc(100vh - 126px)}}
 .atlas-agenda input,.atlas-agenda select,.atlas-agenda textarea{width:100%;min-width:0;padding:9px 11px;border:1px solid #d7deea;border-radius:9px;background:#fff;color:#18243e}.atlas-agenda .agenda-wide{grid-column:1/-1}.atlas-agenda textarea{min-height:76px}.atlas-agenda .agenda-materials{max-height:120px;overflow:auto;display:flex;gap:12px;flex-wrap:wrap;padding:12px;border:1px solid #e3e8ef;border-radius:10px}.atlas-agenda .agenda-materials label{display:flex;align-items:center;gap:5px}.atlas-agenda .agenda-materials input{width:auto}
 .atlas-agenda .agenda-calendar{overflow:auto;border:1px solid #dfe5ed;border-radius:12px;background:#f8f9fb}.atlas-agenda .agenda-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(145px,1fr));min-width:1015px}.atlas-agenda .agenda-calendar-day{position:relative;min-width:0;border-right:1px solid #e0e5ec}.atlas-agenda .agenda-calendar-day>header{position:sticky;top:0;z-index:4;display:grid;gap:3px;padding:9px;background:#f2f5f9;border-bottom:1px solid #dce3ec;color:#263149}.atlas-agenda .agenda-calendar-day>header small{color:#748096}.atlas-agenda .agenda-calendar-body{position:relative;height:1152px;background:repeating-linear-gradient(to bottom,#fff 0,#fff 47px,#e7ebf0 48px);background-size:100% 48px;overflow:visible}.atlas-agenda .agenda-time-label{position:absolute;left:3px;top:calc(var(--hour) * 48px);z-index:1;color:#8a94a3;font-size:9px;pointer-events:none}.atlas-agenda .agenda-calendar-event{position:absolute;left:24px;z-index:2;display:block;overflow:hidden;min-height:24px;padding:6px 8px;border:1px solid #9db7da;border-left:3px solid #397bd0;border-radius:7px;background:#eaf2fc;color:#1e3451;text-align:left;touch-action:none;cursor:grab}.atlas-agenda .agenda-calendar-event strong,.atlas-agenda .agenda-calendar-event small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:inherit}.atlas-agenda .agenda-calendar-event small{opacity:.76}.atlas-agenda .agenda-calendar-event [data-calendar-resize]{position:absolute;z-index:4;display:block;background:#246dd1;opacity:.55;touch-action:none}.atlas-agenda .agenda-calendar-event [data-calendar-resize=duration]{right:3px;bottom:0;left:3px;height:6px;cursor:ns-resize}.atlas-agenda .agenda-calendar-event [data-calendar-resize=span]{top:3px;right:0;bottom:3px;width:6px;cursor:ew-resize}.atlas-agenda .agenda-calendar-event[data-status-tone=done]{border-left-color:#2d9b71;background:#e8f6ef}.atlas-agenda .agenda-calendar-event[data-status-tone=warning]{border-left-color:#cf8c20;background:#fff4df}
 @media(max-width:760px){.atlas-agenda .agenda-head{align-items:stretch}.atlas-agenda .agenda-actions{justify-content:flex-start}.atlas-agenda .agenda-nav{width:100%}.atlas-agenda .agenda-nav b{min-width:0;flex:1}.atlas-agenda .agenda-days{grid-template-columns:repeat(7,minmax(65px,1fr))}.atlas-agenda .agenda-row{grid-template-columns:1fr auto}.atlas-agenda .agenda-fields{grid-template-columns:1fr 1fr}}
@@ -11107,6 +11143,7 @@ export class AtlasAgenda extends AtlasHTMLElementBase{
     const projection=projectAtlasAgendaDataRefreshV1({events,stages,materials,focusDate,selectedEventId,focusWeek,detailMode,notificationsEnabled,previousWeek:this.snapshot.week,previousSelectedDate:this.snapshot.selectedDate,previousEditor:this.snapshot.editor,previousRelatedFrom:this.snapshot.relatedFrom});
      this.state.next(s=>({...s,...projection,recordFormOpen:false,recordFeedback:null,loading:false,error:null,saving:false}));
    }
+   closeEditor():void{this.state.next(s=>({...s,editor:false,relatedFrom:"",saving:false}));}
    setError(error:string):void{this.state.next(s=>({...s,error,loading:false,saving:false}));}
    setRecordFeedback(message:string|null,closeForm=true):void{this.state.next(s=>({...s,recordFeedback:message,recordFormOpen:message&&closeForm?false:s.recordFormOpen,saving:false}));}
    setNotificationsEnabled(enabled:boolean):void{this.state.next(s=>({...s,notificationsEnabled:enabled}));}
@@ -11120,7 +11157,7 @@ export class AtlasAgenda extends AtlasHTMLElementBase{
      const calendarMarkup=`<section class="agenda-calendar" aria-label="Calendário semanal para ajuste de horários"><div class="agenda-calendar-grid">${calendarDays.map(({date,label,eventCount,events:dayEvents})=>`<article class="agenda-calendar-day" data-calendar-date="${date}"><header><strong>${esc(label)}</strong><small>${eventCount} compromisso(s)</small></header><div class="agenda-calendar-body">${timeLabels.map(({hour,label:timeLabel})=>`<span class="agenda-time-label" style="--hour:${hour}">${timeLabel}</span>`).join("")}${dayEvents.map(({event:item,startHour,durationHours,spanDays,tone,heightPixels,widthPercent,widthOffsetPixels,startLabel,durationLabel,spanLabel})=>`<button type="button" class="agenda-calendar-event" data-calendar-event="${esc(item.id)}" data-status-tone="${tone}" data-date="${date}" data-start="${esc(startLabel)}" data-duration="${durationHours}" data-span="${spanDays}" style="top:${startHour*48}px;height:${heightPixels}px;width:calc(${widthPercent}% + ${widthOffsetPixels}px)" aria-label="Mover ou ajustar ${esc(item.title)}"><strong>${esc(item.title)}</strong><small>${esc(startLabel)} · ${durationLabel} · ${spanLabel}</small><span data-calendar-resize="duration" aria-label="Ajustar duração"></span><span data-calendar-resize="span" aria-label="Ajustar dias"></span></button>`).join("")}</div></article>`).join("")}</div></section>`;
        const options=stageOptions.map(({stage:item,selected:isSelected})=>`<option value="${esc(item.name)}" ${isSelected?"selected":""}>${esc(item.name)}</option>`).join(""),activityOptions=projectedActivityOptions.map(({activity,selected:isSelected})=>`<option value="${esc(activity.id)}" ${isSelected?"selected":""}>${esc(activity.name)}</option>`).join(""),materialOptions=projectedMaterialOptions.map(({material,selected:isSelected})=>`<label><input type="checkbox" name="materialIds" value="${esc(material.id)}" ${isSelected?"checked":""}>${esc(material.name)} · ${esc(material.receivedQuantity)} ${esc(material.unit)}</label>`).join(""),field=(name:string,label:string,value:unknown,type="text",required=false)=>`<label>${label}<input name="${name}" type="${type}" value="${esc(value)}"${required?" required":""}></label>`,relation=selected?.relatedFrom||s.relatedFrom;
       const editor=`<div class="agenda-editor-wrap" ${editing?"":"hidden"}><section class="agenda-editor"><header><div><span class="agenda-kicker">AGENDA · ${selected?"EDIÇÃO":"NOVO COMPROMISSO"}</span><h2>${selected?"Editar compromisso":"Adicionar compromisso"}</h2><p>Associe o compromisso à etapa, atividade, requisitos e materiais.</p></div><button type="button" data-editor-close>${s.detailMode?"Voltar à agenda":"Fechar"}</button></header><form data-agenda-form data-agenda-stage-name="${esc(stageName)}"><input type="hidden" name="id" value="${esc(selected?.id||"")}"><input type="hidden" name="relatedFrom" value="${esc(relation)}"><div class="agenda-fields">${field("title","Título",selected?.title||"","text",true)}<label>Etapa<select name="stageKey" required>${options}</select></label><label>Atividade<select name="activityId" data-agenda-activity-select>${activityOptions}</select></label>${field("owner","Responsável",selected?.owner||"")}${field("date","Data",selected?.date||s.selectedDate,"date",true)}${field("start","Hora inicial",selected?.start||"08:00","time",true)}${field("durationHours","Duração em horas",selected?.durationHours||1.5,"number")}${field("spanDays","Duração em dias",selected?.spanDays||1,"number")}<label>Status<select name="status">${["Planejado","Em andamento","Pendente","Aguardando material","Bloqueado","Concluído","Anulado"].map(value=>`<option ${normalize(selected?.status||"Planejado")===normalize(value)?"selected":""}>${value}</option>`).join("")}</select></label>${field("customStatus","Status personalizado",selected?.customStatus||"")}${field("notificationOffsetMinutes","Lembrete antes (minutos)",selected?.notificationOffsetMinutes??30,"number")}<label class="agenda-wide">Descrição e orientação<textarea name="notes" maxlength="2000">${esc(selected?.notes||"")}</textarea></label><label class="agenda-wide">Requisitos<textarea name="requirements" maxlength="4000">${esc((selected?.requirements||[]).join("\n"))}</textarea></label><label class="agenda-wide">Materiais adicionais<textarea name="materials" maxlength="4000">${esc((selected?.materials||[]).join("\n"))}</textarea></label></div>${relation?`<p class="agenda-linked-note">Vinculado a ${esc(s.events.find(event=>event.id===relation)?.title||relation)}.</p>`:""}<fieldset class="agenda-materials"><legend>Materiais alocados do cadastro</legend><div data-agenda-material-options style="display:contents">${materialOptions||`<small>Sem materiais registrados nesta etapa.</small>`}</div></fieldset>${selected?`<fieldset class="agenda-cancel"><legend>Cancelamento</legend><label>Motivo<textarea name="cancellationReason" maxlength="1000">${esc(selected.cancellationReason||"")}</textarea></label><label><input type="checkbox" name="cancellationConfirmed" ${selected.cancellationConfirmed?"checked":""}> Confirmo o cancelamento deste compromisso</label></fieldset>`:""}<footer>${selected?`<button type="button" data-agenda-complete="${esc(selected.id)}">Marcar concluída</button><button type="button" data-agenda-record-open="${esc(selected.id)}">Novo registro relacionado</button><button type="button" data-related="${esc(selected.id)}">Novo compromisso relacionado</button><button type="button" data-delete="${esc(selected.id)}">Excluir</button><button type="button" data-agenda-cancel="${esc(selected.id)}">Confirmar cancelamento</button>`:""}<button type="button" data-editor-close>Cancelar</button><button type="submit" class="agenda-primary" ${s.saving?"disabled":""}>${s.saving?"Salvando…":"Salvar compromisso"}</button></footer></form>${selected&&s.recordFormOpen?`<form class="agenda-record-form" data-agenda-record-form><input type="hidden" name="activityEventId" value="${esc(selected.id)}"><h3>Novo registro relacionado</h3><div class="agenda-fields">${field("date","Data",selected.date,"date",true)}${field("time","Hora",selected.start,"time")}${field("responsible","Responsável",selected.owner)}<label>Status<select name="status"><option>Em andamento</option><option>Concluído</option><option selected>Pendente</option><option>Bloqueado</option></select></label><label class="agenda-wide">Relato<textarea name="details" maxlength="2000" required></textarea></label></div><footer><button type="button" data-record-close>Voltar</button><button type="submit" class="agenda-primary" ${s.saving?"disabled":""}>Adicionar registro</button></footer></form>`:""}${s.recordFeedback?`<p role="status">${esc(s.recordFeedback)}</p>`:""}</section></div>`;
-     this.innerHTML=`${agendaCss}<section class="atlas-agenda"><header class="agenda-head"><div><span class="agenda-kicker">PLANEJAMENTO · COMPROMISSOS</span><h1>${s.detailMode?"Detalhe do compromisso":"Agenda"}</h1><p>${s.detailMode?"Edite o compromisso, registre a execução e ajuste os recursos da etapa.":"Compromissos operacionais organizados por estado e linha do tempo semanal."}</p></div><div class="agenda-actions">${s.detailMode?`<button type="button" data-agenda-back>Voltar à agenda</button>`:""}<button type="button" data-notifications-toggle>${s.notificationsEnabled?"Desativar lembretes":"Ativar lembretes"}</button><button type="button" data-refresh>Atualizar</button>${s.detailMode?"":`<button type="button" data-calendar-toggle aria-expanded="${s.calendarOpen}">${s.calendarOpen?"Fechar calendário":"Ajustar horários no calendário"}</button><button type="button" class="agenda-primary" data-new>Novo compromisso</button>`}</div></header>${s.loading?`<p>Carregando agenda persistida…</p>`:""}${s.error?`<p role="alert">${esc(s.error)}</p>`:""}${s.detailMode?selected?editor:`<p role="alert">Compromisso não encontrado na agenda.</p>`:`<section class="agenda-panel"><div class="agenda-controls"><div class="agenda-nav"><button type="button" data-week="-1">‹</button><b>${days[0].toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})} — ${days[6].toLocaleDateString("pt-BR",{day:"2-digit",month:"short",year:"numeric"})}</b><button type="button" data-week="1">›</button></div><div class="agenda-modes"><button type="button" data-presentation="status" aria-pressed="${s.presentation==="status"}">Por estado</button><button type="button" data-presentation="timeline" aria-pressed="${s.presentation==="timeline"}">Linha do tempo</button></div></div><nav class="agenda-days">${dayNav}</nav><p>${events.length} compromisso(s) nesta semana · ${s.events.length} registros persistidos</p></section>${s.calendarOpen?calendarMarkup:""}<section class="agenda-groups">${s.loading?"":body||`<p class="agenda-empty">Nenhum compromisso nesta semana.</p>`}</section>${editor}`}</section>`;
+     this.innerHTML=`${agendaCss}<section class="atlas-agenda"><header class="agenda-head"><div><span class="agenda-kicker">PLANEJAMENTO · COMPROMISSOS</span><h1>${s.detailMode?"Detalhe do compromisso":"Agenda"}</h1><p>${s.detailMode?"Edite o compromisso, registre a execução e ajuste os recursos da etapa.":"Compromissos operacionais organizados por estado e linha do tempo semanal."}</p></div><div class="agenda-actions">${s.detailMode?`<button type="button" data-agenda-back>Voltar à agenda</button>`:""}<button type="button" data-notifications-toggle>${s.notificationsEnabled?"Desativar lembretes":"Ativar lembretes"}</button><button type="button" data-refresh>Atualizar</button>${s.detailMode?"":`<button type="button" data-calendar-toggle aria-expanded="${s.calendarOpen}">${s.calendarOpen?"Fechar calendário":"Ajustar horários no calendário"}</button><button type="button" class="agenda-primary" data-new>Novo compromisso</button>`}</div></header>${s.loading?`<p>Carregando agenda persistida…</p>`:""}${s.error?`<p role="alert">${esc(s.error)}</p>`:""}${s.detailMode?selected?editor:`<p role="alert">Compromisso não encontrado na agenda.</p>`:`<section class="agenda-panel"><div class="agenda-controls"><div class="agenda-nav"><button type="button" data-week="-1">‹</button><b>${days[0].toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})} — ${days[6].toLocaleDateString("pt-BR",{day:"2-digit",month:"short",year:"numeric"})}</b><button type="button" data-week="1">›</button></div><div class="agenda-modes"><button type="button" data-presentation="status" aria-pressed="${s.presentation==="status"}">Por estado</button><button type="button" data-presentation="timeline" aria-pressed="${s.presentation==="timeline"}">Linha do tempo</button></div></div><nav class="agenda-days">${dayNav}</nav><p>${events.length} compromisso(s) nesta semana · ${s.events.length} compromissos carregados</p></section>${s.calendarOpen?calendarMarkup:""}<section class="agenda-groups">${s.loading?"":body||`<p class="agenda-empty">Nenhum compromisso nesta semana.</p>`}</section>${editor}`}</section>`;
   }
   connectedCallback():void{
     let calendarGesture:{id:string;mode:"move"|"duration"|"span";originX:number;originY:number;grabY:number;original:OperationalAgendaEvent;moved:boolean;preview:OperationalAgendaEvent;date:string;pointerHours?:number}|null=null,suppressCalendarClick=false;
@@ -14632,15 +14669,11 @@ export function installAtlasMapLotSelectionUi(MapScene: CustomElementConstructor
       const panel = documentRef.createElement("aside");
       panel.className = "map-selection-panel";
       panel.dataset.mapSelectionPanel = "reservation";
-      panel.innerHTML = `<div class="map-selection-panel-head"><div><span class="activity-kind">RESERVA DE LOTES</span><h2>${ids.length} lote${ids.length === 1 ? "" : "s"} selecionado${ids.length === 1 ? "" : "s"}</h2></div><button type="button" data-map-selection-clear aria-label="Limpar seleção">×</button></div><div class="map-selection-chips">${labels.map(label => `<span class="map-selection-chip">${esc(label)}</span>`).join("")}</div><p class="map-selection-help">Clique em outros lotes para acumular a seleção. Clique novamente em um lote para removê-lo.</p><form data-lot-reservation-form><label>Interessado<input name="interessado" placeholder="Nome completo"></label><label>Objetivo<select name="objetivo">${objectiveOptions}</select></label><label>Prazo de reserva<select name="prazo">${termOptions}</select></label><label>Observações<textarea name="observacoes" rows="2" placeholder="Preferências, condições ou observações"></textarea></label><div class="map-selection-panel-actions"><button type="button" class="ghost" data-map-selection-progress>${ico("paintbrush")} Registrar progresso</button><button type="submit" class="primary">${ico("calendar-check")} Abrir reserva</button></div></form>`;
+      panel.innerHTML = `<div class="map-selection-panel-head"><div><span class="activity-kind">RESERVA DE LOTES</span><h2>${ids.length} lote${ids.length === 1 ? "" : "s"} selecionado${ids.length === 1 ? "" : "s"}</h2></div><button type="button" data-map-selection-clear aria-label="Limpar seleção">×</button></div><div class="map-selection-chips">${labels.map(label => `<span class="map-selection-chip">${esc(label)}</span>`).join("")}</div><p class="map-selection-help">Clique em outros lotes para acumular a seleção. Clique novamente em um lote para removê-lo.</p><form data-lot-reservation-form><label>Interessado<input name="interessado" placeholder="Nome completo"></label><label>Objetivo<select name="objetivo">${objectiveOptions}</select></label><label>Prazo de reserva<select name="prazo">${termOptions}</select></label><label>Observações<textarea name="observacoes" rows="2" placeholder="Preferências, condições ou observações"></textarea></label><div class="map-selection-panel-actions"><button type="submit" class="primary">${ico("calendar-check")} Abrir reserva</button></div></form>`;
       this.appendChild(panel);
       panel.querySelector("[data-map-selection-clear]")?.addEventListener("click", event => {
         event.stopPropagation();
         this.clearLotSelection?.(true);
-      });
-      panel.querySelector("[data-map-selection-progress]")?.addEventListener("click", event => {
-        event.stopPropagation();
-        this.setMapSelectionMode?.("progress");
       });
       panel.querySelector("[data-lot-reservation-form]")?.addEventListener("submit", event => {
         event.preventDefault();
@@ -14954,7 +14987,7 @@ export function installAtlasMapModelPicking(MapScene: CustomElementConstructor, 
 export type AtlasDemoCollaboratorRowV1 = string[];
 interface AtlasMapInteractionDependencies {
   activityCatalog: Array<Record<string, unknown>>;
-  readMapSelectionState(): Pick<AtlasApplicationStoreState, 'view' | 'mapProgressSelection' | 'mapFilter' | 'mapFilterWidget' | 'mapFilters' | 'selectedStage'>;
+  readMapSelectionState(): Pick<AtlasApplicationStoreState, 'view' | 'mapProgressSelection' | 'mapFilter' | 'mapFilterWidget' | 'mapFilters' | 'selectedStage'> & { agendaMapAreaPickerActiveV1?: boolean };
   commands: AtlasMapSelectionCommandsV1;
   demoData: { activities: Array<{ id: string; name: string }>; collaborators: AtlasDemoCollaboratorRowV1[] };
   document: Document;
@@ -14975,6 +15008,9 @@ interface AtlasOperationalMapSelectionScene extends AtlasMapPickingScene {
   statusSelectionParts?: AtlasMapSelectionPart[];
   _mapAreaSelectionStart?: { x: number; y: number } | null;
   _mapAreaSelectionRect?: HTMLDivElement | null;
+  _progressAreaClickHandlerV1?: (event: Event) => void;
+  _progressAreaActivationHandlerV1?: (event: Event) => void;
+  _progressAreaPointerHandlerV1?: (event: Event) => void;
   _recordPaintCallback?: ((area: AtlasMapRecordArea) => void) | null;
   lastRecordMapArea?: AtlasMapRecordArea | null;
   _adminStandaloneInteractiveV5370?: boolean;
@@ -15096,15 +15132,128 @@ export function installAtlasMapSelection(MapScene: CustomElementConstructor, dep
     setMapSelectionMode(this: AtlasOperationalMapSelectionScene, mode: string | boolean = false): void {
       const requested = mode === "progress" ? "progress" : null;
       const view = String(readMapSelectionState().view || "");
-      const next = requested && new Set(["assistant", "map", "records"]).has(view) ? requested : null;
+      const agendaPickerActive = Boolean(readMapSelectionState().agendaMapAreaPickerActiveV1);
+      const next = requested && view === "map" && agendaPickerActive ? requested : null;
       if (next && !this.isAdminStandaloneInteractiveV5370?.()) this.ensureOperationalStreetGeometry?.();
       this.mapSelectionMode = next;
       this.dataset.mapSelectionMode = next || "off";
+      this.removeEventListener("click", this._progressAreaClickHandlerV1!, true);
+      this.removeEventListener("belavista:map-lot-polygon-activate", this._progressAreaActivationHandlerV1!, true);
+      this.removeEventListener("pointerdown", this._progressAreaPointerHandlerV1!, true);
+      delete this._progressAreaClickHandlerV1;
+      delete this._progressAreaActivationHandlerV1;
+      delete this._progressAreaPointerHandlerV1;
+      if (next === "progress") {
+        let lastRoadPointer: { x: number; y: number; at: number } | null = null;
+        const toggleStaticArea = (event: Event): void => {
+          const target = event.target as Element | null;
+          const lot = target?.closest<SVGPathElement>(".satellite-lot-hit-area[data-lot]") || null;
+          let road = target?.closest<SVGPathElement>("[data-map-road-part-id]") || null;
+          const svg = this.querySelector<SVGSVGElement>(".satellite-lot-plan-fit svg");
+          if (!lot && !road && event instanceof MouseEvent && svg && !target?.closest("map-filter-rail")) {
+            const matrix = svg.getScreenCTM();
+            const point = svg.createSVGPoint();
+            if (matrix) {
+              point.x = event.clientX;
+              point.y = event.clientY;
+              const local = point.matrixTransform(matrix.inverse());
+              road = [...svg.querySelectorAll<SVGPathElement>(".satellite-progress-road-mask[data-map-road-part-id]")]
+                .reverse()
+                .find(path => {
+                  if (!path.isPointInFill(local)) return false;
+                  const clipId = path.getAttribute("clip-path")?.match(/#([^)]*)/)?.[1];
+                  if (!clipId) return true;
+                  const clipPath = [...svg.querySelectorAll<SVGClipPathElement>("clipPath")]
+                    .find(item => item.id === clipId)?.querySelector<SVGPathElement>("path");
+                  return Boolean(clipPath?.isPointInFill(local));
+                }) || null;
+            }
+          }
+          const detail = event instanceof CustomEvent ? event.detail as Record<string, unknown> : {};
+          const partId = String(detail?.lotId || lot?.dataset.lot || road?.dataset.mapRoadPartId || "");
+          if (!partId || (!lot && !road)) return;
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          const roadNo = String(road?.dataset.mapRoadOrdinal || "").padStart(2, "0");
+          const segmentNo = String(partId.match(/slice-(\d+)/)?.[1] || "").padStart(2, "0");
+          const label = lot
+            ? String(detail?.label || `Lote ${String(partId.match(/\d+/g)?.at(-1) || "").padStart(3, "0")}`)
+            : `Rua ${roadNo} · trecho ${segmentNo}`;
+          this.toggleProgressAreaSelectionV1({
+            name: label,
+            userData: { partId, partLabel: label, partKind: lot ? "lots" : "streets" },
+          } as AtlasMapSelectionPart);
+        };
+        this._progressAreaPointerHandlerV1 = event => {
+          if (!(event instanceof MouseEvent)) return;
+          const target = event.target as Element | null;
+          if (target?.closest("map-filter-rail")) return;
+          const directRoad = target?.closest<SVGPathElement>("[data-map-road-part-id]");
+          if (!directRoad) {
+            const svg = this.querySelector<SVGSVGElement>(".satellite-lot-plan-fit svg");
+            const matrix = svg?.getScreenCTM();
+            if (!svg || !matrix) return;
+            const point = svg.createSVGPoint();
+            point.x = event.clientX;
+            point.y = event.clientY;
+            const local = point.matrixTransform(matrix.inverse());
+            const road = [...svg.querySelectorAll<SVGPathElement>(".satellite-progress-road-mask[data-map-road-part-id]")]
+              .reverse()
+              .find(path => {
+                if (!path.isPointInFill(local)) return false;
+                const clipId = path.getAttribute("clip-path")?.match(/#([^)]*)/)?.[1];
+                if (!clipId) return true;
+                const clipPath = [...svg.querySelectorAll<SVGClipPathElement>("clipPath")]
+                  .find(item => item.id === clipId)?.querySelector<SVGPathElement>("path");
+                return Boolean(clipPath?.isPointInFill(local));
+              });
+            if (!road) return;
+          }
+          lastRoadPointer = { x: event.clientX, y: event.clientY, at: performance.now() };
+          toggleStaticArea(event);
+        };
+        this._progressAreaClickHandlerV1 = event => {
+          if (event instanceof MouseEvent && lastRoadPointer
+            && performance.now() - lastRoadPointer.at < 900
+            && Math.abs(event.clientX - lastRoadPointer.x) < 4
+            && Math.abs(event.clientY - lastRoadPointer.y) < 4) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            lastRoadPointer = null;
+            return;
+          }
+          toggleStaticArea(event);
+        };
+        this._progressAreaActivationHandlerV1 = toggleStaticArea;
+        this.addEventListener("click", this._progressAreaClickHandlerV1, true);
+        this.addEventListener("belavista:map-lot-polygon-activate", toggleStaticArea, true);
+        this.addEventListener("pointerdown", this._progressAreaPointerHandlerV1, true);
+      }
+      const staticRoadGroup = this.querySelector<SVGGElement>(".satellite-progress-road-highlights");
+      if (staticRoadGroup) {
+        staticRoadGroup.style.pointerEvents = next === "progress" ? "auto" : "none";
+        staticRoadGroup.querySelectorAll<SVGPathElement>("[data-map-road-part-id]").forEach(path => {
+          const progress = Number(path.dataset.progress);
+          const highlighted = Number.isFinite(progress);
+          path.style.pointerEvents = next === "progress" ? "all" : "none";
+          path.style.visibility = next === "progress" || highlighted ? "visible" : "hidden";
+          path.style.setProperty("--area-progress-opacity", next === "progress" ? "0.16"
+            : highlighted ? String(0.44 + progress * 0.003) : "0");
+        });
+      }
       this.querySelectorAll<HTMLElement>("[data-scene-selection]").forEach(button => button.classList.toggle("active", button.dataset.sceneSelection === next));
-      if (requested && !next) notify("A seleção de progresso fica disponível no mapa administrativo ou em Registros.", "warning");
+      if (requested && !next) notify("A seleção de áreas está disponível ao adicionar áreas a um evento da agenda.", "warning");
       else if (next) {
-        this.dataset.mapSelectionHint = "Arraste um retângulo sobre lotes, ruas ou estruturas para registrar progresso";
-        notify("Seleção de progresso ativa: arraste sobre uma área do loteamento.");
+        const staticMap = this.matches('map-scene[data-public-static-only="true"]');
+        const agendaPicker = Boolean(readMapSelectionState().agendaMapAreaPickerActiveV1);
+        this.dataset.mapSelectionHint = agendaPicker
+          ? "Clique nos lotes ou trechos viários para vinculá-los ao compromisso"
+          : staticMap
+            ? "Clique nos lotes ou fatias de ruas e meios-fios para selecionar áreas de progresso"
+            : "Arraste um retângulo sobre lotes, ruas ou estruturas para registrar progresso";
+        notify(agendaPicker
+          ? "Seleção do compromisso ativa: clique nos lotes ou trechos que participam do evento."
+          : staticMap ? "Seleção de progresso ativa: clique nos lotes ou trechos viários." : "Seleção de progresso ativa: arraste sobre uma área do loteamento.");
       } else delete this.dataset.mapSelectionHint;
     },
     progressMapPartsV1(this: AtlasOperationalMapSelectionScene): AtlasMapSelectionPart[] {
@@ -15116,7 +15265,15 @@ export function installAtlasMapSelection(MapScene: CustomElementConstructor, dep
     progressAreaPartV1(this: AtlasOperationalMapSelectionScene, record: AtlasMapProgressArea): AtlasMapSelectionPart | null {
       const id = String(record?.partId || "");
       if (!id) return null;
-      return this.progressMapPartsV1().find(item => String(item.userData?.partId || item.name || "") === id) || null;
+      const modelPart = this.progressMapPartsV1().find(item => String(item.userData?.partId || item.name || "") === id);
+      if (modelPart) return modelPart;
+      const svg = this.querySelector<SVGSVGElement>(".satellite-lot-plan-fit svg");
+      if (!svg) return null;
+      const staticPartExists = [...svg.querySelectorAll<SVGElement>(".satellite-lot-hit-area[data-lot],[data-map-road-part-id]")]
+        .some(node => String((node as SVGElement & { dataset: DOMStringMap }).dataset.lot || (node as SVGElement & { dataset: DOMStringMap }).dataset.mapRoadPartId || "") === id);
+      return staticPartExists
+        ? { name: id, userData: { partId: id, partLabel: record.label || id, partKind: record.kind || "other" } } as AtlasMapSelectionPart
+        : null;
     },
     progressAreaPartsFromStoreV1(this: AtlasOperationalMapSelectionScene): AtlasMapSelectionPart[] {
       const selected = Array.isArray(readMapSelectionState().mapProgressSelection) ? readMapSelectionState().mapProgressSelection as AtlasMapProgressArea[] : [];
@@ -15138,6 +15295,14 @@ export function installAtlasMapSelection(MapScene: CustomElementConstructor, dep
           }
         } else if (item._paverOwner) this.setStreetPaverInstanceColor?.(item, Number(item.userData?.paverDefaultColor || 0xffffff));
       }
+      const svg = this.querySelector<SVGSVGElement>(".satellite-lot-plan-fit svg");
+      if (svg) {
+        svg.querySelectorAll<SVGPathElement>(".satellite-lot-hit-area[data-lot]").forEach(path => {
+          const id = String(path.dataset.lot || "");
+          path.classList.toggle("is-progress-selected", selectedIds.has(id));
+        });
+        svg.querySelectorAll<SVGPathElement>("[data-map-road-part-id]").forEach(path => path.classList.toggle("is-progress-selected", selectedIds.has(String(path.dataset.mapRoadPartId || ""))));
+      }
       this.progressSelectionParts = records.map(item => this.progressAreaPartV1(item)).filter((item): item is AtlasMapSelectionPart => Boolean(item));
       this.dataset.progressSelectionCount = String(records.length);
     },
@@ -15146,7 +15311,9 @@ export function installAtlasMapSelection(MapScene: CustomElementConstructor, dep
       this.paintProgressAreaSelectionV1(command.records);
       documentRef.querySelectorAll<HTMLElement>("map-filter-rail").forEach(rail => (rail as HTMLElement & { render?: () => void }).render?.());
       this.renderActiveSceneV5370?.();
-      if (options.announce !== false) notify(command.records.length ? `${command.records.length} área(s) disponível(is) na lista de progresso.` : "Áreas de progresso limpas.", command.records.length ? "success" : "");
+      if (options.announce !== false) notify(command.records.length
+        ? `${command.records.length} área(s) selecionada(s) ${readMapSelectionState().agendaMapAreaPickerActiveV1 ? "para o compromisso" : "na lista de progresso"}.`
+        : "Áreas de progresso limpas.", command.records.length ? "success" : "");
       return command.records;
     },
     toggleProgressAreaSelectionV1(this: AtlasOperationalMapSelectionScene, item: AtlasMapSelectionPart): boolean {
@@ -15155,7 +15322,9 @@ export function installAtlasMapSelection(MapScene: CustomElementConstructor, dep
       this.paintProgressAreaSelectionV1(command.records);
       documentRef.querySelectorAll<HTMLElement>("map-filter-rail").forEach(rail => (rail as HTMLElement & { render?: () => void }).render?.());
       this.renderActiveSceneV5370?.();
-      notify(command.records.length ? `${command.records.length} área(s) disponível(is) na lista de progresso.` : "Áreas de progresso limpas.", command.records.length ? "success" : "");
+      notify(command.records.length
+        ? `${command.records.length} área(s) selecionada(s) ${readMapSelectionState().agendaMapAreaPickerActiveV1 ? "para o compromisso" : "na lista de progresso"}.`
+        : "Áreas de progresso limpas.", command.records.length ? "success" : "");
       return true;
     },
     clearProgressAreaSelectionV1(this: AtlasOperationalMapSelectionScene, announce = false): void {
@@ -17831,6 +18000,20 @@ export function installAtlasStaticSatelliteGestures(
       this.classList.remove("static-lot-markers-visible");
       this.dataset.staticMapGestures = "drag-pan + wheel + shift-drag-zoom + pinch-zoom";
       const policy = projectAtlasStaticSatelliteGesturePolicy(Boolean(this.isAdminPublicMapV1?.()));
+      const syncStaticBackgroundFrame = (): void => {
+        const host = this.querySelector<HTMLElement>(".map-host");
+        const rect = this.getBoundingClientRect();
+        if (!host || !rect.width || !rect.height) return;
+        const side = Math.max(rect.width, rect.height);
+        host.style.setProperty("width", `${side}px`, "important");
+        host.style.setProperty("height", `${side}px`, "important");
+        host.style.setProperty("left", `${(rect.width - side) / 2}px`, "important");
+        host.style.setProperty("top", `${(rect.height - side) / 2}px`, "important");
+        host.style.setProperty("right", "auto", "important");
+        host.style.setProperty("bottom", "auto", "important");
+      };
+      syncStaticBackgroundFrame();
+      if (typeof ResizeObserver === "function") new ResizeObserver(syncStaticBackgroundFrame).observe(this);
       let zoom = 1;
       let panX = 0;
       let panY = 0;
@@ -25458,11 +25641,25 @@ export class AtlasMapLotMarker extends AtlasHTMLElementBase {
     this.dataset.lotNumber = context.lotNumber;
     this.dataset.lotSource = context.source;
     this.dataset.mapSelectionSource = context.selectionSource || context.source;
-    this.textContent = context.lotNumber;
+    const number = document.createElement("span");
+    number.className = "satellite-lot-plan-marker-number";
+    number.textContent = context.lotNumber;
+    this.replaceChildren(number);
     this.title = context.title || context.label;
     this.setAttribute("role", "button");
     this.setAttribute("aria-label", context.label);
     this.tabIndex = 0;
+  }
+
+  setMapAreaM2(value: unknown): void {
+    const area = Number(value);
+    this.dataset.lotAreaM2 = Number.isFinite(area) && area > 0 ? String(area) : "";
+    this.querySelector(".satellite-lot-plan-marker-area")?.remove();
+    if (!Number.isFinite(area) || area <= 0) return;
+    const label = document.createElement("small");
+    label.className = "satellite-lot-plan-marker-area";
+    label.textContent = `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(area)} m²`;
+    this.append(label);
   }
 
   setMarkerStatus(status: PublicMapLotMarkerStatus): void {
@@ -25827,6 +26024,7 @@ export class AtlasMapLotSvgRenderer extends AtlasHTMLElementBase {
     }
     const context = projectPublicMapLotWidgetContext({
       lotId,
+      pdfNumber: Number(label.match(/\d+/)?.[0]),
       pdfArea: input.pdfArea,
       lotStatuses: input.lotStatuses,
       pinned: true,
@@ -25935,6 +26133,22 @@ export class AtlasMapLotSvgRenderer extends AtlasHTMLElementBase {
       const path = target?.closest<SVGPathElement>(".satellite-lot-hit-area") || null;
       const lotId = String(detail.lotId || path?.dataset.lot || "");
       if (!path || !lotId || mapHost.classList.contains("is-admin-masterplan-editing")) return;
+      const progressMap = mapHost as HTMLElement & {
+        toggleProgressAreaSelectionV1?: (part: AtlasMapSelectionPart) => boolean;
+      };
+      if (progressMap.dataset.mapSelectionMode === "progress") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const pdfNumber = Number(input.greenMappingByLot.get(lotId)?.number);
+        const label = String(detail.label || `Lote ${Number.isFinite(pdfNumber) && pdfNumber > 0
+          ? String(pdfNumber).padStart(2, "0")
+          : String(lotId.match(/\d+/g)?.at(-1) || "").padStart(3, "0")}`);
+        progressMap.toggleProgressAreaSelectionV1?.({
+          name: label,
+          userData: { partId: lotId, partLabel: label, partKind: "lots" },
+        } as AtlasMapSelectionPart);
+        return;
+      }
       const pdfNumber = Number(input.greenMappingByLot.get(lotId)?.number);
       const label = String(detail.label || `Lote ${Number.isFinite(pdfNumber) && pdfNumber > 0
         ? String(pdfNumber).padStart(2, "0")
@@ -26619,7 +26833,7 @@ export function installAtlasAdminMasterplanOverlayV1(
     labelsLayer.classList.add("admin-masterplan-labels");
     labelsLayer.setAttribute("data-masterplan-labels", "");
     labelsLayer.setAttribute("viewBox", `0 0 ${atlasAdminMasterplanOverlayPolicy.svgDesignWidth} ${atlasAdminMasterplanOverlayPolicy.svgDesignWidth * artwork.legacyHeight / artwork.legacyWidth}`);
-    labelsLayer.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    labelsLayer.setAttribute("preserveAspectRatio", "none");
     labelsLayer.setAttribute("aria-hidden", "true");
     transform.append(image, canvas, labelsLayer);
     fit.append(transform);
@@ -26683,9 +26897,9 @@ export function installAtlasAdminMasterplanOverlayV1(
           if (atlasAdminMasterplanOverlayPolicy.showParcelArea && Number.isFinite(areaM2) && areaM2 > 0) {
             const area = documentRef.createElementNS("http://www.w3.org/2000/svg", "text");
             area.classList.add("admin-masterplan-lot-area-value");
-            area.setAttribute("x", String(x));
-            area.setAttribute("y", String(y + atlasAdminMasterplanOverlayPolicy.areaLabelOffset));
-            area.setAttribute("text-anchor", "middle");
+            area.setAttribute("x", String(x + atlasAdminMasterplanOverlayPolicy.areaLabelOffset));
+            area.setAttribute("y", String(y));
+            area.setAttribute("text-anchor", "start");
             area.setAttribute("dominant-baseline", "central");
             area.setAttribute("data-area-m2", String(areaM2));
             area.textContent = `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(areaM2)} m²`;
@@ -37067,16 +37281,10 @@ export function installAtlasAdminStandaloneStartupV1(MapScene: AtlasAdminStandal
             canvas.addEventListener("pointerdown", (event: any) => {
                 down = last = { x: event.clientX, y: event.clientY };
                 dragging = false;
-                const altSelection = event.altKey && event.button === 0;
                 selecting =
                     (this.recordPaintMode ||
-                        this.mapSelectionMode === "progress" ||
-                        altSelection) &&
+                        this.mapSelectionMode === "progress") &&
                         event.button === 0;
-                if (altSelection &&
-                    !this.recordPaintMode &&
-                    this.mapSelectionMode !== "progress")
-                    this.setMapSelectionMode("progress");
                 const zooming = !selecting &&
                     event.button === 0 &&
                     (event.shiftKey || event.ctrlKey);
@@ -38016,7 +38224,7 @@ export function installAtlasAdminStandaloneCameraV1(MapScene: AtlasAdminStandalo
 // BEGIN INSTALLATLASSATELLITELOTPLANOVERLAYV1_TS_V1 — source owner migrated as a complete unit.
 /** Installs the complete PDF/satellite lot overlay behavior on MapScene. */
 export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStandaloneMapTargetV1, dependencies: AtlasSatelliteLotPlanOverlayDependenciesV1) {
-    const { ADMIN_MASTERPLAN_LOT_POLYGONS_URL_V2, ADMIN_MASTERPLAN_SATELLITE_FRAME_V1, ADMIN_REFERENCE_AERIAL_LOT_TRACE_URL_V1, CANONICAL_LOT_TRACE_OVERLAY_ALIGNMENT_V1, DWG_GEOREFERENCE_URL, INVALID_MASTERPLAN_LOT_IDS_V1, MASTERPLAN_COMMON_AREA_LABEL_V1, MASTERPLAN_COMMON_AREA_SOURCE_IDS_V1, MASTERPLAN_PDF_GEOMETRY_REPAIR_LOT_IDS_V1, PDF_LOT_GREEN_MAPPING_URL_V1, PDF_LOT_LABELS_URL_V1, PDF_LOT_TRACE_SATELLITE_ALIGNMENT_V1, REPASSE_PRICE_CATALOG, loadMarkerOverridesV1, readLotStatuses, subscribeLotStatuses, commands, loadPublicMapGeometryAssets: loadGeometryAssetsV1, esc, ico, polygonCentroidV1, prepareAssistantLotStatusPromptV1, prepareAssistantMapAreaPromptV1, projectCanonicalLotTraceToMasterplanOverlayUvV1, } = dependencies;
+    const { ADMIN_MASTERPLAN_LOT_POLYGONS_URL_V2, ADMIN_MASTERPLAN_SATELLITE_FRAME_V1, ADMIN_REFERENCE_AERIAL_LOT_TRACE_URL_V1, ADMIN_REFERENCE_AERIAL_ROAD_TRACE_URL_V1, CANONICAL_LOT_TRACE_OVERLAY_ALIGNMENT_V1, DWG_GEOREFERENCE_URL, INVALID_MASTERPLAN_LOT_IDS_V1, MASTERPLAN_COMMON_AREA_LABEL_V1, MASTERPLAN_COMMON_AREA_SOURCE_IDS_V1, MASTERPLAN_PDF_GEOMETRY_REPAIR_LOT_IDS_V1, PDF_LOT_GREEN_MAPPING_URL_V1, PDF_LOT_LABELS_URL_V1, PDF_LOT_TRACE_SATELLITE_ALIGNMENT_V1, REPASSE_PRICE_CATALOG, loadMarkerOverridesV1, readLotStatuses, subscribeLotStatuses, commands, loadPublicMapGeometryAssets: loadGeometryAssetsV1, esc, ico, polygonCentroidV1, prepareAssistantLotStatusPromptV1, prepareAssistantMapAreaPromptV1, projectCanonicalLotTraceToMasterplanOverlayUvV1, } = dependencies;
     const projectPublicLotMarkerStatusV1 = dependencies.projectPublicLotMarkerStatusV1 || publicMapLotMarkerStatus;
     const projectPublicLotMarkerStatusesV1 = dependencies.projectPublicLotMarkerStatusesV1 || publicMapLotMarkerStatuses;
     const projectPublicMapLotWidgetContextV1 = dependencies.projectPublicMapLotWidgetContextV1 || projectPublicMapLotWidgetContext;
@@ -38107,9 +38315,12 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
                 masterplanPolygons: ADMIN_MASTERPLAN_LOT_POLYGONS_URL_V2,
                 lotLabels: PDF_LOT_LABELS_URL_V1,
                 greenMapping: PDF_LOT_GREEN_MAPPING_URL_V1,
+                roadTrace: ADMIN_REFERENCE_AERIAL_ROAD_TRACE_URL_V1,
             };
             const assets = await loadGeometryAssetsV1(geometryUrls);
+            let roadTraceAsset: Record<string, unknown> | null = null;
             ({ trace, georeference: geo, masterplanPolygons: masterplanPolygonAsset, lotLabels: pdfLotLabelsAsset, greenMapping: pdfLotGreenMappingAsset } = assets);
+            roadTraceAsset = assets.roadTrace || null;
             const lots = trace?.lots;
             if (!lots || typeof lots !== "object")
                 throw new Error("Prancha PDF sem polígonos de lote");
@@ -38125,6 +38336,11 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
             svg.setAttribute("preserveAspectRatio", "none");
             svg.setAttribute("aria-hidden", "true");
             svg.style.pointerEvents = "auto";
+            const progressMaskDefs: any = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+            progressMaskDefs.setAttribute("class", "satellite-progress-mask-defs");
+            const roadProgressGroup: any = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            roadProgressGroup.setAttribute("class", "satellite-progress-road-highlights");
+            roadProgressGroup.style.pointerEvents = "none";
             const commonAreaGroup: any = document.createElementNS("http://www.w3.org/2000/svg", "g");
             commonAreaGroup.setAttribute("class", "satellite-common-area-polygons");
             commonAreaGroup.style.pointerEvents = "auto";
@@ -38134,9 +38350,36 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
             const polygonGroup: any = document.createElementNS("http://www.w3.org/2000/svg", "g");
             polygonGroup.setAttribute("class", "satellite-lot-plan-polygons");
             polygonGroup.style.pointerEvents = "auto";
+            const lotProgressGroup: any = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            lotProgressGroup.setAttribute("class", "satellite-progress-lot-highlights");
+            lotProgressGroup.style.pointerEvents = "none";
             if (!outlines)
                 polygonGroup.setAttribute("hidden", "");
-            svg.append(commonAreaGroup, visualRecoveryGroup, polygonGroup);
+            // Keep the segmented road surfaces above lot hit-areas so road clicks
+            // can reach the road slice that owns the hit target in progress mode.
+            svg.append(progressMaskDefs, commonAreaGroup, visualRecoveryGroup, polygonGroup, lotProgressGroup, roadProgressGroup);
+            const selectStaticProgressLot = (event: Event): void => {
+                const mapHost = this as HTMLElement & {
+                    toggleProgressAreaSelectionV1?: (value: AtlasMapSelectionPart) => boolean;
+                };
+                if (mapHost.dataset.mapSelectionMode !== "progress") return;
+                const target = event.target as Element | null;
+                const path = target?.closest<SVGPathElement>(".satellite-lot-hit-area") || null;
+                const detail = event instanceof CustomEvent ? event.detail as Record<string, unknown> : {};
+                const lotId = String(detail?.lotId || path?.dataset.lot || "");
+                if (!path || !lotId) return;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                const label = String(detail?.label || `Lote ${String(lotId.match(/\d+/g)?.at(-1) || "").padStart(3, "0")}`);
+                mapHost.toggleProgressAreaSelectionV1?.({
+                    name: label,
+                    userData: { partId: lotId, partLabel: label, partKind: "lots" },
+                } as AtlasMapSelectionPart);
+            };
+            svg.addEventListener("click", selectStaticProgressLot, true);
+            svg.addEventListener("belavista:map-lot-polygon-activate", (event: Event) => {
+                selectStaticProgressLot(event);
+            }, true);
             fit.append(svg);
             fit.style.pointerEvents = "auto";
             const markerLayer: any = document.createElement(customElements.get("atlas-map-lot-marker-layer") ? "atlas-map-lot-marker-layer" : "div");
@@ -38245,8 +38488,11 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
                 return marker;
             };
             const appendLotMarker = (input: any) => {
-                if (typeof markerLayer.createMarker === "function")
-                    return markerLayer.createMarker(input);
+                if (typeof markerLayer.createMarker === "function") {
+                    const marker = markerLayer.createMarker(input);
+                    setMapLotAreaMarkerV1(marker);
+                    return marker;
+                }
                 const marker = createLotMarker(input);
                 if (input.relativePosition) {
                     marker.dataset.masterplanRelativeU = String(input.relativePosition.u);
@@ -38263,6 +38509,7 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
                     marker.style.left = `${(input.position.u * 100).toFixed(4)}%`;
                     marker.style.top = `${(input.position.v * 100).toFixed(4)}%`;
                 }
+                setMapLotAreaMarkerV1(marker);
                 markerLayer.append(marker);
                 return marker;
             };
@@ -38615,6 +38862,19 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
             };
             const projection = projectPublicSatelliteLots(projectionInput);
             const { masterplanLots, usesNativeMasterplanPolygons, officialMarkerByLot, greenMappingByLot, canonicalTraceMarkerByLot, usesGreenLotMapping, usesCanonicalTraceMarkers, hasOfficialPdfLabels, canRepairPdfGeometry, projectedLots, commonAreaPolygons, projectedBounds, masterplanMarkerPosition, } = projection;
+            const readMasterplanFrameV1 = () => {
+                const rawOverride = this.dataset.adminMasterplanFrame || "{}";
+                const projectedFrame = projectPublicMapFrameFromOverridesV1(ADMIN_MASTERPLAN_SATELLITE_FRAME_V1, rawOverride);
+                if (projectedFrame)
+                    return projectedFrame;
+                try {
+                    return { ...ADMIN_MASTERPLAN_SATELLITE_FRAME_V1, ...JSON.parse(rawOverride) };
+                }
+                catch {
+                    return { ...ADMIN_MASTERPLAN_SATELLITE_FRAME_V1 };
+                }
+            };
+            let masterplanFrame = readMasterplanFrameV1();
             const pdfLotIdentityFor = (lotId: any) => projectPublicMapLotMarkerIdentityV1?.(
                 String(lotId),
                 greenMappingByLot.get(String(lotId))?.number,
@@ -38624,14 +38884,156 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
             };
             const projectedSvgPath = (points: any) => projectPublicMapProjectedSvgPathV1(points)
                 ?? `${points.map((point: any, index: any) => `${index ? "L" : "M"}${(point.u * 1000).toFixed(2)} ${(point.v * 1000).toFixed(2)}`).join(" ")} Z`;
+            const roadProgressSlices: Array<{ partId: string; roadNo: number; surface: SVGPathElement; curb: SVGPathElement }> = [];
+            const roadProgressModels: Array<{
+                roadNo: number;
+                road: { outer?: number[][]; holes?: number[][][] };
+                roadClipPath: SVGPathElement;
+                sliceCount: number;
+                slices: Array<{ surface: SVGPathElement; curb: SVGPathElement; sliceClipPath: SVGPathElement; index: number }>;
+            }> = [];
+            const roadTrace = roadTraceAsset as { roads?: Array<{ outer?: number[][]; holes?: number[][][] }>; imageSize?: number[] } | null;
+            const roadImageSize = roadTrace?.imageSize || imageSize;
+            // Road traces use the canonical aerial homography first, then the exact
+            // editable masterplan frame used by the PDF artwork, lot polygons and labels.
+            const projectRoadRing = (ring: number[][], frame: typeof masterplanFrame = masterplanFrame) => {
+                const points = ring.flatMap(point => {
+                    const normalized = projectCanonicalLotTraceToMasterplanOverlayUvV1(
+                        { x: Number(point?.[0]), y: Number(point?.[1]) },
+                        roadImageSize,
+                    );
+                    if (!normalized || !Number.isFinite(normalized.u) || !Number.isFinite(normalized.v)) return [];
+                    return [masterplanMarkerPosition(normalized.u, normalized.v, frame)];
+                });
+                const path = points.length >= 3
+                    ? `M${points.map(point => `${point.u * 1000},${point.v * 1000}`).join(" L")} Z`
+                    : "";
+                return { points, path };
+            };
+            const roadScope = `progress-${String(this.dataset.mapInstanceId || Date.now()).replace(/[^a-zA-Z0-9_-]/g, "-")}-${Math.random().toString(36).slice(2, 7)}`;
+            (Array.isArray(roadTrace?.roads) ? roadTrace!.roads! : []).forEach((road, roadIndex) => {
+                const outer = Array.isArray(road.outer) ? road.outer : [];
+                const outerPath = projectRoadRing(outer).path;
+                if (!outerPath) return;
+                const holePaths = (Array.isArray(road.holes) ? road.holes : []).map(ring => projectRoadRing(ring).path).filter(Boolean);
+                const roadPath = [outerPath, ...holePaths].join(" ");
+                const projectedOuter = projectRoadRing(outer).points;
+                if (projectedOuter.length < 3) return;
+                const xs = projectedOuter.map(point => point.u * 1000), ys = projectedOuter.map(point => point.v * 1000);
+                const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+                const width = Math.max(1, maxX - minX), height = Math.max(1, maxY - minY);
+                const horizontal = width >= height;
+                const sliceCount = Math.max(4, Math.min(12, Math.ceil(Math.max(width, height) / 100)));
+                const roadNo = roadIndex + 1;
+                const clipId = `${roadScope}-road-${String(roadNo).padStart(2, "0")}`;
+                const roadClip = document.createElementNS("http://www.w3.org/2000/svg", "clipPath");
+                roadClip.id = clipId;
+                roadClip.setAttribute("clipPathUnits", "userSpaceOnUse");
+                const roadClipPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                roadClipPath.setAttribute("d", roadPath);
+                roadClipPath.setAttribute("fill-rule", "evenodd");
+                roadClipPath.setAttribute("clip-rule", "evenodd");
+                roadClip.append(roadClipPath);
+                progressMaskDefs.append(roadClip);
+                const roadModel: (typeof roadProgressModels)[number] = {
+                    roadNo,
+                    road,
+                    roadClipPath,
+                    sliceCount,
+                    slices: [],
+                };
+                for (let sliceIndex = 0; sliceIndex < sliceCount; sliceIndex++) {
+                    const partId = `street-${String(roadNo).padStart(2, "0")}-slice-${String(sliceIndex + 1).padStart(2, "0")}`;
+                    const start = sliceIndex / sliceCount, end = (sliceIndex + 1) / sliceCount;
+                    const sliceD = horizontal
+                        ? `M${minX + width * start},0 H${minX + width * end} V1000 H${minX + width * start} Z`
+                        : `M0,${minY + height * start} H1000 V${minY + height * end} H0 Z`;
+                    const sliceClipId = `${clipId}-${String(sliceIndex + 1).padStart(2, "0")}`;
+                    const sliceClip = document.createElementNS("http://www.w3.org/2000/svg", "clipPath");
+                    sliceClip.id = sliceClipId;
+                    sliceClip.setAttribute("clipPathUnits", "userSpaceOnUse");
+                    const sliceClipPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                    sliceClipPath.setAttribute("d", sliceD);
+                    sliceClip.append(sliceClipPath);
+                    progressMaskDefs.append(sliceClip);
+                    const surfacePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                    surfacePath.setAttribute("d", sliceD);
+                    surfacePath.setAttribute("clip-path", `url(#${clipId})`);
+                    surfacePath.style.visibility = "hidden";
+                    surfacePath.classList.add("satellite-progress-road-mask");
+                    surfacePath.dataset.mapRoadPartId = partId;
+                    surfacePath.dataset.mapRoadOrdinal = String(roadNo);
+                    const curbPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                    curbPath.setAttribute("d", roadPath);
+                    curbPath.setAttribute("clip-path", `url(#${sliceClipId})`);
+                    curbPath.style.visibility = "hidden";
+                    curbPath.setAttribute("fill-rule", "evenodd");
+                    curbPath.setAttribute("clip-rule", "evenodd");
+                    curbPath.classList.add("satellite-progress-curb-mask");
+                    curbPath.dataset.mapRoadPartId = partId;
+                    curbPath.dataset.mapRoadOrdinal = String(roadNo);
+                    roadProgressGroup.append(surfacePath, curbPath);
+                    roadProgressSlices.push({ partId, roadNo, surface: surfacePath, curb: curbPath });
+                    roadModel.slices.push({ surface: surfacePath, curb: curbPath, sliceClipPath, index: sliceIndex });
+                }
+                roadProgressModels.push(roadModel);
+            });
+            const syncRoadProgressFrameV1 = (frame: typeof masterplanFrame): void => {
+                roadProgressModels.forEach(model => {
+                    const outer = projectRoadRing(Array.isArray(model.road.outer) ? model.road.outer : [], frame);
+                    if (outer.points.length < 3 || !outer.path) return;
+                    const holes = (Array.isArray(model.road.holes) ? model.road.holes : [])
+                        .map(ring => projectRoadRing(ring, frame).path)
+                        .filter(Boolean);
+                    const roadPath = [outer.path, ...holes].join(" ");
+                    model.roadClipPath.setAttribute("d", roadPath);
+                    const xs = outer.points.map(point => point.u * 1000);
+                    const ys = outer.points.map(point => point.v * 1000);
+                    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+                    const width = Math.max(1, maxX - minX), height = Math.max(1, maxY - minY);
+                    const horizontal = width >= height;
+                    model.slices.forEach(({ surface, curb, sliceClipPath, index }) => {
+                        const start = index / model.sliceCount, end = (index + 1) / model.sliceCount;
+                        const sliceD = horizontal
+                            ? `M${minX + width * start},0 H${minX + width * end} V1000 H${minX + width * start} Z`
+                            : `M0,${minY + height * start} H1000 V${minY + height * end} H0 Z`;
+                        surface.setAttribute("d", sliceD);
+                        sliceClipPath.setAttribute("d", sliceD);
+                        curb.setAttribute("d", roadPath);
+                    });
+                });
+            };
+            syncRoadProgressFrameV1(masterplanFrame);
+            roadProgressGroup.addEventListener("click", (event: Event) => {
+                if ((this as HTMLElement).dataset.mapSelectionMode !== "progress") return;
+                const target = event.target instanceof Element ? event.target.closest<SVGPathElement>("[data-map-road-part-id]") : null;
+                const partId = String(target?.dataset.mapRoadPartId || "");
+                if (!partId) return;
+                event.preventDefault();
+                event.stopPropagation();
+                const roadNo = String(target?.dataset.mapRoadOrdinal || "").padStart(2, "0");
+                const segmentNo = String(partId.match(/slice-(\d+)/)?.[1] || "").padStart(2, "0");
+                const part: AtlasMapSelectionPart = {
+                    name: `Rua ${roadNo} · trecho ${segmentNo}`,
+                    userData: { partId, partLabel: `Rua ${roadNo} · trecho ${segmentNo}`, partKind: "streets" },
+                };
+                (this as HTMLElement & { toggleProgressAreaSelectionV1?: (value: AtlasMapSelectionPart) => boolean })
+                    .toggleProgressAreaSelectionV1?.(part);
+            });
             const projectedFrameSvgPath = (points: any, frame: any) => projectPublicMapFrameSvgPathV1(points, frame)
                 ?? (points.map((point: any, index: any) => {
                     const position = masterplanMarkerPosition(point.u, point.v, frame);
                     return `${index ? 'L' : 'M'}${position.u * 1000} ${position.v * 1000}`;
                 }).join(' ') + ' Z');
+            const officialMapLotAreaV1 = (lotId: unknown): number | null => {
+                const ordinal = Number(String(lotId || "").match(/\d+/g)?.at(-1));
+                const area = Number(REPASSE_PRICE_CATALOG[ordinal - 1]?.area);
+                return Number.isFinite(area) && area > 0 ? area : null;
+            };
             const pdfAreaLinks = [...greenMappingByLot.entries()].map(([lotId, mapping]: any) => ({
                 lotId,
                 greenPolygonId: String(mapping.greenPolygonId || ""),
+                officialAreaM2: officialMapLotAreaV1(lotId),
             }));
             pdfAreaByLotId = projectPublicMapLotPdfAreasV1(geo?.lots, pdfAreaLinks)
                 ?? (() => {
@@ -38643,18 +39045,36 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
                         Number(geometryByLotId.get(greenPolygonId)?.[5]) || null,
                     ]));
                 })();
-            const masterplanFrame = (() => {
-                const rawOverride = this.dataset.adminMasterplanFrame || "{}";
-                const projectedFrame = projectPublicMapFrameFromOverridesV1(ADMIN_MASTERPLAN_SATELLITE_FRAME_V1, rawOverride);
-                if (projectedFrame)
-                    return projectedFrame;
-                try {
-                    return { ...ADMIN_MASTERPLAN_SATELLITE_FRAME_V1, ...JSON.parse(rawOverride) };
+            const mapLotAreaForIdV1 = (lotId: unknown): number | null => {
+                const indexed = Number(pdfAreaByLotId.get(String(lotId)));
+                return Number.isFinite(indexed) && indexed > 0 ? indexed : officialMapLotAreaV1(lotId);
+            };
+            const setMapLotAreaMarkerV1 = (marker: any): void => {
+                if (!marker) return;
+                const lotId = String(marker.dataset?.lot || "");
+                const area = mapLotAreaForIdV1(lotId);
+                if (typeof marker.setMapAreaM2 === "function") {
+                    marker.setMapAreaM2(area);
+                    return;
                 }
-                catch {
-                    return { ...ADMIN_MASTERPLAN_SATELLITE_FRAME_V1 };
+                marker.dataset.lotAreaM2 = area ? String(area) : "";
+                let number = marker.querySelector?.(".satellite-lot-plan-marker-number");
+                if (!number) {
+                    const label = String(marker.dataset.lotNumber || marker.textContent || "").trim();
+                    marker.replaceChildren?.();
+                    number = document.createElement("span");
+                    number.className = "satellite-lot-plan-marker-number";
+                    number.textContent = label;
+                    marker.append(number);
                 }
-            })();
+                marker.querySelector?.(".satellite-lot-plan-marker-area")?.remove();
+                if (area) {
+                    const areaLabel = document.createElement("small");
+                    areaLabel.className = "satellite-lot-plan-marker-area";
+                    areaLabel.textContent = `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(area)} m²`;
+                    marker.append(areaLabel);
+                }
+            };
             const publicMarkerBatch = projectPublicSatelliteLotMarkerBatchV1({
                 projectedLots,
                 greenMappingByLot,
@@ -38676,18 +39096,21 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
             const publicFallbackMarkerByLot = new Map<any, any>((publicMarkerBatch?.fallbackMarkers || []).map((model: any) => [model.lotId, model]));
             const publicMarkersRendered = Boolean(publicMarkerBatch && ((this.closest("public-leads-surface") as any)?.renderPublicSatelliteLotMarkers?.({ markerLayer, batch: publicMarkerBatch }) === true
                 || markerLayer.renderMarkerBatch?.(publicMarkerBatch) === true));
-            if (publicMarkersRendered)
+            if (publicMarkersRendered) {
                 layer.dataset.markerRenderOwner = "components-ts";
+                markerLayer.querySelectorAll(".satellite-lot-plan-marker").forEach(setMapLotAreaMarkerV1);
+            }
+            const projectedLotByIdV1 = new Map(projectedLots.map((lot: any) => [lot.lotId, lot]));
             if (masterplanOverlay && usesGreenLotMapping) {
                 this.paintMasterplanLotLabelsV1?.([...greenMappingByLot.entries()].map(([lotId, mapping]: any) => {
+                    const lot = projectedLotByIdV1.get(lotId) as any;
+                    const centroid = lot ? polygonCentroidV1(lot.projected.map((point: any) => [point.u, point.v])) : null;
                     return {
                         lotId,
                         number: String(Number(mapping.number) || lotNumberFor(lotId)).padStart(2, "0"),
-                        u: Number(mapping.u),
-                        v: Number(mapping.v),
-                        // A associação revisada PDF → polígono aponta a área correspondente.
-                        // O número isolado se repete entre quadras na tabela de preços.
-                        areaM2: Number(pdfAreaByLotId.get(lotId)) || null,
+                        u: centroid ? Number(centroid.x) : Number(mapping.u),
+                        v: centroid ? Number(centroid.y) : Number(mapping.v),
+                        areaM2: mapLotAreaForIdV1(lotId),
                     };
                 }));
             }
@@ -39262,14 +39685,9 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
             }
             this._satelliteLotPlanOverlayV1 = layer;
             const legacyFrameSync = () => {
-                const frame: any = projectPublicMapFrameFromOverridesV1(ADMIN_MASTERPLAN_SATELLITE_FRAME_V1, this.dataset.adminMasterplanFrame) ?? (() => {
-                    let fallbackFrame = { ...ADMIN_MASTERPLAN_SATELLITE_FRAME_V1 };
-                    try {
-                        fallbackFrame = { ...fallbackFrame, ...JSON.parse(this.dataset.adminMasterplanFrame || "{}") };
-                    }
-                    catch { }
-                    return fallbackFrame;
-                })();
+                const frame: any = readMasterplanFrameV1();
+                masterplanFrame = frame;
+                syncRoadProgressFrameV1(frame);
                 const typedFrameSync = lotSvgRenderer?.syncMasterplanFrame?.({
                     markerLayer,
                     polygonGroup,
@@ -39314,7 +39732,11 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
                 baseFrame: ADMIN_MASTERPLAN_SATELLITE_FRAME_V1,
             });
             this.syncAdminMasterplanLotMarkersV1 = typeof typedFrameSync === "function"
-                ? typedFrameSync
+                ? () => {
+                    masterplanFrame = readMasterplanFrameV1();
+                    syncRoadProgressFrameV1(masterplanFrame);
+                    return typedFrameSync();
+                }
                 : legacyFrameSync;
             this.syncAdminMasterplanLotMarkersV1?.();
             const publicMapBackgroundOwned = publicSurface?.bindPublicSatelliteMapBackground?.({
@@ -39371,6 +39793,74 @@ export function installAtlasSatelliteLotPlanOverlayV1(MapScene: AtlasAdminStanda
                 this._satelliteLotStatusUnsubscribeV1 = subscribeLotStatuses(syncLotMarkerStatuses);
                 syncLotMarkerStatuses();
             }
+            this.applyMapProgressStageHighlightsV1 = (highlights: AtlasMapStageProgressHighlightV1[] = []): void => {
+                lotProgressGroup.replaceChildren();
+                const rows = Array.isArray(highlights) ? highlights : [];
+                const normalized = (value: unknown) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+                const numericId = (value: unknown) => String(value || "").match(/\d+/g)?.at(-1)?.replace(/^0+/, "") || "";
+                const lotRows = rows.filter(row => /lote|lot/.test(normalized(`${row.kind} ${row.partId} ${row.label}`)));
+                const forLot = (lotId: string): AtlasMapStageProgressHighlightV1 | undefined => {
+                    const exact = rows.find(row => normalized(row.partId) === normalized(lotId));
+                    if (exact) return exact;
+                    const number = numericId(lotId);
+                    return number ? lotRows.find(row => numericId(row.partId) === number || numericId(row.label) === number) : undefined;
+                };
+                const paint = (path: SVGPathElement, row: AtlasMapStageProgressHighlightV1, kind: "lot" | "road" | "curb"): void => {
+                    path.dataset.progress = String(row.progress);
+                    path.dataset.progressColor = row.color;
+                    path.dataset.progressAreaId = row.partId;
+                    path.style.setProperty("--area-progress-color", row.color);
+                    path.style.setProperty("--area-progress-opacity", String(kind === "lot" ? 0.22 + row.progress * 0.0023 : 0.44 + row.progress * 0.003));
+                    path.style.visibility = "visible";
+                };
+                const lotPaths = [...polygonGroup.querySelectorAll(".satellite-lot-hit-area[data-lot]") as NodeListOf<SVGPathElement>];
+                for (const source of lotPaths) {
+                    const row = forLot(String(source.dataset.lot || ""));
+                    if (!row) continue;
+                    const overlay = source.cloneNode(false) as SVGPathElement;
+                    overlay.removeAttribute("tabindex");
+                    overlay.removeAttribute("role");
+                    overlay.removeAttribute("aria-label");
+                    overlay.removeAttribute("aria-pressed");
+                    overlay.classList.remove("satellite-lot-hit-area", "is-selected");
+                    overlay.classList.add("satellite-progress-lot-highlight");
+                    overlay.style.pointerEvents = "none";
+                    paint(overlay, row, "lot");
+                    const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+                    title.textContent = `${row.label}: ${row.progress}%`;
+                    overlay.append(title);
+                    lotProgressGroup.append(overlay);
+                }
+                const roadNumberFor = (row: AtlasMapStageProgressHighlightV1): number | null => {
+                    const street = normalized(row.partId).match(/street[-_ ]?0*(\d+)/);
+                    const road = normalized(`${row.partId} ${row.label}`).match(/rua\s*0*(\d+)/);
+                    const match = street || road;
+                    return match ? Number(match[1]) : null;
+                };
+                const rowForRoadSlice = (slice: { partId: string; roadNo: number }): AtlasMapStageProgressHighlightV1 | undefined => {
+                    const exact = rows.find(row => normalized(row.partId) === normalized(slice.partId));
+                    if (exact) return exact;
+                    const roadRows = rows.filter(row => roadNumberFor(row) === slice.roadNo);
+                    return roadRows.find(row => /curb|meio.?fio|guia/.test(normalized(`${row.kind} ${row.partId} ${row.label}`)))
+                        || roadRows.find(row => !/slice-\d+/.test(normalized(row.partId)));
+                };
+                let activeRoadSlices = 0;
+                for (const slice of roadProgressSlices) {
+                    const row = rowForRoadSlice(slice);
+                    for (const [path, kind] of [[slice.surface, "road"], [slice.curb, "curb"]] as const) {
+                        path.style.visibility = row ? "visible" : "hidden";
+                        if (row) paint(path, row, kind);
+                    }
+                    if (row) activeRoadSlices++;
+                }
+                const areaCount = new Set(rows.map(row => row.partId)).size;
+                this.dataset.mapProgressStageAreaCount = String(areaCount);
+                this.dataset.mapProgressHighlightedLots = String(lotProgressGroup.childElementCount);
+                this.dataset.mapProgressHighlightedRoadSlices = String(activeRoadSlices);
+                lotProgressGroup.dataset.areaCount = String(lotProgressGroup.childElementCount);
+                roadProgressGroup.dataset.sliceCount = String(activeRoadSlices);
+            };
+            this.dispatchEvent(new CustomEvent("atlas:map-progress-overlay-ready", { bubbles: true, composed: true }));
             this._satelliteLotPlanInstallingV1 = false;
             this._satelliteLotPlanRequestedMarkersV1 = false;
             return count > 0;
@@ -40157,6 +40647,11 @@ export interface AtlasAgendaTimelineResultV1 {
 }
 export interface AtlasAgendaCalendarInstallDependenciesV1 extends Record<string, any> {
   readState: () => Record<string, any>;
+  appStore?: {
+    get(): Record<string, any>;
+    set(patch: Record<string, unknown>): unknown;
+    subscribe?(listener: (state: Record<string, any>) => void): () => unknown;
+  };
   agendaCalendarProgramV1: AtlasAgendaCalendarProgramV1;
   executionModel: { stages?: Array<Record<string, any>> };
 }
@@ -40210,7 +40705,7 @@ const AgendaAtlasTimelineV1 = ({
       const status = String(event.status || "Sem status").replaceAll("_", " ");
       const details = [event.activityName, event.stageName].filter((value, index, values) =>
         value && String(value) !== title && values.indexOf(value) === index).join(" · ");
-      return `<button type="button" class="agenda-atlas-event" data-agenda-mobile-edit="${esc(event.id)}" data-atlas-timeline-event-date="${esc(date)}"><span class="agenda-atlas-event-top"><time datetime="${esc(`${date}T${event.start || "00:00"}`)}">${esc(dateLabel)} · ${esc(event.start || "Horário a definir")}</time><em>${esc(status)}</em></span><strong>${esc(title)}</strong><p>${esc(details || event.stageName || "Etapa não informada")}</p><footer><span>${esc(event.owner || "Responsável não informado")}</span><small>${esc(event.durationHours || 0)} h${Number(event.spanDays || 1) > 1 ? ` · ${esc(event.spanDays)} dias` : ""}</small></footer></button>`;
+      return `<button type="button" class="agenda-atlas-event" data-agenda-mobile-edit="${esc(event.id)}" data-atlas-timeline-event-date="${esc(date)}"><span class="agenda-atlas-event-top"><time datetime="${esc(`${date}T${event.start || "00:00"}`)}">${esc(dateLabel)} · ${esc(event.start || "Horário a definir")}</time><em>${esc(status)}</em></span><strong>${esc(title)}</strong><p>${esc(details || event.stageName || "Etapa não informada")}</p><footer><span>${esc(event.owner || "Responsável não informado")}</span><small>${Array.isArray(event.mapAreas) && event.mapAreas.length ? `${event.mapAreas.length} área(s) · ` : ""}${esc(event.durationHours || 0)} h${Number(event.spanDays || 1) > 1 ? ` · ${esc(event.spanDays)} dias` : ""}</small></footer></button>`;
     }).join("");
     const stateOrder = ["pendente", "em andamento", "planejado", "aguardando material", "bloqueado", "concluido"];
     const groups = [...new Set(byTime.map((event) => normalizeAgendaStatus(event.status)))]
@@ -40226,13 +40721,13 @@ const AgendaAtlasTimelineV1 = ({
         const date = String(event.date || "");
         const dateLabel = /^\d{4}-\d{2}-\d{2}$/.test(date) ? `${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}` : date;
         const details = [event.activityName, event.stageName].filter((value, index, values) => value && String(value) !== String(event.title || "Compromisso") && values.indexOf(value) === index).join(" · ");
-        return `<button type="button" class="agenda-atlas-state-event" data-agenda-mobile-edit="${esc(event.id)}"><span><time datetime="${esc(`${date}T${event.start || "00:00"}`)}">${esc(dateLabel)} · ${esc(event.start || "Horário a definir")}</time><em>${esc(event.durationHours || 0)} h</em></span><strong>${esc(event.title || "Compromisso")}</strong><small>${esc(details || event.stageName || "Etapa não informada")}</small><footer><span>${esc(event.owner || "Responsável não informado")}</span><small>${Number(event.spanDays || 1)} dia(s)</small></footer></button>`;
+        return `<button type="button" class="agenda-atlas-state-event" data-agenda-mobile-edit="${esc(event.id)}"><span><time datetime="${esc(`${date}T${event.start || "00:00"}`)}">${esc(dateLabel)} · ${esc(event.start || "Horário a definir")}</time><em>${esc(event.durationHours || 0)} h</em></span><strong>${esc(event.title || "Compromisso")}</strong><small>${esc(details || event.stageName || "Etapa não informada")}</small><footer><span>${esc(event.owner || "Responsável não informado")}</span><small>${Array.isArray(event.mapAreas) && event.mapAreas.length ? `${event.mapAreas.length} área(s) · ` : ""}${Number(event.spanDays || 1)} dia(s)</small></footer></button>`;
       }).join("");
       return `<section class="agenda-atlas-state-group"><header><h3>${esc(agendaStatusTitle(status))}</h3><span>${statusEvents.length}</span></header><div>${rows}</div></section>`;
     }).join("");
     return {
       done: false,
-      value: `<section class="agenda-atlas-timeline" aria-label="Compromissos da agenda"><header><div><span class="activity-kind">AGENDA · COMPROMISSOS</span><h2>Compromissos da semana</h2><p>Atividades da semana agrupadas pelo estado. Selecione uma para revisar ou editar os dados.</p></div><button type="button" class="agenda-atlas-calendar-toggle" data-atlas-calendar-toggle aria-expanded="false">Ajustar horários no calendário</button></header><nav class="agenda-atlas-presentation" aria-label="Organização da agenda"><button type="button" data-agenda-presentation="status" aria-pressed="${presentation !== "timeline"}">Por estado</button><button type="button" data-agenda-presentation="timeline" aria-pressed="${presentation === "timeline"}">Linha do tempo</button></nav><div class="agenda-atlas-status-groups"${presentation === "timeline" ? " hidden" : ""}>${stateGroups || '<p class="agenda-atlas-empty">Nenhum compromisso registrado nesta semana.</p>'}</div><div class="agenda-atlas-rail" role="group" aria-label="Dias da semana"${presentation !== "timeline" ? " hidden" : ""}>${rail}</div><div class="agenda-atlas-events" data-atlas-timeline-events${presentation !== "timeline" ? " hidden" : ""}>${cards || '<p class="agenda-atlas-empty">Nenhum compromisso registrado nesta semana.</p>'}</div>${children.join("")}</section>`,
+      value: `<section class="agenda-atlas-timeline" aria-label="Compromissos da agenda"><header><div><span class="activity-kind">AGENDA · COMPROMISSOS</span><h2>Compromissos da semana</h2><p>Atividades da semana agrupadas pelo estado. Selecione uma para revisar ou editar os dados.</p></div><button type="button" class="agenda-atlas-calendar-toggle" data-atlas-calendar-toggle aria-expanded="true">Ocultar calendário semanal</button></header><nav class="agenda-atlas-presentation" aria-label="Organização da agenda"><button type="button" data-agenda-presentation="status" aria-pressed="${presentation !== "timeline"}">Por estado</button><button type="button" data-agenda-presentation="timeline" aria-pressed="${presentation === "timeline"}">Linha do tempo</button></nav><div class="agenda-atlas-status-groups"${presentation === "timeline" ? " hidden" : ""}>${stateGroups || '<p class="agenda-atlas-empty">Nenhum compromisso registrado nesta semana.</p>'}</div><div class="agenda-atlas-rail" role="group" aria-label="Dias da semana"${presentation !== "timeline" ? " hidden" : ""}>${rail}</div><div class="agenda-atlas-events" data-atlas-timeline-events${presentation !== "timeline" ? " hidden" : ""}>${cards || '<p class="agenda-atlas-empty">Nenhum compromisso registrado nesta semana.</p>'}</div>${children.join("")}</section>`,
     };
   },
 });
@@ -40368,7 +40863,7 @@ export function installAtlasAgendaCalendarPageV8(ViewLayer: any, dependencies: A
         for (const material of activity.materials || []) addMaterialOption(item.key, material.id, material.name, activity.id);
     }
     const materialOptions = [...materialRows.values()].map(item => `<label data-agenda-material-stage="${esc(item.stageKey)}" data-agenda-material-activities="${esc([...item.activityIds].join(","))}"><input type="checkbox" name="materialIds" value="${esc(item.id)}"> ${esc(item.name)}</label>`).join("");
-    return `<section class="agenda-month-editor-v3" data-agenda-editor-v3 hidden><header><div><span class="activity-kind">NOVO COMPROMISSO / APONTAMENTO</span><h3 data-agenda-editor-title>Adicionar compromisso</h3><p>Associe à etapa, à atividade e aos materiais necessários.</p></div><button type="button" class="ghost" data-agenda-editor-close>Fechar</button></header><form data-agenda-editor-form><input type="hidden" name="id"><div class="agenda-editor-grid-v3"><label>Título<input name="title" placeholder="Ex.: Conferir medição" required></label><label>Etapa<select name="stageKey" data-agenda-editor-stage>${stageOptions}</select></label><label>Atividade<select name="activityId" data-agenda-editor-activity>${activityOptions}</select></label><label>Responsável<input name="owner" value="${esc(stageV9LiveFor(stage)?.owner || stage?.owner || "")}" placeholder="Responsável ou equipe"></label><label>Data<input type="date" name="date" value="${esc(slot.date)}" required></label><label>Hora inicial<input type="time" name="start" step="1800" value="${esc(slot.start)}" required></label><label>Duração em horas<input type="number" name="durationHours" min="0.5" max="24" step="0.5" value="1.5"></label><label>Duração em dias<input type="number" name="spanDays" min="1" max="7" step="1" value="1"></label><label>Status<select name="status"><option>Planejado</option><option>Em andamento</option><option>Pendente</option><option>Concluído</option></select></label></div><label class="agenda-editor-notes">Descrição e orientação para a equipe<textarea name="notes" rows="2" maxlength="2000" placeholder="Descreva a entrega e o que deve ser preparado"></textarea></label><fieldset class="agenda-editor-materials"><legend>Materiais alocados</legend><div data-agenda-material-options>${materialOptions || "<small>Nenhum material cadastrado.</small>"}</div></fieldset><footer><button type="button" class="ghost danger" data-agenda-editor-delete hidden>${ico("trash-2")} Excluir</button><span data-agenda-editor-feedback>O compromisso será salvo na agenda compartilhada.</span><button type="submit" class="activity-install-primary">${ico("save")} Salvar compromisso</button></footer></form></section>`;
+    return `<section class="agenda-month-editor-v3" data-agenda-editor-v3 hidden><header><div><span class="activity-kind">NOVO COMPROMISSO / APONTAMENTO</span><h3 data-agenda-editor-title>Adicionar compromisso</h3><p>Associe à etapa, à atividade e aos materiais necessários.</p></div><button type="button" class="ghost" data-agenda-editor-close>Fechar</button></header><form data-agenda-editor-form><input type="hidden" name="id"><div class="agenda-editor-grid-v3"><label>Título<input name="title" placeholder="Ex.: Conferir medição" required></label><label>Etapa<select name="stageKey" data-agenda-editor-stage>${stageOptions}</select></label><label>Atividade<select name="activityId" data-agenda-editor-activity>${activityOptions}</select></label><label>Responsável<input name="owner" value="${esc(stageV9LiveFor(stage)?.owner || stage?.owner || "")}" placeholder="Responsável ou equipe"></label><label>Data<input type="date" name="date" value="${esc(slot.date)}" required></label><label>Hora inicial<input type="time" name="start" step="1800" value="${esc(slot.start)}" required></label><label>Duração em horas<input type="number" name="durationHours" min="0.5" max="24" step="0.5" value="1.5"></label><label>Duração em dias<input type="number" name="spanDays" min="1" max="7" step="1" value="1"></label><label>Status<select name="status"><option>Planejado</option><option>Em andamento</option><option>Pendente</option><option>Concluído</option></select></label></div><label class="agenda-editor-notes">Descrição e orientação para a equipe<textarea name="notes" rows="2" maxlength="2000" placeholder="Descreva a entrega e o que deve ser preparado"></textarea></label><fieldset class="agenda-editor-materials"><legend>Materiais alocados</legend><div data-agenda-material-options>${materialOptions || "<small>Nenhum material cadastrado.</small>"}</div></fieldset><fieldset class="agenda-editor-materials agenda-editor-map-areas"><legend>Áreas do mapa</legend><input type="hidden" name="mapAreas" value="[]"><div data-agenda-map-area-list><small>Nenhuma área selecionada.</small></div><div class="agenda-editor-map-actions"><button type="button" class="ghost" data-agenda-pick-areas>Selecionar no mapa</button><button type="button" class="ghost danger" data-agenda-clear-areas>Limpar áreas</button></div><small>Marque lotes ou trechos viários diretamente no mapa.</small></fieldset><footer><button type="button" class="ghost danger" data-agenda-editor-delete hidden>${ico("trash-2")} Excluir</button><span data-agenda-editor-feedback>O compromisso será salvo na agenda compartilhada.</span><button type="submit" class="activity-install-primary">${ico("save")} Salvar compromisso</button></footer></form></section>`;
   };
   const agendaCalendarMarkupV3 = (stage: any) => {
     const state = readState(),
@@ -40409,7 +40904,7 @@ export function installAtlasAgendaCalendarPageV8(ViewLayer: any, dependencies: A
         })
         .join("");
 
-    return `<section class="stage-agenda-month-page-v3 agenda-week-page-v8" data-agenda-calendar-owner-v1="typescript" data-agenda-week-v8="${esc(weekKey)}">
+    return `<section class="stage-agenda-month-page-v3 agenda-week-page-v8" data-agenda-page-v1="weekly-scheduler" data-agenda-calendar-owner-v1="typescript" data-agenda-week-v8="${esc(weekKey)}">
   <style>
   .stage-agenda-month-page-v3{--agenda-gap:8px;--agenda-hour-px:38.4px;--agenda-half-hour-px:19.2px;--agenda-time-height:921.6px;--agenda-day-header-height:38px;--agenda-shift-gutter:42px;width:100%;min-width:0;height:calc(100dvh - 88px);max-height:calc(100dvh - 88px);min-height:520px;box-sizing:border-box;padding:12px 16px 10px;background:#0d121a;color:#e8edf6;overflow:hidden;display:flex;flex-direction:column}
   .agenda-week-fixed-v8{flex:0 0 auto;position:relative;z-index:100;background:#0d121a;padding-bottom:8px;border-bottom:1px solid #344255}
@@ -40423,6 +40918,10 @@ export function installAtlasAgendaCalendarPageV8(ViewLayer: any, dependencies: A
   .agenda-month-actions-v3{justify-self:end}.agenda-month-actions-v3 .primary{border-color:#d79b0d;background:#f4b62b;color:#08111b;font-weight:900}
 
   .agenda-month-editor-v3{border:1px solid #3c5675;background:#101a27;padding:10px 12px;margin:0}
+  .agenda-month-editor-v3{max-height:40vh;overflow:auto}
+  .agenda-week-summary-v8{flex:0 0 auto;margin-top:8px;border:1px solid #2b3745;background:#101923;color:#aebcd0}
+  .agenda-week-summary-v8>summary{padding:8px 11px;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.04em}
+  .agenda-week-summary-v8[open]>section{margin:0 10px 10px}
   .agenda-month-editor-v3>header{display:flex;justify-content:space-between;align-items:start;gap:16px;margin-bottom:9px}
   .agenda-month-editor-v3 h3{margin:2px 0;font-size:16px}.agenda-month-editor-v3 p{margin:0;color:#8d9aab;font-size:10px}
   .agenda-editor-grid-v3{display:grid;grid-template-columns:2fr 1.15fr 1.55fr 1.15fr repeat(5,minmax(105px,.72fr));gap:7px}
@@ -40490,7 +40989,7 @@ export function installAtlasAgendaCalendarPageV8(ViewLayer: any, dependencies: A
 
   .stage-agenda-month-foot-v3{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:7px 2px 0;color:#77879a;font-size:9px}
   @media(max-width:1250px){.agenda-week-canvas-v8{min-width:1500px}.agenda-editor-grid-v3{grid-template-columns:repeat(4,minmax(150px,1fr))}}
-  @media(max-width:760px){.stage-agenda-month-page-v3{height:auto;max-height:none;min-height:0;overflow:visible;padding:9px 10px calc(22px + env(safe-area-inset-bottom))}.agenda-week-fixed-v8{position:relative;padding-bottom:10px}.stage-agenda-month-head-v3{grid-template-columns:minmax(0,1fr);align-items:stretch;gap:9px}.stage-agenda-month-head-v3>div:first-child h1{font-size:20px}.stage-agenda-month-head-v3>div:first-child p{font-size:10px}.agenda-month-pagination-v3{width:100%;justify-self:stretch;justify-content:space-between;gap:5px}.agenda-month-pagination-v3 b{min-width:0;flex:1;font-size:12px}.agenda-month-pagination-v3 button,.agenda-week-picker-v8{height:40px}.agenda-month-actions-v3{justify-self:stretch}.agenda-month-actions-v3 button{width:100%;height:44px}.agenda-month-editor-v3{padding:10px}.agenda-month-editor-v3>header{gap:8px}.agenda-editor-grid-v3{grid-template-columns:1fr 1fr}.agenda-editor-grid-v3 label{min-width:0}.agenda-month-editor-v3 footer{align-items:stretch;flex-wrap:wrap}.agenda-month-editor-v3 footer span{flex-basis:100%}.agenda-month-editor-v3 footer button{min-height:42px}.agenda-week-viewport-v8{flex:none;min-height:0;width:100%;overflow:visible;border:0;margin-top:10px}.agenda-week-canvas-v8{display:none}.agenda-week-mobile-list{display:grid;gap:8px}.agenda-mobile-day-v8{min-width:0;border:1px solid #2b3745;background:#101923}.agenda-mobile-day-v8.today{border-color:#3184ff}.agenda-mobile-day-v8>header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 11px;border-bottom:1px solid #2b3745;background:#141e2b}.agenda-mobile-day-v8>header time{font-size:12px;font-weight:700;text-transform:capitalize}.agenda-mobile-day-v8>header b{display:grid;place-items:center;min-width:24px;height:24px;border-radius:50%;background:#1d3553;color:#c6e0ff;font-size:10px}.agenda-mobile-day-v8>div{display:grid;gap:6px;padding:7px}.agenda-mobile-event-v8{display:grid;grid-template-columns:minmax(54px,auto) minmax(0,1fr);gap:8px;width:100%;min-height:62px;padding:9px;border:1px solid #405167;border-left:3px solid #657488;border-radius:8px;background:#182536;color:#e8edf6;text-align:left}.agenda-mobile-event-v8.active{border-left-color:#357fc5;background:#15375c}.agenda-mobile-event-v8.warning{border-left-color:#d4a924;background:#4a3914}.agenda-mobile-event-v8.done{border-left-color:#34a56d;background:#163d2a}.agenda-mobile-event-time-v8{display:grid;align-content:start;gap:4px;color:#8fbbff;font-size:11px;font-weight:800;white-space:nowrap}.agenda-mobile-event-time-v8 small{color:#9eabba;font-size:9px;font-weight:500}.agenda-mobile-event-copy-v8{display:grid;gap:3px;min-width:0}.agenda-mobile-event-copy-v8 strong,.agenda-mobile-event-copy-v8 small,.agenda-mobile-event-copy-v8 em{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.agenda-mobile-event-copy-v8 strong{font-size:11px}.agenda-mobile-event-copy-v8 small,.agenda-mobile-event-copy-v8 em{color:#b6c2d0;font-size:9px}.agenda-mobile-event-copy-v8 em{color:#9eabba;font-style:normal}.agenda-mobile-event-v8>.agenda-custom-status{grid-column:2;justify-self:start;font-size:9px}.agenda-mobile-empty-v8{margin:0;padding:10px 11px;color:#8191a5;font-size:10px}.stage-agenda-month-foot-v3{align-items:flex-start;flex-direction:column;gap:5px;padding:10px 2px 0}}
+  @media(max-width:760px){.stage-agenda-month-page-v3{height:auto;max-height:none;min-height:0;overflow:visible;padding:9px 10px calc(22px + env(safe-area-inset-bottom))}.agenda-week-fixed-v8{position:relative;padding-bottom:10px}.stage-agenda-month-head-v3{grid-template-columns:minmax(0,1fr);align-items:stretch;gap:9px}.stage-agenda-month-head-v3>div:first-child h1{font-size:20px}.stage-agenda-month-head-v3>div:first-child p{font-size:10px}.agenda-month-pagination-v3{width:100%;justify-self:stretch;justify-content:space-between;gap:5px}.agenda-month-pagination-v3 b{min-width:0;flex:1;font-size:12px}.agenda-month-pagination-v3 button,.agenda-week-picker-v8{height:40px}.agenda-month-actions-v3{justify-self:stretch}.agenda-month-actions-v3 button{width:100%;height:44px}.agenda-month-editor-v3{max-height:none;overflow:visible;padding:10px}.agenda-week-summary-v8{margin-top:8px}.agenda-month-editor-v3>header{gap:8px}.agenda-editor-grid-v3{grid-template-columns:1fr 1fr}.agenda-editor-grid-v3 label{min-width:0}.agenda-month-editor-v3 footer{align-items:stretch;flex-wrap:wrap}.agenda-month-editor-v3 footer span{flex-basis:100%}.agenda-month-editor-v3 footer button{min-height:42px}.agenda-week-viewport-v8{flex:none;min-height:0;width:100%;overflow:visible;border:0;margin-top:10px}.agenda-week-canvas-v8{display:none}.agenda-week-mobile-list{display:grid;gap:8px}.agenda-mobile-day-v8{min-width:0;border:1px solid #2b3745;background:#101923}.agenda-mobile-day-v8.today{border-color:#3184ff}.agenda-mobile-day-v8>header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 11px;border-bottom:1px solid #2b3745;background:#141e2b}.agenda-mobile-day-v8>header time{font-size:12px;font-weight:700;text-transform:capitalize}.agenda-mobile-day-v8>header b{display:grid;place-items:center;min-width:24px;height:24px;border-radius:50%;background:#1d3553;color:#c6e0ff;font-size:10px}.agenda-mobile-day-v8>div{display:grid;gap:6px;padding:7px}.agenda-mobile-event-v8{display:grid;grid-template-columns:minmax(54px,auto) minmax(0,1fr);gap:8px;width:100%;min-height:62px;padding:9px;border:1px solid #405167;border-left:3px solid #657488;border-radius:8px;background:#182536;color:#e8edf6;text-align:left}.agenda-mobile-event-v8.active{border-left-color:#357fc5;background:#15375c}.agenda-mobile-event-v8.warning{border-left-color:#d4a924;background:#4a3914}.agenda-mobile-event-v8.done{border-left-color:#34a56d;background:#163d2a}.agenda-mobile-event-time-v8{display:grid;align-content:start;gap:4px;color:#8fbbff;font-size:11px;font-weight:800;white-space:nowrap}.agenda-mobile-event-time-v8 small{color:#9eabba;font-size:9px;font-weight:500}.agenda-mobile-event-copy-v8{display:grid;gap:3px;min-width:0}.agenda-mobile-event-copy-v8 strong,.agenda-mobile-event-copy-v8 small,.agenda-mobile-event-copy-v8 em{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.agenda-mobile-event-copy-v8 strong{font-size:11px}.agenda-mobile-event-copy-v8 small,.agenda-mobile-event-copy-v8 em{color:#b6c2d0;font-size:9px}.agenda-mobile-event-copy-v8 em{color:#9eabba;font-style:normal}.agenda-mobile-event-v8>.agenda-custom-status{grid-column:2;justify-self:start;font-size:9px}.agenda-mobile-empty-v8{margin:0;padding:10px 11px;color:#8191a5;font-size:10px}.stage-agenda-month-foot-v3{align-items:flex-start;flex-direction:column;gap:5px;padding:10px 2px 0}}
   </style>
 
   ${state.agendaCalendarErrorV3 ? `<p role="alert" class="agenda-atlas-error">${esc(state.agendaCalendarErrorV3)}</p>` : !state.agendaCalendarLoadedV3 ? '<p role="status">Carregando agenda do banco de dados…</p>' : ''}
@@ -40499,7 +40998,7 @@ export function installAtlasAgendaCalendarPageV8(ViewLayer: any, dependencies: A
       <div>
         <span class="activity-kind">CALENDÁRIO OPERACIONAL · OBRA</span>
         <h1>Calendário de obras</h1>
-        <p>Compromissos, atividades e materiais da obra.</p>
+        <p>Agende atividades, associe materiais e selecione as áreas atendidas no mapa.</p>
       </div>
       <div class="agenda-month-pagination-v3">
         <button type="button" data-agenda-week-shift-v8="-1" aria-label="Semana anterior">‹</button>
@@ -40514,8 +41013,7 @@ export function installAtlasAgendaCalendarPageV8(ViewLayer: any, dependencies: A
     ${agendaCalendarFormMarkupV3(stage, data, weekKey)}
   </div>
 
-  ${state.agendaCalendarLoadedV3 && !state.agendaCalendarErrorV3 ? atlasTimeline : ""}
-  ${state.agendaCalendarLoadedV3 && !state.agendaCalendarErrorV3 ? `<div class="agenda-week-viewport-v8" data-agenda-horizontal-v4 data-agenda-week-scroll-v8 hidden>
+  ${state.agendaCalendarLoadedV3 && !state.agendaCalendarErrorV3 ? `<div class="agenda-week-viewport-v8" data-agenda-horizontal-v4 data-agenda-week-scroll-v8>
     <div class="agenda-week-canvas-v8">
       <aside class="agenda-shift-gutter-v8" aria-label="Turnos">
         <div class="agenda-shift-gutter-title-v8">TURNO</div>
@@ -40551,8 +41049,10 @@ export function installAtlasAgendaCalendarPageV8(ViewLayer: any, dependencies: A
     <div class="agenda-week-mobile-list" aria-label="Compromissos da semana">${mobileDaysMarkup}</div>
   </div>
 
+  <details class="agenda-week-summary-v8"><summary>Resumo e lista de compromissos</summary>${atlasTimeline}</details>
+
   <footer class="stage-agenda-month-foot-v3">
-    <span>${ico("move")} Abra o calendário para ajustar dia e horário por arraste.</span>
+    <span>${ico("move")} Arraste os compromissos para ajustar dia e horário. Use “Selecionar no mapa” no formulário para vincular áreas.</span>
     <b>${weekEvents.length} compromisso(s) na semana · Fuso America/Bahia</b>
   </footer>` : ""}
   </section>`;
@@ -40661,7 +41161,7 @@ export function installAtlasAgendaCalendarPageV8(ViewLayer: any, dependencies: A
             const opening = calendarViewport.hidden;
             calendarViewport.hidden = !opening;
             calendarToggle.setAttribute("aria-expanded", String(opening));
-            calendarToggle.textContent = opening ? "Fechar ajuste de horários" : "Ajustar horários no calendário";
+            calendarToggle.textContent = opening ? "Ocultar calendário semanal" : "Mostrar calendário semanal";
             if (opening) requestAnimationFrame(() => {
               const today = calendarRoot.querySelector(".agenda-month-day-v3.today");
               if (today) calendarViewport.scrollLeft = Math.max(0, today.offsetLeft - calendarViewport.clientWidth / 2);
@@ -41210,12 +41710,33 @@ export function installAtlasAgendaCalendarPageV8(ViewLayer: any, dependencies: A
   // The application replaces calendar markup as data arrives. Keep core
   // controls attached to the stable document instead of a replaced card.
   const currentCalendar = () => document.querySelector('view-layer[data-view="agenda"] .stage-agenda-month-page-v3');
+  const normalizeEditorMapAreas = (value: unknown): AtlasMapProgressArea[] => (Array.isArray(value) ? value : [])
+    .map(item => projectAtlasMapProgressArea(item as Record<string, unknown>))
+    .filter((item): item is AtlasMapProgressArea => Boolean(item));
+  const updateEditorMapAreas = (form: HTMLFormElement, values: unknown): AtlasMapProgressArea[] => {
+    const areas = normalizeEditorMapAreas(values);
+    const input = form.elements.namedItem("mapAreas") as HTMLInputElement | null;
+    const list = form.querySelector<HTMLElement>("[data-agenda-map-area-list]");
+    if (input) input.value = JSON.stringify(areas);
+    if (list) list.innerHTML = areas.length
+      ? areas.map(area => `<span class="map-selection-chip"><b>${esc(area.label)}</b><small>${area.kind === "streets" ? "Trecho viário" : area.kind === "lots" ? "Lote" : "Área"}</small></span>`).join("")
+      : "<small>Nenhuma área selecionada.</small>";
+    return areas;
+  };
   const openCurrentEditor = (item: AtlasAgendaCalendarEventV1 | null = null) => {
     const root = currentCalendar(), editor = root?.querySelector('[data-agenda-editor-v3]'), form = editor?.querySelector('form');
     if (!form) return;
+    const state = readState();
+    const restoredDraft = !item && state.agendaMapPickerReturnV1 && state.agendaEventEditorDraftV1
+      ? state.agendaEventEditorDraftV1 as Record<string, any>
+      : null;
     const events = agendaCalendarReadV3().events, slot = agendaCalendarLastAvailableSlotV8(events, root.dataset.agendaWeekV8);
     form.reset();
-    for (const [key,value] of Object.entries({id:item?.id||'',title:item?.title||'',stageKey:item?.stageKey||extensionStage()?.key||'',activityId:item?.activityId||'',owner:item?.owner||'',date:item?.date||slot.date,start:item?.start||slot.start,durationHours:item?.durationHours||1.5,spanDays:item?.spanDays||1,status:item?.status||'Planejado',notes:item?.notes||''}))
+    const materialIds = restoredDraft?.materialIds || item?.materialIds || [];
+    const areas = updateEditorMapAreas(form, state.agendaMapPickerReturnV1
+      ? state.agendaMapAreaDraftV1
+      : restoredDraft?.mapAreas || item?.mapAreas || []);
+    for (const [key,value] of Object.entries({id:restoredDraft?.id||item?.id||'',title:restoredDraft?.title||item?.title||'',stageKey:restoredDraft?.stageKey||item?.stageKey||extensionStage()?.key||'',activityId:restoredDraft?.activityId||item?.activityId||'',owner:restoredDraft?.owner||item?.owner||'',date:restoredDraft?.date||item?.date||slot.date,start:restoredDraft?.start||item?.start||slot.start,durationHours:restoredDraft?.durationHours||item?.durationHours||1.5,spanDays:restoredDraft?.spanDays||item?.spanDays||1,status:restoredDraft?.status||item?.status||'Planejado',notes:restoredDraft?.notes||item?.notes||''}))
       if (form.elements[key]) form.elements[key].value=value;
     root.querySelectorAll('[data-agenda-material-stage]').forEach((label: any)=>{
       const linkedActivities=String(label.dataset.agendaMaterialActivities||'').split(',').filter(Boolean);
@@ -41224,8 +41745,8 @@ export function installAtlasAgendaCalendarPageV8(ViewLayer: any, dependencies: A
     });
     form.querySelector('[data-agenda-inferred-materials]')?.remove();
     const knownMaterials = new Set([...form.querySelectorAll('input[type="checkbox"][name="materialIds"]')].map(input=>input.value));
-    form.querySelectorAll('input[type="checkbox"][name="materialIds"]').forEach((input: any)=>{input.checked=(item?.materialIds||[]).includes(input.value);});
-    const inferredMaterials = (item?.materialIds||[]).filter((value: any)=>!knownMaterials.has(value));
+    form.querySelectorAll('input[type="checkbox"][name="materialIds"]').forEach((input: any)=>{input.checked=materialIds.includes(input.value);});
+    const inferredMaterials = materialIds.filter((value: any)=>!knownMaterials.has(value));
     if(inferredMaterials.length){
       const inferred=document.createElement('div');
       inferred.dataset.agendaInferredMaterials='';
@@ -41237,6 +41758,37 @@ export function installAtlasAgendaCalendarPageV8(ViewLayer: any, dependencies: A
     editor.querySelector('[data-agenda-editor-delete]').hidden=!item;
     editor.hidden=false;
     form.elements.title.focus();
+    if (restoredDraft) dependencies.appStore?.set({ agendaMapPickerReturnV1: false, agendaEventEditorDraftV1: null, agendaMapAreaDraftV1: areas });
+  };
+  const resumeAgendaEditorAfterMapSelection = (): void => {
+    let attempts = 0;
+    const reopen = (): void => {
+      const state = readState();
+      if (state.view !== "agenda" || !state.agendaMapPickerReturnV1) return;
+      if (currentCalendar()?.querySelector("[data-agenda-editor-form]")) {
+        openCurrentEditor();
+        return;
+      }
+      if (++attempts < 40) window.setTimeout(reopen, 50);
+    };
+    requestAnimationFrame(() => window.setTimeout(reopen, 0));
+  };
+  dependencies.appStore?.subscribe?.(state => {
+    if (state.view === "agenda" && state.agendaMapPickerReturnV1) resumeAgendaEditorAfterMapSelection();
+  });
+  const captureAgendaEditorDraft = (form: HTMLFormElement): Record<string, unknown> => {
+    const data = new FormData(form);
+    let mapAreas: unknown[] = [];
+    try { mapAreas = JSON.parse(String(data.get("mapAreas") || "[]")); } catch { mapAreas = []; }
+    return {
+      id: String(data.get("id") || ""), title: String(data.get("title") || ""),
+      stageKey: String(data.get("stageKey") || ""), activityId: String(data.get("activityId") || ""),
+      owner: String(data.get("owner") || ""), date: String(data.get("date") || ""),
+      start: String(data.get("start") || ""), durationHours: String(data.get("durationHours") || ""),
+      spanDays: String(data.get("spanDays") || ""), status: String(data.get("status") || "Planejado"),
+      notes: String(data.get("notes") || ""), materialIds: data.getAll("materialIds").map(String),
+      mapAreas: normalizeEditorMapAreas(mapAreas),
+    };
   };
   document.addEventListener('click', async (event: any) => {
     const root=currentCalendar(), button=event.target.closest?.('button');
@@ -41248,7 +41800,27 @@ export function installAtlasAgendaCalendarPageV8(ViewLayer: any, dependencies: A
       if(item)openCurrentEditor(item);
       return;
     }
-    if(button.matches('[data-agenda-editor-close]')){event.stopImmediatePropagation();root.querySelector('[data-agenda-editor-v3]').hidden=true;return;}
+    if(button.matches('[data-agenda-pick-areas]')){
+      event.preventDefault();event.stopImmediatePropagation();
+      const form=root.querySelector('[data-agenda-editor-form]') as HTMLFormElement | null;
+      if(!form||!dependencies.appStore)return;
+      const state=readState(),draft=captureAgendaEditorDraft(form);
+      const selected=normalizeEditorMapAreas(draft.mapAreas);
+      dependencies.appStore.set({
+        view:"map",agendaMapPickerActiveV1:true,agendaEventEditorDraftV1:draft,
+        agendaMapAreaDraftV1:selected,agendaMapAreaPreviousSelectionV1:[],
+        mapProgressSelection:selected,lastAction:"Selecionando áreas do evento no mapa",
+      });
+      return;
+    }
+    if(button.matches('[data-agenda-clear-areas]')){
+      event.preventDefault();event.stopImmediatePropagation();
+      const form=root.querySelector('[data-agenda-editor-form]') as HTMLFormElement | null;
+      if(form)updateEditorMapAreas(form,[]);
+      dependencies.appStore?.set({agendaMapAreaDraftV1:[]});
+      return;
+    }
+    if(button.matches('[data-agenda-editor-close]')){event.stopImmediatePropagation();root.querySelector('[data-agenda-editor-v3]').hidden=true;dependencies.appStore?.set({agendaEventEditorDraftV1:null,agendaMapAreaDraftV1:[]});return;}
     if(button.matches('[data-agenda-editor-delete]')){
       event.stopImmediatePropagation();
       const id=root.querySelector('[data-agenda-editor-form] [name="id"]').value;
@@ -41259,7 +41831,7 @@ export function installAtlasAgendaCalendarPageV8(ViewLayer: any, dependencies: A
     if(button.matches('[data-atlas-calendar-toggle]')){
       event.stopImmediatePropagation();const viewport=root.querySelector('[data-agenda-week-scroll-v8]'),opening=viewport.hidden;
       viewport.hidden=!opening;button.setAttribute('aria-expanded',String(opening));
-      button.textContent=opening?'Fechar ajuste de horários':'Ajustar horários no calendário';return;
+      button.textContent=opening?'Ocultar calendário semanal':'Mostrar calendário semanal';return;
     }
     if(button.matches('[data-agenda-week-shift-v8]')){
       event.stopImmediatePropagation();agendaCalendarNavigateWeekStateV8(root.dataset.agendaWeekV8,Number(button.dataset.agendaWeekShiftV8));
@@ -41286,8 +41858,10 @@ export function installAtlasAgendaCalendarPageV8(ViewLayer: any, dependencies: A
         activityName:form.elements.activityId.selectedOptions?.[0]?.dataset.agendaActivityTitle,
         owner:fd.get('owner'),date:fd.get('date'),start:fd.get('start'),durationHours:fd.get('durationHours'),
         spanDays:fd.get('spanDays'),status:fd.get('status'),notes:fd.get('notes'),materialIds:fd.getAll('materialIds'),
+        mapAreas:(()=>{try{return normalizeEditorMapAreas(JSON.parse(String(fd.get('mapAreas')||"[]")));}catch{return [];}})(),
       });
       const editor=currentCalendar()?.querySelector('[data-agenda-editor-v3]');if(editor)editor.hidden=true;
+      dependencies.appStore?.set({agendaEventEditorDraftV1:null,agendaMapAreaDraftV1:[]});
       notify(result.created?'Compromisso adicionado.':'Compromisso atualizado.','success');
     }
     catch(error: any){notify(`Não foi possível salvar o compromisso: ${error.message}`,'error');}

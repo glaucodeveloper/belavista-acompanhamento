@@ -10,6 +10,46 @@ const unwrap=value=>value&&typeof value==='object'&&'data'in value?value.data:va
 const listText=(...groups)=>[...new Set(groups.flatMap(asArray).map(item=>typeof item==='string'?text(item,180):text(item?.label||item?.description,180)).filter(Boolean))];
 const listIds=(...groups)=>[...new Set(groups.flatMap(asArray).map(String).filter(Boolean))];
 
+function demoCatalogInput(value){
+  if(!value||typeof value!=='object'||Array.isArray(value))throw Object.assign(new Error('Catálogo de demonstração inválido.'),{statusCode:400});
+  const stages=asArray(value.stages).slice(0,20).map((stage,index)=>{
+    const id=text(stage?.id||`demo-stage-${index+1}`,80),name=text(stage?.name,180);
+    if(!name) return null;
+    const activities=asArray(stage?.activities).slice(0,12).map((activity,activityIndex)=>({
+      id:text(activity?.id||`${id}-activity-${activityIndex+1}`,100),stageId:id,
+      title:text(activity?.title||activity?.name,180),description:text(activity?.description,500),
+      requirements:asArray(activity?.requirements).slice(0,8).map(item=>text(item,160)).filter(Boolean),
+      peculiarities:asArray(activity?.peculiarities).slice(0,8).map(item=>text(item,160)).filter(Boolean),
+      evidenceRequirements:[],dependencies:asArray(activity?.dependencies).slice(0,12).map(item=>text(item,100)).filter(Boolean),
+      durationDays:number(activity?.durationDays),durationMinutes:null,
+      durationBasis:text(activity?.durationBasis,180),
+      status:text(activity?.status||stage?.status||'planejada',80),owner:text(activity?.owner||stage?.owner,120),materials:[]
+    })).filter(activity=>activity.title);
+    return {id,name,description:text(stage?.description,500),status:text(stage?.status||'planejada',80),
+      owner:text(stage?.owner,120),peculiarities:[],requirements:[],evidenceRequirements:[],dependencies:[],activities};
+  }).filter(Boolean);
+  if(!stages.some(stage=>stage.activities.length))throw Object.assign(new Error('A demonstração precisa conter etapas e atividades.'),{statusCode:422});
+  const materials=asArray(value.materials).slice(0,60).map(item=>{
+    const name=text(item?.name,140),unit=text(item?.unit,32);
+    if(!name)return null;
+    const plannedQuantity=Math.max(0,number(item?.plannedQuantity)||0);
+    const stockQuantity=Math.max(0,number(item?.stockQuantity)||0);
+    const orderedQuantity=Math.max(0,number(item?.orderedQuantity)||0);
+    return {name,unit,plannedQuantity,stockQuantity,orderedQuantity,
+      suggestedPurchaseQuantity:Math.max(0,Math.round((plannedQuantity-stockQuantity-orderedQuantity)*1000)/1000),
+      activityIds:[],stageNames:['Catálogo de demonstração'],source:'catálogo ilustrativo local',rationale:''};
+  }).filter(Boolean);
+  return {stages,materials,projectName:text(value.projectName||'Aliança Park · demonstração',120)};
+}
+
+/** Prepare only the client-side demo catalog; this path never reads or writes project records. */
+export async function generateDashboardDemoPlanWithCloudflareAi(env,{kind='complete',catalog}={}){
+  if(!['agenda','materials','complete'].includes(kind))throw Object.assign(new Error('Tipo de geração inválido.'),{statusCode:400});
+  if(!env.AI?.run)throw Object.assign(new Error('O binding Cloudflare Workers AI não está disponível.'),{statusCode:503});
+  const demo=demoCatalogInput(catalog);
+  return generatePlanWithCloudflareAi(env,{kind,stages:demo.stages,materials:demo.materials,agenda:[],project:{id:'demo-local',name:demo.projectName},source:'Demonstração local · catálogo ilustrativo; resultado temporário',demo:true});
+}
+
 function configuredStages(configuration,state){
   const stageConfig=unwrap(configuration?.stages)||{};
   const stateConfig=unwrap(configuration?.state)||{};
@@ -149,11 +189,19 @@ export async function generateDashboardPlanWithCloudflareAi(env,{kind='complete'
   const stages=configuredStages(configuration,state);
   if(!stages.length)throw Object.assign(new Error('Cadastre etapas e atividades antes de gerar o plano.'),{statusCode:422});
   const materials=materialPlan(stages,state,planning);
+  return generatePlanWithCloudflareAi(env,{
+    kind,stages,materials,agenda,
+    project:{id:unwrap(configuration?.stages)?.projectId||state.project?.id,name:state.project?.name||'Aliança Park'},
+    source:'Catálogo de etapas e atividades + dados operacionais persistidos'
+  });
+}
+
+async function generatePlanWithCloudflareAi(env,{kind,stages,materials,agenda,project,source,demo=false}){
   const model=String(env.WORKERS_AI_MODEL||DEFAULT_WORKERS_MODEL);
   const today=new Date().toISOString().slice(0,10);
   const context={
     today,kind,
-    project:{id:text(unwrap(configuration?.stages)?.projectId||state.project?.id,120),name:text(state.project?.name||'Aliança Park',160)},
+    project:{id:text(project?.id,120),name:text(project?.name||'Aliança Park',160)},
     stages:stages.map(stage=>({...stage,activities:stage.activities.map(({materials:_materials,...activity})=>activity)})),
     currentAgenda:asArray(agenda).slice(0,100).map(item=>({id:item.id,stage:item.stage||item.stageName,title:item.title,date:item.date,time:item.time,status:item.status,relation:item.relation})),
     materialNeeds:materials.map(({key,...item})=>item)
@@ -163,9 +211,9 @@ export async function generateDashboardPlanWithCloudflareAi(env,{kind='complete'
     :kind==='materials'
       ?'Revise as necessidades de materiais por etapa e atividade; explique os itens a comprar sem mudar nenhuma quantidade da lista fornecida.'
       :'Gere agenda sugerida e revise as necessidades de compra, sem alterar os fatos do catálogo.';
-  const prompt=`Você planeja operações de uma obra pelo catálogo oficial de etapas e atividades.
+  const prompt=`Você planeja operações de uma obra pelo catálogo de etapas e atividades${demo?' ilustrativas de demonstração':''}.
 ${focus}
-Regras obrigatórias: use IDs existentes; respeite dependências, peculiaridades, requisitos e evidências; não programe atividade concluída; use duração conhecida; não invente responsável, material, quantidade, preço ou estoque; não altere os dados fornecidos. Data é apenas sugestão para revisão humana. Se faltar duração ou pré-condição, deixe a data vazia e explique o bloqueio. Não crie nem grave compromissos ou pedidos.
+Regras obrigatórias: use IDs existentes; respeite dependências, peculiaridades, requisitos e evidências; não programe atividade concluída; use duração conhecida; não invente responsável, material, quantidade, preço ou estoque; não altere os dados fornecidos. ${demo?'Quando durationBasis indicar estimativa ilustrativa, mantenha essa ressalva na justificativa e trate a duração só como exemplo.':''}Data é apenas sugestão para revisão humana. Se faltar duração ou pré-condição, deixe a data vazia e explique o bloqueio. Não crie nem grave compromissos ou pedidos.
 Responda somente JSON neste formato: {"summary":"resumo curto","schedule":[{"activityId":"id existente","proposedStartDate":"AAAA-MM-DD ou vazio","proposedEndDate":"AAAA-MM-DD ou vazio","owner":"somente responsável existente ou vazio","rationale":"motivo curto"}],"blocked":[{"activityId":"id existente","reason":"pendência concreta"}],"materialRationales":[{"name":"nome exato fornecido","rationale":"motivo curto"}]}
 Dados operacionais: ${JSON.stringify(context)}`;
   let raw;
@@ -175,7 +223,7 @@ Dados operacionais: ${JSON.stringify(context)}`;
         {role:'system',content:'Você é o planejador operacional Aliança Park. Use somente o modelo e fatos fornecidos. Retorne JSON curto em português do Brasil.'},
         {role:'user',content:prompt}
       ],
-      max_tokens:3500,temperature:0.1,response_format:{type:'json_object'}
+      max_tokens:demo?1800:3500,temperature:0.1,response_format:{type:'json_object'}
     });
   }catch(error){
     throw Object.assign(new Error(`Cloudflare Workers AI falhou: ${text(error?.message||error,240)}`),{statusCode:502});
@@ -212,6 +260,6 @@ Dados operacionais: ${JSON.stringify(context)}`;
     generatedAt:new Date().toISOString(),
     persisted:false,
     inference:{provider:'cloudflare-workers-ai',model},
-    source:'Catálogo de etapas e atividades + dados operacionais persistidos'
+    source
   };
 }
