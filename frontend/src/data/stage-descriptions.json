@@ -1,9 +1,0 @@
-{
-  "curbs": "A execução depende de alinhamento, nivelamento e liberação das redes enterradas. O ritmo diário varia com transporte de peças, base pronta e arremates necessários por quadra e interseção.",
-  "drainage": "Exige sequência entre escavação, regularização de fundo, assentamento, caixas e reaterro com controle de cota e declividade. Qualquer falta de manilha, brita ou bloqueio geométrico afeta diretamente a frente seguinte.",
-  "earthwork": "Depende de locação, liberação geométrica e controle diário de corte, aterro, umidificação e compactação. A produção precisa respeitar equilíbrio entre frentes, clima, equipamento disponível e volume mobilizado por viagem.",
-  "electrical": "Depende de pavimento liberado, projeto aprovado, janela de concessionária e cadeia de suprimentos mais longa. A inferência deve considerar protocolos, lead time de inspeção e o impacto de postes, cabos e transformadores na data de energização.",
-  "paving": "Consolida base, drenagem e redes já liberadas. O planejamento deve considerar perdas, caminhões recebidos, trecho contínuo executável e impacto direto no caixa por ser etapa de alto consumo e grande visibilidade.",
-  "project": "Compatibiliza geometria, cotas, redes, liberações legais e marcos de início. O planejamento precisa considerar pendências documentais, interfaces entre disciplinas e aprovações anteriores à abertura das frentes.",
-  "water": "A rede precisa casar distribuição principal, ramais e cavaletes por lote, com testes de pressão e rastreio das conexões. O planejamento deve correlacionar lotes atendidos, frentes liberadas e saldo real de tubos e conexões."
-}

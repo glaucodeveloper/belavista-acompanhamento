@@ -1,6 +1,0 @@
-{
-  "scheduled": { "label": "Agendada", "color": "#f1c21b", "hex": 15843867, "priority": 1 },
-  "in_progress": { "label": "Em execução", "color": "#0f62fe", "hex": 1008382, "priority": 2 },
-  "completed": { "label": "Concluída", "color": "#24a148", "hex": 2400584, "priority": 3 },
-  "blocked": { "label": "Bloqueada", "color": "#da1e28", "hex": 14294568, "priority": 4 }
-}

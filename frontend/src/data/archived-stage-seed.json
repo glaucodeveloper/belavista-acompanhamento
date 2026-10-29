@@ -1,0 +1,464 @@
+{
+  "source": "data/operational/stages.json + data/development-seed.json from archived project snapshot",
+  "stages": [
+    {
+      "id": "terraplanagem",
+      "name": "Terraplanagem",
+      "description": "Regularização inicial das áreas, conformação do greide e preparação das frentes que recebem as redes.",
+      "status": "andamento",
+      "progress": 68,
+      "importance": "foundation",
+      "owner": "",
+      "dependencies": [],
+      "peculiarities": [
+        "Conferir cotas antes de liberar redes enterradas.",
+        "Evitar reabrir áreas já estabilizadas sem registro da causa."
+      ],
+      "entryCriteria": [
+        {
+          "id": "topografia-base",
+          "label": "Levantamento topográfico base conferido"
+        }
+      ],
+      "requiredEvidence": [
+        "registro fotográfico do greide",
+        "conferência de cotas"
+      ],
+      "activities": [
+        {
+          "id": "terra-conferir-greide",
+          "title": "Conferir greide e frentes liberadas",
+          "durationDays": 1,
+          "status": "andamento",
+          "progress": 68,
+          "materials": []
+        }
+      ]
+    },
+    {
+      "id": "drenagem",
+      "name": "Drenagem Pluvial",
+      "description": "Execução de rede pluvial por trechos, assentamento de tubos/manilhas, caixas e recomposição com compactação.",
+      "status": "andamento",
+      "progress": 42,
+      "importance": "unblocker",
+      "owner": "",
+      "dependencies": [
+        "terraplanagem"
+      ],
+      "peculiarities": [
+        "Executar por trecho para evitar vala aberta além da capacidade da equipe.",
+        "Compactação e evidência do trecho são necessárias antes de liberar a próxima camada."
+      ],
+      "entryCriteria": [
+        {
+          "id": "trecho-liberado",
+          "label": "Trecho de terraplanagem liberado"
+        }
+      ],
+      "requiredEvidence": [
+        "foto da vala",
+        "foto do assentamento",
+        "registro de compactação"
+      ],
+      "activities": [
+        {
+          "id": "drenagem-assentar",
+          "title": "Assentar rede pluvial do trecho",
+          "durationDays": 3,
+          "status": "andamento",
+          "progress": 42,
+          "materials": [
+            {
+              "id": "drenagem-assentar-material-1",
+              "name": "Tubo/manilha de drenagem",
+              "quantity": 160,
+              "unit": "m",
+              "plannedQuantity": 160,
+              "receivedQuantity": 0,
+              "usedQuantity": 0,
+              "status": "planejado"
+            },
+            {
+              "id": "drenagem-assentar-material-2",
+              "name": "Brita",
+              "quantity": 45,
+              "unit": "m3",
+              "plannedQuantity": 45,
+              "receivedQuantity": 0,
+              "usedQuantity": 0,
+              "status": "planejado"
+            }
+          ]
+        },
+        {
+          "id": "drenagem-compactar",
+          "title": "Reaterro e compactação do trecho",
+          "durationDays": 2,
+          "status": "andamento",
+          "progress": 42,
+          "materials": [
+            {
+              "id": "drenagem-compactar-material-1",
+              "name": "Areia",
+              "quantity": 32,
+              "unit": "m3",
+              "plannedQuantity": 32,
+              "receivedQuantity": 0,
+              "usedQuantity": 0,
+              "status": "planejado"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "agua",
+      "name": "Rede de Água",
+      "description": "Implantação da rede principal e ramais PEAD, cavaletes, conexões, testes e liberação por setor.",
+      "status": "planejado",
+      "progress": 12,
+      "importance": "unblocker",
+      "owner": "",
+      "dependencies": [
+        "terraplanagem"
+      ],
+      "peculiarities": [
+        "A rede de água deve ser concluída e testada antes da pavimentação do setor correspondente.",
+        "Registrar teste e liberação do setor antes de fechar a dependência."
+      ],
+      "entryCriteria": [
+        {
+          "id": "eixo-agua-liberado",
+          "label": "Eixo da rede de água liberado"
+        }
+      ],
+      "requiredEvidence": [
+        "teste da rede",
+        "foto de ramais",
+        "termo de liberação do setor"
+      ],
+      "activities": [
+        {
+          "id": "agua-rede-principal",
+          "title": "Executar rede principal PEAD",
+          "durationDays": 4,
+          "status": "planejado",
+          "progress": 12,
+          "materials": [
+            {
+              "id": "agua-rede-principal-material-1",
+              "name": "Tubo PEAD",
+              "quantity": 620,
+              "unit": "m",
+              "plannedQuantity": 620,
+              "receivedQuantity": 0,
+              "usedQuantity": 0,
+              "status": "planejado"
+            },
+            {
+              "id": "agua-rede-principal-material-2",
+              "name": "Conexões PEAD",
+              "quantity": 72,
+              "unit": "un",
+              "plannedQuantity": 72,
+              "receivedQuantity": 0,
+              "usedQuantity": 0,
+              "status": "planejado"
+            }
+          ]
+        },
+        {
+          "id": "agua-ramais",
+          "title": "Executar ramais e cavaletes do setor",
+          "durationDays": 3,
+          "status": "planejado",
+          "progress": 12,
+          "materials": [
+            {
+              "id": "agua-ramais-material-1",
+              "name": "Ramais de água",
+              "quantity": 46,
+              "unit": "un",
+              "plannedQuantity": 46,
+              "receivedQuantity": 0,
+              "usedQuantity": 0,
+              "status": "planejado"
+            },
+            {
+              "id": "agua-ramais-material-2",
+              "name": "Cavaletes",
+              "quantity": 54,
+              "unit": "un",
+              "plannedQuantity": 54,
+              "receivedQuantity": 0,
+              "usedQuantity": 0,
+              "status": "planejado"
+            }
+          ]
+        },
+        {
+          "id": "agua-testar",
+          "title": "Testar e liberar rede de água do setor",
+          "durationDays": 1,
+          "status": "planejado",
+          "progress": 12,
+          "materials": []
+        }
+      ]
+    },
+    {
+      "id": "eletrica",
+      "name": "Rede Elétrica",
+      "description": "Implantação de postes, cabos, transformadores e luminárias conforme projeto e liberações da concessionária.",
+      "status": "planejado",
+      "progress": 8,
+      "importance": "infrastructure",
+      "owner": "",
+      "dependencies": [
+        "terraplanagem"
+      ],
+      "peculiarities": [
+        "Postes disponíveis podem ser instalados antes da compra integral de cabos.",
+        "Cabos e transformadores devem respeitar a sequência do projeto e as liberações da concessionária."
+      ],
+      "entryCriteria": [
+        {
+          "id": "projeto-eletrico",
+          "label": "Projeto elétrico disponível para execução"
+        }
+      ],
+      "requiredEvidence": [
+        "posição dos postes",
+        "conferência de projeto",
+        "registro de ligação"
+      ],
+      "activities": [
+        {
+          "id": "eletrica-postes",
+          "title": "Implantar postes disponíveis",
+          "durationDays": 4,
+          "status": "planejado",
+          "progress": 8,
+          "materials": [
+            {
+              "id": "eletrica-postes-material-1",
+              "name": "Poste",
+              "quantity": 24,
+              "unit": "un",
+              "plannedQuantity": 24,
+              "receivedQuantity": 0,
+              "usedQuantity": 0,
+              "status": "planejado"
+            }
+          ]
+        },
+        {
+          "id": "eletrica-cabos",
+          "title": "Lançar cabos e preparar transformadores",
+          "durationDays": 4,
+          "status": "planejado",
+          "progress": 8,
+          "materials": [
+            {
+              "id": "eletrica-cabos-material-1",
+              "name": "Cabo elétrico",
+              "quantity": 1700,
+              "unit": "m",
+              "plannedQuantity": 1700,
+              "receivedQuantity": 0,
+              "usedQuantity": 0,
+              "status": "planejado"
+            },
+            {
+              "id": "eletrica-cabos-material-2",
+              "name": "Transformador",
+              "quantity": 1,
+              "unit": "un",
+              "plannedQuantity": 1,
+              "receivedQuantity": 0,
+              "usedQuantity": 0,
+              "status": "planejado"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pavimentacao",
+      "name": "Pavimentação",
+      "description": "Preparação de base, meio-fio e assentamento do pavimento somente nos setores com redes enterradas liberadas.",
+      "status": "planejado",
+      "progress": 0,
+      "importance": "consolidation",
+      "owner": "",
+      "dependencies": [
+        "drenagem",
+        "agua"
+      ],
+      "peculiarities": [
+        "Não fechar setor antes da liberação da rede de água e drenagem.",
+        "Evitar provisão antecipada de volume elevado quando ainda não há frente liberada."
+      ],
+      "entryCriteria": [
+        {
+          "id": "setor-agua-liberado",
+          "label": "Rede de água do setor testada e liberada"
+        },
+        {
+          "id": "setor-drenagem-liberado",
+          "label": "Drenagem do setor recomposta e conferida"
+        }
+      ],
+      "requiredEvidence": [
+        "liberação das redes enterradas",
+        "compactação da base",
+        "medição de área executada"
+      ],
+      "activities": [
+        {
+          "id": "pav-base",
+          "title": "Preparar base do setor liberado",
+          "durationDays": 3,
+          "status": "planejado",
+          "progress": 0,
+          "materials": [
+            {
+              "id": "pav-base-material-1",
+              "name": "Base/Brita graduada",
+              "quantity": 380,
+              "unit": "m3",
+              "plannedQuantity": 380,
+              "receivedQuantity": 0,
+              "usedQuantity": 0,
+              "status": "planejado"
+            }
+          ]
+        },
+        {
+          "id": "pav-assentar",
+          "title": "Assentar pavimento e meio-fio",
+          "durationDays": 5,
+          "status": "planejado",
+          "progress": 0,
+          "materials": [
+            {
+              "id": "pav-assentar-material-1",
+              "name": "Paralelepípedo",
+              "quantity": 2400,
+              "unit": "m2",
+              "plannedQuantity": 2400,
+              "receivedQuantity": 0,
+              "usedQuantity": 0,
+              "status": "planejado"
+            },
+            {
+              "id": "pav-assentar-material-2",
+              "name": "Meio-fio",
+              "quantity": 540,
+              "unit": "m",
+              "plannedQuantity": 540,
+              "receivedQuantity": 0,
+              "usedQuantity": 0,
+              "status": "planejado"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pracas",
+      "name": "Praças",
+      "description": "Implantação de áreas de convivência após consolidação das frentes pesadas do entorno.",
+      "status": "planejado",
+      "progress": 0,
+      "importance": "finishing",
+      "owner": "",
+      "dependencies": [
+        "pavimentacao"
+      ],
+      "peculiarities": [
+        "Evitar mobilizar acabamento enquanto há tráfego pesado recorrente no entorno."
+      ],
+      "entryCriteria": [
+        {
+          "id": "entorno-estavel",
+          "label": "Entorno da praça sem interferência de obra pesada"
+        }
+      ],
+      "requiredEvidence": [
+        "layout conferido",
+        "medição da área",
+        "registro de acabamento"
+      ],
+      "activities": [
+        {
+          "id": "praca-implantar",
+          "title": "Implantar praça e mobiliário",
+          "durationDays": 6,
+          "status": "planejado",
+          "progress": 0,
+          "materials": [
+            {
+              "id": "praca-implantar-material-1",
+              "name": "Piso externo",
+              "quantity": 420,
+              "unit": "m2",
+              "plannedQuantity": 420,
+              "receivedQuantity": 0,
+              "usedQuantity": 0,
+              "status": "planejado"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "arborizacao",
+      "name": "Arborização",
+      "description": "Plantio e consolidação paisagística após definição das áreas e redução de interferências pesadas.",
+      "status": "planejado",
+      "progress": 0,
+      "importance": "finishing",
+      "owner": "",
+      "dependencies": [
+        "pavimentacao"
+      ],
+      "peculiarities": [
+        "Programar plantio considerando disponibilidade de irrigação e menor risco de dano por tráfego de obra."
+      ],
+      "entryCriteria": [
+        {
+          "id": "areas-verdes-liberadas",
+          "label": "Áreas verdes liberadas para plantio"
+        }
+      ],
+      "requiredEvidence": [
+        "mapa de plantio",
+        "registro das mudas",
+        "checagem inicial de irrigação"
+      ],
+      "activities": [
+        {
+          "id": "arbor-plantio",
+          "title": "Executar plantio do setor",
+          "durationDays": 4,
+          "status": "planejado",
+          "progress": 0,
+          "materials": [
+            {
+              "id": "arbor-plantio-material-1",
+              "name": "Mudas",
+              "quantity": 120,
+              "unit": "un",
+              "plannedQuantity": 120,
+              "receivedQuantity": 0,
+              "usedQuantity": 0,
+              "status": "planejado"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

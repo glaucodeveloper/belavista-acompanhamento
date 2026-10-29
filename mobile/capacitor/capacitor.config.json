@@ -1,7 +1,0 @@
-{
-  "appId": "br.com.aliancapark.mobile",
-  "appName": "Aliança Park",
-  "webDir": "www",
-  "bundledWebRuntime": false,
-  "androidScheme": "https"
-}

@@ -1,73 +1,14 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
+  "$schema": "../node_modules/wrangler/config-schema.json",
   "name": "belavista-cloudflare-worker",
-  "main": "src/index.js",
+  "main": "src.js",
   "compatibility_date": "2026-08-27",
   "vars": {
-    "ALLOWED_ORIGINS": "*",
-    "DEMO_GENERATION_ALLOWED_ORIGINS": "https://belavista-3f887.web.app,https://belavista-3f887.firebaseapp.com,null",
-    "FIREBASE_ADMIN_EMAILS": "",
-    "FIREBASE_DATABASE_URL": "https://belavista-3f887-default-rtdb.firebaseio.com",
-    "FIREBASE_NOTIFICATION_CHANNELS": "owner,admin,foreman,supplies,commercial",
-    "FIREBASE_WEB_API_KEY": "AIzaSyAtbLAkqya5XIDfSDHovvhCr9pReAr_XgQ",
-    "GITHUB_BRANCH": "codex/dashboard-firebase-leads",
-    "GITHUB_REPO": "glaucodeveloper/belavista-acompanhamento",
-    "INSTAGRAM_GRAPH_VERSION": "v26.0",
-    "INSTAGRAM_PROFILE_USERNAME": "icaro.______",
-    "NVIDIA_MAX_TOKENS": "900",
-    "NVIDIA_MODEL": "google/diffusiongemma-26b-a4b-it",
-    "NVIDIA_REASONING_API_URL": "https://integrate.api.nvidia.com/v1/chat/completions",
-    "NVIDIA_REASONING_BUDGET": "2048",
-    "NVIDIA_REASONING_MAX_TOKENS": "4096",
-		"NVIDIA_STATE_MODEL": "openai/gpt-oss-20b",
-    "NVIDIA_STATE_RETRIES": "1",
-    "NVIDIA_STATE_ANALYSIS_BATCH_SIZE": "10",
-    "NVIDIA_REASONING_VISION_MODEL": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
-    "NVIDIA_RECORD_OCR_MODEL": "meta/llama-3.2-11b-vision-instruct",
-    "NVIDIA_RECORD_OCR_MODELS": "meta/llama-3.2-11b-vision-instruct",
-    "NVIDIA_RECORD_OCR_FALLBACK_TIMEOUT_MS": "35000",
-    "NVIDIA_RECORD_OCR_RETRIES": "1",
-    "NVIDIA_RECORD_OCR_TIMEOUT_MS": "30000",
-    "NVIDIA_RECORD_OCR_MAX_TOKENS": "1000",
-    "NVIDIA_TEMPERATURE": "0.25",
-    "NVIDIA_TIMEOUT_MS": "45000",
-    "NVIDIA_TOP_P": "0.8",
-    "NVIDIA_VISION_MODEL": "meta/llama-3.2-90b-vision-instruct",
-    "WORKERS_AI_MODEL": "@cf/meta/llama-3.1-8b-instruct-fp8"
+    "NVIDIA_API_URL": "https://integrate.api.nvidia.com/v1/chat/completions",
+    "NVIDIA_MODEL": "meta/llama-3.1-8b-instruct",
+    "NVIDIA_VISION_MODEL": "meta/llama-3.2-11b-vision-instruct",
+    "NVIDIA_VISION_API_URL": "https://integrate.api.nvidia.com/v1/meta/llama-3.2-11b-vision-instruct",
+    "GITHUB_DATA_REPOSITORY": "glaucodeveloper/belavista-acompanhamento-data"
   },
-  "d1_databases": [
-    {
-      "binding": "BELAVISTA_DB",
-      "database_name": "belavista-v10",
-      "database_id": "5fa589ec-1817-4719-b475-4503fda101e7",
-      "migrations_dir": "migrations"
-    }
-  ],
-  "queues": {
-    "producers": [
-      {
-        "binding": "BELAVISTA_QUEUE",
-        "queue": "belavista-digests"
-      }
-    ],
-    "consumers": [
-      {
-        "queue": "belavista-digests",
-        "max_batch_size": 10,
-        "max_batch_timeout": 5,
-        "max_retries": 3
-      }
-    ]
-  },
-  "ai": {
-    "binding": "AI"
-  },
-  "triggers": {
-    "crons": [
-      "0 10 * * *"
-    ]
-  },
-  "observability": {
-    "enabled": true
-  }
+  "ratelimits": [{ "name": "LOGIN_LIMITER", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }]
 }

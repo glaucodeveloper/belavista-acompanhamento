@@ -1,8 +1,0 @@
-{
-  "stageStatusOptions": ["planejado", "pendente", "andamento", "concluído"],
-  "activityStatusOptions": ["planejado", "pendente", "em andamento", "concluído"],
-  "defaultActivityCategory": "Execução",
-  "maxActivities": 20,
-  "detailActivityLimit": 8,
-  "detailListLimit": 8
-}

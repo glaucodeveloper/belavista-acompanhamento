@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "imageSize": [
+    2048,
+    2581
+  ],
+  "encoding": {
+    "red": "asphalt slice id",
+    "green": "curb",
+    "blue": "social area"
+  },
+  "asphaltSlices": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "socialArea": "Praça e área social"
+}

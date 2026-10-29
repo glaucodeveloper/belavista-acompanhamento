@@ -1,7 +1,0 @@
-{
-  "refreshNotifications": "atlas:topbar-refresh-notifications",
-  "synchronizeAgenda": "atlas:topbar-synchronize-agenda",
-  "markNotificationRead": "atlas:topbar-mark-notification-read",
-  "markAllNotificationsRead": "atlas:topbar-mark-all-notifications-read",
-  "switchDesktopEnvironment": "atlas:topbar-switch-desktop-environment"
-}

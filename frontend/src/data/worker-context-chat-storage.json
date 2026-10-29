@@ -1,9 +1,0 @@
-{
-  "responseKey": "belavista.worker-context-chat.v1",
-  "serviceRequestKey": "belavista.worker-context-chat.service-id.v1",
-  "voiceEnabledKey": "belavista.worker-context-chat.voice.v1",
-  "speakerProfileKey": "belavista.worker-context-chat.speaker-profile.v1",
-  "lastRouteKey": "belavista.worker-context-chat.last-route.v1",
-  "messageLimit": 60,
-  "defaultSpeakerProfile": "operacional"
-}

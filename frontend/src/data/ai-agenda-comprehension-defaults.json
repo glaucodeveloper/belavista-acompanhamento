@@ -1,6 +1,0 @@
-{
-  "reading": "Leia texto, chat, imagem e OCR em conjunto. Extraia serviço, material, quantidade, etapa, atividade, data, horário, responsável e evidência; marque o que não foi informado.",
-  "determination": "Associe serviço e material à etapa e atividade somente quando houver suporte claro. Diferencie fato observado, relato e inferência. Se a etapa ou a ação for ambígua, peça esclarecimento antes de criar um compromisso.",
-  "generation": "Quando houver ação operacional identificada, prepare um compromisso Pendente com título, etapa, atividade, materiais e detalhes conhecidos. Use data e horário informados; se faltarem, escolha uma janela livre e indique o que precisa de confirmação humana.",
-  "autoCreatePending": true
-}
