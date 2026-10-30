@@ -15,7 +15,8 @@
       "greenPolygonId": "Lote_194",
       "u": 0.63294457,
       "v": 0.64477555,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-1"
     },
     {
       "lotId": "Lote_273",
@@ -23,7 +24,8 @@
       "greenPolygonId": "Lote_297",
       "u": 0.36130229,
       "v": 0.95022617,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC1-1"
     },
     {
       "lotId": "Lote_002",
@@ -31,7 +33,8 @@
       "greenPolygonId": "Lote_200",
       "u": 0.61872398,
       "v": 0.65747485,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-2"
     },
     {
       "lotId": "Lote_274",
@@ -39,7 +42,8 @@
       "greenPolygonId": "Lote_296",
       "u": 0.33180096,
       "v": 0.9333986,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC1-2"
     },
     {
       "lotId": "Lote_275",
@@ -47,7 +51,8 @@
       "greenPolygonId": "Lote_294",
       "u": 0.30314118,
       "v": 0.91773013,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC1-3"
     },
     {
       "lotId": "Lote_003",
@@ -55,7 +60,8 @@
       "greenPolygonId": "Lote_206",
       "u": 0.60507724,
       "v": 0.66857208,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-3"
     },
     {
       "lotId": "Lote_276",
@@ -63,7 +69,8 @@
       "greenPolygonId": "Lote_292",
       "u": 0.27679852,
       "v": 0.9036985,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC1-4"
     },
     {
       "lotId": "Lote_004",
@@ -71,7 +78,8 @@
       "greenPolygonId": "Lote_209",
       "u": 0.59210426,
       "v": 0.67975282,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-4"
     },
     {
       "lotId": "Lote_005",
@@ -79,7 +87,8 @@
       "greenPolygonId": "Lote_215",
       "u": 0.57882628,
       "v": 0.69102807,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-5"
     },
     {
       "lotId": "Lote_277",
@@ -87,7 +96,8 @@
       "greenPolygonId": "Lote_288",
       "u": 0.25214235,
       "v": 0.88944679,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC1-5"
     },
     {
       "lotId": "Lote_006",
@@ -95,7 +105,8 @@
       "greenPolygonId": "Lote_218",
       "u": 0.56583756,
       "v": 0.70248639,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-6"
     },
     {
       "lotId": "Lote_278",
@@ -103,7 +114,8 @@
       "greenPolygonId": "Lote_285",
       "u": 0.22952613,
       "v": 0.87690963,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC1-6"
     },
     {
       "lotId": "Lote_007",
@@ -111,7 +123,8 @@
       "greenPolygonId": "Lote_256",
       "u": 0.20842357,
       "v": 0.86464793,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-7"
     },
     {
       "lotId": "Lote_279",
@@ -119,7 +132,8 @@
       "greenPolygonId": "Lote_225",
       "u": 0.55215626,
       "v": 0.71357365,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC1-7"
     },
     {
       "lotId": "Lote_280",
@@ -127,7 +141,8 @@
       "greenPolygonId": "Lote_279",
       "u": 0.18772418,
       "v": 0.85269979,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC1-8"
     },
     {
       "lotId": "Lote_008",
@@ -135,7 +150,8 @@
       "greenPolygonId": "Lote_229",
       "u": 0.53825241,
       "v": 0.72558521,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-8"
     },
     {
       "lotId": "Lote_281",
@@ -143,7 +159,8 @@
       "greenPolygonId": "Lote_275",
       "u": 0.16811349,
       "v": 0.841964,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC1-9"
     },
     {
       "lotId": "Lote_009",
@@ -151,7 +168,8 @@
       "greenPolygonId": "Lote_235",
       "u": 0.52491299,
       "v": 0.73726516,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-9"
     },
     {
       "lotId": "Lote_010",
@@ -159,7 +177,8 @@
       "greenPolygonId": "Lote_240",
       "u": 0.51109931,
       "v": 0.74929875,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-10"
     },
     {
       "lotId": "Lote_282",
@@ -167,7 +186,8 @@
       "greenPolygonId": "Lote_251",
       "u": 0.14927095,
       "v": 0.83132579,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC1-10"
     },
     {
       "lotId": "Lote_011",
@@ -175,7 +195,8 @@
       "greenPolygonId": "Lote_246",
       "u": 0.49853731,
       "v": 0.75972123,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-11"
     },
     {
       "lotId": "Lote_283",
@@ -183,7 +204,8 @@
       "greenPolygonId": "Lote_269",
       "u": 0.12116674,
       "v": 0.81364036,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC1-11"
     },
     {
       "lotId": "Lote_012",
@@ -191,7 +213,8 @@
       "greenPolygonId": "Lote_252",
       "u": 0.48502416,
       "v": 0.77135254,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-12"
     },
     {
       "lotId": "Lote_284",
@@ -199,7 +222,8 @@
       "greenPolygonId": "Lote_223",
       "u": 0.16026016,
       "v": 0.77118143,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC1-12"
     },
     {
       "lotId": "Lote_013",
@@ -207,7 +231,8 @@
       "greenPolygonId": "Lote_258",
       "u": 0.4724018,
       "v": 0.78262512,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-13"
     },
     {
       "lotId": "Lote_285",
@@ -215,7 +240,8 @@
       "greenPolygonId": "Lote_241",
       "u": 0.08109243,
       "v": 0.78120336,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC2-13"
     },
     {
       "lotId": "Lote_014",
@@ -223,7 +249,8 @@
       "greenPolygonId": "Lote_262",
       "u": 0.4586493,
       "v": 0.79392062,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-14"
     },
     {
       "lotId": "Lote_286",
@@ -231,7 +258,8 @@
       "greenPolygonId": "Lote_299",
       "u": 0.1190522,
       "v": 0.74945568,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC2-14"
     },
     {
       "lotId": "Lote_287",
@@ -239,7 +267,8 @@
       "greenPolygonId": "Lote_050",
       "u": 0.34814152,
       "v": 0.2846076,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC3-15"
     },
     {
       "lotId": "Lote_015",
@@ -247,7 +276,8 @@
       "greenPolygonId": "Lote_266",
       "u": 0.44594304,
       "v": 0.80579572,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-15"
     },
     {
       "lotId": "Lote_288",
@@ -255,7 +285,8 @@
       "greenPolygonId": "Lote_056",
       "u": 0.32835312,
       "v": 0.3054401,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC3-16"
     },
     {
       "lotId": "Lote_016",
@@ -263,7 +294,8 @@
       "greenPolygonId": "Lote_270",
       "u": 0.4321717,
       "v": 0.81672882,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-16"
     },
     {
       "lotId": "Lote_017",
@@ -271,7 +303,8 @@
       "greenPolygonId": "Lote_274",
       "u": 0.4191334,
       "v": 0.82877774,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-17"
     },
     {
       "lotId": "Lote_289",
@@ -279,7 +312,8 @@
       "greenPolygonId": "Lote_064",
       "u": 0.31097951,
       "v": 0.3230568,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC3-17"
     },
     {
       "lotId": "Lote_018",
@@ -287,7 +321,8 @@
       "greenPolygonId": "Lote_278",
       "u": 0.40620851,
       "v": 0.84044048,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-18"
     },
     {
       "lotId": "Lote_290",
@@ -295,7 +330,8 @@
       "greenPolygonId": "Lote_073",
       "u": 0.29308327,
       "v": 0.34245362,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC3-18"
     },
     {
       "lotId": "Lote_019",
@@ -303,7 +339,8 @@
       "greenPolygonId": "Lote_282",
       "u": 0.39235888,
       "v": 0.85103946,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-19"
     },
     {
       "lotId": "Lote_291",
@@ -311,7 +348,8 @@
       "greenPolygonId": "Lote_017",
       "u": 0.38053997,
       "v": 0.18966451,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC4-19"
     },
     {
       "lotId": "Lote_292",
@@ -319,7 +357,8 @@
       "greenPolygonId": "Lote_013",
       "u": 0.38819533,
       "v": 0.16802189,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC4-20"
     },
     {
       "lotId": "Lote_020",
@@ -327,7 +366,8 @@
       "greenPolygonId": "Lote_281",
       "u": 0.3661046,
       "v": 0.87164549,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-20"
     },
     {
       "lotId": "Lote_293",
@@ -335,7 +375,8 @@
       "greenPolygonId": "Lote_009",
       "u": 0.39495345,
       "v": 0.146399,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC4-21"
     },
     {
       "lotId": "Lote_021",
@@ -343,7 +384,8 @@
       "greenPolygonId": "Lote_287",
       "u": 0.38280007,
       "v": 0.88454252,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-21"
     },
     {
       "lotId": "Lote_294",
@@ -351,7 +393,8 @@
       "greenPolygonId": "Lote_007",
       "u": 0.40222148,
       "v": 0.12225019,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC4-22"
     },
     {
       "lotId": "Lote_022",
@@ -359,7 +402,8 @@
       "greenPolygonId": "Lote_290",
       "u": 0.39966287,
       "v": 0.89732985,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-22"
     },
     {
       "lotId": "Lote_295",
@@ -367,7 +411,8 @@
       "greenPolygonId": "Lote_004",
       "u": 0.40871577,
       "v": 0.09971358,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC4-23"
     },
     {
       "lotId": "Lote_023",
@@ -375,7 +420,8 @@
       "greenPolygonId": "Lote_293",
       "u": 0.41669162,
       "v": 0.91094654,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-23"
     },
     {
       "lotId": "Lote_296",
@@ -383,7 +429,8 @@
       "greenPolygonId": "Lote_002",
       "u": 0.41509366,
       "v": 0.07780221,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC4-24"
     },
     {
       "lotId": "Lote_024",
@@ -391,7 +438,8 @@
       "greenPolygonId": "Lote_295",
       "u": 0.44081012,
       "v": 0.88913531,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-24"
     },
     {
       "lotId": "Lote_297",
@@ -399,7 +447,8 @@
       "greenPolygonId": "Lote_001",
       "u": 0.42867779,
       "v": 0.03724192,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC5-25"
     },
     {
       "lotId": "Lote_025",
@@ -407,7 +456,8 @@
       "greenPolygonId": "Lote_291",
       "u": 0.45401711,
       "v": 0.87867125,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-25"
     },
     {
       "lotId": "Lote_298",
@@ -415,7 +465,8 @@
       "greenPolygonId": "Lote_300",
       "u": 0.43499861,
       "v": 0.01733969,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC5-26"
     },
     {
       "lotId": "Lote_026",
@@ -423,7 +474,8 @@
       "greenPolygonId": "Lote_289",
       "u": 0.46665839,
       "v": 0.86674143,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-26"
     },
     {
       "lotId": "Lote_027",
@@ -431,7 +483,8 @@
       "greenPolygonId": "Lote_286",
       "u": 0.4803973,
       "v": 0.8550358,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-27"
     },
     {
       "lotId": "Lote_028",
@@ -439,7 +492,8 @@
       "greenPolygonId": "Lote_280",
       "u": 0.49391027,
       "v": 0.84402183,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-28"
     },
     {
       "lotId": "Lote_029",
@@ -447,7 +501,8 @@
       "greenPolygonId": "Lote_276",
       "u": 0.50695013,
       "v": 0.83214486,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-29"
     },
     {
       "lotId": "Lote_030",
@@ -455,7 +510,8 @@
       "greenPolygonId": "Lote_272",
       "u": 0.51935125,
       "v": 0.82093803,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-30"
     },
     {
       "lotId": "Lote_031",
@@ -463,7 +519,8 @@
       "greenPolygonId": "Lote_267",
       "u": 0.5332796,
       "v": 0.80920354,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-31"
     },
     {
       "lotId": "Lote_032",
@@ -471,7 +528,8 @@
       "greenPolygonId": "Lote_264",
       "u": 0.5466533,
       "v": 0.79877404,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-32"
     },
     {
       "lotId": "Lote_033",
@@ -479,7 +537,8 @@
       "greenPolygonId": "Lote_260",
       "u": 0.5595178,
       "v": 0.78659547,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-33"
     },
     {
       "lotId": "Lote_034",
@@ -487,7 +546,8 @@
       "greenPolygonId": "Lote_254",
       "u": 0.57291423,
       "v": 0.7758661,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-34"
     },
     {
       "lotId": "Lote_035",
@@ -495,7 +555,8 @@
       "greenPolygonId": "Lote_248",
       "u": 0.58550003,
       "v": 0.76409805,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-35"
     },
     {
       "lotId": "Lote_036",
@@ -503,7 +564,8 @@
       "greenPolygonId": "Lote_244",
       "u": 0.60026989,
       "v": 0.75225659,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-36"
     },
     {
       "lotId": "Lote_037",
@@ -511,7 +573,8 @@
       "greenPolygonId": "Lote_237",
       "u": 0.61267018,
       "v": 0.7409655,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-37"
     },
     {
       "lotId": "Lote_038",
@@ -519,7 +582,8 @@
       "greenPolygonId": "Lote_232",
       "u": 0.62616305,
       "v": 0.72984089,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-38"
     },
     {
       "lotId": "Lote_039",
@@ -527,7 +591,8 @@
       "greenPolygonId": "Lote_227",
       "u": 0.63835919,
       "v": 0.71830645,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-39"
     },
     {
       "lotId": "Lote_040",
@@ -535,7 +600,8 @@
       "greenPolygonId": "Lote_221",
       "u": 0.65140051,
       "v": 0.70554357,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-40"
     },
     {
       "lotId": "Lote_041",
@@ -543,7 +609,8 @@
       "greenPolygonId": "Lote_213",
       "u": 0.66000542,
       "v": 0.6870859,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QA-41"
     },
     {
       "lotId": "Lote_042",
@@ -551,7 +618,8 @@
       "greenPolygonId": "Lote_161",
       "u": 0.55283222,
       "v": 0.57365494,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-42"
     },
     {
       "lotId": "Lote_043",
@@ -559,7 +627,8 @@
       "greenPolygonId": "Lote_172",
       "u": 0.53461501,
       "v": 0.58896029,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-43"
     },
     {
       "lotId": "Lote_044",
@@ -567,7 +636,8 @@
       "greenPolygonId": "Lote_176",
       "u": 0.52098487,
       "v": 0.60146744,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-44"
     },
     {
       "lotId": "Lote_045",
@@ -575,7 +645,8 @@
       "greenPolygonId": "Lote_180",
       "u": 0.50812333,
       "v": 0.61235089,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-45"
     },
     {
       "lotId": "Lote_046",
@@ -583,7 +654,8 @@
       "greenPolygonId": "Lote_182",
       "u": 0.49462287,
       "v": 0.62324175,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-46"
     },
     {
       "lotId": "Lote_047",
@@ -591,7 +663,8 @@
       "greenPolygonId": "Lote_187",
       "u": 0.48168778,
       "v": 0.63476206,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-47"
     },
     {
       "lotId": "Lote_048",
@@ -599,7 +672,8 @@
       "greenPolygonId": "Lote_191",
       "u": 0.46881504,
       "v": 0.64596761,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-48"
     },
     {
       "lotId": "Lote_049",
@@ -607,7 +681,8 @@
       "greenPolygonId": "Lote_199",
       "u": 0.4568031,
       "v": 0.65612004,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-49"
     },
     {
       "lotId": "Lote_050",
@@ -615,7 +690,8 @@
       "greenPolygonId": "Lote_205",
       "u": 0.44270227,
       "v": 0.66848062,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-50"
     },
     {
       "lotId": "Lote_051",
@@ -623,7 +699,8 @@
       "greenPolygonId": "Lote_210",
       "u": 0.42990094,
       "v": 0.67985451,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-51"
     },
     {
       "lotId": "Lote_052",
@@ -631,7 +708,8 @@
       "greenPolygonId": "Lote_216",
       "u": 0.41559439,
       "v": 0.69146599,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-52"
     },
     {
       "lotId": "Lote_053",
@@ -639,7 +717,8 @@
       "greenPolygonId": "Lote_219",
       "u": 0.40307441,
       "v": 0.70253134,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-53"
     },
     {
       "lotId": "Lote_054",
@@ -647,7 +726,8 @@
       "greenPolygonId": "Lote_226",
       "u": 0.38955426,
       "v": 0.71500834,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-54"
     },
     {
       "lotId": "Lote_055",
@@ -655,7 +735,8 @@
       "greenPolygonId": "Lote_230",
       "u": 0.37680317,
       "v": 0.72622683,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-55"
     },
     {
       "lotId": "Lote_056",
@@ -663,7 +744,8 @@
       "greenPolygonId": "Lote_234",
       "u": 0.3632868,
       "v": 0.73734772,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-56"
     },
     {
       "lotId": "Lote_057",
@@ -671,7 +753,8 @@
       "greenPolygonId": "Lote_239",
       "u": 0.34994801,
       "v": 0.74906758,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-57"
     },
     {
       "lotId": "Lote_058",
@@ -679,7 +762,8 @@
       "greenPolygonId": "Lote_247",
       "u": 0.33680477,
       "v": 0.76077213,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-58"
     },
     {
       "lotId": "Lote_059",
@@ -687,7 +771,8 @@
       "greenPolygonId": "Lote_253",
       "u": 0.32387513,
       "v": 0.77172893,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-59"
     },
     {
       "lotId": "Lote_060",
@@ -695,7 +780,8 @@
       "greenPolygonId": "Lote_259",
       "u": 0.30988803,
       "v": 0.78312427,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-60"
     },
     {
       "lotId": "Lote_061",
@@ -703,7 +789,8 @@
       "greenPolygonId": "Lote_243",
       "u": 0.28322569,
       "v": 0.80497096,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-61"
     },
     {
       "lotId": "Lote_062",
@@ -711,7 +798,8 @@
       "greenPolygonId": "Lote_265",
       "u": 0.29985121,
       "v": 0.81842093,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-62"
     },
     {
       "lotId": "Lote_063",
@@ -719,7 +807,8 @@
       "greenPolygonId": "Lote_271",
       "u": 0.31615172,
       "v": 0.8322436,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-63"
     },
     {
       "lotId": "Lote_064",
@@ -727,7 +816,8 @@
       "greenPolygonId": "Lote_277",
       "u": 0.33337558,
       "v": 0.84557453,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-64"
     },
     {
       "lotId": "Lote_065",
@@ -735,7 +825,8 @@
       "greenPolygonId": "Lote_273",
       "u": 0.35630324,
       "v": 0.82152056,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-65"
     },
     {
       "lotId": "Lote_066",
@@ -743,7 +834,8 @@
       "greenPolygonId": "Lote_268",
       "u": 0.37008242,
       "v": 0.80971638,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-66"
     },
     {
       "lotId": "Lote_067",
@@ -751,7 +843,8 @@
       "greenPolygonId": "Lote_263",
       "u": 0.38287548,
       "v": 0.79786968,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-67"
     },
     {
       "lotId": "Lote_068",
@@ -759,7 +852,8 @@
       "greenPolygonId": "Lote_261",
       "u": 0.39680001,
       "v": 0.78772489,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-68"
     },
     {
       "lotId": "Lote_069",
@@ -767,7 +861,8 @@
       "greenPolygonId": "Lote_255",
       "u": 0.41018789,
       "v": 0.77599395,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-69"
     },
     {
       "lotId": "Lote_070",
@@ -775,7 +870,8 @@
       "greenPolygonId": "Lote_250",
       "u": 0.42350839,
       "v": 0.76461978,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-70"
     },
     {
       "lotId": "Lote_071",
@@ -783,7 +879,8 @@
       "greenPolygonId": "Lote_245",
       "u": 0.43625749,
       "v": 0.75339988,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-71"
     },
     {
       "lotId": "Lote_072",
@@ -791,7 +888,8 @@
       "greenPolygonId": "Lote_238",
       "u": 0.44983201,
       "v": 0.74276721,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-72"
     },
     {
       "lotId": "Lote_073",
@@ -799,7 +897,8 @@
       "greenPolygonId": "Lote_233",
       "u": 0.46350572,
       "v": 0.73085136,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-73"
     },
     {
       "lotId": "Lote_074",
@@ -807,7 +906,8 @@
       "greenPolygonId": "Lote_228",
       "u": 0.47891163,
       "v": 0.71978959,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-74"
     },
     {
       "lotId": "Lote_075",
@@ -815,7 +915,8 @@
       "greenPolygonId": "Lote_222",
       "u": 0.49033552,
       "v": 0.70774035,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-75"
     },
     {
       "lotId": "Lote_076",
@@ -823,7 +924,8 @@
       "greenPolygonId": "Lote_217",
       "u": 0.50390152,
       "v": 0.69597081,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-76"
     },
     {
       "lotId": "Lote_077",
@@ -831,7 +933,8 @@
       "greenPolygonId": "Lote_211",
       "u": 0.51727881,
       "v": 0.68482145,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-77"
     },
     {
       "lotId": "Lote_078",
@@ -839,7 +942,8 @@
       "greenPolygonId": "Lote_207",
       "u": 0.52987661,
       "v": 0.67246611,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-78"
     },
     {
       "lotId": "Lote_079",
@@ -847,7 +951,8 @@
       "greenPolygonId": "Lote_203",
       "u": 0.54320137,
       "v": 0.66206381,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-79"
     },
     {
       "lotId": "Lote_080",
@@ -855,7 +960,8 @@
       "greenPolygonId": "Lote_197",
       "u": 0.55673921,
       "v": 0.65022644,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-80"
     },
     {
       "lotId": "Lote_081",
@@ -863,7 +969,8 @@
       "greenPolygonId": "Lote_192",
       "u": 0.56990808,
       "v": 0.63898193,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-81"
     },
     {
       "lotId": "Lote_082",
@@ -871,7 +978,8 @@
       "greenPolygonId": "Lote_188",
       "u": 0.58258822,
       "v": 0.62719991,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-82"
     },
     {
       "lotId": "Lote_083",
@@ -879,7 +987,8 @@
       "greenPolygonId": "Lote_184",
       "u": 0.60034543,
       "v": 0.61429079,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QB-83"
     },
     {
       "lotId": "Lote_084",
@@ -887,7 +996,8 @@
       "greenPolygonId": "Lote_179",
       "u": 0.31930195,
       "v": 0.63235938,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC-84"
     },
     {
       "lotId": "Lote_085",
@@ -895,7 +1005,8 @@
       "greenPolygonId": "Lote_190",
       "u": 0.33593208,
       "v": 0.64607629,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC-85"
     },
     {
       "lotId": "Lote_086",
@@ -903,7 +1014,8 @@
       "greenPolygonId": "Lote_196",
       "u": 0.35320617,
       "v": 0.65983137,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC-86"
     },
     {
       "lotId": "Lote_087",
@@ -911,7 +1023,8 @@
       "greenPolygonId": "Lote_202",
       "u": 0.37020483,
       "v": 0.67387229,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC-87"
     },
     {
       "lotId": "Lote_088",
@@ -919,7 +1032,8 @@
       "greenPolygonId": "Lote_220",
       "u": 0.33171165,
       "v": 0.70547198,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC-88"
     },
     {
       "lotId": "Lote_089",
@@ -927,7 +1041,8 @@
       "greenPolygonId": "Lote_231",
       "u": 0.30648155,
       "v": 0.7267258,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC-89"
     },
     {
       "lotId": "Lote_090",
@@ -935,7 +1050,8 @@
       "greenPolygonId": "Lote_214",
       "u": 0.27884603,
       "v": 0.75111446,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC-90"
     },
     {
       "lotId": "Lote_091",
@@ -943,7 +1059,8 @@
       "greenPolygonId": "Lote_236",
       "u": 0.24817031,
       "v": 0.77791486,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC-91"
     },
     {
       "lotId": "Lote_092",
@@ -951,7 +1068,8 @@
       "greenPolygonId": "Lote_249",
       "u": 0.231116,
       "v": 0.76425416,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC-92"
     },
     {
       "lotId": "Lote_093",
@@ -959,7 +1077,8 @@
       "greenPolygonId": "Lote_242",
       "u": 0.21363816,
       "v": 0.7497933,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC-93"
     },
     {
       "lotId": "Lote_094",
@@ -967,7 +1086,8 @@
       "greenPolygonId": "Lote_224",
       "u": 0.19963445,
       "v": 0.73810116,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC-94"
     },
     {
       "lotId": "Lote_095",
@@ -975,7 +1095,8 @@
       "greenPolygonId": "Lote_198",
       "u": 0.23053165,
       "v": 0.71124338,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC-95"
     },
     {
       "lotId": "Lote_096",
@@ -983,7 +1104,8 @@
       "greenPolygonId": "Lote_186",
       "u": 0.25746057,
       "v": 0.6887378,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC-96"
     },
     {
       "lotId": "Lote_097",
@@ -991,7 +1113,8 @@
       "greenPolygonId": "Lote_204",
       "u": 0.28490421,
       "v": 0.6653227,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QC-97"
     },
     {
       "lotId": "Lote_098",
@@ -999,7 +1122,8 @@
       "greenPolygonId": "Lote_301",
       "u": 0.16396905,
       "v": 0.71075207,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QD-98"
     },
     {
       "lotId": "Lote_099",
@@ -1007,7 +1131,8 @@
       "greenPolygonId": "Lote_302",
       "u": 0.19306469,
       "v": 0.6856297,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QD-99"
     },
     {
       "lotId": "Lote_100",
@@ -1015,7 +1140,8 @@
       "greenPolygonId": "Lote_303",
       "u": 0.23381458,
       "v": 0.65224526,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QD-100"
     },
     {
       "lotId": "Lote_101",
@@ -1023,7 +1149,8 @@
       "greenPolygonId": "Lote_304",
       "u": 0.26820935,
       "v": 0.62207393,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QD-101"
     },
     {
       "lotId": "Lote_102",
@@ -1031,7 +1158,8 @@
       "greenPolygonId": "Lote_305",
       "u": 0.29673612,
       "v": 0.59680937,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QD-102"
     },
     {
       "lotId": "Lote_103",
@@ -1039,7 +1167,8 @@
       "greenPolygonId": "Lote_058",
       "u": 0.46920776,
       "v": 0.35249916,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-103"
     },
     {
       "lotId": "Lote_104",
@@ -1047,7 +1176,8 @@
       "greenPolygonId": "Lote_090",
       "u": 0.50317218,
       "v": 0.37944761,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-104"
     },
     {
       "lotId": "Lote_105",
@@ -1055,7 +1185,8 @@
       "greenPolygonId": "Lote_096",
       "u": 0.51579319,
       "v": 0.39108417,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-105"
     },
     {
       "lotId": "Lote_106",
@@ -1063,7 +1194,8 @@
       "greenPolygonId": "Lote_101",
       "u": 0.52979136,
       "v": 0.40239013,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-106"
     },
     {
       "lotId": "Lote_107",
@@ -1071,7 +1203,8 @@
       "greenPolygonId": "Lote_107",
       "u": 0.54205135,
       "v": 0.4140107,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-107"
     },
     {
       "lotId": "Lote_108",
@@ -1079,7 +1212,8 @@
       "greenPolygonId": "Lote_113",
       "u": 0.55435343,
       "v": 0.42515901,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-108"
     },
     {
       "lotId": "Lote_109",
@@ -1087,7 +1221,8 @@
       "greenPolygonId": "Lote_119",
       "u": 0.56607211,
       "v": 0.43719155,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-109"
     },
     {
       "lotId": "Lote_110",
@@ -1095,7 +1230,8 @@
       "greenPolygonId": "Lote_126",
       "u": 0.58004384,
       "v": 0.4494818,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-110"
     },
     {
       "lotId": "Lote_111",
@@ -1103,7 +1239,8 @@
       "greenPolygonId": "Lote_131",
       "u": 0.59276774,
       "v": 0.46113705,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-111"
     },
     {
       "lotId": "Lote_112",
@@ -1111,7 +1248,8 @@
       "greenPolygonId": "Lote_137",
       "u": 0.60553732,
       "v": 0.47326936,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-112"
     },
     {
       "lotId": "Lote_113",
@@ -1119,7 +1257,8 @@
       "greenPolygonId": "Lote_143",
       "u": 0.61830757,
       "v": 0.48435513,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-113"
     },
     {
       "lotId": "Lote_114",
@@ -1127,7 +1266,8 @@
       "greenPolygonId": "Lote_152",
       "u": 0.631023,
       "v": 0.49680304,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-114"
     },
     {
       "lotId": "Lote_115",
@@ -1135,7 +1275,8 @@
       "greenPolygonId": "Lote_132",
       "u": 0.64412726,
       "v": 0.50855606,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-115"
     },
     {
       "lotId": "Lote_116",
@@ -1143,7 +1284,8 @@
       "greenPolygonId": "Lote_156",
       "u": 0.65572848,
       "v": 0.51998845,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-116"
     },
     {
       "lotId": "Lote_117",
@@ -1151,7 +1293,8 @@
       "greenPolygonId": "Lote_159",
       "u": 0.66928875,
       "v": 0.5321153,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-117"
     },
     {
       "lotId": "Lote_118",
@@ -1159,7 +1302,8 @@
       "greenPolygonId": "Lote_163",
       "u": 0.68164712,
       "v": 0.54382306,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-118"
     },
     {
       "lotId": "Lote_119",
@@ -1167,7 +1311,8 @@
       "greenPolygonId": "Lote_167",
       "u": 0.69457659,
       "v": 0.55560917,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-119"
     },
     {
       "lotId": "Lote_120",
@@ -1175,7 +1320,8 @@
       "greenPolygonId": "Lote_170",
       "u": 0.70684647,
       "v": 0.56767942,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-120"
     },
     {
       "lotId": "Lote_121",
@@ -1183,7 +1329,8 @@
       "greenPolygonId": "Lote_174",
       "u": 0.71997823,
       "v": 0.57966656,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-121"
     },
     {
       "lotId": "Lote_122",
@@ -1191,7 +1338,8 @@
       "greenPolygonId": "Lote_177",
       "u": 0.73212222,
       "v": 0.59142579,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-122"
     },
     {
       "lotId": "Lote_123",
@@ -1199,7 +1347,8 @@
       "greenPolygonId": "Lote_183",
       "u": 0.75132936,
       "v": 0.61255147,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-123"
     },
     {
       "lotId": "Lote_124",
@@ -1207,7 +1356,8 @@
       "greenPolygonId": "Lote_193",
       "u": 0.72670039,
       "v": 0.64460593,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-124"
     },
     {
       "lotId": "Lote_125",
@@ -1215,7 +1365,8 @@
       "greenPolygonId": "Lote_201",
       "u": 0.70972163,
       "v": 0.65836622,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-125"
     },
     {
       "lotId": "Lote_126",
@@ -1223,7 +1374,8 @@
       "greenPolygonId": "Lote_189",
       "u": 0.67969738,
       "v": 0.6307479,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-126"
     },
     {
       "lotId": "Lote_127",
@@ -1231,7 +1383,8 @@
       "greenPolygonId": "Lote_185",
       "u": 0.66716095,
       "v": 0.61863241,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-127"
     },
     {
       "lotId": "Lote_128",
@@ -1239,7 +1392,8 @@
       "greenPolygonId": "Lote_181",
       "u": 0.65560415,
       "v": 0.60520744,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-128"
     },
     {
       "lotId": "Lote_129",
@@ -1247,7 +1401,8 @@
       "greenPolygonId": "Lote_178",
       "u": 0.64206031,
       "v": 0.59429013,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-129"
     },
     {
       "lotId": "Lote_130",
@@ -1255,7 +1410,8 @@
       "greenPolygonId": "Lote_175",
       "u": 0.62941029,
       "v": 0.58318355,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-130"
     },
     {
       "lotId": "Lote_131",
@@ -1263,7 +1419,8 @@
       "greenPolygonId": "Lote_171",
       "u": 0.61705606,
       "v": 0.57067633,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-131"
     },
     {
       "lotId": "Lote_132",
@@ -1271,7 +1428,8 @@
       "greenPolygonId": "Lote_169",
       "u": 0.60413245,
       "v": 0.55931429,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-132"
     },
     {
       "lotId": "Lote_133",
@@ -1279,7 +1437,8 @@
       "greenPolygonId": "Lote_165",
       "u": 0.5917909,
       "v": 0.5477313,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-133"
     },
     {
       "lotId": "Lote_134",
@@ -1287,7 +1446,8 @@
       "greenPolygonId": "Lote_147",
       "u": 0.57851594,
       "v": 0.5358062,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-134"
     },
     {
       "lotId": "Lote_135",
@@ -1295,7 +1455,8 @@
       "greenPolygonId": "Lote_158",
       "u": 0.56550067,
       "v": 0.52398685,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-135"
     },
     {
       "lotId": "Lote_136",
@@ -1303,7 +1464,8 @@
       "greenPolygonId": "Lote_155",
       "u": 0.55304071,
       "v": 0.51184261,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-136"
     },
     {
       "lotId": "Lote_137",
@@ -1311,7 +1473,8 @@
       "greenPolygonId": "Lote_149",
       "u": 0.53903316,
       "v": 0.49829357,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-137"
     },
     {
       "lotId": "Lote_138",
@@ -1319,7 +1482,8 @@
       "greenPolygonId": "Lote_145",
       "u": 0.52702276,
       "v": 0.48749034,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-138"
     },
     {
       "lotId": "Lote_139",
@@ -1327,7 +1491,8 @@
       "greenPolygonId": "Lote_139",
       "u": 0.51478091,
       "v": 0.47629967,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-139"
     },
     {
       "lotId": "Lote_140",
@@ -1335,7 +1500,8 @@
       "greenPolygonId": "Lote_128",
       "u": 0.50345335,
       "v": 0.46477858,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-140"
     },
     {
       "lotId": "Lote_141",
@@ -1343,7 +1509,8 @@
       "greenPolygonId": "Lote_121",
       "u": 0.48989764,
       "v": 0.45318141,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-141"
     },
     {
       "lotId": "Lote_142",
@@ -1351,7 +1518,8 @@
       "greenPolygonId": "Lote_115",
       "u": 0.47772464,
       "v": 0.44112903,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-142"
     },
     {
       "lotId": "Lote_143",
@@ -1359,7 +1527,8 @@
       "greenPolygonId": "Lote_109",
       "u": 0.46402303,
       "v": 0.42845548,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-143"
     },
     {
       "lotId": "Lote_144",
@@ -1367,7 +1536,8 @@
       "greenPolygonId": "Lote_077",
       "u": 0.4521113,
       "v": 0.41729136,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-144"
     },
     {
       "lotId": "Lote_145",
@@ -1375,7 +1545,8 @@
       "greenPolygonId": "Lote_094",
       "u": 0.43629216,
       "v": 0.38898956,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QE-145"
     },
     {
       "lotId": "Lote_146",
@@ -1383,7 +1554,8 @@
       "greenPolygonId": "Lote_035",
       "u": 0.5039329,
       "v": 0.28250027,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-146"
     },
     {
       "lotId": "Lote_147",
@@ -1391,7 +1563,8 @@
       "greenPolygonId": "Lote_040",
       "u": 0.51062035,
       "v": 0.30959104,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-147"
     },
     {
       "lotId": "Lote_148",
@@ -1399,7 +1572,8 @@
       "greenPolygonId": "Lote_063",
       "u": 0.52373149,
       "v": 0.32140364,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-148"
     },
     {
       "lotId": "Lote_149",
@@ -1407,7 +1581,8 @@
       "greenPolygonId": "Lote_049",
       "u": 0.53708803,
       "v": 0.33303319,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-149"
     },
     {
       "lotId": "Lote_150",
@@ -1415,7 +1590,8 @@
       "greenPolygonId": "Lote_074",
       "u": 0.54929473,
       "v": 0.34482817,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-150"
     },
     {
       "lotId": "Lote_151",
@@ -1423,7 +1599,8 @@
       "greenPolygonId": "Lote_080",
       "u": 0.56159054,
       "v": 0.35657355,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-151"
     },
     {
       "lotId": "Lote_152",
@@ -1431,7 +1608,8 @@
       "greenPolygonId": "Lote_085",
       "u": 0.57412597,
       "v": 0.36883705,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-152"
     },
     {
       "lotId": "Lote_153",
@@ -1439,7 +1617,8 @@
       "greenPolygonId": "Lote_091",
       "u": 0.58658377,
       "v": 0.38085912,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-153"
     },
     {
       "lotId": "Lote_154",
@@ -1447,7 +1626,8 @@
       "greenPolygonId": "Lote_097",
       "u": 0.59990292,
       "v": 0.3928011,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-154"
     },
     {
       "lotId": "Lote_155",
@@ -1455,7 +1635,8 @@
       "greenPolygonId": "Lote_102",
       "u": 0.61209493,
       "v": 0.40492565,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-155"
     },
     {
       "lotId": "Lote_156",
@@ -1463,7 +1644,8 @@
       "greenPolygonId": "Lote_108",
       "u": 0.62548401,
       "v": 0.41585235,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-156"
     },
     {
       "lotId": "Lote_157",
@@ -1471,7 +1653,8 @@
       "greenPolygonId": "Lote_089",
       "u": 0.63840048,
       "v": 0.4283108,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-157"
     },
     {
       "lotId": "Lote_158",
@@ -1479,7 +1662,8 @@
       "greenPolygonId": "Lote_120",
       "u": 0.65070109,
       "v": 0.44016137,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-158"
     },
     {
       "lotId": "Lote_159",
@@ -1487,7 +1671,8 @@
       "greenPolygonId": "Lote_127",
       "u": 0.6629331,
       "v": 0.45151621,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-159"
     },
     {
       "lotId": "Lote_160",
@@ -1495,7 +1680,8 @@
       "greenPolygonId": "Lote_112",
       "u": 0.67650327,
       "v": 0.46305512,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-160"
     },
     {
       "lotId": "Lote_161",
@@ -1503,7 +1689,8 @@
       "greenPolygonId": "Lote_138",
       "u": 0.68913468,
       "v": 0.47524849,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-161"
     },
     {
       "lotId": "Lote_162",
@@ -1511,7 +1698,8 @@
       "greenPolygonId": "Lote_144",
       "u": 0.70149487,
       "v": 0.48727282,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-162"
     },
     {
       "lotId": "Lote_163",
@@ -1519,7 +1707,8 @@
       "greenPolygonId": "Lote_150",
       "u": 0.71413902,
       "v": 0.4986635,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-163"
     },
     {
       "lotId": "Lote_164",
@@ -1527,7 +1716,8 @@
       "greenPolygonId": "Lote_154",
       "u": 0.72615872,
       "v": 0.51116693,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-164"
     },
     {
       "lotId": "Lote_165",
@@ -1535,7 +1725,8 @@
       "greenPolygonId": "Lote_157",
       "u": 0.73935917,
       "v": 0.52266543,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-165"
     },
     {
       "lotId": "Lote_166",
@@ -1543,7 +1734,8 @@
       "greenPolygonId": "Lote_160",
       "u": 0.75274789,
       "v": 0.53400022,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-166"
     },
     {
       "lotId": "Lote_167",
@@ -1551,7 +1743,8 @@
       "greenPolygonId": "Lote_168",
       "u": 0.76528029,
       "v": 0.54612483,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-167"
     },
     {
       "lotId": "Lote_168",
@@ -1559,7 +1752,8 @@
       "greenPolygonId": "Lote_173",
       "u": 0.77806967,
       "v": 0.55741618,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-168"
     },
     {
       "lotId": "Lote_169",
@@ -1567,7 +1761,8 @@
       "greenPolygonId": "Lote_166",
       "u": 0.80902123,
       "v": 0.57365831,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-169"
     },
     {
       "lotId": "Lote_170",
@@ -1575,7 +1770,8 @@
       "greenPolygonId": "Lote_162",
       "u": 0.83404398,
       "v": 0.55146574,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-170"
     },
     {
       "lotId": "Lote_171",
@@ -1583,7 +1779,8 @@
       "greenPolygonId": "Lote_153",
       "u": 0.84961215,
       "v": 0.53805673,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-171"
     },
     {
       "lotId": "Lote_172",
@@ -1591,7 +1788,8 @@
       "greenPolygonId": "Lote_151",
       "u": 0.81752089,
       "v": 0.50741568,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-172"
     },
     {
       "lotId": "Lote_173",
@@ -1599,7 +1797,8 @@
       "greenPolygonId": "Lote_146",
       "u": 0.80428475,
       "v": 0.49572214,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-173"
     },
     {
       "lotId": "Lote_174",
@@ -1607,7 +1806,8 @@
       "greenPolygonId": "Lote_142",
       "u": 0.79114811,
       "v": 0.48378654,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-174"
     },
     {
       "lotId": "Lote_175",
@@ -1615,7 +1815,8 @@
       "greenPolygonId": "Lote_136",
       "u": 0.77883099,
       "v": 0.47228079,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-175"
     },
     {
       "lotId": "Lote_176",
@@ -1623,7 +1824,8 @@
       "greenPolygonId": "Lote_130",
       "u": 0.76534684,
       "v": 0.46031602,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-176"
     },
     {
       "lotId": "Lote_177",
@@ -1631,7 +1833,8 @@
       "greenPolygonId": "Lote_125",
       "u": 0.75313921,
       "v": 0.44864425,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-177"
     },
     {
       "lotId": "Lote_178",
@@ -1639,7 +1842,8 @@
       "greenPolygonId": "Lote_118",
       "u": 0.74054777,
       "v": 0.43655096,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-178"
     },
     {
       "lotId": "Lote_179",
@@ -1647,7 +1851,8 @@
       "greenPolygonId": "Lote_093",
       "u": 0.72675016,
       "v": 0.42467899,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-179"
     },
     {
       "lotId": "Lote_180",
@@ -1655,7 +1860,8 @@
       "greenPolygonId": "Lote_106",
       "u": 0.71480457,
       "v": 0.41289799,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-180"
     },
     {
       "lotId": "Lote_181",
@@ -1663,7 +1869,8 @@
       "greenPolygonId": "Lote_100",
       "u": 0.70171849,
       "v": 0.40121318,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-181"
     },
     {
       "lotId": "Lote_182",
@@ -1671,7 +1878,8 @@
       "greenPolygonId": "Lote_095",
       "u": 0.68905419,
       "v": 0.38906159,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-182"
     },
     {
       "lotId": "Lote_183",
@@ -1679,7 +1887,8 @@
       "greenPolygonId": "Lote_071",
       "u": 0.67666169,
       "v": 0.37785964,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-183"
     },
     {
       "lotId": "Lote_184",
@@ -1687,7 +1896,8 @@
       "greenPolygonId": "Lote_084",
       "u": 0.66272173,
       "v": 0.36527936,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-184"
     },
     {
       "lotId": "Lote_185",
@@ -1695,7 +1905,8 @@
       "greenPolygonId": "Lote_079",
       "u": 0.65056204,
       "v": 0.35392642,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-185"
     },
     {
       "lotId": "Lote_186",
@@ -1703,7 +1914,8 @@
       "greenPolygonId": "Lote_072",
       "u": 0.63807842,
       "v": 0.34202908,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-186"
     },
     {
       "lotId": "Lote_187",
@@ -1711,7 +1923,8 @@
       "greenPolygonId": "Lote_068",
       "u": 0.62577326,
       "v": 0.33026401,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-187"
     },
     {
       "lotId": "Lote_188",
@@ -1719,7 +1932,8 @@
       "greenPolygonId": "Lote_062",
       "u": 0.6124461,
       "v": 0.318208,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-188"
     },
     {
       "lotId": "Lote_189",
@@ -1727,7 +1941,8 @@
       "greenPolygonId": "Lote_057",
       "u": 0.59961025,
       "v": 0.30647098,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-189"
     },
     {
       "lotId": "Lote_190",
@@ -1735,7 +1950,8 @@
       "greenPolygonId": "Lote_053",
       "u": 0.58794743,
       "v": 0.29424939,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-190"
     },
     {
       "lotId": "Lote_191",
@@ -1743,7 +1959,8 @@
       "greenPolygonId": "Lote_037",
       "u": 0.57496899,
       "v": 0.28284637,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-191"
     },
     {
       "lotId": "Lote_192",
@@ -1751,7 +1968,8 @@
       "greenPolygonId": "Lote_045",
       "u": 0.56267992,
       "v": 0.2714811,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-192"
     },
     {
       "lotId": "Lote_193",
@@ -1759,7 +1977,8 @@
       "greenPolygonId": "Lote_031",
       "u": 0.54942117,
       "v": 0.25957618,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-193"
     },
     {
       "lotId": "Lote_194",
@@ -1767,7 +1986,8 @@
       "greenPolygonId": "Lote_025",
       "u": 0.5200765,
       "v": 0.23818111,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QF-194"
     },
     {
       "lotId": "Lote_195",
@@ -1775,7 +1995,8 @@
       "greenPolygonId": "Lote_011",
       "u": 0.53758785,
       "v": 0.1719557,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-195"
     },
     {
       "lotId": "Lote_196",
@@ -1783,7 +2004,8 @@
       "greenPolygonId": "Lote_019",
       "u": 0.54577772,
       "v": 0.19902047,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-196"
     },
     {
       "lotId": "Lote_197",
@@ -1791,7 +2013,8 @@
       "greenPolygonId": "Lote_027",
       "u": 0.5585101,
       "v": 0.2104401,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-197"
     },
     {
       "lotId": "Lote_198",
@@ -1799,7 +2022,8 @@
       "greenPolygonId": "Lote_020",
       "u": 0.57124963,
       "v": 0.2221923,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-198"
     },
     {
       "lotId": "Lote_199",
@@ -1807,7 +2031,8 @@
       "greenPolygonId": "Lote_034",
       "u": 0.58404808,
       "v": 0.234031,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-199"
     },
     {
       "lotId": "Lote_200",
@@ -1815,7 +2040,8 @@
       "greenPolygonId": "Lote_026",
       "u": 0.59736837,
       "v": 0.24635591,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-200"
     },
     {
       "lotId": "Lote_201",
@@ -1823,7 +2049,8 @@
       "greenPolygonId": "Lote_039",
       "u": 0.60970553,
       "v": 0.25826683,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-201"
     },
     {
       "lotId": "Lote_202",
@@ -1831,7 +2058,8 @@
       "greenPolygonId": "Lote_043",
       "u": 0.62271621,
       "v": 0.2697534,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-202"
     },
     {
       "lotId": "Lote_203",
@@ -1839,7 +2067,8 @@
       "greenPolygonId": "Lote_047",
       "u": 0.63495119,
       "v": 0.28107351,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-203"
     },
     {
       "lotId": "Lote_204",
@@ -1847,7 +2076,8 @@
       "greenPolygonId": "Lote_052",
       "u": 0.64754132,
       "v": 0.29338832,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-204"
     },
     {
       "lotId": "Lote_205",
@@ -1855,7 +2085,8 @@
       "greenPolygonId": "Lote_055",
       "u": 0.66109232,
       "v": 0.3050022,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-205"
     },
     {
       "lotId": "Lote_206",
@@ -1863,7 +2094,8 @@
       "greenPolygonId": "Lote_061",
       "u": 0.67333693,
       "v": 0.31675681,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-206"
     },
     {
       "lotId": "Lote_207",
@@ -1871,7 +2103,8 @@
       "greenPolygonId": "Lote_067",
       "u": 0.68701828,
       "v": 0.32792072,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-207"
     },
     {
       "lotId": "Lote_208",
@@ -1879,7 +2112,8 @@
       "greenPolygonId": "Lote_051",
       "u": 0.69878416,
       "v": 0.34040595,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-208"
     },
     {
       "lotId": "Lote_209",
@@ -1887,7 +2121,8 @@
       "greenPolygonId": "Lote_076",
       "u": 0.71138145,
       "v": 0.35242219,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-209"
     },
     {
       "lotId": "Lote_210",
@@ -1895,7 +2130,8 @@
       "greenPolygonId": "Lote_083",
       "u": 0.72408643,
       "v": 0.36455731,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-210"
     },
     {
       "lotId": "Lote_211",
@@ -1903,7 +2139,8 @@
       "greenPolygonId": "Lote_066",
       "u": 0.73735496,
       "v": 0.37618697,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-211"
     },
     {
       "lotId": "Lote_212",
@@ -1911,7 +2148,8 @@
       "greenPolygonId": "Lote_088",
       "u": 0.74950721,
       "v": 0.38778301,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-212"
     },
     {
       "lotId": "Lote_213",
@@ -1919,7 +2157,8 @@
       "greenPolygonId": "Lote_099",
       "u": 0.76187529,
       "v": 0.39926962,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-213"
     },
     {
       "lotId": "Lote_214",
@@ -1927,7 +2166,8 @@
       "greenPolygonId": "Lote_105",
       "u": 0.77572201,
       "v": 0.41178621,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-214"
     },
     {
       "lotId": "Lote_215",
@@ -1935,7 +2175,8 @@
       "greenPolygonId": "Lote_111",
       "u": 0.78784763,
       "v": 0.42299282,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-215"
     },
     {
       "lotId": "Lote_216",
@@ -1943,7 +2184,8 @@
       "greenPolygonId": "Lote_117",
       "u": 0.80066871,
       "v": 0.43509666,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-216"
     },
     {
       "lotId": "Lote_217",
@@ -1951,7 +2193,8 @@
       "greenPolygonId": "Lote_123",
       "u": 0.81273565,
       "v": 0.4467097,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-217"
     },
     {
       "lotId": "Lote_218",
@@ -1959,7 +2202,8 @@
       "greenPolygonId": "Lote_129",
       "u": 0.8260292,
       "v": 0.45869177,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-218"
     },
     {
       "lotId": "Lote_219",
@@ -1967,7 +2211,8 @@
       "greenPolygonId": "Lote_135",
       "u": 0.84024337,
       "v": 0.4707401,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-219"
     },
     {
       "lotId": "Lote_220",
@@ -1975,7 +2220,8 @@
       "greenPolygonId": "Lote_140",
       "u": 0.85235793,
       "v": 0.48124854,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-220"
     },
     {
       "lotId": "Lote_221",
@@ -1983,7 +2229,8 @@
       "greenPolygonId": "Lote_148",
       "u": 0.88289589,
       "v": 0.51097785,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-221"
     },
     {
       "lotId": "Lote_222",
@@ -1991,7 +2238,8 @@
       "greenPolygonId": "Lote_141",
       "u": 0.89914468,
       "v": 0.49686373,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-222"
     },
     {
       "lotId": "Lote_223",
@@ -1999,7 +2247,8 @@
       "greenPolygonId": "Lote_134",
       "u": 0.91449387,
       "v": 0.48307519,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-223"
     },
     {
       "lotId": "Lote_224",
@@ -2007,7 +2256,8 @@
       "greenPolygonId": "Lote_124",
       "u": 0.93098172,
       "v": 0.46963036,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-224"
     },
     {
       "lotId": "Lote_225",
@@ -2015,7 +2265,8 @@
       "greenPolygonId": "Lote_122",
       "u": 0.9032528,
       "v": 0.44417175,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-225"
     },
     {
       "lotId": "Lote_226",
@@ -2023,7 +2274,8 @@
       "greenPolygonId": "Lote_116",
       "u": 0.89032941,
       "v": 0.43218575,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-226"
     },
     {
       "lotId": "Lote_227",
@@ -2031,7 +2283,8 @@
       "greenPolygonId": "Lote_110",
       "u": 0.87870395,
       "v": 0.42026627,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-227"
     },
     {
       "lotId": "Lote_228",
@@ -2039,7 +2292,8 @@
       "greenPolygonId": "Lote_104",
       "u": 0.86456373,
       "v": 0.4084468,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-228"
     },
     {
       "lotId": "Lote_229",
@@ -2047,7 +2301,8 @@
       "greenPolygonId": "Lote_098",
       "u": 0.85218598,
       "v": 0.39594498,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-229"
     },
     {
       "lotId": "Lote_230",
@@ -2055,7 +2310,8 @@
       "greenPolygonId": "Lote_092",
       "u": 0.83918602,
       "v": 0.38469114,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-230"
     },
     {
       "lotId": "Lote_231",
@@ -2063,7 +2319,8 @@
       "greenPolygonId": "Lote_086",
       "u": 0.82713933,
       "v": 0.37305149,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-231"
     },
     {
       "lotId": "Lote_232",
@@ -2071,7 +2328,8 @@
       "greenPolygonId": "Lote_082",
       "u": 0.81310159,
       "v": 0.36164724,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-232"
     },
     {
       "lotId": "Lote_233",
@@ -2079,7 +2337,8 @@
       "greenPolygonId": "Lote_075",
       "u": 0.80088121,
       "v": 0.34911549,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-233"
     },
     {
       "lotId": "Lote_234",
@@ -2087,7 +2346,8 @@
       "greenPolygonId": "Lote_070",
       "u": 0.78863138,
       "v": 0.33750028,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-234"
     },
     {
       "lotId": "Lote_235",
@@ -2095,7 +2355,8 @@
       "greenPolygonId": "Lote_060",
       "u": 0.77536497,
       "v": 0.32533311,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-235"
     },
     {
       "lotId": "Lote_236",
@@ -2103,7 +2364,8 @@
       "greenPolygonId": "Lote_044",
       "u": 0.76335613,
       "v": 0.31362873,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-236"
     },
     {
       "lotId": "Lote_237",
@@ -2111,7 +2373,8 @@
       "greenPolygonId": "Lote_054",
       "u": 0.75044421,
       "v": 0.30220251,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-237"
     },
     {
       "lotId": "Lote_238",
@@ -2119,7 +2382,8 @@
       "greenPolygonId": "Lote_046",
       "u": 0.73761356,
       "v": 0.29004209,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-238"
     },
     {
       "lotId": "Lote_239",
@@ -2127,7 +2391,8 @@
       "greenPolygonId": "Lote_042",
       "u": 0.724742,
       "v": 0.27808621,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-239"
     },
     {
       "lotId": "Lote_240",
@@ -2135,7 +2400,8 @@
       "greenPolygonId": "Lote_030",
       "u": 0.71187606,
       "v": 0.26650977,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-240"
     },
     {
       "lotId": "Lote_241",
@@ -2143,7 +2409,8 @@
       "greenPolygonId": "Lote_038",
       "u": 0.69973988,
       "v": 0.25435037,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-241"
     },
     {
       "lotId": "Lote_242",
@@ -2151,7 +2418,8 @@
       "greenPolygonId": "Lote_036",
       "u": 0.68704577,
       "v": 0.24318937,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-242"
     },
     {
       "lotId": "Lote_243",
@@ -2159,7 +2427,8 @@
       "greenPolygonId": "Lote_032",
       "u": 0.6741904,
       "v": 0.23027295,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-243"
     },
     {
       "lotId": "Lote_244",
@@ -2167,7 +2436,8 @@
       "greenPolygonId": "Lote_029",
       "u": 0.66070522,
       "v": 0.2193374,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-244"
     },
     {
       "lotId": "Lote_245",
@@ -2175,7 +2445,8 @@
       "greenPolygonId": "Lote_018",
       "u": 0.64909163,
       "v": 0.20869138,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-245"
     },
     {
       "lotId": "Lote_246",
@@ -2183,7 +2454,8 @@
       "greenPolygonId": "Lote_024",
       "u": 0.6345599,
       "v": 0.19652342,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-246"
     },
     {
       "lotId": "Lote_247",
@@ -2191,7 +2463,8 @@
       "greenPolygonId": "Lote_021",
       "u": 0.62077575,
       "v": 0.18514841,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-247"
     },
     {
       "lotId": "Lote_248",
@@ -2199,7 +2472,8 @@
       "greenPolygonId": "Lote_010",
       "u": 0.60873771,
       "v": 0.17246906,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-248"
     },
     {
       "lotId": "Lote_249",
@@ -2207,7 +2481,8 @@
       "greenPolygonId": "Lote_015",
       "u": 0.5965779,
       "v": 0.16119564,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-249"
     },
     {
       "lotId": "Lote_250",
@@ -2215,7 +2490,8 @@
       "greenPolygonId": "Lote_014",
       "u": 0.58490431,
       "v": 0.14822466,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-250"
     },
     {
       "lotId": "Lote_251",
@@ -2223,7 +2499,8 @@
       "greenPolygonId": "Lote_005",
       "u": 0.55333162,
       "v": 0.12648862,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QG-251"
     },
     {
       "lotId": "Lote_252",
@@ -2231,7 +2508,8 @@
       "greenPolygonId": "Lote_306",
       "u": 0.53875289,
       "v": 0.05563634,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QH-252"
     },
     {
       "lotId": "Lote_253",
@@ -2239,7 +2517,8 @@
       "greenPolygonId": "Lote_307",
       "u": 0.58573892,
       "v": 0.08449114,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QH-253"
     },
     {
       "lotId": "Lote_254",
@@ -2247,7 +2526,8 @@
       "greenPolygonId": "Lote_308",
       "u": 0.63108438,
       "v": 0.12514361,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QH-254"
     },
     {
       "lotId": "Lote_255",
@@ -2255,7 +2535,8 @@
       "greenPolygonId": "Lote_309",
       "u": 0.68286381,
       "v": 0.1701921,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QH-255"
     },
     {
       "lotId": "Lote_256",
@@ -2263,7 +2544,8 @@
       "greenPolygonId": "Lote_310",
       "u": 0.73383237,
       "v": 0.22011844,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QH-256"
     },
     {
       "lotId": "Lote_257",
@@ -2271,7 +2553,8 @@
       "greenPolygonId": "Lote_311",
       "u": 0.78722127,
       "v": 0.2697339,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QH-257"
     },
     {
       "lotId": "Lote_258",
@@ -2279,7 +2562,8 @@
       "greenPolygonId": "Lote_059",
       "u": 0.83693991,
       "v": 0.31331664,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QH-258"
     },
     {
       "lotId": "Lote_259",
@@ -2287,7 +2571,8 @@
       "greenPolygonId": "Lote_081",
       "u": 0.88831014,
       "v": 0.36139125,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QH-259"
     },
     {
       "lotId": "Lote_260",
@@ -2295,7 +2580,8 @@
       "greenPolygonId": "Lote_103",
       "u": 0.94124725,
       "v": 0.40819676,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QH-260"
     },
     {
       "lotId": "Lote_261",
@@ -2303,7 +2589,8 @@
       "greenPolygonId": "Lote_312",
       "u": 0.98158363,
       "v": 0.44851042,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QH-261"
     },
     {
       "lotId": "Lote_262",
@@ -2311,7 +2598,8 @@
       "greenPolygonId": "Lote_033",
       "u": 0.45731241,
       "v": 0.25970706,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QI-262"
     },
     {
       "lotId": "Lote_263",
@@ -2319,7 +2607,8 @@
       "greenPolygonId": "Lote_028",
       "u": 0.46655832,
       "v": 0.23384756,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QI-263"
     },
     {
       "lotId": "Lote_264",
@@ -2327,7 +2616,8 @@
       "greenPolygonId": "Lote_022",
       "u": 0.47240181,
       "v": 0.21092181,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QI-264"
     },
     {
       "lotId": "Lote_265",
@@ -2335,7 +2625,8 @@
       "greenPolygonId": "Lote_016",
       "u": 0.47975671,
       "v": 0.18876942,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QI-265"
     },
     {
       "lotId": "Lote_266",
@@ -2343,7 +2634,8 @@
       "greenPolygonId": "Lote_012",
       "u": 0.48665481,
       "v": 0.16585124,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QI-266"
     },
     {
       "lotId": "Lote_267",
@@ -2351,7 +2643,8 @@
       "greenPolygonId": "Lote_008",
       "u": 0.49361459,
       "v": 0.14086429,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QI-267"
     },
     {
       "lotId": "Lote_268",
@@ -2359,7 +2652,8 @@
       "greenPolygonId": "Lote_006",
       "u": 0.50011107,
       "v": 0.11856893,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QI-268"
     },
     {
       "lotId": "Lote_269",
@@ -2367,7 +2661,8 @@
       "greenPolygonId": "Lote_003",
       "u": 0.50620212,
       "v": 0.09703296,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QI-269"
     },
     {
       "lotId": "Lote_270",
@@ -2375,7 +2670,8 @@
       "greenPolygonId": "Lote_065",
       "u": 0.42365855,
       "v": 0.32418709,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QJ-270"
     },
     {
       "lotId": "Lote_271",
@@ -2383,7 +2679,8 @@
       "greenPolygonId": "Lote_078",
       "u": 0.40366704,
       "v": 0.3527054,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QJ-271"
     },
     {
       "lotId": "Lote_272",
@@ -2391,7 +2688,8 @@
       "greenPolygonId": "Lote_087",
       "u": 0.37864448,
       "v": 0.3730605,
-      "anchor": "pdf-circle"
+      "anchor": "pdf-circle",
+      "officialLabel": "QJ-272"
     }
   ]
 }

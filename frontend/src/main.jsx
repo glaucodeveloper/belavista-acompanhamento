@@ -37,6 +37,36 @@ const emptyData = () => ({ lots: [], materials: [], services: [], transfers: [],
 const money = value => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const roundMoney = value => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 const valueOf = (row, key, kind) => kind === 'currency' || key === 'amount' || key === 'unitPrice' || key === 'total' ? money(key === 'total' ? row.total ?? Number(row.quantity || 0) * Number(row.unitPrice || 0) : row[key]) : key === 'area' ? `${Number(row[key] || 0).toLocaleString('pt-BR')} m²` : key === 'date' && row[key] ? new Date(`${row[key]}T12:00:00`).toLocaleDateString('pt-BR') : row[key] || '—';
+const legacyLotLabels = new Map([['QF-198', 'QF-189'], ['QG-340', 'QG-240'], ['QG-341', 'QG-241'], ['QG-342', 'QG-242']]);
+const priceCatalogByLabel = new Map(priceCatalog.map(lot => [lot.label, lot]));
+
+function reconcileLotCatalog(savedLots) {
+  const source = Array.isArray(savedLots) ? savedLots : [];
+  const byLabel = new Map();
+  let qf186Count = 0;
+  for (const row of source) {
+    let label = String(row?.id || row?.label || '');
+    if (!priceCatalogByLabel.has(label) && row?.label) label = String(row.label);
+    if (label === 'QF-186') {
+      qf186Count += 1;
+      if (qf186Count > 1) label = 'QF-187';
+    } else label = legacyLotLabels.get(label) || label;
+    if (!priceCatalogByLabel.has(label) || byLabel.has(label)) continue;
+    byLabel.set(label, row);
+  }
+  const lots = priceCatalog.map(official => {
+    const saved = byLabel.get(official.label);
+    return {
+      ...(saved || {}), ...official, id: official.label,
+      status: saved?.status ?? 'Disponível',
+      contractPrice: saved?.contractPrice ?? '',
+      received: saved?.received ?? '',
+    };
+  });
+  const fields = ['id', 'label', 'lot', 'quadra', 'area', 'price'];
+  const signature = rows => JSON.stringify(rows.map(row => fields.map(field => row?.[field] ?? null)));
+  return { lots, changed: signature(source) !== signature(lots) };
+}
 
 function MapView({ onLotSelect, className = '', selectionMode = false, selectedLotIds = [], onSelectionChange, selectionColors = {} }) {
   const ref = useRef(null);
@@ -84,8 +114,7 @@ function MapPrintModal({ lots, onClose }) {
   const idsForDisplay = selectedIds.map(id => {
     const mapEntry = mapLotIndex.mappings.find(entry => entry.lotId === id);
     const number = mapEntry?.number;
-    const candidates = lots.filter(lot => Number(lot.lot) === Number(number));
-    const match = candidates.length === 1 ? candidates[0] : null;
+    const match = lots.find(lot => lot.label === mapEntry?.officialLabel) || null;
     return { id, number, match };
   }).sort((a, b) => String(a.id).localeCompare(String(b.id), 'pt-BR', { numeric: true }));
   return createPortal(<div className="map-print-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
@@ -100,14 +129,14 @@ function MapPrintModal({ lots, onClose }) {
             {legends.map(item => <div className="map-print-legend-edit" key={item.id}><input type="color" aria-label="Cor da legenda" value={item.color} onChange={event => updateLegend(item.id, { color: event.target.value })} /><input aria-label="Texto da legenda" value={item.label} placeholder="Descrição da legenda" onChange={event => updateLegend(item.id, { label: event.target.value })} /><button type="button" className="icon-button subtle" aria-label="Remover legenda" disabled={legends.length < 2} onClick={() => removeLegend(item.id)}><Trash2 size={14} /></button></div>)}
           </section>
           <section className="map-print-selected"><div className="map-print-subheading"><strong>Áreas selecionadas</strong><span>{selectedIds.length}</span></div>
-            {!selectedIds.length ? <p className="map-print-empty">Clique nos lotes do mapa para adicioná-los à impressão.</p> : <ul>{idsForDisplay.map(({ id, number, match }) => <li key={id}><span><strong>{match?.label || `Lote ${number}`}</strong><small>{match?.quadra || id}</small></span><select aria-label={`Legenda do lote ${number}`} value={areaLegend[id] || legends[0]?.id || ''} onChange={event => setAreaLegend(current => ({ ...current, [id]: event.target.value }))}>{legends.map(item => <option value={item.id} key={item.id}>{item.label || 'Legenda sem nome'}</option>)}</select><button type="button" className="icon-button subtle" aria-label={`Remover lote ${number}`} onClick={() => setSelectedIds(current => current.filter(value => value !== id))}><X size={14} /></button></li>)}</ul>}
+            {!selectedIds.length ? <p className="map-print-empty">Clique nos lotes do mapa para adicioná-los à impressão.</p> : <ul>{idsForDisplay.map(({ id, number, match }) => <li key={id}><span><strong>{match?.label || `Lote ${number}`}</strong><small>{match ? `${match.quadra} · ${Number(match.area).toLocaleString('pt-BR')} m²` : id}</small></span><select aria-label={`Legenda do lote ${number}`} value={areaLegend[id] || legends[0]?.id || ''} onChange={event => setAreaLegend(current => ({ ...current, [id]: event.target.value }))}>{legends.map(item => <option value={item.id} key={item.id}>{item.label || 'Legenda sem nome'}</option>)}</select><button type="button" className="icon-button subtle" aria-label={`Remover lote ${number}`} onClick={() => setSelectedIds(current => current.filter(value => value !== id))}><X size={14} /></button></li>)}</ul>}
           </section>
         </aside>
       </div>
       <footer className="map-print-footer"><span>{selectedIds.length ? `${selectedIds.length} áreas incluídas` : 'Nenhuma área selecionada'}</span><div><button type="button" className="quiet-button" onClick={onClose}>Cancelar</button><button type="button" className="primary-button" disabled={!selectedIds.length} onClick={() => window.print()}><Printer size={15} /> Imprimir mapa</button></div></footer>
       <article className="map-print-sheet" aria-hidden="true">
         <header><img src={aliancaLogo} alt="" /><div><h1>{title || 'Mapa do loteamento'}</h1><p>{subtitle || 'Aliança Park'} · Emitido em {new Date().toLocaleDateString('pt-BR')}</p></div></header>
-        <div className="map-print-sheet-content"><div className="map-print-sheet-map"><MapView className="map-print-map map-print-static" selectionMode selectedLotIds={selectedIds} selectionColors={selectedColors} /></div><aside><h2>Legenda</h2>{legends.filter(item => item.label.trim()).map(item => <div className="map-print-sheet-legend" key={item.id}><i style={{ background: item.color }} />{item.label}</div>)}<h2>Áreas identificadas</h2><ol>{idsForDisplay.map(({ id, number, match }) => <li key={id}><strong>{match?.label || `Lote ${number}`}</strong><span>{match?.quadra || id}</span><i style={{ background: legends.find(item => item.id === areaLegend[id])?.color || legends[0]?.color }} /></li>)}</ol></aside></div>
+        <div className="map-print-sheet-content"><div className="map-print-sheet-map"><MapView className="map-print-map map-print-static" selectionMode selectedLotIds={selectedIds} selectionColors={selectedColors} /></div><aside><h2>Legenda</h2>{legends.filter(item => item.label.trim()).map(item => <div className="map-print-sheet-legend" key={item.id}><i style={{ background: item.color }} />{item.label}</div>)}<h2>Áreas identificadas</h2><ol>{idsForDisplay.map(({ id, number, match }) => <li key={id}><strong>{match?.label || `Lote ${number}`}</strong><span>{match ? `${match.quadra} · ${Number(match.area).toLocaleString('pt-BR')} m²` : id}</span><i style={{ background: legends.find(item => item.id === areaLegend[id])?.color || legends[0]?.color }} /></li>)}</ol></aside></div>
         <footer>Aliança Park · Mapa de referência operacional</footer>
       </article>
     </section>
@@ -123,8 +152,13 @@ function LotDevelopmentPage({ lots, onSave }) {
   const [error, setError] = useState('');
   const [printMapOpen, setPrintMapOpen] = useState(false);
   const groups = Object.groupBy(lots, lot => lot.quadra || 'Sem quadra');
-  const candidates = selection ? lots.filter(lot => Number(lot.lot) === Number(selection.number) || lot.label === selection.lotId) : [];
-  const selected = candidates.find(lot => lot.id === choice) || candidates.find(lot => lot.id === selection?.lotId) || (candidates.length === 1 ? candidates[0] : null);
+  const candidates = selection ? selection.catalogLabel
+    ? lots.filter(lot => lot.label === selection.catalogLabel)
+    : lots.filter(lot => Number(lot.lot) === Number(selection.number) || lot.label === selection.lotId)
+    : [];
+  const selected = candidates.find(lot => lot.id === choice)
+    || candidates.find(lot => lot.id === (selection?.catalogLabel || selection?.lotId))
+    || (candidates.length === 1 ? candidates[0] : null);
   useEffect(() => { if (selected) setStatus(selected.status || 'Disponível'); }, [selected?.id]);
   const openLot = useCallback(selectionData => { setSelection(selectionData); setChoice(''); setError(''); setEntry({ amount: '', date: new Date().toISOString().slice(0, 10), description: '' }); }, []);
   async function save(event) {
@@ -247,18 +281,25 @@ function App() {
   async function loadRemoteData() {
     let stored = await sync.read();
     let loaded = { ...emptyData(), ...stored.data };
-    let needsSeed = false;
-    if (!Array.isArray(stored.data?.lots)) {
-      loaded.lots = priceCatalog.map(item => ({ id: item.label, ...item, status: 'Disponível', contractPrice: '', received: '' }));
-      needsSeed = true;
-    }
+    const lotCatalog = reconcileLotCatalog(stored.data?.lots);
+    loaded.lots = lotCatalog.lots;
+    let needsSeed = !Array.isArray(stored.data?.lots) || lotCatalog.changed;
     if (!Array.isArray(stored.data?.stages)) {
       loaded.stages = archivedStageData.stages;
       needsSeed = true;
     }
     if (needsSeed) {
       try { stored = await sync.write(loaded, stored.revision); }
-      catch (error) { if (error.status !== 409) throw error; stored = await sync.read(); loaded = { ...emptyData(), ...stored.data }; }
+      catch (error) {
+        if (error.status !== 409) throw error;
+        stored = await sync.read();
+        loaded = { ...emptyData(), ...stored.data };
+        const latestLots = reconcileLotCatalog(stored.data?.lots);
+        loaded.lots = latestLots.lots;
+        const latestStagesMissing = !Array.isArray(stored.data?.stages);
+        if (latestStagesMissing) loaded.stages = archivedStageData.stages;
+        if (latestLots.changed || latestStagesMissing) stored = await sync.write(loaded, stored.revision);
+      }
     }
     dataRef.current = loaded; revisionRef.current = stored.revision;
     setData(loaded); setRevision(stored.revision);

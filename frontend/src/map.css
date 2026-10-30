@@ -46,8 +46,10 @@
 .lot-map-area { fill: transparent; stroke: transparent; stroke-width: 1.4px; vector-effect: non-scaling-stroke; pointer-events: all; }
 .lot-map-area:hover { fill: #4d91ff45; stroke: #fff; stroke-width: 2px; }
 .lot-map-area.is-selected { fill: #2878ff70; stroke: #fff268; stroke-width: 2.6px; }
-.lot-map-number { pointer-events: none; }
+.lot-map-number, .lot-map-area-label, .lot-map-block-label { pointer-events: none; }
 .lot-map-number { text-anchor: middle; dominant-baseline: central; font: 700 16px system-ui, sans-serif; fill: white; stroke: #0b1c16; stroke-width: 3px; paint-order: stroke; }
+.lot-map-area-label { text-anchor: start; dominant-baseline: central; font: 650 8px system-ui, sans-serif; fill: #ffe19a; stroke: #0b1c16; stroke-width: 2.5px; paint-order: stroke; }
+.lot-map-block-label { text-anchor: middle; dominant-baseline: central; font: 650 7px system-ui, sans-serif; fill: #e4ecdf; stroke: #0b1c16; stroke-width: 2.5px; paint-order: stroke; }
 @media (max-width: 720px) {
   .app-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
   .sidebar { grid-row: 2; padding: 8px 10px max(8px, env(safe-area-inset-bottom)); }

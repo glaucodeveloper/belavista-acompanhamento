@@ -1302,11 +1302,11 @@
     "label": "QF-186"
   },
   {
-    "lot": 186,
+    "lot": 187,
     "quadra": "QF",
     "area": 250,
     "price": 80000,
-    "label": "QF-186"
+    "label": "QF-187"
   },
   {
     "lot": 188,
@@ -1316,11 +1316,11 @@
     "label": "QF-188"
   },
   {
-    "lot": 198,
+    "lot": 189,
     "quadra": "QF",
     "area": 250,
     "price": 80000,
-    "label": "QF-198"
+    "label": "QF-189"
   },
   {
     "lot": 190,
@@ -1673,25 +1673,25 @@
     "label": "QG-239"
   },
   {
-    "lot": 340,
+    "lot": 240,
     "quadra": "QG",
     "area": 250,
     "price": 80000,
-    "label": "QG-340"
+    "label": "QG-240"
   },
   {
-    "lot": 341,
+    "lot": 241,
     "quadra": "QG",
     "area": 250,
     "price": 80000,
-    "label": "QG-341"
+    "label": "QG-241"
   },
   {
-    "lot": 342,
+    "lot": 242,
     "quadra": "QG",
     "area": 250,
     "price": 80000,
-    "label": "QG-342"
+    "label": "QG-242"
   },
   {
     "lot": 243,
@@ -2084,26 +2084,5 @@
     "area": 500,
     "price": 300000,
     "label": "QC5-26"
-  },
-  {
-    "lot": 0,
-    "quadra": "LOTES COMERCIAIS",
-    "area": 0,
-    "price": 0,
-    "label": "LOTES COMERCIAIS-0"
-  },
-  {
-    "lot": 0,
-    "quadra": "LOTES DE ESQUINA",
-    "area": 0,
-    "price": 0,
-    "label": "LOTES DE ESQUINA-0"
-  },
-  {
-    "lot": 0,
-    "quadra": "LOTES DE RUA PRINCIPAL",
-    "area": 0,
-    "price": 0,
-    "label": "LOTES DE RUA PRINCIPAL-0"
   }
 ]

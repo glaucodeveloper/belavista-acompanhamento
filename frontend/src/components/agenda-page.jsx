@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3, MapPin, Plus, Trash2, X } from 'lucide-react';
 import { mountLotMap } from '../map.js';
+import mapLotIndex from '../assets/mapeamento.json';
 
 const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const dateKey = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -69,13 +70,18 @@ function EventModal({ event, initialDate, onClose, onSave, onDelete }) {
     finally { setBusy(false); }
   }
   const selectArea = editing ? areaToggle : undefined;
+  const selectedAreaTags = draft.areaIds.map((lotId, index) => {
+    const mapEntry = mapLotIndex.mappings.find(entry => entry.lotId === lotId);
+    const number = draft.areaNumbers[index] ?? mapEntry?.number;
+    return { lotId, number, label: mapEntry?.officialLabel || `Lote ${number ?? ''}` };
+  });
   const timeText = draft.startTime ? `${draft.startTime}${draft.endTime ? `–${draft.endTime}` : ''}` : 'Dia todo';
   return <div className="modal-backdrop agenda-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}><section className="agenda-modal" role="dialog" aria-modal="true" aria-labelledby="agenda-modal-title">
     <header className="agenda-modal-header"><div><p className="eyebrow">AGENDA DE OBRA</p><h2 id="agenda-modal-title">{editing ? (existing ? 'Editar compromisso' : 'Novo compromisso') : draft.title}</h2><p>{formatDate(draft.date)}{!editing && ` · ${timeText}`}</p></div><button type="button" className="quiet-button agenda-close" aria-label="Fechar modal" onClick={onClose}><X size={18} /></button></header>
     {editing ? <form className="agenda-form" onSubmit={submit}>
       <div className="agenda-fields"><label>Título<input autoFocus required maxLength={120} value={draft.title} onChange={event => setDraft({ ...draft, title: event.target.value })} placeholder="Ex.: Concretagem da quadra QA" /></label><div className="agenda-time-fields"><label>Data<input type="date" required value={draft.date} onChange={event => setDraft({ ...draft, date: event.target.value })} /></label><label>Início<input type="time" value={draft.startTime || ''} onChange={event => setDraft({ ...draft, startTime: event.target.value })} /></label><label>Fim<input type="time" value={draft.endTime || ''} onChange={event => setDraft({ ...draft, endTime: event.target.value })} /></label></div><label>Detalhes<textarea rows={3} maxLength={1200} value={draft.description || ''} onChange={event => setDraft({ ...draft, description: event.target.value })} placeholder="Equipe, materiais, instruções…" /></label></div>
       <section className="agenda-map-selection"><div className="agenda-map-title"><div><h3>Áreas do loteamento</h3><p>Clique ou toque e segure nos lotes para incluir ou remover áreas.</p></div><span>{draft.areaIds.length} selecionada{draft.areaIds.length === 1 ? '' : 's'}</span></div><AgendaMap selectedLotIds={draft.areaIds} onLotSelect={selectArea} /></section>
-      {!!draft.areaNumbers.length && <div className="agenda-area-tags" aria-label="Áreas selecionadas">{draft.areaNumbers.map((number, index) => <span key={`${draft.areaIds[index]}-${number}`}><MapPin size={12} /> Lote {number}<button type="button" aria-label={`Remover lote ${number}`} onClick={() => areaToggle({ lotId: draft.areaIds[index], number })}><X size={12} /></button></span>)}</div>}
+      {!!selectedAreaTags.length && <div className="agenda-area-tags" aria-label="Áreas selecionadas">{selectedAreaTags.map(({ lotId, number, label }) => <span key={lotId}><MapPin size={12} /> {label}<button type="button" aria-label={`Remover ${label}`} onClick={() => areaToggle({ lotId, number })}><X size={12} /></button></span>)}</div>}
       {error && <p className="error-message" role="alert">{error}</p>}
       <footer className="agenda-modal-actions"><button type="button" className="quiet-button" onClick={onClose}>Cancelar</button><button type="submit" className="primary-button" disabled={busy}>{busy ? 'Salvando…' : 'Salvar compromisso'}</button></footer>
     </form> : <div className="agenda-event-details">

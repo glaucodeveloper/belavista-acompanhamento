@@ -1,3 +1,5 @@
+import priceCatalog from './assets/tabela-precos.json';
+
 const SVG = 'http://www.w3.org/2000/svg';
 const WIDTH = 2329, HEIGHT = 2759, ARTWORK_HEIGHT = 2581;
 const ADDED_LEFT_MARGIN = 281;
@@ -24,6 +26,9 @@ export async function mountLotMap(host, { onLotSelect, selectedLotIds = [], focu
   if (!geometryResponse.ok || !mappingResponse.ok) throw new Error('Não foi possível carregar a planta dos lotes.');
   const geometry = await geometryResponse.json();
   const mapping = await mappingResponse.json();
+  const priceByLabel = new Map(priceCatalog.map(lot => [lot.label, lot]));
+  const numberCounts = new Map();
+  for (const entry of mapping.mappings) numberCounts.set(entry.number, (numberCounts.get(entry.number) || 0) + 1);
   const stage = document.createElement('div');
   stage.className = 'lot-map-stage';
   const image = document.createElement('img');
@@ -37,17 +42,40 @@ export async function mountLotMap(host, { onLotSelect, selectedLotIds = [], focu
   for (const entry of mapping.mappings) {
     const points = geometry.lots[entry.greenPolygonId];
     if (!Array.isArray(points) || points.length < 3) continue;
+    const officialLot = priceByLabel.get(entry.officialLabel);
+    if (!officialLot) throw new Error(`Não há área oficial cadastrada para ${entry.officialLabel || entry.lotId}.`);
     const polygon = document.createElementNS(SVG, 'polygon');
     polygon.dataset.lotId = entry.lotId;
     polygon.dataset.lotNumber = String(entry.number);
+    polygon.dataset.catalogLabel = officialLot.label;
     polygon.setAttribute('points', points.map(point => imagePoint(point).join(',')).join(' '));
     polygon.setAttribute('class', 'lot-map-area');
+    const title = document.createElementNS(SVG, 'title');
+    title.textContent = `${officialLot.label} · ${Number(officialLot.area).toLocaleString('pt-BR')} m²`;
+    polygon.append(title);
     const label = document.createElementNS(SVG, 'text');
     const [labelX, labelY] = imagePoint(centroid(points));
     label.setAttribute('x', String(labelX)); label.setAttribute('y', String(labelY));
     label.setAttribute('class', 'lot-map-number');
     label.textContent = String(entry.number).padStart(2, '0');
-    svg.append(polygon, label);
+    const areaLabel = document.createElementNS(SVG, 'text');
+    const numberHalfWidth = String(entry.number).length * 4.8;
+    areaLabel.setAttribute('x', String(labelX + numberHalfWidth + 3));
+    areaLabel.setAttribute('y', String(labelY + 2));
+    areaLabel.setAttribute('class', 'lot-map-area-label');
+    areaLabel.textContent = `${Number(officialLot.area).toLocaleString('pt-BR')} m²`;
+    const blockLabel = numberCounts.get(entry.number) > 1
+      ? document.createElementNS(SVG, 'text')
+      : null;
+    if (blockLabel) {
+      blockLabel.setAttribute('x', String(labelX));
+      blockLabel.setAttribute('y', String(labelY - 10));
+      blockLabel.setAttribute('class', 'lot-map-block-label');
+      blockLabel.textContent = officialLot.quadra;
+    }
+    svg.append(polygon, areaLabel);
+    if (blockLabel) svg.append(blockLabel);
+    svg.append(label);
   }
   stage.append(image, svg);
   const fitButton = document.createElement('button');
@@ -143,7 +171,7 @@ export async function mountLotMap(host, { onLotSelect, selectedLotIds = [], focu
   const end = event => {
     const point = pointers.get(event.pointerId), target = startTargets.get(event.pointerId);
     if (target && pointers.size === 1 && point && Math.hypot(point.x - target.point.x, point.y - target.point.y) < 8 && target.area.isConnected) {
-      const lot = { lotId: target.area.dataset.lotId, number: Number(target.area.dataset.lotNumber) };
+      const lot = { lotId: target.area.dataset.lotId, number: Number(target.area.dataset.lotNumber), catalogLabel: target.area.dataset.catalogLabel };
       if (selectionMode) {
         selected.has(lot.lotId) ? selected.delete(lot.lotId) : selected.add(lot.lotId);
         paintSelection();
