@@ -58,5 +58,24 @@
     "expectedActivityId": "agua-rede-principal",
     "expectedDescription": "Tubo PEAD para rede principal de distribuição de água potável, DN 100 mm, classe PN 10.",
     "followUp": "Confirmo que a descrição impressa é: Tubo PEAD para rede principal de distribuição de água potável, DN 100 mm, classe PN 10."
+  },
+  {
+    "id": "servico-obra-descricao-parcial",
+    "filename": "nota-simulada-servico-obra-descricao-parcial.png",
+    "supplier": "Pavimentação Modelo Ltda.",
+    "cnpj": "45.678.901/0001-23",
+    "invoiceNumber": "TESTE-SV-CL-0001",
+    "date": "2026-10-30",
+    "documentLabel": "NOTA FISCAL DE SERVIÇOS ELETRÔNICA (NFS-e)",
+    "context": "Leia a imagem e classifique a despesa pelo conteúdo do documento.",
+    "descriptionOnImage": "Execução de pavimento em paralelepípedo e assentamento de meio-fio na Rua 2, quadra QC1, trecho entre as estacas 0+00 e...",
+    "quantity": 120,
+    "unit": "m",
+    "unitPrice": 214.5,
+    "expectedCategory": "service_expense",
+    "expectedDestination": "services",
+    "expectedActivityId": "pav-assentar",
+    "expectedDescription": "Execução de pavimento em paralelepípedo e assentamento de meio-fio na Rua 2, quadra QC1, trecho entre as estacas 0+00 e 0+120, incluindo regularização e compactação da base.",
+    "followUp": "A descrição completa é: Execução de pavimento em paralelepípedo e assentamento de meio-fio na Rua 2, quadra QC1, trecho entre as estacas 0+00 e 0+120, incluindo regularização e compactação da base."
   }
 ]

@@ -73,5 +73,41 @@
     "unitPrice": 1890,
     "expectedCategory": "material_expense",
     "expectedActivityId": "eletrica-postes"
+  },
+  {
+    "id": "obra-pavimentacao-imagem",
+    "filename": "nota-simulada-servico-obra-pavimentacao.png",
+    "supplier": "Pavimentação Modelo Ltda.",
+    "cnpj": "45.678.901/0001-23",
+    "invoiceNumber": "TESTE-SV-0001",
+    "date": "2026-10-28",
+    "documentLabel": "NOTA FISCAL DE SERVIÇOS ELETRÔNICA (NFS-e)",
+    "context": "Leia a imagem e classifique a despesa pelo conteúdo do documento.",
+    "description": "Execução de pavimento em paralelepípedo e assentamento de meio-fio na Rua 2, quadra QC1, trecho entre as estacas 0+00 e 0+120, incluindo regularização e compactação da base.",
+    "quantity": 120,
+    "unit": "m",
+    "unitPrice": 214.5,
+    "expectedCategory": "service_expense",
+    "expectedDestination": "services",
+    "expectedActivityId": "pav-assentar",
+    "expectedDescription": "Execução de pavimento em paralelepípedo e assentamento de meio-fio na Rua 2, quadra QC1, trecho entre as estacas 0+00 e 0+120, incluindo regularização e compactação da base."
+  },
+  {
+    "id": "servico-escritorio-imagem",
+    "filename": "nota-simulada-servico-escritorio.png",
+    "supplier": "Suporte Técnico Modelo Ltda.",
+    "cnpj": "67.890.123/0001-45",
+    "invoiceNumber": "TESTE-SV-0002",
+    "date": "2026-10-29",
+    "documentLabel": "NOTA FISCAL DE SERVIÇOS ELETRÔNICA (NFS-e)",
+    "context": "Classifique este documento com base no conteúdo visível da imagem.",
+    "description": "Manutenção preventiva de impressora a laser do escritório administrativo, com troca do rolete de alimentação, limpeza técnica, teste de impressão e relatório de funcionamento.",
+    "quantity": 1,
+    "unit": "serviço",
+    "unitPrice": 380,
+    "expectedCategory": "service_expense",
+    "expectedDestination": "services",
+    "expectedDepartment": "Escritório",
+    "expectedDescription": "Manutenção preventiva de impressora a laser do escritório administrativo, com troca do rolete de alimentação, limpeza técnica, teste de impressão e relatório de funcionamento."
   }
 ]

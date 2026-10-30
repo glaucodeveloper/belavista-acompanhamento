@@ -21,8 +21,10 @@ const cases = JSON.parse(await readFile(path.join(root, 'worker/test/inference-a
 const clarificationCases = JSON.parse(await readFile(path.join(root, 'worker/test/inference-allocation-clarification-cases.json'), 'utf8'));
 const extraCaseFile = process.env.ALLOCATION_E2E_EXTRA_CASE_FILE;
 const extraCases = extraCaseFile ? JSON.parse(await readFile(extraCaseFile, 'utf8')) : [];
-const runBaseCases = [...(process.env.ALLOCATION_E2E_CLARIFICATIONS_ONLY === '1' ? [] : cases), ...extraCases];
-const runClarificationCases = process.env.ALLOCATION_E2E_BASE_ONLY === '1' ? [] : clarificationCases;
+const selectedCaseIds = new Set(String(process.env.ALLOCATION_E2E_CASES || '').split(',').map(value => value.trim()).filter(Boolean));
+const selected = testCase => !selectedCaseIds.size || selectedCaseIds.has(testCase.id);
+const runBaseCases = [...(process.env.ALLOCATION_E2E_CLARIFICATIONS_ONLY === '1' ? [] : cases), ...extraCases].filter(selected);
+const runClarificationCases = (process.env.ALLOCATION_E2E_BASE_ONLY === '1' ? [] : clarificationCases).filter(selected);
 const { stages } = JSON.parse(await readFile(path.join(root, 'frontend/src/data/archived-stage-seed.json'), 'utf8'));
 const priceCatalog = JSON.parse(await readFile(path.join(root, 'frontend/src/assets/tabela-precos.json'), 'utf8'));
 const activityById = new Map(stages.flatMap(stage => (stage.activities || []).map(activity => [activity.id, { ...activity, stage }])));
@@ -43,11 +45,19 @@ const editResults = new Map();
 const editPromises = new Map();
 
 async function waitForMessage(page, text) {
-  await page.waitForFunction(value => {
-    const messages = [...document.querySelectorAll('.chat-message')].filter(node => node.innerText.includes(value));
-    const status = messages.at(-1)?.querySelector('.outbox-status')?.innerText || '';
-    return /Processado|Falha no processamento/.test(status);
-  }, text, { timeout: 150000 });
+  try {
+    await page.waitForFunction(value => {
+      const messages = [...document.querySelectorAll('.chat-message')].filter(node => node.innerText.includes(value));
+      const status = messages.at(-1)?.querySelector('.outbox-status')?.innerText || '';
+      return /Processado|Falha no processamento/.test(status);
+    }, text, { timeout: 150000 });
+  } catch (error) {
+    const message = page.locator('.chat-message').filter({ hasText: text }).last();
+    const status = await message.locator('.outbox-status').innerText().catch(() => '(sem estado visual)');
+    const result = inferenceResults.get(text);
+    const response = result ? JSON.stringify({ category: result.category, destination: result.allocation?.destination, needsClarification: result.needsClarification, needsDescription: result.needsDescription, question: result.question }) : '(sem resposta do Worker)';
+    throw new Error(`${error.message}; estado=${status}; resposta=${response}`);
+  }
 }
 function normalizeDescription(value) {
   return String(value || '').trim().replace(/[.,;:]+$/u, '').replace(/\s+/g, ' ');
@@ -130,6 +140,7 @@ try {
     const items = result.recognized?.items || [];
     assert.ok(items.length, `${testCase.id}: nenhum item foi reconhecido.`);
     if (expectedActivity) assert.ok(items.every(item => item.activityId === testCase.expectedActivityId && item.stageId === expectedActivity.stage.id), `${testCase.id}: vínculo de etapa/atividade divergente.`);
+    if (testCase.expectedDescription) assert.ok(items.some(item => normalizeDescription(item.description) === normalizeDescription(testCase.expectedDescription)), `${testCase.id}: descrição inferida diverge do texto impresso.`);
 
     const expectedCollection = collection === 'materials' ? memoryData.materials : memoryData.services;
     const newRows = expectedCollection.slice(collection === 'materials' ? beforeMaterials : beforeServices);
@@ -152,6 +163,7 @@ try {
   for (const testCase of runClarificationCases) {
     const beforeMaterials = memoryData.materials.length;
     const beforeServices = memoryData.services.length;
+    const expectedCollectionBefore = testCase.expectedDestination === 'services' ? beforeServices : beforeMaterials;
     const expectedActivity = activityById.get(testCase.expectedActivityId);
     assert.ok(expectedActivity, `Atividade esperada ausente no catálogo: ${testCase.expectedActivityId}`);
 
@@ -181,12 +193,14 @@ try {
     await editPromises.get(testCase.followUp);
     const edit = editResults.get(testCase.followUp);
     assert.ok(edit?.patch, `${testCase.id}: Worker não devolveu revisão para o detalhe informado.`);
-    const newItems = memoryData.materials.slice(beforeMaterials);
-    assert.equal(newItems.length, 1, `${testCase.id}: resposta suficiente não gerou exatamente um material.`);
+    const destinationRows = testCase.expectedDestination === 'services' ? memoryData.services : memoryData.materials;
+    const newItems = destinationRows.slice(expectedCollectionBefore);
+    assert.equal(newItems.length, 1, `${testCase.id}: resposta suficiente não gerou exatamente uma linha em ${testCase.expectedDestination}.`);
     assert.equal(normalizeDescription(newItems[0].name), normalizeDescription(testCase.expectedDescription), `${testCase.id}: descrição salva diverge do texto informado.`);
     assert.equal(newItems[0].activityId, testCase.expectedActivityId, `${testCase.id}: atividade salva incorreta.`);
     assert.equal(newItems[0].stageId, expectedActivity.stage.id, `${testCase.id}: etapa salva incorreta.`);
-    assert.equal(memoryData.services.length, beforeServices, `${testCase.id}: detalhe foi salvo no destino errado.`);
+    assert.equal(memoryData.materials.length, testCase.expectedDestination === 'materials' ? beforeMaterials + 1 : beforeMaterials, `${testCase.id}: detalhe alterou Materiais em vez do destino esperado.`);
+    assert.equal(memoryData.services.length, testCase.expectedDestination === 'services' ? beforeServices + 1 : beforeServices, `${testCase.id}: detalhe alterou Serviços em vez do destino esperado.`);
     await page.screenshot({ path: path.join(outputDir, `evidence-${testCase.id}.png`), fullPage: true });
     console.log(`PASS ${testCase.id}: não salvou antes do detalhe; perguntou no chat; resposta levou a ${testCase.expectedDestination} → ${expectedActivity.stage.name} / ${expectedActivity.title}.`);
   }
@@ -201,9 +215,6 @@ try {
 } finally {
   await browser?.close().catch(() => {});
   vite.kill('SIGTERM');
-  try {
-    await fetch(`${workerUrl}/api/logout`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
-  } catch {}
 }
 
 const selectedCases = runBaseCases.length + runClarificationCases.length;
