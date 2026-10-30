@@ -6,8 +6,8 @@
   "vars": {
     "NVIDIA_API_URL": "https://integrate.api.nvidia.com/v1/chat/completions",
     "NVIDIA_MODEL": "meta/llama-3.1-8b-instruct",
-    "NVIDIA_VISION_MODEL": "meta/llama-3.2-11b-vision-instruct",
-    "NVIDIA_VISION_API_URL": "https://integrate.api.nvidia.com/v1/meta/llama-3.2-11b-vision-instruct",
+    "NVIDIA_VISION_MODEL": "meta/muse-glimmer-30b",
+    "NVIDIA_VISION_API_URL": "https://integrate.api.nvidia.com/v1/chat/completions",
     "GITHUB_DATA_REPOSITORY": "glaucodeveloper/belavista-acompanhamento-data"
   },
   "ratelimits": [{ "name": "LOGIN_LIMITER", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }]

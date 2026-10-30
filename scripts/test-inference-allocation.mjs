@@ -7,10 +7,10 @@ import { chromium } from 'playwright';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const workerUrl = (process.env.ALIANCAPARK_WORKER_URL || 'https://belavista-cloudflare-worker.icaroglaucooliveira.workers.dev').replace(/\/$/, '');
-const token = process.env.ALIANCAPARK_SESSION_TOKEN;
-const mockInference = process.argv.includes('--mock-inference');
-if (!token && !mockInference) {
-  console.error('Defina ALIANCAPARK_SESSION_TOKEN com um token de sessão válido. O token não é salvo nem exibido pelo teste.');
+const tokenFile = process.env.ALIANCAPARK_SESSION_TOKEN_FILE;
+const token = process.env.ALIANCAPARK_SESSION_TOKEN || (tokenFile ? (await readFile(tokenFile, 'utf8')).trim() : null);
+if (!token) {
+  console.error('Defina ALIANCAPARK_SESSION_TOKEN ou ALIANCAPARK_SESSION_TOKEN_FILE com uma sessão válida.');
   process.exit(2);
 }
 
@@ -18,76 +18,41 @@ const outputDir = path.join(root, '.test-artifacts/inference-allocation');
 const fixtureDir = path.join(root, 'worker/test/fixtures/inference-allocation');
 await mkdir(outputDir, { recursive: true });
 const cases = JSON.parse(await readFile(path.join(root, 'worker/test/inference-allocation-cases.json'), 'utf8'));
+const clarificationCases = JSON.parse(await readFile(path.join(root, 'worker/test/inference-allocation-clarification-cases.json'), 'utf8'));
+const extraCaseFile = process.env.ALLOCATION_E2E_EXTRA_CASE_FILE;
+const extraCases = extraCaseFile ? JSON.parse(await readFile(extraCaseFile, 'utf8')) : [];
+const runBaseCases = [...(process.env.ALLOCATION_E2E_CLARIFICATIONS_ONLY === '1' ? [] : cases), ...extraCases];
+const runClarificationCases = process.env.ALLOCATION_E2E_BASE_ONLY === '1' ? [] : clarificationCases;
 const { stages } = JSON.parse(await readFile(path.join(root, 'frontend/src/data/archived-stage-seed.json'), 'utf8'));
-const actualResults = new Map();
-const activities = stages.flatMap(stage => (stage.activities || []).map(activity => ({
-  id: activity.id,
-  name: activity.title,
-  description: [activity.description || activity.summary || '', ...(activity.properties || []).filter(property => property.label || property.value).map(property => `${property.label || 'Detalhe'}: ${property.value || ''}`)].filter(Boolean).join('\n'),
-  stageId: stage.id,
-  stageName: stage.name,
-  stageDescription: stage.description || '',
-})));
-
-let failures = 0;
-for (const testCase of cases) {
-  let result;
-  let status = 200;
-  if (mockInference) {
-    const target = activities.find(activity => activity.id === testCase.expectedActivityId);
-    const stage = stages.find(item => item.id === target?.stageId);
-    result = {
-      filename: testCase.filename,
-      model: 'mock-inference-for-ui-test',
-      category: testCase.expectedCategory,
-      confidence: 1,
-      recognized: { description: testCase.description, amount: testCase.quantity * testCase.unitPrice, date: testCase.date, supplier: testCase.supplier, lotLabel: null, items: [{ description: testCase.description, quantity: testCase.quantity, unit: testCase.unit, unitPrice: testCase.unitPrice, amount: testCase.quantity * testCase.unitPrice, activityId: target.id, activityName: target.name, stageId: stage.id, stageName: stage.name, activityConfidence: 1 }] },
-      allocation: { destination: testCase.expectedCategory === 'material_expense' ? 'materials' : 'services', lotLabel: null },
-      needsClarification: false,
-      question: null,
-    };
-  } else {
-    const imagePath = path.join(fixtureDir, testCase.filename);
-    const image = (await readFile(imagePath)).toString('base64');
-    const response = await fetch(`${workerUrl}/api/inference/attachment`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        filename: testCase.filename,
-        userContext: testCase.context,
-        description: testCase.context,
-        activities,
-        image: { mimeType: 'image/png', data: image },
-      }),
-    });
-    status = response.status;
-    result = await response.json().catch(() => ({}));
-    result.httpOk = response.ok;
-  }
-  actualResults.set(testCase.filename, result);
-  const recognized = result.recognized || {};
-  const items = Array.isArray(recognized.items) ? recognized.items : [];
-  const allocations = items.length ? items.map(item => item.activityId) : [recognized.activityId];
-  const uniqueAllocations = [...new Set(allocations.filter(Boolean))];
-  const expected = testCase.expectedActivityId;
-  const activityOk = uniqueAllocations.length === 1 && uniqueAllocations[0] === expected;
-  const categoryOk = result.category === testCase.expectedCategory;
-  const resultStatus = status < 400 && activityOk && categoryOk && result.httpOk !== false ? 'PASS' : 'FAIL';
-  console.log(`${resultStatus} ${testCase.id}: categoria=${result.category || `HTTP ${status}`} atividade=${uniqueAllocations.join(',') || 'sem alocação'} esperada=${expected}${mockInference ? ' (simulada)' : ''}`);
-  if (resultStatus === 'FAIL') {
-    failures++;
-    if (status >= 400 || result.httpOk === false) console.error(`  Worker: ${result.error || 'resposta inválida'}`);
-    else if (!categoryOk) console.error(`  Categoria esperada ${testCase.expectedCategory}, recebida ${result.category || 'ausente'}`);
-    else console.error(`  Atividade esperada ${expected}, recebida ${uniqueAllocations.join(', ') || 'nenhuma'}`);
-  }
-}
-
-console.log(`Resultado: ${cases.length - failures}/${cases.length} alocações corretas${mockInference ? ' no modo simulado' : ' no Worker NVIDIA'}.`);
+const priceCatalog = JSON.parse(await readFile(path.join(root, 'frontend/src/assets/tabela-precos.json'), 'utf8'));
+const activityById = new Map(stages.flatMap(stage => (stage.activities || []).map(activity => [activity.id, { ...activity, stage }])));
 
 const port = Number(process.env.ALLOCATION_E2E_PORT || 5197);
 const appUrl = `http://127.0.0.1:${port}`;
 const vite = spawn(process.execPath, [path.join(root, 'node_modules/vite/bin/vite.js'), '--config', path.join(root, 'vite.config.js'), '--host', '127.0.0.1', '--port', String(port), '--strictPort'], { cwd: root, stdio: 'ignore' });
 let browser;
+let failures = 0;
+let memoryData = {
+  lots: priceCatalog.slice(0, 6).map(item => ({ ...item, status: 'Disponível', received: 0, entryHistory: [] })),
+  materials: [], services: [], transfers: [], agenda: [], stages,
+};
+let revision = 'e2e-revision-0';
+const inferenceResults = new Map();
+const inferencePromises = new Map();
+const editResults = new Map();
+const editPromises = new Map();
+
+async function waitForMessage(page, text) {
+  await page.waitForFunction(value => {
+    const messages = [...document.querySelectorAll('.chat-message')].filter(node => node.innerText.includes(value));
+    const status = messages.at(-1)?.querySelector('.outbox-status')?.innerText || '';
+    return /Processado|Falha no processamento/.test(status);
+  }, text, { timeout: 150000 });
+}
+function normalizeDescription(value) {
+  return String(value || '').trim().replace(/[.,;:]+$/u, '').replace(/\s+/g, ' ');
+}
+
 try {
   let ready = false;
   for (let attempt = 0; attempt < 60; attempt++) {
@@ -99,101 +64,148 @@ try {
 
   const launchOptions = { headless: true, args: ['--no-sandbox'] };
   if (process.env.CHROME_PATH) launchOptions.executablePath = process.env.CHROME_PATH;
+  else if (await access('/opt/google/chrome/chrome').then(() => true, () => false)) launchOptions.executablePath = '/opt/google/chrome/chrome';
   else if (await access('/usr/bin/google-chrome-stable').then(() => true, () => false)) launchOptions.executablePath = '/usr/bin/google-chrome-stable';
   browser = await chromium.launch(launchOptions);
-  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   const page = await context.newPage();
   const workerOrigin = new URL(workerUrl).origin;
-  let memoryData = { lots: [], materials: [], services: [], transfers: [], agenda: [], stages };
-  let revision = 'e2e-revision-0';
-  const user = { id: 'allocation-e2e', username: 'Teste E2E', role: 'desktop' };
-  const testToken = 'a'.repeat(64);
-  await page.addInitScript(value => sessionStorage.setItem('alianca-session-token', value), testToken);
-  await page.route(`${workerOrigin}/**`, async route => {
-    const request = route.request();
-    const pathname = new URL(request.url()).pathname;
-    if (pathname === '/api/session' && request.method() === 'GET') {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ user }) });
-      return;
-    }
-    if (pathname === '/api/sync' && request.method() === 'GET') {
+  const user = { id: 'allocation-e2e', username: 'Teste E2E', role: 'mobile' };
+  await page.addInitScript(value => sessionStorage.setItem('alianca-session-token', value), token);
+
+  // Somente a persistência é isolada. Sessão e inferência continuam no Worker real.
+  await page.route(`${workerOrigin}/api/sync`, async route => {
+    if (route.request().method() === 'GET') {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: memoryData, revision }) });
       return;
     }
-    if (pathname === '/api/sync' && request.method() === 'PUT') {
-      const body = request.postDataJSON();
-      memoryData = body.data;
-      revision = `e2e-revision-${Number(revision.split('-').at(-1)) + 1}`;
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: memoryData, revision }) });
-      return;
+    const body = route.request().postDataJSON();
+    memoryData = body.data;
+    revision = `e2e-revision-${Number(revision.split('-').at(-1)) + 1}`;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: memoryData, revision }) });
+  });
+  page.on('response', response => {
+    if (response.url().includes('/api/inference/attachment')) {
+      const body = response.request().postDataJSON();
+      const pending = response.json().then(result => inferenceResults.set(body.filename, result));
+      inferencePromises.set(body.filename, pending);
     }
-    if (pathname === '/api/inference/attachment' && request.method() === 'POST') {
-      const body = request.postDataJSON();
-      const result = actualResults.get(body.filename);
-      await route.fulfill(result ? { status: 200, contentType: 'application/json', body: JSON.stringify(result) } : { status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'Resultado NVIDIA ausente para este arquivo.' }) });
-      return;
+    if (response.url().includes('/api/inference/analysis-edit')) {
+      const body = response.request().postDataJSON();
+      const pending = response.json().then(result => editResults.set(body.instruction, result));
+      editPromises.set(body.instruction, pending);
     }
-    await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'Endpoint não usado pelo teste E2E.' }) });
   });
 
   await page.goto(`${appUrl}/#/stages`, { waitUntil: 'domcontentloaded' });
   await page.locator('.app-shell').waitFor({ state: 'visible', timeout: 15000 });
-  await page.getByRole('tab', { name: 'Assistente' }).click();
-  const chatInput = page.locator('.chat-composer input[type="file"]').first();
-  for (const testCase of cases) {
-    const inference = actualResults.get(testCase.filename);
-    if (!inference || !inference.recognized) { failures++; console.error(`FAIL UI ${testCase.id}: sem resultado de inferência para aplicar.`); continue; }
-    const expectedActivity = stages.flatMap(stage => (stage.activities || []).map(activity => ({ ...activity, stage }))).find(activity => activity.id === testCase.expectedActivityId);
-    assert.ok(expectedActivity, `Atividade esperada ausente no catálogo: ${testCase.expectedActivityId}`);
+  const sessionResponse = await page.request.get(`${workerUrl}/api/session`, { headers: { Authorization: `Bearer ${token}` } });
+  assert.equal(sessionResponse.status(), 200, 'A sessão do Worker deve permanecer válida durante o teste.');
+  const actualUser = await sessionResponse.json();
+  assert.equal(actualUser.user?.role, 'mobile', 'A sessão usada deve corresponder à conta mobile.');
+  await page.getByRole('button', { name: 'Abrir assistente' }).click();
+  await page.locator('.assistant-chat').waitFor({ state: 'visible' });
 
-    await chatInput.setInputFiles(path.join(fixtureDir, testCase.filename));
+  for (const testCase of runBaseCases) {
+    const beforeMaterials = memoryData.materials.length;
+    const beforeServices = memoryData.services.length;
+    const expectedActivity = testCase.expectedActivityId ? activityById.get(testCase.expectedActivityId) : null;
+    if (testCase.expectedActivityId) assert.ok(expectedActivity, `Atividade esperada ausente no catálogo: ${testCase.expectedActivityId}`);
+
+    await page.locator('.chat-composer input[type="file"]').first().setInputFiles(testCase.filePath || path.join(fixtureDir, testCase.filename));
     await page.getByLabel('Mensagem').fill(testCase.context);
     await page.getByRole('button', { name: /Enviar/ }).click();
-    const card = page.locator('.classification-card').filter({ hasText: testCase.filename }).last();
-    await card.waitFor({ state: 'visible', timeout: 30000 });
-    const categorySelect = card.locator('.classification-actions select').first();
-    const selectedActivity = card.locator('.ocr-activity-item select').first();
-    const uiCategory = await categorySelect.inputValue();
-    const uiActivity = await selectedActivity.inputValue().catch(() => inference.recognized.activityId || '');
-    const isCorrectSuggestion = uiCategory === testCase.expectedCategory && uiActivity === testCase.expectedActivityId;
-    if (!isCorrectSuggestion) {
-      failures++;
-      console.error(`FAIL UI ${testCase.id}: sugestão visível categoria=${uiCategory}, atividade=${uiActivity || 'sem atividade'}. Esperado ${testCase.expectedCategory}/${testCase.expectedActivityId}.`);
-      continue;
+    const chatMessage = page.locator('.chat-message').filter({ hasText: testCase.filename }).last();
+    await chatMessage.waitFor({ state: 'visible', timeout: 15000 });
+    await waitForMessage(page, testCase.filename);
+    await inferencePromises.get(testCase.filename);
+
+    const result = inferenceResults.get(testCase.filename);
+    assert.ok(result, `${testCase.filename}: o Worker não devolveu JSON.`);
+    assert.equal(result.category, testCase.expectedCategory, `${testCase.id}: categoria inferida incorreta.`);
+    const collection = testCase.expectedDestination || (testCase.expectedCategory === 'material_expense' ? 'materials' : 'services');
+    assert.equal(result.allocation?.destination, collection, `${testCase.id}: destino declarado pelo Worker incorreto.`);
+    if (testCase.expectedDepartment) assert.equal(result.allocation?.department, testCase.expectedDepartment, `${testCase.id}: departamento de destino incorreto.`);
+    assert.equal(result.needsClarification, false, `${testCase.id}: a nota clara pediu esclarecimento.`);
+    const items = result.recognized?.items || [];
+    assert.ok(items.length, `${testCase.id}: nenhum item foi reconhecido.`);
+    if (expectedActivity) assert.ok(items.every(item => item.activityId === testCase.expectedActivityId && item.stageId === expectedActivity.stage.id), `${testCase.id}: vínculo de etapa/atividade divergente.`);
+
+    const expectedCollection = collection === 'materials' ? memoryData.materials : memoryData.services;
+    const newRows = expectedCollection.slice(collection === 'materials' ? beforeMaterials : beforeServices);
+    assert.equal(newRows.length, items.length, `${testCase.id}: quantidade de linhas salvas não corresponde aos itens reconhecidos.`);
+    for (const item of items) {
+      const rowFound = expectedActivity
+        ? newRows.some(row => row.name === item.description && row.activityId === testCase.expectedActivityId && row.stageId === expectedActivity.stage.id)
+        : newRows.some(row => row.name === item.description && row.category === testCase.expectedDepartment);
+      assert.ok(rowFound, `${testCase.id}: linha ausente em ${collection} com destino esperado.`);
     }
-
-    await card.getByRole('button', { name: 'Aplicar à lista' }).click();
-    await card.getByText('Aplicado', { exact: true }).waitFor({ state: 'visible', timeout: 10000 });
-    const collection = testCase.expectedCategory === 'material_expense' ? 'materials' : 'services';
-    const saved = memoryData[collection].filter(item => item.activityId === testCase.expectedActivityId && item.stageId === expectedActivity.stage.id);
-    const evidenceItem = saved.at(-1);
-    assert.ok(evidenceItem, `${testCase.filename} não foi salvo em ${collection} com os IDs de etapa e atividade esperados.`);
-
-    await page.getByRole('tab', { name: 'Menu' }).click();
-    await page.getByRole('link', { name: 'Etapas' }).click();
-    await page.locator('.stage-tabs button').filter({ hasText: expectedActivity.stage.name }).click();
-    const stageTree = page.locator('.stage-items-card');
-    await stageTree.getByText(expectedActivity.title, { exact: true }).waitFor({ state: 'visible', timeout: 10000 });
-    await stageTree.getByText(evidenceItem.name, { exact: true }).waitFor({ state: 'visible', timeout: 10000 });
-    await page.waitForTimeout(500);
+    assert.equal(memoryData.materials.length, collection === 'materials' ? beforeMaterials + items.length : beforeMaterials, `${testCase.id}: gravou em Materiais indevidamente.`);
+    assert.equal(memoryData.services.length, collection === 'services' ? beforeServices + items.length : beforeServices, `${testCase.id}: gravou em Serviços indevidamente.`);
+    assert.equal(await page.locator('.classification-card').count(), 0, 'A tela não deve exibir formulário de confirmação.');
+    await chatMessage.locator('.chat-assistant-reply p').waitFor({ state: 'visible', timeout: 10000 });
     await page.screenshot({ path: path.join(outputDir, `evidence-${testCase.id}.png`), fullPage: true });
 
-    if (collection === 'materials') {
-      await page.getByRole('link', { name: 'Materiais' }).click();
-      const materialGroup = page.locator('.category-group').filter({ hasText: expectedActivity.title });
-      await materialGroup.getByText(evidenceItem.name, { exact: true }).waitFor({ state: 'visible', timeout: 10000 });
-    }
-    console.log(`PASS UI ${testCase.id}: nota aplicada e visível em ${expectedActivity.stage.name} › ${expectedActivity.title} (${collection}). Evidência: evidence-${testCase.id}.png`);
-    await page.getByRole('tab', { name: 'Assistente' }).click();
+    console.log(`PASS ${testCase.id}: Worker ${result.category} → ${result.allocation.destination}${testCase.expectedDepartment ? ` / ${testCase.expectedDepartment}` : ` → ${expectedActivity.stage.name} / ${expectedActivity.title}`}; ${items.length} item(ns) salvo(s) em memória.`);
   }
+
+  for (const testCase of runClarificationCases) {
+    const beforeMaterials = memoryData.materials.length;
+    const beforeServices = memoryData.services.length;
+    const expectedActivity = activityById.get(testCase.expectedActivityId);
+    assert.ok(expectedActivity, `Atividade esperada ausente no catálogo: ${testCase.expectedActivityId}`);
+
+    await page.locator('.chat-composer input[type="file"]').first().setInputFiles(path.join(fixtureDir, testCase.filename));
+    await page.getByLabel('Mensagem').fill(testCase.context);
+    await page.getByRole('button', { name: /Enviar/ }).click();
+    const chatMessage = page.locator('.chat-message').filter({ hasText: testCase.filename }).last();
+    await chatMessage.waitFor({ state: 'visible', timeout: 15000 });
+    await waitForMessage(page, testCase.filename);
+    await inferencePromises.get(testCase.filename);
+
+    const result = inferenceResults.get(testCase.filename);
+    assert.ok(result, `${testCase.filename}: o Worker não devolveu JSON.`);
+    assert.equal(result.category, testCase.expectedCategory, `${testCase.id}: categoria incorreta.`);
+    assert.equal(result.allocation?.destination, testCase.expectedDestination, `${testCase.id}: destino sugerido incorreto.`);
+    assert.equal(result.needsClarification, true, `${testCase.id}: descrição incompleta foi aplicada sem pergunta.`);
+    assert.ok(result.question, `${testCase.id}: Worker não formulou a pergunta necessária.`);
+    assert.equal(memoryData.materials.length, beforeMaterials, `${testCase.id}: gravou material antes da resposta.`);
+    assert.equal(memoryData.services.length, beforeServices, `${testCase.id}: gravou serviço antes da resposta.`);
+    assert.equal(await page.locator('.classification-card').count(), 0, `${testCase.id}: apareceu formulário de confirmação.`);
+    const visibleQuestion = await chatMessage.locator('.chat-assistant-reply p').innerText();
+    assert.ok(visibleQuestion.includes(result.question), `${testCase.id}: pergunta do Worker não chegou ao chat.`);
+
+    await page.getByLabel('Mensagem').fill(testCase.followUp);
+    await page.getByRole('button', { name: /Enviar/ }).click();
+    await waitForMessage(page, testCase.followUp);
+    await editPromises.get(testCase.followUp);
+    const edit = editResults.get(testCase.followUp);
+    assert.ok(edit?.patch, `${testCase.id}: Worker não devolveu revisão para o detalhe informado.`);
+    const newItems = memoryData.materials.slice(beforeMaterials);
+    assert.equal(newItems.length, 1, `${testCase.id}: resposta suficiente não gerou exatamente um material.`);
+    assert.equal(normalizeDescription(newItems[0].name), normalizeDescription(testCase.expectedDescription), `${testCase.id}: descrição salva diverge do texto informado.`);
+    assert.equal(newItems[0].activityId, testCase.expectedActivityId, `${testCase.id}: atividade salva incorreta.`);
+    assert.equal(newItems[0].stageId, expectedActivity.stage.id, `${testCase.id}: etapa salva incorreta.`);
+    assert.equal(memoryData.services.length, beforeServices, `${testCase.id}: detalhe foi salvo no destino errado.`);
+    await page.screenshot({ path: path.join(outputDir, `evidence-${testCase.id}.png`), fullPage: true });
+    console.log(`PASS ${testCase.id}: não salvou antes do detalhe; perguntou no chat; resposta levou a ${testCase.expectedDestination} → ${expectedActivity.stage.name} / ${expectedActivity.title}.`);
+  }
+
+  const viewport = await page.evaluate(() => ({ width: innerWidth, documentWidth: document.documentElement.scrollWidth, chatWidth: document.querySelector('.assistant-chat')?.scrollWidth || 0 }));
+  assert.ok(viewport.documentWidth <= viewport.width, `Overflow horizontal no mobile: ${viewport.documentWidth}px para viewport ${viewport.width}px.`);
+  console.log(`PASS viewport mobile: ${viewport.width}px sem extrapolação horizontal.`);
   await context.close();
 } catch (error) {
   failures++;
-  console.error(`FAIL E2E interface: ${error.message}`);
+  console.error(`FAIL E2E: ${error.message}`);
 } finally {
   await browser?.close().catch(() => {});
   vite.kill('SIGTERM');
+  try {
+    await fetch(`${workerUrl}/api/logout`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+  } catch {}
 }
 
-console.log(`Resultado final: ${cases.length - failures}/${cases.length} casos completos entre inferência e interface.`);
+const selectedCases = runBaseCases.length + runClarificationCases.length;
+console.log(`Resultado final: ${selectedCases - failures}/${selectedCases} casos percorreram Worker real, chat e destino em memória.`);
 if (failures) process.exitCode = 1;

@@ -1,6 +1,6 @@
 {
   "name": "alianca-park-rebuild",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Aliança Park — acompanhamento de obras, lotes e repasses",
   "author": "Aliança Park",
   "private": true,
@@ -15,6 +15,7 @@
     "cap:sync": "npm run build && cap sync",
     "cap:open:android": "cap open android",
     "cap:run:android": "npm run cap:sync && cap run android",
+    "profile:adb:logs": "node scripts/profile-adb-logcat.mjs",
     "test:inference:allocation": "node scripts/test-inference-allocation.mjs",
     "worker:dev": "wrangler dev --config worker/wrangler.jsonc",
     "worker:deploy": "wrangler deploy --config worker/wrangler.jsonc",
@@ -52,7 +53,12 @@
     "win": {
       "icon": "build/icon.ico",
       "target": [
-        { "target": "nsis", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "artifactName": "Alianca-Park-${version}-${arch}-Setup.${ext}"
     },

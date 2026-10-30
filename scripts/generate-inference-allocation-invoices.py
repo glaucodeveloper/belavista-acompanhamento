@@ -7,6 +7,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 root = Path(__file__).resolve().parents[1]
 cases = json.loads((root / "worker/test/inference-allocation-cases.json").read_text(encoding="utf-8"))
+clarification_cases = json.loads((root / "worker/test/inference-allocation-clarification-cases.json").read_text(encoding="utf-8"))
 output = Path(sys.argv[1]) if len(sys.argv) > 1 else root / ".test-artifacts/inference-allocation"
 output.mkdir(parents=True, exist_ok=True)
 font_candidates = [Path("/usr/share/fonts/TTF/DejaVuSans.ttf"), Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")]
@@ -23,7 +24,7 @@ title = ImageFont.truetype(str(bold_path), 34)
 def money(value):
     return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-for case in cases:
+for case in [*cases, *clarification_cases]:
     width, height = 1400, 980
     image = Image.new("RGB", (width, height), "white")
     draw = ImageDraw.Draw(image)
@@ -44,7 +45,11 @@ for case in cases:
     y += 52
     total = case["quantity"] * case["unitPrice"]
     draw.rectangle((table_left, y, table_right, y + 130), outline="#aeb9c7", width=2)
-    draw.text((table_left + 16, y + 20), case["description"], font=font, fill="#172334")
+    description = case.get("descriptionOnImage", case.get("description", ""))
+    if description:
+        draw.text((table_left + 16, y + 20), description, font=font, fill="#172334")
+    if case.get("productCode") or case.get("ncm"):
+        draw.text((table_left + 16, y + 72), f"Código: {case.get('productCode', '—')}   NCM: {case.get('ncm', '—')}", font=small, fill="#35445a")
     draw.text((table_right - 430, y + 78), f"{case['quantity']} {case['unit']}   {money(case['unitPrice'])}   {money(total)}", font=small, fill="#172334")
     y += 175
     draw.line((table_left, y, table_right, y), fill="#8794a4", width=2)
@@ -53,4 +58,4 @@ for case in cases:
     draw.text((margin + 30, y), "Pagamento: transferência bancária", font=small, fill="#35445a")
     draw.text((margin + 30, y + 34), "Documento criado exclusivamente para teste de leitura e alocação.", font=small, fill="#68778b")
     image.save(output / case["filename"], format="PNG", optimize=True)
-print(f"Geradas {len(cases)} notas simuladas em {output}")
+print(f"Geradas {len(cases) + len(clarification_cases)} notas simuladas em {output}")

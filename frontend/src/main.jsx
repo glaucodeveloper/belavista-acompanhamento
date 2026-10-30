@@ -5,7 +5,7 @@ import { createSyncClient } from './sync.js';
 import priceCatalog from './assets/tabela-precos.json';
 import { AssistantChatbox } from './components/assistant-chatbox.jsx';
 import { AgendaPage } from './components/agenda-page.jsx';
-import { FileSpreadsheet, FileText, Printer, Plus, X, Trash2 } from 'lucide-react';
+import { FileSpreadsheet, FileText, Printer, Plus, X, Trash2, Sun, Moon, EllipsisVertical, MessageCircle } from 'lucide-react';
 import { exportReportCsv, exportReportPdf } from './report-exports.js';
 import { TreeProvider, TreeView, TreeNode, TreeNodeTrigger, TreeNodeContent, TreeLabel } from './components/kibo-tree.jsx';
 import { StagesPage } from './components/stages-page.jsx';
@@ -139,7 +139,7 @@ function LotDevelopmentPage({ lots, onSave }) {
     finally { setBusy(false); }
   }
   return <div className="development-page">
-    <section className="development-map-panel"><div className="section-heading"><div><p className="eyebrow">PLANTA INTERATIVA</p><h2>Mapa do loteamento</h2><p>Toque em um lote para registrar entrada e situação.</p></div><div className="map-heading-actions"><span className="map-hint">Ctrl + roda do mouse para zoom</span><button type="button" className="quiet-button" onClick={() => setPrintMapOpen(true)}><Printer size={15} /> Imprimir mapa</button></div></div><MapView className="development-map" onLotSelect={openLot} /></section>
+    <section className="development-map-panel"><div className="section-heading"><div><p className="eyebrow">PLANTA INTERATIVA</p><h2>Mapa do loteamento</h2><p>Toque em um lote para registrar entrada e situação.</p></div><div className="map-heading-actions"><span className="map-hint">Ctrl + roda do mouse para zoom</span><button type="button" className="quiet-button map-print-trigger" onClick={() => setPrintMapOpen(true)}><Printer size={15} /> Imprimir mapa</button></div></div><MapView className="development-map" onLotSelect={openLot} /></section>
     <section className="lot-catalog-panel"><div className="section-heading"><div><p className="eyebrow">CATÁLOGO OFICIAL</p><h2>Lotes por quadra</h2><p>{lots.length} lotes cadastrados · selecione um para abrir a ficha.</p></div><span className="map-hint">Valores oficiais da tabela</span></div>
       {lots.length ? <TreeProvider defaultExpandedIds={Object.keys(groups)}><TreeView>{Object.entries(groups).sort(([a], [b]) => a.localeCompare(b, 'pt-BR')).map(([quadra, items]) => <TreeNode nodeId={quadra} key={quadra}>
         <TreeNodeTrigger hasChildren><TreeLabel>{quadra}<small>{items.length} lotes</small></TreeLabel></TreeNodeTrigger>
@@ -156,7 +156,14 @@ function RepassePage({ rows, lots, onSave, owner }) {
   return <DataPage type="transfers" rows={rows} lots={lots} onSave={onSave} owner={owner} />;
 }
 
-function Login({ onLogin }) {
+function ThemeToggle({ theme, onChange }) {
+  const dark = theme === 'dark';
+  return <button type="button" className="theme-toggle" aria-label={dark ? 'Ativar modo claro' : 'Ativar modo escuro'} title={dark ? 'Modo claro' : 'Modo escuro'} onClick={() => onChange(dark ? 'light' : 'dark')}>
+    {dark ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}<span>{dark ? 'Claro' : 'Escuro'}</span>
+  </button>;
+}
+
+function Login({ onLogin, theme, onThemeChange }) {
   const [username, setUsername] = useState(''), [password, setPassword] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false);
   const kind = detectClientKind();
   async function submit(event) {
@@ -167,7 +174,7 @@ function Login({ onLogin }) {
       sessionStorage.setItem('alianca-session-token', result.token); onLogin(result.user);
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   }
-  return <main className="login-shell"><form className="login-card" onSubmit={submit}><span className="brand-mark">A</span><p className="eyebrow">ALIANÇA PARK</p><h1>Acessar aplicação</h1><p className="login-copy">Entre com seu usuário de campo.</p><p className="login-device">Acesso detectado: <strong>{kind === 'mobile' ? 'Mobile' : 'Desktop'}</strong></p>
+  return <main className="login-shell"><ThemeToggle theme={theme} onChange={onThemeChange} /><form className="login-card" onSubmit={submit}><span className="brand-mark">A</span><p className="eyebrow">ALIANÇA PARK</p><h1>Acessar aplicação</h1><p className="login-copy">Entre com seu usuário de campo.</p><p className="login-device">Acesso detectado: <strong>{kind === 'mobile' ? 'Mobile' : 'Desktop'}</strong></p>
     <label>Usuário<input autoComplete="username" value={username} onChange={e => setUsername(e.target.value)} required /></label>
     <label>Senha<input autoComplete="current-password" type="password" value={password} onChange={e => setPassword(e.target.value)} required /></label>
     {error && <p className="error-message" role="alert">{error}</p>}<button className="primary-button" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button>
@@ -183,6 +190,12 @@ function detectClientKind() {
 
 function DataPage({ type, rows, lots = [], onSave, owner }) {
   const config = configs[type], [query, setQuery] = useState(''), [editing, setEditing] = useState(null), [error, setError] = useState(''), [busy, setBusy] = useState(false);
+  const formRef = useRef(null);
+  useEffect(() => {
+    if (!editing) return;
+    const frame = requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+    return () => cancelAnimationFrame(frame);
+  }, [editing]);
   const filtered = rows.filter(row => Object.values(row).some(value => String(value).toLowerCase().includes(query.toLowerCase())));
   const materialGroups = type === 'materials' ? Object.groupBy(filtered, row => row.category || 'Sem categoria') : null;
   const repasseDetails = row => {
@@ -213,7 +226,7 @@ function DataPage({ type, rows, lots = [], onSave, owner }) {
     {error && <p className="error-message" role="alert">{error}</p>}
     <div className="table-tools"><label className="search-field"><span>Buscar</span><input value={query} onChange={event => setQuery(event.target.value)} placeholder={`Buscar ${config.singular}`} /></label><span className="data-count">{filtered.length} {filtered.length === 1 ? 'registro' : 'registros'}</span></div>
     {type === 'transfers' && <section className="repasse-contract"><div><p className="eyebrow">REGRA CONTRATUAL</p><h3>Destino da comissão por tipo de entrada</h3><p>Comissão = entrada × comissão do corretor × participação do tipo. O percentual do corretor precisa estar cadastrado para o lote e o corretor.</p></div><div className="repasse-rule-list">{REPASSE_REASONS.map(reason => <article key={reason.id}><strong>{reason.label}</strong><span>{reason.sharePercent}% da comissão</span><span>Warley {reason.warleyPercent}%</span><span>Parceiro {reason.partnerPercent}%</span></article>)}</div></section>}
-    {editing && <form className="record-form" onSubmit={event => { event.preventDefault(); const exists = rows.some(row => row.id === editing.id); persist(exists ? rows.map(row => row.id === editing.id ? editing : row) : [...rows, editing]); }}>
+    {editing && <form ref={formRef} className="record-form" onSubmit={event => { event.preventDefault(); const exists = rows.some(row => row.id === editing.id); persist(exists ? rows.map(row => row.id === editing.id ? editing : row) : [...rows, editing]); }}>
       <div className="form-heading"><h3>{rows.some(row => row.id === editing.id) ? `Editar ${config.singular}` : `Novo ${config.singular}`}</h3><button type="button" className="quiet-button" onClick={() => setEditing(null)}>Fechar</button></div>
       <div className="form-grid">{config.fields.map(([key, label, kind, required]) => <label key={key}>{label}{type === 'transfers' && key === 'lotLabel' ? <select required value={editing[key] || ''} onChange={e => setEditing({ ...editing, [key]: e.target.value })}><option value="">Selecione um lote</option>{lots.map(lot => <option value={lot.label} key={lot.id}>{lot.label} · {lot.quadra}</option>)}</select> : kind === 'select' ? <select required={required} value={editing[key] || (type === 'lots' ? 'Disponível' : type === 'transfers' ? REPASSE_REASONS[0].id : 'Pendente')} onChange={e => setEditing({ ...editing, [key]: e.target.value })}>{(type === 'lots' ? ['Disponível', 'Reservado', 'Vendido', 'Bloqueado'] : type === 'transfers' ? REPASSE_REASONS.map(reason => reason.id) : ['Pendente', 'Programado', 'Pago', 'Cancelado']).map(option => <option value={option} key={option}>{type === 'transfers' ? REPASSE_REASONS.find(reason => reason.id === option)?.label : option}</option>)}</select> : <input required={required} type={kind === 'currency' ? 'number' : kind} min={kind === 'number' || kind === 'currency' ? '0' : undefined} max={key === 'commissionPercent' ? '100' : undefined} step={kind === 'currency' || kind === 'number' ? '0.01' : undefined} value={editing[key] ?? ''} onChange={e => setEditing({ ...editing, [key]: e.target.value })} />}</label>)}</div>
       <div className="form-actions"><button type="button" className="quiet-button" onClick={() => setEditing(null)}>Cancelar</button><button className="primary-button" disabled={busy}>{busy ? 'Salvando…' : 'Salvar'}</button></div>
@@ -224,8 +237,12 @@ function DataPage({ type, rows, lots = [], onSave, owner }) {
 
 function App() {
   const [user, setUser] = useState(null), [active, setActive] = useState(() => location.hash.match(/^#\/(map|materials|stages|transfers|agenda)$/)?.[1] || 'map');
+  const [theme, setTheme] = useState(() => localStorage.getItem('alianca-theme') === 'dark' ? 'dark' : 'light');
   const [section, setSection] = useState('menu');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null), pageContentRef = useRef(null);
   const [data, setData] = useState(emptyData), [revision, setRevision] = useState(null), [syncError, setSyncError] = useState('');
+  const dataRef = useRef(data), revisionRef = useRef(revision);
   const page = section === 'assistant' ? { title: 'Assistente' } : pages.find(item => item.id === active) || pages[0];
   async function loadRemoteData() {
     let stored = await sync.read();
@@ -243,38 +260,54 @@ function App() {
       try { stored = await sync.write(loaded, stored.revision); }
       catch (error) { if (error.status !== 409) throw error; stored = await sync.read(); loaded = { ...emptyData(), ...stored.data }; }
     }
+    dataRef.current = loaded; revisionRef.current = stored.revision;
     setData(loaded); setRevision(stored.revision);
   }
   useEffect(() => { const token = sessionStorage.getItem('alianca-session-token'); if (!token) return; fetch(`${WORKER}/api/session`, { headers: { Authorization: `Bearer ${token}` } }).then(async response => { if (!response.ok) throw new Error(); const result = await response.json(); setUser(result.user); await loadRemoteData(); }).catch(() => sessionStorage.removeItem('alianca-session-token')); }, []);
   useEffect(() => { document.title = `${page.title} · Aliança Park`; }, [page.title]);
-  function navigate(id) { setActive(id); history.replaceState(null, '', `#/${id}`); }
+  useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem('alianca-theme', theme); }, [theme]);
+  useEffect(() => { pageContentRef.current?.scrollTo(0, 0); }, [active, section]);
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const closeOnPointer = event => { if (!menuRef.current?.contains(event.target)) setMenuOpen(false); };
+    const closeOnEscape = event => { if (event.key === 'Escape') setMenuOpen(false); };
+    document.addEventListener('pointerdown', closeOnPointer);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => { document.removeEventListener('pointerdown', closeOnPointer); document.removeEventListener('keydown', closeOnEscape); };
+  }, [menuOpen]);
+  function navigate(id) { setActive(id); setSection('menu'); setMenuOpen(false); history.replaceState(null, '', `#/${id}`); }
   async function saveRecords(type, rows) {
-    const next = { ...data, [type]: rows };
-    const saved = await sync.write(next, revision);
+    const next = { ...dataRef.current, [type]: rows };
+    const saved = await sync.write(next, revisionRef.current);
+    dataRef.current = next; revisionRef.current = saved.revision;
     setData(next); setRevision(saved.revision); setSyncError('');
   }
-  async function signOut() { const token = sessionStorage.getItem('alianca-session-token'); try { await fetch(`${WORKER}/api/logout`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); } finally { sessionStorage.removeItem('alianca-session-token'); setUser(null); setData(emptyData()); setRevision(null); } }
+  async function signOut() { const token = sessionStorage.getItem('alianca-session-token'); try { await fetch(`${WORKER}/api/logout`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); } finally { sessionStorage.removeItem('alianca-session-token'); dataRef.current = emptyData(); revisionRef.current = null; setUser(null); setData(emptyData()); setRevision(null); } }
   const allocateClassification = async result => {
     const recognized = result.recognized || {};
+    const currentData = dataRef.current;
     if (result.category === 'entry_receipt') {
-      const target = (data.lots || []).find(lot => lot.id === result.allocation?.lotId || lot.label.toLowerCase() === String(recognized.lotLabel || '').toLowerCase());
+      const target = (currentData.lots || []).find(lot => lot.id === result.allocation?.lotId || String(lot.label || '').toLowerCase() === String(recognized.lotLabel || '').toLowerCase());
       if (!target) throw new Error('Selecione um lote antes de aplicar a entrada.');
-      const next = (data.lots || []).map(lot => lot.id === target.id ? { ...lot, received: Number(lot.received || 0) + Number(recognized.amount || 0), entryHistory: [...(lot.entryHistory || []), { id: crypto.randomUUID(), amount: Number(recognized.amount || 0), date: recognized.date || new Date().toISOString().slice(0, 10), description: recognized.description || recognized.supplier || 'Entrada reconhecida por imagem' }] } : lot);
+      if (result.inferenceId && (target.entryHistory || []).some(entry => entry.inferenceId === result.inferenceId)) return;
+      const next = (currentData.lots || []).map(lot => lot.id === target.id ? { ...lot, received: Number(lot.received || 0) + Number(recognized.amount || 0), entryHistory: [...(lot.entryHistory || []), { id: crypto.randomUUID(), inferenceId: result.inferenceId, amount: Number(recognized.amount || 0), date: recognized.date || new Date().toISOString().slice(0, 10), description: recognized.description || recognized.supplier || 'Entrada reconhecida por imagem' }] } : lot);
       await saveRecords('lots', next); return;
     }
     const type = result.category === 'material_expense' ? 'materials' : result.category === 'service_expense' ? 'services' : null;
     if (!type) throw new Error('A categoria ainda precisa ser identificada.');
+    if (result.inferenceId && (currentData[type] || []).some(row => row.inferenceId === result.inferenceId)) return;
+    const officeRoute = result.allocation?.department === 'Escritório';
+    if (!Array.isArray(recognized.items) || !recognized.items.length || recognized.items.some(item => !String(item.description || '').trim())) throw new Error('A descrição dos itens precisa ser identificada automaticamente antes de aplicar a nota. Envie uma imagem mais nítida e completa.');
     const identifiedItems = Array.isArray(recognized.items) ? recognized.items.filter(item => item.description) : [];
     const allItemsPriced = identifiedItems.length && identifiedItems.every(item => item.amount != null || item.unitPrice != null);
     if (identifiedItems.length > 1 && !allItemsPriced) throw new Error('Informe o valor de cada item da nota antes de aplicar a classificação por atividade.');
-    const items = allItemsPriced ? identifiedItems : [{ description: recognized.description || recognized.supplier || 'Item reconhecido', amount: recognized.amount || 0, activityId: identifiedItems[0]?.activityId || recognized.activityId, activityName: identifiedItems[0]?.activityName || recognized.activityName, stageId: identifiedItems[0]?.stageId || recognized.stageId, stageName: identifiedItems[0]?.stageName || recognized.stageName }];
-    if (items.some(item => !item.activityId || !item.stageId)) throw new Error('Escolha uma atividade de etapa para cada item antes de aplicar a nota.');
-    const next = [...(data[type] || []), ...items.map(item => { const quantity = Number(item.quantity || 1), totalAmount = Number(item.amount ?? (Number(item.unitPrice || 0) * quantity)); return { id: crypto.randomUUID(), name: item.description || recognized.description || 'Item reconhecido', category: item.activityName || item.category || (type === 'materials' ? 'Material reconhecido' : 'Serviço reconhecido'), unit: item.unit || 'unidade', quantity, unitPrice: Number(item.unitPrice ?? (totalAmount / quantity)), total: totalAmount, amount: totalAmount, date: recognized.date || new Date().toISOString().slice(0, 10), supplier: recognized.supplier || '', stageId: item.stageId, stageName: item.stageName, activityId: item.activityId, activityName: item.activityName, source: 'OCR', filename: result.filename || '' }; })];
+    const items = allItemsPriced ? identifiedItems : identifiedItems.length === 1 ? [{ ...identifiedItems[0], amount: identifiedItems[0].amount ?? recognized.amount }] : [];
+    if (!officeRoute && items.some(item => !item.activityId || !item.stageId)) throw new Error('Escolha uma atividade de etapa para cada item antes de aplicar a nota.');
+    const next = [...(currentData[type] || []), ...items.map(item => { const quantity = Number(item.quantity || 1), totalAmount = Number(item.amount ?? (Number(item.unitPrice || 0) * quantity)); return { id: crypto.randomUUID(), inferenceId: result.inferenceId, name: item.description || recognized.description || 'Item reconhecido', category: item.activityName || item.category || (type === 'materials' ? 'Material reconhecido' : 'Serviço reconhecido'), unit: item.unit || 'unidade', quantity, unitPrice: Number(item.unitPrice ?? (totalAmount / quantity)), total: totalAmount, amount: totalAmount, date: recognized.date || new Date().toISOString().slice(0, 10), supplier: recognized.supplier || '', stageId: item.stageId, stageName: item.stageName, activityId: item.activityId, activityName: item.activityName, source: 'OCR', filename: result.filename || '' }; })];
     await saveRecords(type, next);
   };
-  if (!user) return <Login onLogin={async account => { setUser(account); try { await loadRemoteData(); } catch (error) { setSyncError(error.message); } }} />;
-  return <div className="app-shell"><aside className="sidebar"><a className="brand" href="#/map" onClick={event => { event.preventDefault(); navigate('map'); }}><span className="brand-mark">A</span><span><strong>Aliança Park</strong><small>Gestão do empreendimento</small></span></a><div className="sidebar-tabs" role="tablist" aria-label="Seções da sidebar"><button className="sidebar-tab" type="button" role="tab" aria-selected={section === 'menu'} onClick={() => setSection('menu')}>Menu</button><button className="sidebar-tab" type="button" role="tab" aria-selected={section === 'assistant'} onClick={() => setSection('assistant')}>Assistente</button></div>{section === 'menu' ? <><p className="nav-heading">OPERAÇÃO</p><nav className="primary-nav" aria-label="Navegação principal">{pages.map(item => <a key={item.id} className="nav-link" href={`#/${item.id}`} aria-current={active === item.id ? 'page' : undefined} onClick={event => { event.preventDefault(); navigate(item.id); }}><span aria-hidden="true">{item.icon}</span>{item.label}</a>)}</nav></> : <div className="assistant-sidebar-note">Chat com o assistente de obra</div>}<div className="sidebar-footer"><span className="status-dot" />{user.username}<button className="signout-button" onClick={signOut}>Sair</button></div></aside>
-    <main className="workspace"><header className="page-header"><div><p className="eyebrow">ALIANÇA PARK</p><h1>{page.title}</h1></div><span className="sync-state">{syncError || 'Dados sincronizados'}</span></header><section className="page-content" aria-live="polite">{section === 'assistant' ? <AssistantChatbox owner={user.username} lots={data.lots || []} stages={data.stages || []} inferenceReady={revision !== null} onAllocate={allocateClassification} /> : active === 'agenda' ? <AgendaPage events={data.agenda || []} onSave={events => saveRecords('agenda', events)} /> : active === 'map' ? <LotDevelopmentPage lots={data.lots || []} onSave={saveRecords} /> : active === 'stages' ? <StagesPage stages={data.stages || []} materials={data.materials || []} services={data.services || []} onSave={stages => saveRecords('stages', stages)} onSaveRecords={saveRecords} /> : active === 'transfers' ? <RepassePage rows={data.transfers || []} lots={data.lots || []} onSave={saveRecords} owner={user.username} /> : <DataPage type={active} rows={data[active] || []} lots={data.lots || []} onSave={saveRecords} owner={user.username} />}</section></main></div>;
+  if (!user) return <Login theme={theme} onThemeChange={setTheme} onLogin={async account => { setUser(account); try { await loadRemoteData(); } catch (error) { setSyncError(error.message); } }} />;
+  return <div className="app-shell has-assistant-toggle"><main className="workspace"><header className="page-header"><div className="page-heading"><div className="page-brand"><img className="mobile-brand-logo" src={aliancaLogo} alt="" /><p className="eyebrow">ALIANÇA PARK</p></div><h1>{page.title}</h1></div><div className="page-header-actions"><span className="sync-state">{syncError || 'Dados sincronizados'}</span><div className="top-menu" ref={menuRef}><button className="top-menu-trigger" type="button" aria-label="Abrir menu" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(open => !open)}><EllipsisVertical size={22} aria-hidden="true" /></button>{menuOpen && <div className="top-menu-dropdown" role="menu" aria-label="Menu da aplicação"><span className="top-menu-heading">NAVEGAR</span>{pages.map(item => <button key={item.id} className="top-menu-item" type="button" role="menuitem" aria-current={active === item.id && section === 'menu' ? 'page' : undefined} onClick={() => navigate(item.id)}><span aria-hidden="true">{item.icon}</span>{item.label}</button>)}<div className="top-menu-preferences"><span>Aparência</span><ThemeToggle theme={theme} onChange={setTheme} /></div><button className="top-menu-item top-menu-signout" type="button" role="menuitem" onClick={signOut}>Sair da conta</button></div>}</div></div></header><section ref={pageContentRef} className="page-content" aria-live="polite">{section === 'assistant' ? <AssistantChatbox owner={user.username} lots={data.lots || []} stages={data.stages || []} inferenceReady={revision !== null} onAllocate={allocateClassification} /> : active === 'agenda' ? <AgendaPage events={data.agenda || []} onSave={events => saveRecords('agenda', events)} /> : active === 'map' ? <LotDevelopmentPage lots={data.lots || []} onSave={saveRecords} /> : active === 'stages' ? <StagesPage stages={data.stages || []} materials={data.materials || []} services={data.services || []} onSave={stages => saveRecords('stages', stages)} onSaveRecords={saveRecords} /> : active === 'transfers' ? <RepassePage rows={data.transfers || []} lots={data.lots || []} onSave={saveRecords} owner={user.username} /> : <DataPage type={active} rows={data[active] || []} lots={data.lots || []} onSave={saveRecords} owner={user.username} />}</section></main><button className={`assistant-fab${section === 'assistant' ? ' is-active' : ''}`} type="button" aria-label={section === 'assistant' ? 'Fechar assistente' : 'Abrir assistente'} aria-pressed={section === 'assistant'} onClick={() => setSection(current => current === 'assistant' ? 'menu' : 'assistant')}><MessageCircle size={19} aria-hidden="true" /><span>{section === 'assistant' ? 'Fechar assistente' : 'Assistente'}</span></button></div>;
 }
 
 createRoot(document.getElementById('app')).render(<App />);

@@ -12,6 +12,7 @@ import { readOutbox, removeOutboxJob, saveOutboxJob } from "../outbox.js";
 const WORKER =
   "https://belavista-cloudflare-worker.icaroglaucooliveira.workers.dev";
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
+const INFERENCE_TIMEOUT_MS = 120_000;
 const formatSize = (bytes) =>
   bytes < 1024 * 1024
     ? `${Math.max(1, Math.round(bytes / 1024))} KB`
@@ -33,6 +34,135 @@ const statusLabels = {
   completed: "Processado",
   failed: "Falha no processamento",
 };
+
+function mergeAnalysisPatch(result, patch) {
+  const recognized = patch?.recognized || {};
+  const currentItems = result.recognized?.items || [];
+  const patchedItems = Array.isArray(recognized.items)
+      ? recognized.items.map((item, index) => {
+        const merged = { ...(currentItems[index] || {}), ...item };
+        if (typeof item.description === "string" && item.description.trim()) {
+          const previousDescription = String(currentItems[index]?.description || "").trim();
+          if (previousDescription && previousDescription !== item.description.trim() && (!item.activityId || !item.stageId))
+            for (const key of ["activityId", "activityName", "stageId", "stageName", "activityConfidence"])
+              delete merged[key];
+          merged.descriptionComplete = true;
+          delete merged.descriptionMismatch;
+        }
+        return merged;
+      })
+    : undefined;
+  return {
+    ...result,
+    question: null,
+    needsClarification: false,
+    ...(patch?.category ? { category: patch.category } : {}),
+    recognized: {
+      ...(result.recognized || {}),
+      ...Object.fromEntries(
+        Object.entries(recognized).filter(([, value]) => value !== null && value !== undefined),
+      ),
+      ...(patchedItems ? { items: patchedItems } : {}),
+    },
+    allocation: {
+      ...(result.allocation || {}),
+      ...(patch?.allocation || {}),
+    },
+  };
+}
+
+function resolveInference(result, lots, activities) {
+  const category = result.category || "unknown";
+  const recognized = { ...(result.recognized || {}) };
+  const allocation = { ...(result.allocation || {}) };
+  const ask = question => ({ ready: false, question, result });
+
+  if (category === "unknown")
+    return ask(result.question || "Qual é a categoria desta nota: entrada recebida, despesa de material ou despesa de serviço?");
+
+  if (category === "entry_receipt") {
+    let matches = [];
+    if (allocation.lotId) matches = lots.filter(lot => lot.id === allocation.lotId);
+    if (!matches.length && recognized.lotLabel) {
+      const target = String(recognized.lotLabel).toLocaleUpperCase("pt-BR").replace(/[^A-Z0-9]/g, "");
+      matches = lots.filter(lot => String(lot.label || "").toLocaleUpperCase("pt-BR").replace(/[^A-Z0-9]/g, "") === target);
+    }
+    if (matches.length !== 1)
+      return ask(result.question || (recognized.lotLabel ? `Não encontrei um lote único para “${recognized.lotLabel}”. Qual lote recebeu esta entrada?` : "Qual lote recebeu esta entrada?"));
+    if (!(Number(recognized.amount) > 0))
+      return ask(result.question || "Qual valor devo registrar como entrada recebida?");
+    return {
+      ready: true,
+      result: {
+        ...result,
+        category,
+        direction: "entrada",
+        needsClarification: false,
+        question: null,
+        recognized,
+        allocation: { ...allocation, destination: "lots", lotId: matches[0].id, lotLabel: matches[0].label },
+      },
+    };
+  }
+
+  if (!['material_expense', 'service_expense'].includes(category))
+    return ask("Qual categoria devo usar para esta nota?");
+
+  const items = Array.isArray(recognized.items) ? recognized.items.map(item => ({ ...item })) : [];
+  if (!items.length && !result.needsDescription && String(recognized.description || "").trim()) {
+    const inferredItem = { description: String(recognized.description).trim() };
+    if (Number(recognized.amount) > 0) inferredItem.amount = Number(recognized.amount);
+    for (const key of ["activityId", "activityName", "stageId", "stageName"])
+      if (recognized[key]) inferredItem[key] = recognized[key];
+    items.push(inferredItem);
+  }
+  if (!items.length)
+    return ask(result.question || "Não identifiquei a descrição da linha da nota. Qual é o texto exato do item?");
+
+  if (items.some(item => item.descriptionMismatch || item.descriptionComplete === false))
+    return ask(result.question || "A descrição não corresponde ao NCM impresso. Confirme o texto da nota ou informe a descrição correta.");
+  if (items.some(item => !String(item.description || "").trim()))
+    return ask(result.question || "Qual é a descrição exata de cada item da nota?");
+
+  if (items.length === 1 && !(Number(items[0].amount) > 0) && Number(recognized.amount) > 0)
+    items[0].amount = Number(recognized.amount);
+  for (const item of items)
+    if (!(Number(item.amount) > 0) && Number(item.unitPrice) > 0)
+      item.amount = Number(item.unitPrice) * Number(item.quantity || 1);
+  const missingLineValue = items.some(item => !(Number(item.amount) > 0 || Number(item.unitPrice) > 0));
+  if (missingLineValue)
+    return ask(result.question || "Qual é o valor de cada item que está faltando na nota?");
+
+  const officeDestination = allocation.department === "Escritório" || items.every(item => item.department === "Escritório");
+  if (!officeDestination && items.some(item => !activities.some(activity => activity.id === item.activityId && activity.stageId === item.stageId)))
+    return ask(result.question || "Não encontrei um vínculo único no catálogo. A qual atividade de etapa devo associar cada item?");
+  if (result.needsClarification && result.question)
+    return ask(result.question);
+
+  const total = items.reduce((sum, item) => sum + Number(item.amount ?? (Number(item.unitPrice) * Number(item.quantity || 1))), 0);
+  return {
+    ready: true,
+    result: {
+      ...result,
+      category,
+      direction: "saida",
+      needsClarification: false,
+      question: null,
+      recognized: { ...recognized, amount: Number(recognized.amount) > 0 ? Number(recognized.amount) : total, items },
+      allocation: { ...allocation, destination: category === "material_expense" ? "materials" : "services", ...(officeDestination ? { department: "Escritório" } : {}) },
+    },
+  };
+}
+
+function inferenceSuccessReply(result) {
+  if (result.category === "entry_receipt") {
+    const lot = result.allocation?.lotLabel || result.recognized?.lotLabel || "lote";
+    return `Entrada de ${Number(result.recognized?.amount || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} registrada em ${lot}.`;
+  }
+  const count = result.recognized?.items?.length || 1;
+  const destination = result.category === "service_expense" ? "Serviços" : "Materiais";
+  return `${count === 1 ? "Item" : `${count} itens`} identificado${count === 1 ? "" : "s"} e adicionado${count === 1 ? "" : "s"} automaticamente a ${destination}.`;
+}
 
 export function AssistantChatbox({
   lots = [],
@@ -107,12 +237,15 @@ export function AssistantChatbox({
               };
             }),
             analyses: (job.analysisOutputs || []).map((item) => ({
+              fileId: item.fileId,
               filename: item.filename,
               result: item.result,
+              applied: Boolean(item.applied),
               messageId: job.id,
             })),
             status: job.status,
             error: job.error || "",
+            reply: job.reply || "",
           })),
         );
         setQueueCount(
@@ -138,7 +271,6 @@ export function AssistantChatbox({
     window.addEventListener("offline", offlineHandler);
     const signalPoll = window.setInterval(() => {
       setOnline(navigator.onLine);
-      if (navigator.onLine) setQueueVersion((value) => value + 1);
     }, 30000);
     return () => {
       cancelled = true;
@@ -293,6 +425,16 @@ export function AssistantChatbox({
     if (!text.trim() && !files.length) return;
     setBusy(true);
     setError("");
+    const pendingAnalysis = files.length
+      ? null
+      : [...messages]
+          .reverse()
+          .flatMap((message) =>
+            [...(message.analyses || [])]
+              .reverse()
+              .map((analysis) => ({ message, analysis })),
+          )
+          .find(({ analysis }) => !analysis.applied);
     const job = {
       id: crypto.randomUUID(),
       owner,
@@ -301,13 +443,31 @@ export function AssistantChatbox({
       status: "pending",
       error: "",
       analysisOutputs: [],
-      files: files.map(({ id, name, size, type, file }) => ({
-        id,
-        name,
-        size,
-        type,
-        blob: file,
-      })),
+      ...(pendingAnalysis
+        ? {
+            editTarget: {
+              messageId: pendingAnalysis.message.id,
+              fileId: pendingAnalysis.analysis.fileId,
+              filename: pendingAnalysis.analysis.filename,
+              result: pendingAnalysis.analysis.result,
+            },
+          }
+        : {}),
+      files: await Promise.all(
+        files.map(async ({ id, name, size, type, file }) => {
+          // Android content-provider Files can preview correctly but persist as
+          // zero-byte File objects in IndexedDB. Copy bytes into a plain Blob
+          // before queuing so the later inference request receives the image.
+          const bytes = await file.arrayBuffer();
+          return {
+            id,
+            name,
+            size,
+            type,
+            blob: new Blob([bytes], { type }),
+          };
+        }),
+      ),
     };
     try {
       await saveOutboxJob(job);
@@ -326,8 +486,20 @@ export function AssistantChatbox({
           analyses: [],
           status: "pending",
           error: "",
+          ...(job.text && !job.files.length && !job.editTarget
+            ? {
+                status: "completed",
+                reply: "Anexe uma nota primeiro. Depois, envie uma mensagem para corrigir os dados reconhecidos.",
+              }
+            : {}),
         },
       ]);
+      if (job.text && !job.files.length && !job.editTarget) {
+        await removeOutboxJob(job.id);
+        setText("");
+        setFiles([]);
+        return;
+      }
       setQueueCount((value) => value + 1);
       setQueueVersion((value) => value + 1);
       setText("");
@@ -375,8 +547,131 @@ export function AssistantChatbox({
                 : message,
             ),
           );
+          let analysisOutputs = [...(queued.analysisOutputs || [])];
           try {
-            let analysisOutputs = [...(queued.analysisOutputs || [])];
+            let analysisEdit = null;
+            if (!queued.files.length && queued.editTarget) {
+              const activities = stages.flatMap((stage) =>
+                (stage.activities || []).map((activity) => ({
+                  id: activity.id,
+                  name: activity.title,
+                  stageId: stage.id,
+                  stageName: stage.name,
+                  description: activity.description || activity.summary || "",
+                  materials: (activity.materials || []).map((material) => ({
+                    name: material.name || "",
+                  })),
+                })),
+              );
+              const editController = new AbortController();
+              const editTimeout = window.setTimeout(
+                () => editController.abort(),
+                INFERENCE_TIMEOUT_MS,
+              );
+              let response;
+              try {
+                response = await fetch(
+                  `${WORKER}/api/inference/analysis-edit`,
+                  {
+                    method: "POST",
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      instruction: queued.text,
+                      filename: queued.editTarget.filename,
+                      currentResult: queued.editTarget.result,
+                      activities,
+                      lots: lots.map(({ id, label, quadra }) => ({ id, label, quadra })),
+                    }),
+                    signal: editController.signal,
+                  },
+                );
+              } catch (err) {
+                if (err.name === "AbortError")
+                  throw new Error(
+                    "A revisão excedeu 120 segundos. Tente novamente quando o Worker estiver disponível.",
+                  );
+                throw err;
+              } finally {
+                window.clearTimeout(editTimeout);
+              }
+              analysisEdit = await response.json().catch(() => ({}));
+              if (!response.ok) {
+                const failure = new Error(
+                  analysisEdit.error || "Não foi possível revisar a nota.",
+                );
+                failure.status = response.status;
+                failure.retryable =
+                  response.status === 429 || response.status >= 500;
+                throw failure;
+              }
+              const updated = mergeAnalysisPatch(
+                queued.editTarget.result,
+                analysisEdit.patch,
+              );
+              const resolution = resolveInference(updated, lots, activityOptions);
+              const outputId = queued.editTarget.fileId || queued.editTarget.filename;
+              const inferenceId = `${queued.editTarget.messageId}:${outputId}`;
+              let finalResult = resolution.result;
+              let reply = resolution.ready
+                ? inferenceSuccessReply(finalResult)
+                : resolution.question || analysisEdit.reply || "Ainda falta um detalhe para classificar esta nota.";
+              if (resolution.ready) {
+                if (!onAllocate) throw new Error("O salvamento automático da nota não está disponível.");
+                await onAllocate({ ...finalResult, inferenceId });
+              } else {
+                finalResult = {
+                  ...finalResult,
+                  needsClarification: true,
+                  question: resolution.question,
+                };
+              }
+
+              const sourceJobs = await readOutbox(owner);
+              const sourceJob = sourceJobs.find(
+                (item) => item.id === queued.editTarget.messageId,
+              );
+              if (sourceJob) {
+                const sourceOutputs = (sourceJob.analysisOutputs || []).map((item) =>
+                  (queued.editTarget.fileId && item.fileId === queued.editTarget.fileId) ||
+                  (!queued.editTarget.fileId && item.filename === queued.editTarget.filename)
+                    ? {
+                        ...item,
+                        result: finalResult,
+                        applied: resolution.ready,
+                        reply,
+                      }
+                    : item,
+                );
+                await saveOutboxJob({
+                  ...sourceJob,
+                  status: "completed",
+                  error: "",
+                  analysisOutputs: sourceOutputs,
+                });
+              }
+              await removeOutboxJob(queued.id);
+              setMessages((current) =>
+                current.map((message) => {
+                  if (message.id === queued.id)
+                    return { ...message, status: "completed", error: "", reply };
+                  if (message.id === queued.editTarget.messageId)
+                    return {
+                      ...message,
+                      analyses: message.analyses.map((item) =>
+                        ((queued.editTarget.fileId && item.fileId === queued.editTarget.fileId) ||
+                        (!queued.editTarget.fileId && item.filename === queued.editTarget.filename))
+                          ? { ...item, result: finalResult, applied: resolution.ready }
+                          : item,
+                      ),
+                    };
+                  return message;
+                }),
+              );
+              continue;
+            }
             for (const file of queued.files.filter((item) =>
               item.type.startsWith("image/"),
             )) {
@@ -397,37 +692,84 @@ export function AssistantChatbox({
                   ]
                     .filter(Boolean)
                     .join("\n"),
+                  properties: (activity.properties || []).map((property) => ({
+                    label: property.label || "",
+                    value: property.value || "",
+                  })),
                   stageId: stage.id,
                   stageName: stage.name,
                   stageDescription: stage.description || "",
+                  materials: (activity.materials || []).map((material) => ({
+                    name: material.name || "",
+                    quantity: material.quantity ?? material.plannedQuantity ?? null,
+                    unit: material.unit || "",
+                  })),
                 })),
               );
-              const response = await fetch(
-                `${WORKER}/api/inference/attachment`,
-                {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    filename: file.name,
-                    userContext: queued.text,
-                    description: queued.text,
-                    activities,
-                    image: {
-                      mimeType: file.type,
-                      data: await toBase64(file.blob),
-                    },
-                  }),
-                },
+              const stageCatalog = stages.map((stage) => ({
+                id: stage.id,
+                name: stage.name,
+                description: stage.description || "",
+                status: stage.status || "",
+                peculiarities: stage.peculiarities || [],
+                entryCriteria: (stage.entryCriteria || []).map((item) => item.label || item.name || ""),
+                requiredEvidence: stage.requiredEvidence || [],
+                materials: (stage.materials || []).map((material) => ({
+                  name: material.name || "",
+                  quantity: material.quantity ?? material.plannedQuantity ?? null,
+                  unit: material.unit || "",
+                })),
+              }));
+              const controller = new AbortController();
+              const timeout = window.setTimeout(
+                () => controller.abort(),
+                INFERENCE_TIMEOUT_MS,
               );
+              let response;
+              try {
+                response = await fetch(
+                  `${WORKER}/api/inference/attachment`,
+                  {
+                    method: "POST",
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      filename: file.name,
+                      userContext: queued.text,
+                      description: queued.text,
+                      activities,
+                      stages: stageCatalog,
+                      image: {
+                        mimeType: file.type,
+                        data: await toBase64(file.blob),
+                      },
+                    }),
+                    signal: controller.signal,
+                  },
+                );
+              } catch (err) {
+                if (err.name === "AbortError")
+                  throw new Error(
+                    "A inferência excedeu 120 segundos. Tente novamente quando o Worker estiver disponível.",
+                  );
+                throw err;
+              } finally {
+                window.clearTimeout(timeout);
+              }
               const result = await response.json().catch(() => ({}));
               if (!response.ok) {
                 const failure = new Error(
                   result.error || `Falha ao analisar ${file.name}.`,
                 );
                 failure.status = response.status;
+                failure.retryable =
+                  typeof result.retryable === "boolean"
+                    ? result.retryable
+                    : response.status === 429 ||
+                      (response.status >= 500 &&
+                        !/\bHTTP 4\d{2}\b/.test(result.error || ""));
                 throw failure;
               }
               analysisOutputs.push({
@@ -437,33 +779,78 @@ export function AssistantChatbox({
               });
               await saveOutboxJob({ ...processing, analysisOutputs });
             }
-            await removeOutboxJob(queued.id);
+            const resolvedOutputs = [];
+            for (const output of analysisOutputs) {
+              if (output.applied) {
+                resolvedOutputs.push(output);
+                continue;
+              }
+              const resolution = resolveInference(output.result, lots, activityOptions);
+              let result = resolution.result;
+              let reply;
+              if (resolution.ready) {
+                if (!onAllocate) throw new Error("O salvamento automático da nota não está disponível.");
+                const inferenceId = `${queued.id}:${output.fileId || output.filename}`;
+                await onAllocate({ ...result, inferenceId });
+                reply = inferenceSuccessReply(result);
+              } else {
+                result = {
+                  ...result,
+                  needsClarification: true,
+                  question: resolution.question,
+                };
+                reply = resolution.question;
+              }
+              resolvedOutputs.push({ ...output, result, applied: resolution.ready, reply });
+              analysisOutputs = [...resolvedOutputs, ...analysisOutputs.slice(resolvedOutputs.length)];
+              await saveOutboxJob({ ...processing, analysisOutputs });
+            }
+            analysisOutputs = resolvedOutputs;
+            const assistantReply = analysisOutputs
+              .map((item) => item.applied ? item.reply : `${item.filename}: ${item.reply}`)
+              .filter(Boolean)
+              .join("\n");
+            const completed = {
+              ...processing,
+              status: "completed",
+              error: "",
+              analysisOutputs,
+              reply: assistantReply,
+            };
+            if (analysisOutputs.length) await saveOutboxJob(completed);
+            else await removeOutboxJob(queued.id);
             setMessages((current) =>
-              current.map((message) =>
-                message.id === queued.id
-                  ? {
-                      ...message,
-                      status: "completed",
-                      error: "",
-                      analyses: analysisOutputs.map((item) => ({
-                        filename: item.filename,
-                        result: item.result,
-                        messageId: queued.id,
-                      })),
-                    }
-                  : message,
-              ),
+              current.map((message) => {
+                if (message.id === queued.id)
+                  return {
+                    ...message,
+                    status: "completed",
+                    error: "",
+                    reply: assistantReply,
+                    analyses: analysisOutputs.map((item) => ({
+                      fileId: item.fileId,
+                      filename: item.filename,
+                      result: item.result,
+                      applied: Boolean(item.applied),
+                      messageId: queued.id,
+                    })),
+                  };
+                return message;
+              }),
             );
           } catch (err) {
             const retryable =
-              !navigator.onLine ||
-              err instanceof TypeError ||
-              err.status === 429 ||
-              err.status >= 500;
+              typeof err.retryable === "boolean"
+                ? err.retryable
+                : !navigator.onLine ||
+                  err instanceof TypeError ||
+                  err.status === 429 ||
+                  err.status >= 500;
             const failed = {
               ...processing,
               status: retryable ? "pending" : "failed",
               error: err.message,
+              analysisOutputs,
             };
             await saveOutboxJob(failed);
             setMessages((current) =>
@@ -491,7 +878,7 @@ export function AssistantChatbox({
       }
     }
     processQueue();
-  }, [online, outboxReady, queueVersion, owner, stages, inferenceReady]);
+  }, [online, outboxReady, queueVersion, owner, stages, lots, inferenceReady]);
 
   async function retryJob(id) {
     const jobs = await readOutbox(owner),
@@ -507,33 +894,6 @@ export function AssistantChatbox({
     );
     setQueueCount((value) => value + 1);
     setQueueVersion((value) => value + 1);
-  }
-
-  async function applyAnalysis(analysis, category, lotId) {
-    const result = {
-      ...analysis.result,
-      category,
-      allocation: { ...(analysis.result.allocation || {}), lotId },
-    };
-    try {
-      await onAllocate?.(result);
-      setMessages((current) =>
-        current.map((message) =>
-          message.id === analysis.messageId
-            ? {
-                ...message,
-                analyses: message.analyses.map((item) =>
-                  item.filename === analysis.filename
-                    ? { ...item, applied: true }
-                    : item,
-                ),
-              }
-            : message,
-        ),
-      );
-    } catch (err) {
-      setError(err.message);
-    }
   }
 
   return (
@@ -570,6 +930,12 @@ export function AssistantChatbox({
           messages.map((message) => (
             <article className="chat-message" key={message.id}>
               {message.text && <p>{message.text}</p>}
+              {message.reply && (
+                <div className="chat-assistant-reply">
+                  <strong>Assistente de obra</strong>
+                  <p>{message.reply}</p>
+                </div>
+              )}
               {!!message.files.length && (
                 <Attachments variant="grid">
                   {message.files.map((file) => (
@@ -589,7 +955,8 @@ export function AssistantChatbox({
                       : ""}
                   </span>
                   {message.error && <small>{message.error}</small>}
-                  {message.status === "failed" && (
+                  {(message.status === "failed" ||
+                    (message.status === "pending" && message.error)) && (
                     <button type="button" onClick={() => retryJob(message.id)}>
                       Tentar novamente
                     </button>
@@ -599,303 +966,14 @@ export function AssistantChatbox({
             </article>
           ))
         )}
+
+
       </div>
       <form className="chat-composer" onSubmit={send}>
         {error && (
           <p className="chat-error" role="alert">
             {error}
           </p>
-        )}
-        {messages.map((message) =>
-          message.analyses?.map((analysis, index) => {
-            const result = analysis.result,
-              recognized = result.recognized || {};
-            const lineItems = recognized.items?.length
-              ? recognized.items
-              : [
-                  {
-                    description:
-                      recognized.description ||
-                      recognized.supplier ||
-                      "Item da nota",
-                    amount: recognized.amount,
-                    activityId: recognized.activityId,
-                    stageId: recognized.stageId,
-                  },
-                ];
-            const [category, setCategory] = [
-              result.category,
-              (value) => {
-                analysis.result.category = value;
-                setMessages((current) => [...current]);
-              },
-            ];
-            const [lotId, setLotId] = [
-              analysis.result.allocation?.lotId ||
-                lots.find(
-                  (lot) =>
-                    lot.label.toLowerCase() ===
-                    String(recognized.lotLabel || "").toLowerCase(),
-                )?.id ||
-                "",
-              (value) => {
-                analysis.result.allocation = {
-                  ...(analysis.result.allocation || {}),
-                  lotId: value,
-                };
-                setMessages((current) => [...current]);
-              },
-            ];
-            const setAmount = (value) => {
-              analysis.result.recognized = {
-                ...recognized,
-                amount: value === "" ? null : Number(value),
-              };
-              setMessages((current) => [...current]);
-            };
-            const setItemAmount = (itemIndex, value) => {
-              const items = recognized.items?.length
-                ? [...recognized.items]
-                : [
-                    {
-                      description:
-                        recognized.description ||
-                        recognized.supplier ||
-                        "Item da nota",
-                      amount: recognized.amount,
-                    },
-                  ];
-              items[itemIndex] = {
-                ...items[itemIndex],
-                amount: value === "" ? null : Number(value),
-              };
-              analysis.result.recognized = { ...recognized, items };
-              setMessages((current) => [...current]);
-            };
-            const setActivity = (itemIndex, activityId) => {
-              const item = activityOptions.find(
-                (option) => option.id === activityId,
-              );
-              const items = recognized.items?.length
-                ? [...recognized.items]
-                : [
-                    {
-                      description:
-                        recognized.description ||
-                        recognized.supplier ||
-                        "Item da nota",
-                      amount: recognized.amount,
-                    },
-                  ];
-              items[itemIndex] = {
-                ...items[itemIndex],
-                activityId: item?.id || null,
-                activityName: item?.name || null,
-                stageId: item?.stageId || null,
-                stageName: item?.stageName || null,
-                activityConfidence: item ? 1 : 0,
-              };
-              analysis.result.recognized = { ...recognized, items };
-              setMessages((current) => [...current]);
-            };
-            const activityRequired = [
-              "material_expense",
-              "service_expense",
-            ].includes(category);
-            const missingActivity =
-              activityRequired &&
-              lineItems.some(
-                (item) =>
-                  !item.activityId ||
-                  !activityOptions.some(
-                    (option) => option.id === item.activityId,
-                  ),
-              );
-            const missingLineValue =
-              activityRequired &&
-              lineItems.some((item, itemIndex) => {
-                const amount =
-                  item.amount ??
-                  (lineItems.length === 1 ? recognized.amount : null);
-                return !(Number(amount) > 0 || Number(item.unitPrice) > 0);
-              });
-            const amountRequired =
-              category === "entry_receipt" || !activityRequired;
-            return (
-              <article
-                key={`${message.id}-${index}`}
-                className="classification-card"
-              >
-                <div>
-                  <span className="eyebrow">
-                    LEITURA NVIDIA · {analysis.filename}
-                  </span>
-                  <strong>
-                    {recognized.description ||
-                      recognized.supplier ||
-                      "Anexo analisado"}
-                  </strong>
-                  <small>
-                    Categoria: {category || "Não identificada"} · Confiança{" "}
-                    {Math.round(Number(result.confidence || 0) * 100)}%
-                  </small>
-                  {recognized.amount != null && (
-                    <small>
-                      Valor reconhecido:{" "}
-                      {Number(recognized.amount).toLocaleString("pt-BR", {
-                        style: "currency",
-                        currency: "BRL",
-                      })}
-                    </small>
-                  )}
-                  {result.question && <p>{result.question}</p>}
-                </div>
-                {!analysis.applied && (
-                  <div className="classification-actions">
-                    <label>
-                      Categoria
-                      <select
-                        value={category || "unknown"}
-                        onChange={(event) => setCategory(event.target.value)}
-                      >
-                        <option value="unknown">Preciso escolher</option>
-                        <option value="entry_receipt">Entrada recebida</option>
-                        <option value="service_expense">
-                          Despesa de serviço
-                        </option>
-                        <option value="material_expense">
-                          Despesa de material
-                        </option>
-                      </select>
-                    </label>
-                    {category === "entry_receipt" && (
-                      <label>
-                        Lote
-                        <select
-                          value={lotId}
-                          onChange={(event) => setLotId(event.target.value)}
-                        >
-                          <option value="">Selecione o lote</option>
-                          {lots.map((lot) => (
-                            <option value={lot.id} key={lot.id}>
-                              {lot.label} · {lot.quadra}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    )}
-                    {activityRequired && (
-                      <div className="ocr-activity-list">
-                        <strong>
-                          Vincule cada item a uma atividade e confira os valores
-                        </strong>
-                        {lineItems.map((item, itemIndex) => {
-                          const lineAmount =
-                            item.amount ??
-                            (lineItems.length === 1 ? recognized.amount : null);
-                          const hasLineValue =
-                            Number(lineAmount) > 0 ||
-                            Number(item.unitPrice) > 0;
-                          return (
-                            <div
-                              className="ocr-activity-item"
-                              key={`${item.description}-${itemIndex}`}
-                            >
-                              <span>
-                                <b>
-                                  {item.description || `Item ${itemIndex + 1}`}
-                                </b>
-                                <small>
-                                  {item.quantity
-                                    ? `${item.quantity} ${item.unit || ""}`
-                                    : ""}
-                                  {lineAmount != null
-                                    ? ` · ${Number(lineAmount).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`
-                                    : ""}
-                                </small>
-                              </span>
-                              <select
-                                aria-label={`Atividade de ${item.description || `item ${itemIndex + 1}`}`}
-                                value={item.activityId || ""}
-                                onChange={(event) =>
-                                  setActivity(itemIndex, event.target.value)
-                                }
-                              >
-                                <option value="">Escolha a atividade</option>
-                                {activityOptions.map((option) => (
-                                  <option value={option.id} key={option.id}>
-                                    {option.stageName} · {option.name}
-                                  </option>
-                                ))}
-                              </select>
-                              {!hasLineValue && (
-                                <label className="ocr-line-amount">
-                                  Valor deste item
-                                  <input
-                                    type="number"
-                                    min="0.01"
-                                    step="0.01"
-                                    value={item.amount ?? ""}
-                                    onChange={(event) =>
-                                      setItemAmount(
-                                        itemIndex,
-                                        event.target.value,
-                                      )
-                                    }
-                                    placeholder="0,00"
-                                  />
-                                </label>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {amountRequired && recognized.amount == null && (
-                      <label>
-                        Valor para registrar
-                        <input
-                          type="number"
-                          min="0.01"
-                          step="0.01"
-                          onChange={(event) => setAmount(event.target.value)}
-                          placeholder="Informe o valor"
-                        />
-                      </label>
-                    )}
-                    <button
-                      className="primary-button"
-                      disabled={
-                        category === "unknown" ||
-                        (category === "entry_receipt" && !lotId) ||
-                        (activityRequired &&
-                          (missingActivity || missingLineValue)) ||
-                        (amountRequired && Number(recognized.amount || 0) <= 0)
-                      }
-                      onClick={() =>
-                        applyAnalysis(
-                          { ...analysis, messageId: message.id },
-                          category,
-                          lotId,
-                        )
-                      }
-                    >
-                      {category === "unknown"
-                        ? "Informe a categoria"
-                        : missingActivity
-                          ? "Escolha atividade para cada item"
-                          : missingLineValue
-                            ? "Informe o valor de cada item"
-                            : "Aplicar à lista"}
-                    </button>
-                  </div>
-                )}
-                {analysis.applied && (
-                  <span className="classification-applied">Aplicado</span>
-                )}
-              </article>
-            );
-          }),
         )}
         {!!files.length && (
           <Attachments variant="grid">

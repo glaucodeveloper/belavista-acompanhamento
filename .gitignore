@@ -8,3 +8,4 @@ release/
 .test-artifacts/
 __pycache__/
 *.log
+.tokensave

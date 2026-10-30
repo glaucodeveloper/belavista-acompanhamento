@@ -1,23 +1,20 @@
-# Teste de alocação OCR por atividade
+# Teste de inferência e destinação de notas
 
-O conjunto contém cinco imagens versionadas de notas simuladas, marcadas **sem validade fiscal**, e as envia ao endpoint real `/api/inference/attachment` do Worker Cloudflare. Depois abre a aplicação em Chromium, envia os mesmos anexos pelo chat, aplica a sugestão retornada e confere que o item aparece na etapa e atividade esperadas. A interface usa sincronização em memória durante o teste, sem gravar dados de teste no repositório remoto.
+O fluxo usa o Worker Cloudflare real para `/api/inference/attachment` e `/api/inference/analysis-edit`, e abre a aplicação em Chromium móvel. Apenas `/api/sync` fica em memória durante o teste; nenhum lote, material ou serviço de teste é gravado no repositório remoto.
 
-As notas de entrada ficam em `worker/test/fixtures/inference-allocation/`. As capturas visuais geradas pelo teste ficam em `.test-artifacts/inference-allocation/`, ignorado pelo Git. Para recriar as cinco notas a partir do catálogo JSON, execute `python3 scripts/generate-inference-allocation-invoices.py [diretório]`.
+Os oito PNGs sintéticos ficam em `worker/test/fixtures/inference-allocation/` e são marcados sem validade fiscal. Cinco cobrem despesas completas de serviço e material; três cobrem descrição ausente, parcial e incompatível com o NCM. Nos três casos incompletos, a interface precisa perguntar no chat, não gravar antes da resposta, aceitar o detalhe digitado e salvar automaticamente na atividade correta.
 
-Casos cobertos:
-
-- Assentamento de tubulação pluvial → `drenagem-assentar`.
-- Reaterro e compactação de vala → `drenagem-compactar`.
-- Tubo PEAD da rede principal → `agua-rede-principal`.
-- Cavalete e conexões para ramal de água → `agua-ramais`.
-- Postes para rede elétrica → `eletrica-postes`.
-
-Execute com uma sessão autenticada do Worker:
+Para executar com uma sessão válida do Worker:
 
 ```sh
-ALIANCAPARK_SESSION_TOKEN='token-de-sessao' npm run test:inference:allocation
+ALIANCAPARK_SESSION_TOKEN_FILE=/caminho/seguro/da-sessao \
+  npm run test:inference:allocation
 ```
 
-As capturas de evidência da árvore de etapas ficam em `.test-artifacts/inference-allocation/evidence-<atividade>.png`. Para exercitar somente a interface e o salvamento visual, sem chamada de inferência NVIDIA, use `npm run test:inference:allocation -- --mock-inference`; esse modo não certifica a qualidade do modelo.
+O script não exibe nem remove o arquivo de sessão. Guarde-o fora do repositório e remova-o depois do teste. `ALIANCAPARK_WORKER_URL` troca o endpoint, `CHROME_PATH` aponta para o Chromium e `ALLOCATION_E2E_CLARIFICATIONS_ONLY=1` ou `ALLOCATION_E2E_BASE_ONLY=1` selecionam os casos.
 
-Opcionalmente, `ALIANCAPARK_WORKER_URL` troca o endpoint e `CHROME_PATH` aponta para o Chromium. A execução usa os PNGs versionados; apenas as capturas de evidência são geradas em `.test-artifacts/inference-allocation/`. O modo padrão chama a inferência NVIDIA real e pode consumir cota.
+As capturas do chat ficam em `.test-artifacts/inference-allocation/`, ignorado pelo Git. Para recriar as notas sintéticas:
+
+```sh
+python3 scripts/generate-inference-allocation-invoices.py
+```
