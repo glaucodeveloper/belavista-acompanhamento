@@ -1,5 +1,5 @@
 import {apiFetch} from './api-client.mjs';
-import {uploadPublicLeadFiles} from './firebase.mjs?v=public-runtime-v47';
+import {uploadPublicLeadFiles} from './firebase.mjs?v=public-runtime-v5601';
 
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const clean=value=>String(value??'').trim();
@@ -194,16 +194,28 @@ const HIGHLIGHT_COPY={
 };
 
 const pageMarkup=()=>`<div class="public-leads-experience">
-  <section class="public-map-story" data-map-story>
+  <section class="public-map-story" id="mapa" data-map-story>
     <div class="public-map-sticky">
       <div class="public-map-static-bg" aria-hidden="true"></div>
       <map-scene data-public-map data-public-presentation data-stage="Aliança Park · comercial" aria-label="Mapa interativo do loteamento" data-public-static-base="true" data-public-static-capture="/assets/public/dwg-satellite-treated-v5411.png"></map-scene>
       <div class="public-map-vignette"></div>
 
+      <header class="public-page-nav">
+        <a class="public-page-brand" href="#mapa" aria-label="Aliança Park — início">
+          <span class="public-page-brand-mark" aria-hidden="true">A</span>
+          <span><b>Aliança Park</b><small>Lotes em Amargosa, Bahia</small></span>
+        </a>
+        <nav aria-label="Navegação da página">
+          <a href="#como-funciona">Como funciona</a>
+          <a href="#duvidas">Dúvidas</a>
+        </nav>
+        <a class="public-page-nav-cta" href="#mapa">Explorar lotes <span aria-hidden="true">↗</span></a>
+      </header>
+
       <div class="public-hero-letter" data-hero-letter>
         <span>ALIANÇA PARK · AMARGOSA, BAHIA</span>
         <h1>Escolha seu lote<br><em>em Amargosa, Bahia.</em></h1>
-        <p>Consulte disponibilidade, compare posições e avance para uma reserva assistida.</p>
+        <p>Explore a planta, selecione um lote e continue a conversa com essa referência.</p>
       </div>
 
       <div class="public-scroll-legend" data-scroll-legend aria-live="off">
@@ -211,54 +223,96 @@ const pageMarkup=()=>`<div class="public-leads-experience">
         <div><b data-legend-title>Encontre seu lugar</b><small data-legend-text>Consulte lotes, compare posições e converse com a equipe para planejar sua visita ou iniciar uma reserva.</small></div>
       </div>
 
-      <public-lead-chat></public-lead-chat>
+      <public-lead-chat id="atendimento"></public-lead-chat>
       <div class="public-selected-lot" data-selected-lot hidden></div>
     </div>
 
   </section>
 
-  <section class="public-place-story public-reveal" data-public-reveal>
-    <div class="public-place-copy">
-      <span>UM NOVO LUGAR EM AMARGOSA</span>
-      <h2>Espaço para construir planos.<br><em>Calma para viver bem.</em></h2>
-      <p>O Aliança Park aproxima natureza, mobilidade e uma escolha acompanhada do primeiro contato à reserva.</p>
+  <section class="public-overview public-reveal" data-public-reveal>
+    <div class="public-overview-copy">
+      <span class="public-kicker">LOTEAMENTO · AMARGOSA, BAHIA</span>
+      <h2>Planta, disponibilidade e atendimento <em>no mesmo fluxo.</em></h2>
+      <p>Encontre uma posição no mapa, consulte a situação do lote e envie sua dúvida sem perder a referência da unidade escolhida.</p>
+      <a class="public-text-link" href="#mapa">Abrir mapa de lotes <span aria-hidden="true">→</span></a>
     </div>
-    <div class="public-place-graphic" aria-hidden="true">
-      <i></i><i></i><i></i><i></i><i></i><i></i>
-      <b>298</b><small>oportunidades para escolher</small>
-    </div>
-  </section>
-
-  <section class="public-seals" id="selos">
-    <header><span>ALIANÇA PARK</span><h2>Selos do loteamento</h2><p>Referências de acompanhamento e segurança da experiência comercial.</p></header>
-    <div class="public-seal-grid">
-      <article><i data-lucide="map-pinned"></i><b>Mapa integrado</b><small>Leitura espacial do loteamento.</small></article>
-      <article><i data-lucide="badge-check"></i><b>Disponibilidade</b><small>Estado comercial conectado ao cadastro.</small></article>
-      <article><i data-lucide="message-circle-more"></i><b>Reserva assistida</b><small>Conversa até identificação, documentos e sinal.</small></article>
-      <article><i data-lucide="shield-check"></i><b>Rastreabilidade</b><small>Lead e reserva registrados pelo Worker.</small></article>
-    </div>
-  </section>
-
-  <section class="public-contact public-reveal" id="contato" data-public-reveal>
-    <div class="public-contact-copy">
-      <span>FALE COM A EQUIPE</span>
-      <h2>Conheça o loteamento<br>do seu jeito.</h2>
-      <p>Converse para consultar disponibilidade, organizar uma visita e entender as próximas etapas da reserva.</p>
-      <div class="public-contact-actions">
-        <a href="#" data-contact-channel="instagram" aria-disabled="true"><b>Instagram</b><small>@instagram_do_empreendimento</small></a>
-        <a href="#" data-contact-channel="whatsapp" aria-disabled="true"><b>Mensagem pelo WhatsApp</b><small>Número a configurar</small></a>
-      </div>
-    </div>
-    <aside class="public-credentials" aria-label="Dados legais do empreendimento">
-      <span>IDENTIFICAÇÃO DO EMPREENDIMENTO</span>
-      <dl>
-        <div><dt>CREA</dt><dd>A informar</dd></div>
-        <div><dt>CNPJ</dt><dd>A informar</dd></div>
-        <div><dt>CNPJ da obra</dt><dd>A informar</dd></div>
-      </dl>
-      <small>Campos reservados para os dados oficiais antes da publicação definitiva.</small>
+    <aside class="public-overview-stat" aria-label="Quadro oficial de lotes">
+      <span class="public-stat-icon" aria-hidden="true">⌖</span>
+      <b>298</b>
+      <strong>lotes no quadro oficial</strong>
+      <small>Selecione uma unidade na planta para iniciar a consulta.</small>
     </aside>
   </section>
+
+  <section class="public-features public-reveal" data-public-reveal>
+    <header class="public-section-heading" id="como-funciona">
+      <span class="public-kicker">COMO FUNCIONA</span>
+      <h2>Uma escolha mais clara, <em>passo a passo.</em></h2>
+      <p>Use a planta e o atendimento juntos para entender as opções e decidir como seguir.</p>
+    </header>
+    <div class="public-feature-grid">
+      <article class="public-feature-card">
+        <span class="public-feature-number">01</span>
+        <span class="public-feature-icon" aria-hidden="true">⌖</span>
+        <h3>Explore a planta</h3>
+        <p>Amplie o mapa e toque em um lote para ver sua posição e levar essa referência à conversa.</p>
+        <a href="#mapa">Ir para o mapa <span aria-hidden="true">↗</span></a>
+      </article>
+      <article class="public-feature-card">
+        <span class="public-feature-number">02</span>
+        <span class="public-feature-icon public-status-icon" aria-hidden="true"><i></i><i></i><i></i></span>
+        <h3>Confira a situação</h3>
+        <p>As cores distinguem lotes disponíveis, reservados, em negociação e vendidos.</p>
+        <small class="public-status-key"><i class="available"></i> Disponível <i class="reserved"></i> Reserva <i class="negotiation"></i> Negociação <i class="sold"></i> Vendido</small>
+      </article>
+      <article class="public-feature-card">
+        <span class="public-feature-number">03</span>
+        <span class="public-feature-icon" aria-hidden="true">↗</span>
+        <h3>Converse sobre a escolha</h3>
+        <p>Pergunte sobre o lote selecionado. A conversa acompanha a unidade e orienta os próximos passos.</p>
+        <a href="#mapa">Começar consulta <span aria-hidden="true">↗</span></a>
+      </article>
+    </div>
+  </section>
+
+  <section class="public-steps public-reveal" data-public-reveal>
+    <header class="public-section-heading">
+      <span class="public-kicker">DA CONSULTA À RESERVA</span>
+      <h2>Você escolhe o ritmo.</h2>
+      <p>Comece comparando. A identificação só entra quando for necessária para continuar.</p>
+    </header>
+    <ol class="public-step-list">
+      <li><span>01</span><div><h3>Escolha uma posição</h3><p>Selecione um lote diretamente no mapa. A referência permanece ligada à conversa.</p></div></li>
+      <li><span>02</span><div><h3>Tire suas dúvidas</h3><p>Pergunte sobre situação, valor ou alternativas antes de decidir.</p></div></li>
+      <li><span>03</span><div><h3>Avance quando estiver pronto</h3><p>Se quiser continuar uma reserva, o atendimento solicita os dados e documentos necessários para aquela etapa.</p></div></li>
+    </ol>
+  </section>
+
+  <section class="public-faq public-reveal" id="duvidas" data-public-reveal>
+    <header class="public-section-heading">
+      <span class="public-kicker">DÚVIDAS FREQUENTES</span>
+      <h2>Antes de escolher.</h2>
+      <p>Respostas rápidas para você começar a explorar o mapa.</p>
+    </header>
+    <div class="public-faq-list">
+      <details><summary>Como encontro um lote específico?</summary><p>Use o zoom e navegue pela planta. Ao selecionar um lote, envie sua pergunta no atendimento para consultar aquela unidade.</p></details>
+      <details><summary>O que significam as cores do mapa?</summary><p>Elas indicam a situação comercial registrada: disponível, reservado, em negociação ou vendido. Confirme a situação atual na conversa antes de avançar.</p></details>
+      <details><summary>Preciso me identificar para consultar?</summary><p>Não. Você pode começar perguntando sobre os lotes. A identificação é solicitada quando for necessária para registrar a intenção e continuar uma reserva.</p></details>
+      <details><summary>Como continuo uma reserva?</summary><p>Selecione o lote e peça para continuar pelo atendimento. Ele orienta cada etapa e solicita documentos apenas quando forem necessários.</p></details>
+    </div>
+  </section>
+
+  <section class="public-contact public-reveal" data-public-reveal>
+    <div class="public-contact-card">
+      <div>
+        <span class="public-kicker">SEU PRÓXIMO PASSO</span>
+        <h2>Encontre uma opção que faça sentido para você.</h2>
+        <p>Volte à planta, escolha um lote e envie sua pergunta com a unidade já selecionada.</p>
+      </div>
+      <a class="public-contact-cta" href="#mapa">Explorar lotes no mapa <span aria-hidden="true">↗</span></a>
+    </div>
+  </section>
+  <footer class="public-page-footer"><a href="#mapa">Aliança Park</a><span>Amargosa · Bahia</span><a href="#mapa">Voltar ao mapa ↑</a></footer>
 </div>`;
 
 export class PublicLeadsSurface extends HTMLElement{

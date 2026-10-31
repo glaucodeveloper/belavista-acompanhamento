@@ -209,6 +209,25 @@ export async function savePublicFieldRecord(input={},photoFile=null){
   return recordId;
 }
 
+// Mantém a integração usada pelo formulário operacional legado. A gravação
+// ocorre sob a coleção operacionalProposals e os anexos no Firebase Storage.
+export async function saveOperationalProposal(input={},files=[],actor={}){
+  const runtime=await loadRuntime();
+  const proposalRef=runtime.push(runtime.ref(runtime.db,'operationalProposals'));
+  const proposalId=proposalRef.key;
+  const attachments=[];
+  for(const file of files||[]){
+    if(!file||file.size>12*1024*1024)throw new Error('Cada anexo deve ter no máximo 12 MB.');
+    const safeName=String(file.name||'anexo').replace(/[^a-z0-9._-]/gi,'-').slice(-96);
+    const storageRef=runtime.storageRef(runtime.storage,`operationalProposals/${actor.uid||'unknown'}/${proposalId}/${safeName}`);
+    await runtime.uploadBytes(storageRef,file,{contentType:file.type||'application/octet-stream'});
+    attachments.push({name:file.name||safeName,type:file.type||'',size:Number(file.size)||0,storagePath:storageRef.fullPath,url:await runtime.getDownloadURL(storageRef)});
+  }
+  const payload={...input,uid:String(actor.uid||''),profile:String(input.profile||''),attachments,inference:input.inference&&typeof input.inference==='object'?input.inference:null,source:'belavista-twa-proposal',createdAt:runtime.serverTimestamp(),updatedAt:runtime.serverTimestamp()};
+  await runtime.set(proposalRef,payload);
+  return {id:proposalId,attachments};
+}
+
 export async function saveFieldConfirmation(input={}){
   const runtime=await loadRuntime();
   const services=Array.isArray(input.servicos)?input.servicos.map(item=>text(item,120)).filter(Boolean).slice(0,12):[];

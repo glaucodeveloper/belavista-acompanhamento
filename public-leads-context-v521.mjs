@@ -49,7 +49,7 @@ function installStyles(){
       visibility:hidden!important;
     }
     body.public-leads-page .public-map-static-bg{
-      background-image:linear-gradient(90deg,rgba(3,17,12,.24),rgba(3,17,12,.02) 64%),url('/assets/public/dwg-satellite-treated-v5411.png')!important;
+      background-image:linear-gradient(90deg,rgba(3,17,12,.24),rgba(3,17,12,.02) 64%),url('${runtimeUrlV1('/assets/public/dwg-satellite-treated-v5411.png')}')!important;
       background-size:cover,cover!important;
       background-position:center,center!important;
       background-repeat:no-repeat!important;
@@ -421,7 +421,7 @@ function ensureStaticFallback(){
     bg=document.createElement('div');
     bg.className='public-map-static-bg';
     bg.setAttribute('aria-hidden','true');
-    bg.style.backgroundImage="linear-gradient(90deg,rgba(3,17,12,.24),rgba(3,17,12,.02) 64%),url('/assets/public/dwg-satellite-treated-v5411.png')";
+    bg.style.backgroundImage=`linear-gradient(90deg,rgba(3,17,12,.24),rgba(3,17,12,.02) 64%),url('${runtimeUrlV1('/assets/public/dwg-satellite-treated-v5411.png')}')`;
     bg.style.backgroundSize='cover,cover';
     bg.style.backgroundPosition='center,center';
     bg.dataset.publicFallback='DWG-centred treated satellite raster';
