@@ -16,9 +16,11 @@ if (!token) {
 
 const outputDir = path.join(root, '.test-artifacts/inference-allocation');
 const fixtureDir = path.join(root, 'worker/test/fixtures/inference-allocation');
+const serviceEvidenceFixtureDir = path.join(root, 'worker/test/fixtures/service-evidence');
 await mkdir(outputDir, { recursive: true });
 const cases = JSON.parse(await readFile(path.join(root, 'worker/test/inference-allocation-cases.json'), 'utf8'));
 const clarificationCases = JSON.parse(await readFile(path.join(root, 'worker/test/inference-allocation-clarification-cases.json'), 'utf8'));
+const serviceEvidenceCases = JSON.parse(await readFile(path.join(root, 'worker/test/service-evidence-cases.json'), 'utf8'));
 const extraCaseFile = process.env.ALLOCATION_E2E_EXTRA_CASE_FILE;
 const extraCases = extraCaseFile ? JSON.parse(await readFile(extraCaseFile, 'utf8')) : [];
 const selectedCaseIds = new Set(String(process.env.ALLOCATION_E2E_CASES || '').split(',').map(value => value.trim()).filter(Boolean));
@@ -34,6 +36,7 @@ const appUrl = `http://127.0.0.1:${port}`;
 const vite = spawn(process.execPath, [path.join(root, 'node_modules/vite/bin/vite.js'), '--config', path.join(root, 'vite.config.js'), '--host', '127.0.0.1', '--port', String(port), '--strictPort'], { cwd: root, stdio: 'ignore' });
 let browser;
 let failures = 0;
+let passedCases = 0;
 let memoryData = {
   lots: priceCatalog.slice(0, 6).map(item => ({ ...item, status: 'Disponível', received: 0, entryHistory: [] })),
   materials: [], services: [], transfers: [], agenda: [], stages,
@@ -170,6 +173,7 @@ try {
     assert.equal(await page.locator('.classification-card').count(), 0, 'A tela não deve exibir formulário de confirmação.');
     await chatMessage.locator('.chat-assistant-reply p').waitFor({ state: 'visible', timeout: 10000 });
     await page.screenshot({ path: path.join(outputDir, `evidence-${testCase.id}.png`), fullPage: true });
+    passedCases++;
 
     console.log(`PASS ${testCase.id}: Worker ${result.category} → ${result.allocation.destination}${testCase.expectedDepartment ? ` / ${testCase.expectedDepartment}` : ` → ${expectedActivity.stage.name} / ${expectedActivity.title}`}; ${items.length} item(ns) salvo(s) em memória. Tempo: ${timingSummary(inferenceTimingStart) || 'sem métrica'}.`);
   }
@@ -221,7 +225,68 @@ try {
     assert.equal(memoryData.materials.length, testCase.expectedDestination === 'materials' ? beforeMaterials + 1 : beforeMaterials, `${testCase.id}: detalhe alterou Materiais em vez do destino esperado.`);
     assert.equal(memoryData.services.length, testCase.expectedDestination === 'services' ? beforeServices + 1 : beforeServices, `${testCase.id}: detalhe alterou Serviços em vez do destino esperado.`);
     await page.screenshot({ path: path.join(outputDir, `evidence-${testCase.id}.png`), fullPage: true });
+    passedCases++;
     console.log(`PASS ${testCase.id}: não salvou antes do detalhe; perguntou no chat; resposta levou a ${testCase.expectedDestination} → ${expectedActivity.stage.name} / ${expectedActivity.title}. Tempo: ${timingSummary(inferenceTimingStart) || 'sem métrica'}.`);
+  }
+
+  for (const testCase of serviceEvidenceCases.filter(selected)) {
+    const inferenceTimingStart = inferenceTimings.length;
+    const beforeMaterials = memoryData.materials.length;
+    const beforeServices = memoryData.services.length;
+    const expectedActivity = activityById.get(testCase.expectedActivityId);
+    assert.ok(expectedActivity, `Atividade esperada ausente no catálogo: ${testCase.expectedActivityId}`);
+
+    await page.locator('.chat-composer input[type="file"]').first().setInputFiles(path.join(serviceEvidenceFixtureDir, testCase.filename));
+    await page.getByLabel('Mensagem').fill(testCase.context);
+    inferenceStartedAt.set(testCase.filename, Date.now());
+    await page.getByRole('button', { name: /Enviar/ }).click();
+    const chatMessage = page.locator('.chat-message').filter({ hasText: testCase.filename }).last();
+    await chatMessage.waitFor({ state: 'visible', timeout: 15000 });
+    await waitForMessage(page, testCase.filename);
+    await inferencePromises.get(testCase.filename);
+
+    const result = inferenceResults.get(testCase.filename);
+    assert.ok(result, `${testCase.filename}: o Worker não devolveu JSON.`);
+    if (process.env.ALLOCATION_E2E_DIAGNOSTICS === '1') console.log(`DIAGNOSTIC ${testCase.id}: ${JSON.stringify(result)}`);
+    assert.equal(result.category, 'service_evidence', `${testCase.id}: fotografia de serviço não foi separada da nota financeira.`);
+    assert.equal(result.documentType, 'field_service_photo', `${testCase.id}: tipo de documento incorreto.`);
+    assert.equal(result.direction, null, `${testCase.id}: fotografia foi marcada como entrada ou saída financeira.`);
+    assert.equal(result.allocation?.destination, 'fieldEvidence', `${testCase.id}: destino da evidência incorreto.`);
+    assert.equal(result.recognized?.amount, null, `${testCase.id}: inventou um valor financeiro.`);
+    assert.deepEqual(result.recognized?.items, [], `${testCase.id}: criou itens financeiros para uma fotografia.`);
+    assert.equal(result.serviceEvidence?.activityId, testCase.expectedActivityId, `${testCase.id}: atividade de catálogo incorreta.`);
+    assert.equal(result.serviceEvidence?.stageId, expectedActivity.stage.id, `${testCase.id}: etapa incorreta.`);
+    assert.equal(Boolean(result.needsClarification), testCase.expectedClarification, `${testCase.id}: estado de esclarecimento incorreto.`);
+    assert.equal(memoryData.materials.length, beforeMaterials, `${testCase.id}: alterou Materiais indevidamente.`);
+    assert.equal(memoryData.services.length, beforeServices, `${testCase.id}: alterou Serviços financeiros indevidamente.`);
+    assert.equal(await page.locator('.classification-card').count(), 0, `${testCase.id}: apareceu formulário financeiro de confirmação.`);
+
+    if (testCase.expectedClarification) {
+      assert.ok(/rua|quadra|área/.test(result.question || ''), `${testCase.id}: não perguntou a localização ausente.`);
+      const visibleQuestion = await chatMessage.locator('.chat-assistant-reply p').innerText();
+      assert.ok(visibleQuestion.includes(result.question), `${testCase.id}: pergunta de localização não chegou ao chat.`);
+      await page.getByLabel('Mensagem').fill(testCase.followUp);
+      inferenceStartedAt.set(testCase.followUp, Date.now());
+      await page.getByRole('button', { name: /Enviar/ }).click();
+      await waitForMessage(page, testCase.followUp);
+      await editPromises.get(testCase.followUp);
+      const edit = editResults.get(testCase.followUp);
+      assert.equal(edit?.patch?.serviceEvidence?.location, testCase.expectedLocation, `${testCase.id}: resposta não foi aplicada como localização.`);
+      const evidenceText = await chatMessage.locator('.service-evidence-card').innerText();
+      assert.ok(evidenceText.includes(testCase.expectedLocation), `${testCase.id}: localização respondida não aparece na evidência do chat.`);
+      assert.equal(memoryData.materials.length, beforeMaterials, `${testCase.id}: resposta criou material financeiro.`);
+      assert.equal(memoryData.services.length, beforeServices, `${testCase.id}: resposta criou serviço financeiro.`);
+    } else {
+      assert.equal(result.serviceEvidence?.location, testCase.expectedLocation, `${testCase.id}: área informada não foi reconhecida.`);
+      assert.ok(result.serviceEvidence?.summary, `${testCase.id}: descrição visual vazia.`);
+      assert.ok(result.serviceEvidence?.observedStatus, `${testCase.id}: situação observada ausente.`);
+      const evidenceText = await chatMessage.locator('.service-evidence-card').innerText();
+      assert.ok(evidenceText.includes(expectedActivity.title), `${testCase.id}: vínculo com etapa/atividade não aparece no chat.`);
+      assert.ok(evidenceText.includes(testCase.expectedLocation), `${testCase.id}: área não aparece no chat.`);
+    }
+    await page.screenshot({ path: path.join(outputDir, `evidence-${testCase.id}.png`), fullPage: true });
+    passedCases++;
+    console.log(`PASS ${testCase.id}: foto → ${expectedActivity.stage.name} / ${expectedActivity.title}${testCase.expectedClarification ? ' → perguntou a área e aplicou a resposta' : ` → ${testCase.expectedLocation}`}; sem lançamento financeiro. Tempo: ${timingSummary(inferenceTimingStart) || 'sem métrica'}.`);
   }
 
   const viewport = await page.evaluate(() => ({ width: innerWidth, documentWidth: document.documentElement.scrollWidth, chatWidth: document.querySelector('.assistant-chat')?.scrollWidth || 0 }));
@@ -236,6 +301,6 @@ try {
   vite.kill('SIGTERM');
 }
 
-const selectedCases = runBaseCases.length + runClarificationCases.length;
-console.log(`Resultado final: ${selectedCases - failures}/${selectedCases} casos percorreram Worker real, chat e destino em memória.`);
+const selectedCases = runBaseCases.length + runClarificationCases.length + serviceEvidenceCases.filter(selected).length;
+console.log(`Resultado final: ${passedCases}/${selectedCases} casos passaram em Worker real, chat e destino em memória.${failures ? ` Falhas: ${failures}.` : ''}`);
 if (failures) process.exitCode = 1;

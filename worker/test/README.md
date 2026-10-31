@@ -2,7 +2,9 @@
 
 O fluxo usa o Worker Cloudflare real para `/api/inference/attachment` e `/api/inference/analysis-edit`, e abre a aplicação em Chromium móvel. Apenas `/api/sync` fica em memória durante o teste; nenhum lote, material ou serviço de teste é gravado no repositório remoto.
 
-Os onze PNGs sintéticos ficam em `worker/test/fixtures/inference-allocation/` e são marcados sem validade fiscal. Os casos incluem serviços de obra classificados pela NFS-e e pelo conteúdo da imagem, serviço administrativo destinado a Escritório, materiais com vínculo de obra e descrições ausentes, parciais ou incompatíveis com o NCM. Nos casos incompletos, a interface deve perguntar no chat, não gravar antes da resposta, aceitar o detalhe digitado e salvar no destino correto.
+Os onze PNGs sintéticos de notas ficam em `worker/test/fixtures/inference-allocation/` e são marcados sem validade fiscal. Os casos incluem serviços de obra classificados pela NFS-e e pelo conteúdo da imagem, serviço administrativo destinado a Escritório, materiais com vínculo de obra e descrições ausentes, parciais ou incompatíveis com o NCM. Nos casos incompletos, a interface deve perguntar no chat, não gravar antes da resposta, aceitar o detalhe digitado e salvar no destino correto.
+
+Três fotografias sintéticas adicionais ficam em `worker/test/fixtures/service-evidence/`: pavimentação/meio-fio, drenagem pluvial e rede PEAD de água. São fixtures de teste, não retratam serviço real. O teste passa pelo chat móvel e pelo Worker real; verifica a atividade e área reconhecidas, pergunta a localização que falta e confirma que foto de campo não cria lançamento financeiro nem atualiza o progresso da etapa.
 
 Para executar com uma sessão válida do Worker:
 
@@ -20,3 +22,5 @@ python3 scripts/generate-inference-allocation-invoices.py worker/test/fixtures/i
 ```
 
 O gerador aceita uma lista opcional de IDs separados por vírgula para recriar só alguns fixtures.
+
+O E2E também executa `worker/test/service-evidence-cases.json`; fotos sintéticas não precisam ser regeneradas.

@@ -99,6 +99,12 @@ function mergeAnalysisPatch(result, patch) {
     question: null,
     needsClarification: false,
     ...(patch?.category ? { category: patch.category } : {}),
+    ...(patch?.serviceEvidence ? {
+      serviceEvidence: {
+        ...(result.serviceEvidence || {}),
+        ...Object.fromEntries(Object.entries(patch.serviceEvidence).filter(([, value]) => value !== null && value !== undefined)),
+      },
+    } : {}),
     recognized: {
       ...(result.recognized || {}),
       ...Object.fromEntries(
@@ -118,6 +124,38 @@ function resolveInference(result, lots, activities) {
   const recognized = { ...(result.recognized || {}) };
   const allocation = { ...(result.allocation || {}) };
   const ask = question => ({ ready: false, question, result });
+
+  if (category === "service_evidence") {
+    const evidence = { ...(result.serviceEvidence || {}) };
+    const activity = activities.find(item => item.id === evidence.activityId && item.stageId === evidence.stageId);
+    if (!String(evidence.summary || "").trim())
+      return ask(result.question || "O que deve ser observado nesta foto de campo?");
+    if (!activity)
+      return ask(result.question || "A qual atividade cadastrada devo vincular esta evidência de campo?");
+    if (!String(evidence.location || "").trim())
+      return ask(result.question || "Em qual rua, quadra ou área do empreendimento esta foto foi feita?");
+    if (result.needsClarification && result.question)
+      return ask(result.question);
+    return {
+      ready: true,
+      result: {
+        ...result,
+        category,
+        direction: null,
+        needsClarification: false,
+        question: null,
+        recognized: { ...recognized, amount: null, items: [] },
+        serviceEvidence: {
+          ...evidence,
+          activityId: activity.id,
+          activityName: activity.name,
+          stageId: activity.stageId,
+          stageName: activity.stageName,
+        },
+              allocation: { ...allocation, destination: "fieldEvidence" },
+      },
+    };
+  }
 
   if (category === "unknown")
     return ask(result.question || "Qual é a categoria desta nota: entrada recebida, despesa de material ou despesa de serviço?");
@@ -197,6 +235,11 @@ function resolveInference(result, lots, activities) {
 }
 
 function inferenceSuccessReply(result) {
+  if (result.category === "service_evidence") {
+    const evidence = result.serviceEvidence || {};
+    const activity = [evidence.stageName, evidence.activityName].filter(Boolean).join(" · ");
+    return `Evidência de campo analisada: ${evidence.summary}${activity ? ` Vínculo: ${activity}.` : ""} Área: ${evidence.location}. A foto não altera o progresso da etapa automaticamente.`;
+  }
   if (result.category === "entry_receipt") {
     const lot = result.allocation?.lotLabel || result.recognized?.lotLabel || "lote";
     return `Entrada de ${Number(result.recognized?.amount || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} registrada em ${lot}.`;
@@ -661,8 +704,8 @@ export function AssistantChatbox({
                 ? inferenceSuccessReply(finalResult)
                 : resolution.question || analysisEdit.reply || "Ainda falta um detalhe para classificar esta nota.";
               if (resolution.ready) {
-                if (!onAllocate) throw new Error("O salvamento automático da nota não está disponível.");
-                await onAllocate({ ...finalResult, inferenceId });
+                if (finalResult.category !== "service_evidence" && !onAllocate) throw new Error("O salvamento automático da nota não está disponível.");
+                if (finalResult.category !== "service_evidence") await onAllocate({ ...finalResult, inferenceId });
               } else {
                 finalResult = {
                   ...finalResult,
@@ -828,9 +871,9 @@ export function AssistantChatbox({
               let result = resolution.result;
               let reply;
               if (resolution.ready) {
-                if (!onAllocate) throw new Error("O salvamento automático da nota não está disponível.");
+                if (result.category !== "service_evidence" && !onAllocate) throw new Error("O salvamento automático da nota não está disponível.");
                 const inferenceId = `${queued.id}:${output.fileId || output.filename}`;
-                await onAllocate({ ...result, inferenceId });
+                if (result.category !== "service_evidence") await onAllocate({ ...result, inferenceId });
                 reply = inferenceSuccessReply(result);
               } else {
                 result = {
@@ -985,6 +1028,17 @@ export function AssistantChatbox({
                   ))}
                 </Attachments>
               )}
+              {(message.analyses || []).filter(item => item.result?.category === "service_evidence").map(item => {
+                const evidence = item.result.serviceEvidence || {};
+                return (
+                  <section className="service-evidence-card" key={item.fileId || item.filename} aria-label="Leitura da evidência de campo">
+                    <strong>Evidência de campo</strong>
+                    <p>{evidence.summary || "Descrição não identificada"}</p>
+                    <small>{[evidence.stageName, evidence.activityName, evidence.location].filter(Boolean).join(" · ") || "Aguardando detalhe para vincular"}</small>
+                    <small>{evidence.observedStatus === "completed" ? "Indício visual de serviço concluído" : evidence.observedStatus === "in_progress" ? "Serviço em execução na foto" : "Situação não confirmada pela imagem"}</small>
+                  </section>
+                );
+              })}
               {message.status && (
                 <div className={`outbox-status outbox-${message.status}`}>
                   <span>

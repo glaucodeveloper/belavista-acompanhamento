@@ -1,0 +1,27 @@
+[
+  {
+    "id": "foto-pavimentacao-meio-fio",
+    "filename": "foto-evidencia-pavimentacao-meio-fio.png",
+    "context": "Evidência fotográfica da pavimentação em paralelepípedo e do assentamento de meio-fio na Rua 2, quadra QC1.",
+    "expectedActivityId": "pav-assentar",
+    "expectedLocation": "Rua 2, quadra QC1",
+    "expectedClarification": false
+  },
+  {
+    "id": "foto-rede-agua-pead",
+    "filename": "foto-evidencia-rede-agua-pead.png",
+    "context": "Evidência fotográfica da instalação da rede principal de água PEAD na Rua 3, quadra QA2.",
+    "expectedActivityId": "agua-rede-principal",
+    "expectedLocation": "Rua 3, quadra QA2",
+    "expectedClarification": false
+  },
+  {
+    "id": "foto-drenagem-pergunta-area",
+    "filename": "foto-evidencia-drenagem-pluvial.png",
+    "context": "Evidência fotográfica do assentamento de tubos da rede de drenagem pluvial. A atividade é Assentar rede pluvial do trecho.",
+    "expectedActivityId": "drenagem-assentar",
+    "expectedClarification": true,
+    "followUp": "Rua 1, quadra QA1",
+    "expectedLocation": "Rua 1, quadra QA1"
+  }
+]
