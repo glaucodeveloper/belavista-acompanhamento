@@ -10,6 +10,7 @@ import { exportReportCsv, exportReportPdf } from './report-exports.js';
 import { TreeProvider, TreeView, TreeNode, TreeNodeTrigger, TreeNodeContent, TreeLabel } from './components/kibo-tree.jsx';
 import { StagesPage } from './components/stages-page.jsx';
 import aliancaLogo from './assets/alianca-park-logo-mark.png';
+import lotPlan from './assets/planta.webp';
 import mapLotIndex from './assets/mapeamento.json';
 import archivedStageData from './data/archived-stage-seed.json';
 
@@ -208,11 +209,25 @@ function Login({ onLogin, theme, onThemeChange }) {
       sessionStorage.setItem('alianca-session-token', result.token); onLogin(result.user);
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   }
-  return <main className="login-shell"><ThemeToggle theme={theme} onChange={onThemeChange} /><form className="login-card" onSubmit={submit}><span className="brand-mark">A</span><p className="eyebrow">ALIANÇA PARK</p><h1>Acessar aplicação</h1><p className="login-copy">Entre com seu usuário de campo.</p><p className="login-device">Acesso detectado: <strong>{kind === 'mobile' ? 'Mobile' : 'Desktop'}</strong></p>
-    <label>Usuário<input autoComplete="username" value={username} onChange={e => setUsername(e.target.value)} required /></label>
-    <label>Senha<input autoComplete="current-password" type="password" value={password} onChange={e => setPassword(e.target.value)} required /></label>
-    {error && <p className="error-message" role="alert">{error}</p>}<button className="primary-button" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button>
-  </form></main>;
+  return <main className="login-shell"><div className="login-layout">
+    <section className="login-visual" aria-label="Aliança Park, gestão de loteamento e obras">
+      <div className="login-identity"><img src={aliancaLogo} alt="" /><div><strong>Aliança Park</strong><span>Gestão de loteamento e obras</span></div></div>
+      <img className="login-map" src={lotPlan} alt="Planta do loteamento Aliança Park" />
+      <div className="login-message"><h2>Do mapa ao andamento da obra.</h2><p>Informações comerciais e operacionais reunidas para a equipe acompanhar o empreendimento.</p></div>
+      <span className="login-visual-caption">Aliança Park · Bahia</span>
+    </section>
+    <section className="login-access" aria-label="Acesso à aplicação">
+      <ThemeToggle theme={theme} onChange={onThemeChange} />
+      <form className="login-card" onSubmit={submit}>
+        <div className="login-mobile-brand"><img src={aliancaLogo} alt="" /><span>Aliança Park</span></div>
+        <p className="eyebrow">Acesso à aplicação</p><h1>Entrar</h1><p className="login-copy">Use o usuário e a senha da sua conta.</p>
+        <label>Usuário<input autoComplete="username" value={username} onChange={e => setUsername(e.target.value)} required /></label>
+        <label>Senha<input autoComplete="current-password" type="password" value={password} onChange={e => setPassword(e.target.value)} required /></label>
+        {error && <p className="error-message" role="alert">{error}</p>}<button className="primary-button" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button>
+        <p className="login-device">Acesso pelo <strong>{kind === 'mobile' ? 'celular' : 'computador'}</strong></p>
+      </form>
+    </section>
+  </div></main>;
 }
 
 function detectClientKind() {

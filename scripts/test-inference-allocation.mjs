@@ -79,6 +79,9 @@ try {
   browser = await chromium.launch(launchOptions);
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   const page = await context.newPage();
+  const inferenceTimings = [];
+  const inferenceStartedAt = new Map();
+  const timingSummary = start => inferenceTimings.slice(start).map(item => `${item.path} ${(item.durationMs / 1000).toFixed(2)}s`).join(', ');
   const workerOrigin = new URL(workerUrl).origin;
   const user = { id: 'allocation-e2e', username: 'Teste E2E', role: 'mobile' };
   await page.addInitScript(value => sessionStorage.setItem('alianca-session-token', value), token);
@@ -97,12 +100,20 @@ try {
   page.on('response', response => {
     if (response.url().includes('/api/inference/attachment')) {
       const body = response.request().postDataJSON();
-      const pending = response.json().then(result => inferenceResults.set(body.filename, result));
+      const startedAt = inferenceStartedAt.get(body.filename);
+      const pending = response.json().then(result => {
+        if (startedAt) inferenceTimings.push({ path: 'imagem', durationMs: Date.now() - startedAt });
+        inferenceResults.set(body.filename, result);
+      });
       inferencePromises.set(body.filename, pending);
     }
     if (response.url().includes('/api/inference/analysis-edit')) {
       const body = response.request().postDataJSON();
-      const pending = response.json().then(result => editResults.set(body.instruction, result));
+      const startedAt = inferenceStartedAt.get(body.instruction);
+      const pending = response.json().then(result => {
+        if (startedAt) inferenceTimings.push({ path: 'detalhe', durationMs: Date.now() - startedAt });
+        editResults.set(body.instruction, result);
+      });
       editPromises.set(body.instruction, pending);
     }
   });
@@ -117,6 +128,7 @@ try {
   await page.locator('.assistant-chat').waitFor({ state: 'visible' });
 
   for (const testCase of runBaseCases) {
+    const inferenceTimingStart = inferenceTimings.length;
     const beforeMaterials = memoryData.materials.length;
     const beforeServices = memoryData.services.length;
     const expectedActivity = testCase.expectedActivityId ? activityById.get(testCase.expectedActivityId) : null;
@@ -124,6 +136,7 @@ try {
 
     await page.locator('.chat-composer input[type="file"]').first().setInputFiles(testCase.filePath || path.join(fixtureDir, testCase.filename));
     await page.getByLabel('Mensagem').fill(testCase.context);
+    inferenceStartedAt.set(testCase.filename, Date.now());
     await page.getByRole('button', { name: /Enviar/ }).click();
     const chatMessage = page.locator('.chat-message').filter({ hasText: testCase.filename }).last();
     await chatMessage.waitFor({ state: 'visible', timeout: 15000 });
@@ -132,6 +145,7 @@ try {
 
     const result = inferenceResults.get(testCase.filename);
     assert.ok(result, `${testCase.filename}: o Worker não devolveu JSON.`);
+    if (process.env.ALLOCATION_E2E_DIAGNOSTICS === '1') console.log(`DIAGNOSTIC ${testCase.id}: ${JSON.stringify(result)}`);
     assert.equal(result.category, testCase.expectedCategory, `${testCase.id}: categoria inferida incorreta.`);
     const collection = testCase.expectedDestination || (testCase.expectedCategory === 'material_expense' ? 'materials' : 'services');
     assert.equal(result.allocation?.destination, collection, `${testCase.id}: destino declarado pelo Worker incorreto.`);
@@ -157,10 +171,11 @@ try {
     await chatMessage.locator('.chat-assistant-reply p').waitFor({ state: 'visible', timeout: 10000 });
     await page.screenshot({ path: path.join(outputDir, `evidence-${testCase.id}.png`), fullPage: true });
 
-    console.log(`PASS ${testCase.id}: Worker ${result.category} → ${result.allocation.destination}${testCase.expectedDepartment ? ` / ${testCase.expectedDepartment}` : ` → ${expectedActivity.stage.name} / ${expectedActivity.title}`}; ${items.length} item(ns) salvo(s) em memória.`);
+    console.log(`PASS ${testCase.id}: Worker ${result.category} → ${result.allocation.destination}${testCase.expectedDepartment ? ` / ${testCase.expectedDepartment}` : ` → ${expectedActivity.stage.name} / ${expectedActivity.title}`}; ${items.length} item(ns) salvo(s) em memória. Tempo: ${timingSummary(inferenceTimingStart) || 'sem métrica'}.`);
   }
 
   for (const testCase of runClarificationCases) {
+    const inferenceTimingStart = inferenceTimings.length;
     const beforeMaterials = memoryData.materials.length;
     const beforeServices = memoryData.services.length;
     const expectedCollectionBefore = testCase.expectedDestination === 'services' ? beforeServices : beforeMaterials;
@@ -169,6 +184,7 @@ try {
 
     await page.locator('.chat-composer input[type="file"]').first().setInputFiles(path.join(fixtureDir, testCase.filename));
     await page.getByLabel('Mensagem').fill(testCase.context);
+    inferenceStartedAt.set(testCase.filename, Date.now());
     await page.getByRole('button', { name: /Enviar/ }).click();
     const chatMessage = page.locator('.chat-message').filter({ hasText: testCase.filename }).last();
     await chatMessage.waitFor({ state: 'visible', timeout: 15000 });
@@ -177,6 +193,7 @@ try {
 
     const result = inferenceResults.get(testCase.filename);
     assert.ok(result, `${testCase.filename}: o Worker não devolveu JSON.`);
+    if (process.env.ALLOCATION_E2E_DIAGNOSTICS === '1') console.log(`DIAGNOSTIC ${testCase.id}: ${JSON.stringify(result)}`);
     assert.equal(result.category, testCase.expectedCategory, `${testCase.id}: categoria incorreta.`);
     assert.equal(result.allocation?.destination, testCase.expectedDestination, `${testCase.id}: destino sugerido incorreto.`);
     assert.equal(result.needsClarification, true, `${testCase.id}: descrição incompleta foi aplicada sem pergunta.`);
@@ -188,10 +205,12 @@ try {
     assert.ok(visibleQuestion.includes(result.question), `${testCase.id}: pergunta do Worker não chegou ao chat.`);
 
     await page.getByLabel('Mensagem').fill(testCase.followUp);
+    inferenceStartedAt.set(testCase.followUp, Date.now());
     await page.getByRole('button', { name: /Enviar/ }).click();
     await waitForMessage(page, testCase.followUp);
     await editPromises.get(testCase.followUp);
     const edit = editResults.get(testCase.followUp);
+    if (process.env.ALLOCATION_E2E_DIAGNOSTICS === '1') console.log(`EDIT ${testCase.id}: ${JSON.stringify(edit)}`);
     assert.ok(edit?.patch, `${testCase.id}: Worker não devolveu revisão para o detalhe informado.`);
     const destinationRows = testCase.expectedDestination === 'services' ? memoryData.services : memoryData.materials;
     const newItems = destinationRows.slice(expectedCollectionBefore);
@@ -202,7 +221,7 @@ try {
     assert.equal(memoryData.materials.length, testCase.expectedDestination === 'materials' ? beforeMaterials + 1 : beforeMaterials, `${testCase.id}: detalhe alterou Materiais em vez do destino esperado.`);
     assert.equal(memoryData.services.length, testCase.expectedDestination === 'services' ? beforeServices + 1 : beforeServices, `${testCase.id}: detalhe alterou Serviços em vez do destino esperado.`);
     await page.screenshot({ path: path.join(outputDir, `evidence-${testCase.id}.png`), fullPage: true });
-    console.log(`PASS ${testCase.id}: não salvou antes do detalhe; perguntou no chat; resposta levou a ${testCase.expectedDestination} → ${expectedActivity.stage.name} / ${expectedActivity.title}.`);
+    console.log(`PASS ${testCase.id}: não salvou antes do detalhe; perguntou no chat; resposta levou a ${testCase.expectedDestination} → ${expectedActivity.stage.name} / ${expectedActivity.title}. Tempo: ${timingSummary(inferenceTimingStart) || 'sem métrica'}.`);
   }
 
   const viewport = await page.evaluate(() => ({ width: innerWidth, documentWidth: document.documentElement.scrollWidth, chatWidth: document.querySelector('.assistant-chat')?.scrollWidth || 0 }));

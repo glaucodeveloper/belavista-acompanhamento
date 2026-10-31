@@ -28,6 +28,48 @@ function toBase64(file) {
   });
 }
 
+async function toInferenceImage(blob) {
+  const mimeType = String(blob?.type || "").toLowerCase();
+  const original = async () => ({ mimeType, data: await toBase64(blob) });
+  if (!/^image\/(png|jpeg)$/.test(mimeType) || typeof createImageBitmap !== "function")
+    return original();
+
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(blob);
+  } catch {
+    return original();
+  }
+
+  try {
+    const maxDimension = 2200;
+    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+    const needsResize = scale < 1;
+    const needsCompression = blob.size > 3 * 1024 * 1024;
+    if (!needsResize && !needsCompression) return original();
+
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext("2d", { alpha: mimeType === "image/png" });
+    if (!context) return original();
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+    const encode = (type, quality) =>
+      new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+    let optimized = await encode(mimeType, mimeType === "image/jpeg" ? 0.9 : undefined);
+    if (!optimized) return original();
+    if (optimized.size > 8 * 1024 * 1024)
+      optimized = await encode("image/jpeg", 0.82);
+    if (!optimized || (!needsResize && optimized.size >= blob.size)) return original();
+    return { mimeType: optimized.type || mimeType, data: await toBase64(optimized) };
+  } catch {
+    return original();
+  } finally {
+    bitmap.close?.();
+  }
+}
+
 const statusLabels = {
   pending: "Para processar",
   processing: "Processando…",
@@ -741,10 +783,7 @@ export function AssistantChatbox({
                       description: queued.text,
                       activities,
                       stages: stageCatalog,
-                      image: {
-                        mimeType: file.type,
-                        data: await toBase64(file.blob),
-                      },
+                      image: await toInferenceImage(file.blob),
                     }),
                     signal: controller.signal,
                   },
