@@ -1,7 +1,7 @@
 {
   "functions": [{"source": "firebase-functions", "codebase": "automation", "ignore": ["node_modules", ".git", "firebase-debug.log"]}],
   "hosting": {
-    "public": "dist-pages",
+    "public": "dist-firebase",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "headers": [{"source": "**/*.@(js|mjs|css)", "headers": [{"key": "Cache-Control", "value": "public,max-age=3600"}]}],
     "rewrites": [

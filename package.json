@@ -15,6 +15,7 @@
     "test:desktop": "node --test --test-concurrency=1 tests/desktop/*.test.mjs",
     "instagram:bridge": "npx @askjo/camofox-browser",
     "build:public": "node scripts/build-public-pages.mjs",
+    "build:firebase": "node scripts/build-firebase-hosting.mjs",
     "twa:admin:init": "npx --yes @bubblewrap/cli init --manifest=https://belavista-3f887.web.app/admin-twa-manifest.webmanifest --directory=mobile/twa/android-admin",
     "twa:admin:build": "cd mobile/twa/android-admin && npx --yes @bubblewrap/cli build",
     "public:preview": "node server.mjs",
