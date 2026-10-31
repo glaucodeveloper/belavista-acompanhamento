@@ -111,8 +111,50 @@ function purchasesHtml(data){
 }
 
 function materialsHtml(data){
-  const rows=data.materials||[];
-  return `<div class="stage-admin-table-wrap"><table><thead><tr><th>Material</th><th>Planejado</th><th>Recebido</th><th>Usado</th><th>Saldo recebido</th><th>Status</th></tr></thead><tbody>${rows.map(item=>`<tr><td><b>${esc(item.name)}</b><small>${esc(item.unit||'')}</small></td><td>${number(item.plannedQuantity)}</td><td>${number(item.receivedQuantity)}</td><td>${number(item.usedQuantity)}</td><td>${number((Number(item.receivedQuantity)||0)-(Number(item.usedQuantity)||0))}</td><td>${esc(item.status||'—')}</td></tr>`).join('')||emptyRow(6,'Nenhum material recebeu vínculo auditável com esta etapa.')}</tbody></table></div>`;
+  const configured=Array.isArray(data.aiConfig?.executionProfile?.materialsTable)?data.aiConfig.executionProfile.materialsTable:[];
+  const managed=data.aiConfig?.executionProfile?.materialsTableManaged===true;
+  const rows=managed?configured:(configured.length?configured:(data.materials||[]));
+  const inventory=data.materials||[];
+  const rowsHtml=rows.map((item,index)=>{
+    const name=item.name||item.materialName||'';
+    const unit=item.unit||'un.';
+    const stock=inventory.find(entry=>String(entry.name||entry.materialName||'').trim().toLowerCase()===String(name).trim().toLowerCase()&&String(entry.unit||'un.').trim().toLowerCase()===String(unit).trim().toLowerCase())||item;
+    const planned=item.plannedQuantity??item.quantity;
+    const received=stock.receivedQuantity??0;
+    const used=stock.usedQuantity??0;
+    return `<tr data-stage-material-row data-stage-material-index="${index}"><td><button type="button" class="stage-admin-material-open" data-stage-material-open="${index}" aria-label="Editar ou excluir ${esc(name)}"><b>${esc(name||'Material sem nome')}</b><small>${esc(unit)} · editar ou excluir</small></button></td><td>${number(planned)}</td><td>${number(received)}</td><td>${number(used)}</td><td>${number((Number(received)||0)-(Number(used)||0))}</td><td>${esc(item.status||'—')}</td></tr>`;
+  }).join('');
+  return `<div class="stage-admin-table-wrap"><table><thead><tr><th>Material</th><th>Planejado</th><th>Recebido</th><th>Usado</th><th>Saldo recebido</th><th>Status</th></tr></thead><tbody>${rowsHtml||emptyRow(6,'Nenhum material cadastrado para esta etapa.')}</tbody></table></div>
+  <dialog class="stage-admin-material-dialog" data-stage-material-dialog aria-labelledby="stage-material-dialog-title"><form data-stage-material-edit-form><header><div><span>COMPOSIÇÃO DA ETAPA</span><h3 id="stage-material-dialog-title">Editar material</h3><p>Atualize os dados do material ou exclua-o da composição desta etapa.</p></div><button type="button" class="stage-admin-material-close" data-stage-material-close aria-label="Fechar">×</button></header><div class="stage-admin-material-fields"><label>Material<input name="name" required maxlength="160"></label><label>Descrição / uso<input name="description" maxlength="500"></label><label>Quantidade planejada<input name="quantity" inputmode="decimal" placeholder="A medir"></label><label>Unidade<input name="unit" maxlength="32" placeholder="m, un, m²"></label><label>Status<select name="status">${['Planejado','Em andamento','Atenção','Concluído','Dimensionar'].map(value=>`<option>${value}</option>`).join('')}</select></label><div class="stage-admin-material-stock" data-stage-material-stock-fields><label>Recebido<input name="receivedQuantity" readonly placeholder="0"></label><label>Usado<input name="usedQuantity" readonly placeholder="0"></label><small>Recebimentos e consumo vêm dos registros e continuam preservados.</small></div></div><div class="stage-admin-material-delete-confirm" data-stage-material-delete-confirm hidden><b>Excluir este material da composição da etapa?</b><span>O histórico de recebimentos e consumo continua preservado.</span><div><button type="button" data-stage-material-delete-cancel>Manter material</button><button type="button" data-stage-material-delete-confirmed>Excluir material</button></div></div><footer><button type="button" class="stage-admin-material-delete" data-stage-material-delete>Excluir</button><div><button type="button" data-stage-material-close>Cancelar</button><button type="submit" class="stage-admin-material-save">Salvar alterações</button></div></footer></form></dialog>`;
+}
+
+function decimalValue(value){
+  const normalized=String(value??'').trim().replace(',','.');
+  if(!normalized)return null;
+  const parsed=Number(normalized);
+  return Number.isFinite(parsed)&&parsed>=0?parsed:null;
+}
+
+function materialRowsFor(data){
+  const configured=Array.isArray(data.aiConfig?.executionProfile?.materialsTable)?data.aiConfig.executionProfile.materialsTable:[];
+  if(data.aiConfig?.executionProfile?.materialsTableManaged===true||configured.length)return [...configured];
+  return [...(data.materials||[])];
+}
+
+async function saveStageMaterials(data,rows){
+  const current=data.aiConfig||{};
+  const payload={
+    requirements:current.requirements||[],conditions:current.conditions||[],typicalDescription:current.typicalDescription||'',
+    requestHints:current.requestHints||[],evidenceFocus:current.evidenceFocus||[],procurementFocus:current.procurementFocus||[],
+    notificationTargets:current.notificationTargets||{},
+    executionProfile:{...(current.executionProfile||{}),materialsTable:rows,materialsTableManaged:true}
+  };
+  const response=await apiFetch(`/api/stages-admin/${data.id}/ai`,{method:'PUT',headers:actorHeaders({'Content-Type':'application/json'}),body:JSON.stringify(payload)});
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.error||`HTTP ${response.status}`);
+  const next=result.stage||result;
+  cache.set(Number(data.id),next);
+  return next;
 }
 
 function servicesHtml(data){
@@ -158,6 +200,58 @@ function bindWorkspace(workspace,data){
 }
 
 function bindWorkspaceContent(workspace,data){
+  const materialDialog=workspace.querySelector('[data-stage-material-dialog]');
+  const materialForm=materialDialog?.querySelector('[data-stage-material-edit-form]');
+  if(materialDialog&&materialForm&&!materialDialog.dataset.bound){
+    materialDialog.dataset.bound='1';
+    let selectedIndex=-1;
+    const field=name=>materialForm.elements.namedItem(name);
+    const close=()=>{if(materialDialog.open)materialDialog.close();materialDialog.querySelector('[data-stage-material-delete-confirm]')?.setAttribute('hidden','');};
+    materialDialog.querySelectorAll('[data-stage-material-close]').forEach(button=>button.addEventListener('click',close));
+    materialDialog.addEventListener('click',event=>{if(event.target===materialDialog)close();});
+    workspace.querySelectorAll('[data-stage-material-open]').forEach(button=>button.addEventListener('click',()=>{
+      const rows=materialRowsFor(data);selectedIndex=Number(button.dataset.stageMaterialOpen);
+      const item=rows[selectedIndex];if(!item)return;
+      field('name').value=item.name||item.materialName||'';
+      field('description').value=item.description||item.scope||'';
+      field('quantity').value=item.plannedQuantity??item.quantity??'';
+      field('unit').value=item.unit||'';
+      field('status').value=item.status||'Planejado';
+      field('receivedQuantity').value=item.receivedQuantity??'';
+      field('usedQuantity').value=item.usedQuantity??'';
+      materialDialog.querySelector('[data-stage-material-delete-confirm]')?.setAttribute('hidden','');
+      materialDialog.showModal();
+      field('name').focus();
+    }));
+    materialDialog.querySelector('[data-stage-material-delete]')?.addEventListener('click',()=>materialDialog.querySelector('[data-stage-material-delete-confirm]')?.removeAttribute('hidden'));
+    materialDialog.querySelector('[data-stage-material-delete-cancel]')?.addEventListener('click',()=>materialDialog.querySelector('[data-stage-material-delete-confirm]')?.setAttribute('hidden',''));
+    materialDialog.querySelector('[data-stage-material-delete-confirmed]')?.addEventListener('click',async()=>{
+      if(selectedIndex<0)return;
+      const status=materialDialog.querySelector('.stage-admin-material-delete-confirm span');
+      const rows=materialRowsFor(data).filter((_,index)=>index!==selectedIndex);
+      try{
+        if(status)status.textContent='Excluindo…';
+        materialDialog.querySelectorAll('button').forEach(button=>button.disabled=true);
+        const next=await saveStageMaterials(data,rows);close();notify('Material excluído da composição da etapa.','success');renderData(next);
+      }catch(error){if(status)status.textContent=`Falha ao excluir: ${error.message}`;notify('Não foi possível excluir o material.','warning');}
+      finally{materialDialog.querySelectorAll('button').forEach(button=>button.disabled=false);}
+    });
+    materialForm.addEventListener('submit',async event=>{
+      event.preventDefault();if(selectedIndex<0)return;
+      const rows=materialRowsFor(data),original=rows[selectedIndex];if(!original)return;
+      const quantity=decimalValue(field('quantity').value);
+      const updated={...original,name:field('name').value.trim(),description:field('description').value.trim(),unit:field('unit').value.trim(),status:field('status').value};
+      if(Object.hasOwn(original,'plannedQuantity')&&!Object.hasOwn(original,'quantity'))updated.plannedQuantity=quantity;
+      else updated.quantity=quantity;
+      rows[selectedIndex]=updated;
+      const saveButton=materialForm.querySelector('.stage-admin-material-save'),label=saveButton.textContent;
+      try{
+        saveButton.disabled=true;saveButton.textContent='Salvando…';
+        const next=await saveStageMaterials(data,rows);close();notify('Material atualizado na etapa.','success');renderData(next);
+      }catch(error){notify(`Não foi possível salvar o material: ${error.message}`,'warning');}
+      finally{saveButton.disabled=false;saveButton.textContent=label;}
+    });
+  }
   const form=workspace.querySelector('[data-stage-admin-meta]');
   if(form&&!form.dataset.bound){
     form.dataset.bound='1';

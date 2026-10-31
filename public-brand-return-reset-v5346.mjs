@@ -16,6 +16,11 @@
 
   const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
   const smooth=t=>t*t*(3-2*t);
+  const modernPublicPage=()=>Boolean(document.querySelector('.public-page-nav'));
+  function removeLegacyBrand(){
+    document.querySelector('[data-public-alianca-brand-v5346]')?.remove();
+    document.getElementById('belavista-alianca-brand-v5346-style')?.remove();
+  }
 
   function mapNode(){
     return document.querySelector(MAP_SELECTOR);
@@ -36,6 +41,10 @@
   }
 
   function ensureBrand(){
+    if(modernPublicPage()){
+      removeLegacyBrand();
+      return null;
+    }
     let host=document.querySelector('[data-public-alianca-brand-v5346]');
     if(host)return host;
 
@@ -91,6 +100,10 @@
   }
 
   function updateBrand(){
+    if(modernPublicPage()){
+      removeLegacyBrand();
+      return;
+    }
     const host=ensureBrand();
     const full=host.querySelector('[data-brand-full]');
     const mark=host.querySelector('[data-brand-mark]');

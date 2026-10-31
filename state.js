@@ -183,6 +183,14 @@ export const viewThemes = {
   settings:{center:[-16.708,-49.092], zoom:14, tint:'neutral', chat:'left', tilt:4}
 };
 
+// Modos da superfície inicial. O modo troca a leitura e os widgets sobre o
+// mapa, mas não muda a rota nem descarta os dados do empreendimento.
+export const dashboardModes = {
+  tracking:{label:'Acompanhamento',icon:'activity',description:'Execução · cronograma · riscos'},
+  commercial:{label:'Leads e lotes',icon:'badge-dollar-sign',description:'Demanda · contratos · parcelas'},
+  social:{label:'Comunicação',icon:'messages-square',description:'Instagram · pessoal · equipe'}
+};
+
 export const spreadsheetSchema = {
   months:48,
   sheets:['Lançamentos','Resumo Mensal','Orçamento','Indicadores','Como Usar'],
@@ -224,6 +232,20 @@ export const activityCatalog = [
   {nature:'Medição e financeiro',name:'Registrar medição e pagamento',initial:['Etapa','Fornecedor','Período'],execution:['Quantidade medida','Valor unitário','Valor total','Documento','Aprovação']},
   {nature:'Administração',name:'Emitir relatório de etapa',initial:['Período','Responsável','Destinatários'],execution:['Avanço físico','Avanço financeiro','Anexos','Pendências','Aprovação final']}
 ];
+
+// Rascunho compartilhado pela instalação guiada de atividades.
+export const activityInstallationDefaults = {
+  step:1,
+  stageKey:'earthwork',
+  draft:{name:'',nature:'',description:'',unit:'',responsible:'',target:'',release:'',evidence:''},
+  materials:[],
+  rationalization:{status:'pending',summary:'Aguardando leitura da proposta.',checks:[]},
+  cards:[],
+  dependencies:[],
+  assignments:[],
+  priority:null,
+  updatedAt:null
+};
 
 export function* cycle(values, start=0) {
   let index = start;

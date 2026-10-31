@@ -10,7 +10,7 @@ import {
   executionModel,
   personnelModel,
   activityInstallationDefaults,
-} from "./state.js?v=system-metrics-v1-20260919";
+} from "./state.js?v=public-app-ui-v5601";
 import {
   STAGE_WORKBENCH,
   findWorkbenchStage,
@@ -39,8 +39,8 @@ import {
   publishOperationalEvent,
   subscribeOperationalControlCenter,
   saveOperationalProposal,
-} from "./firebase.mjs?v=public-runtime-v49";
-import "./public-lead-form.mjs?v=public-instagram-handoff-v1";
+} from "./firebase.mjs?v=public-runtime-v5601";
+import "./public-lead-form.mjs?v=public-app-ui-v5601";
 import "./reservation-flow.mjs?v=reservation-validation-v1";
 
 const ico = (name, cls = "") => `<i data-lucide="${name}" class="${cls}"></i>`;
@@ -63,14 +63,25 @@ const runtimeRouteV1 = (path, query = "") => {
   const currentPath = String(globalThis.location?.pathname || "");
   const embeddedPrefix = currentPath.match(/^\/(\d{2,5})(?=\/|$)/)?.[0] || "";
   const host = String(globalThis.location?.hostname || "");
+  let deploymentPrefix = "";
+  try {
+    const baseUrl = new URL(globalThis.document?.baseURI || globalThis.location?.href);
+    if (baseUrl.origin === globalThis.location?.origin) {
+      const basePath = baseUrl.pathname.replace(/\/+$/, "");
+      if (basePath && basePath !== "/" && (currentPath === basePath || currentPath.startsWith(`${basePath}/`))) {
+        deploymentPrefix = basePath;
+      }
+    }
+  } catch {}
   const tunnelPrefix = embeddedPrefix || (/ngrok/i.test(host) ? "/8080" : "");
+  const pathPrefix = deploymentPrefix || tunnelPrefix;
   const params = new URLSearchParams(String(query || "").replace(/^\?/, ""));
   const key = new URLSearchParams(
     String(globalThis.location?.search || ""),
   ).get("key");
   if (key && !params.has("key")) params.set("key", key);
   const suffix = params.toString();
-  return `${tunnelPrefix}${route}${suffix ? `?${suffix}` : ""}`;
+  return `${pathPrefix}${route}${suffix ? `?${suffix}` : ""}`;
 };
 
 // BELAVISTA_MODEL_CLIENT_CACHE_V14

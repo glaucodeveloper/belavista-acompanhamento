@@ -1445,6 +1445,38 @@ view-layer[data-view="leads"] .sidebar-reservation-flow>.reservation-entry{displ
 .stage-visual-details>[data-stage-visual-body]{display:block;padding:0}.stage-visual-details .stage-progress-overview,.stage-visual-details .stage-utilities,.stage-visual-details .stage-body{margin-left:0;margin-right:0}
 @media(max-width:900px){.stage-admin-ai-editor{grid-template-columns:1fr}.stage-admin-ai-editor>header,.stage-admin-ai-editor>.stage-ai-core-grid,.stage-admin-ai-editor>footer{grid-column:1}.stage-shell.stage-admin-primary-mode>.stage-admin-workspace,.stage-visual-details{margin-left:8px;margin-right:8px}}
 
+.stage-admin-material-open{display:grid;gap:3px;padding:0;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}
+.stage-admin-material-open b{color:#f4f4f4;font:inherit;font-weight:650}
+.stage-admin-material-open small{color:#78a9ff!important;font-size:9px!important}
+.stage-admin-material-open:hover b,.stage-admin-material-open:focus-visible b{text-decoration:underline;text-underline-offset:3px}
+.stage-admin-material-dialog{width:min(560px,calc(100vw - 28px));max-width:none;padding:0;border:1px solid #424b58;border-radius:14px;background:#171b21;color:#f4f4f4;box-shadow:0 24px 80px #0009}
+.stage-admin-material-dialog::backdrop{background:#070a0fc7;backdrop-filter:blur(2px)}
+.stage-admin-material-dialog form{display:grid;gap:16px;padding:18px}
+.stage-admin-material-dialog form>header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-bottom:12px;border-bottom:1px solid #343a43}
+.stage-admin-material-dialog form>header span{color:#78a9ff;font:600 9px ui-monospace,monospace;letter-spacing:.12em}
+.stage-admin-material-dialog form>header h3{margin:5px 0;font-size:18px}
+.stage-admin-material-dialog form>header p{margin:0;color:#aab2bd;font-size:11px;line-height:1.45}
+.stage-admin-material-dialog .stage-admin-material-close{width:32px;height:32px;border:1px solid #424b58;border-radius:8px;background:#20252d;color:#fff;font-size:21px;cursor:pointer}
+.stage-admin-material-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.stage-admin-material-fields>label,.stage-admin-material-stock label{display:grid;gap:6px;color:#aab2bd;font-size:10px}
+.stage-admin-material-fields input,.stage-admin-material-fields select{width:100%;min-width:0;height:38px;box-sizing:border-box;padding:0 10px;border:1px solid #414b58;border-radius:8px;background:#101419;color:#f4f4f4;font:inherit}
+.stage-admin-material-fields input:focus,.stage-admin-material-fields select:focus{outline:2px solid #78a9ff;outline-offset:1px}
+.stage-admin-material-stock{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-top:12px;border-top:1px solid #343a43}
+.stage-admin-material-stock input[readonly]{color:#9ca3af;background:#1d222a}
+.stage-admin-material-stock>small{grid-column:1/-1;color:#8993a0;font-size:9px}
+.stage-admin-material-dialog form>footer{display:flex;justify-content:space-between;gap:12px;padding-top:12px;border-top:1px solid #343a43}
+.stage-admin-material-dialog form>footer>div{display:flex;gap:8px}
+.stage-admin-material-dialog form>footer button,.stage-admin-material-delete-confirm button{min-height:36px;padding:0 12px;border:1px solid #46505e;border-radius:8px;background:#20252d;color:#f4f4f4;cursor:pointer}
+.stage-admin-material-dialog form>footer .stage-admin-material-save{border-color:#0f62fe;background:#0f62fe;color:#fff}
+.stage-admin-material-dialog form>footer .stage-admin-material-delete,.stage-admin-material-delete-confirm button:last-child{border-color:#9e3940;background:#6d252b;color:#fff}
+.stage-admin-material-dialog button:disabled{opacity:.6;cursor:wait}
+.stage-admin-material-delete-confirm{display:grid;gap:7px;padding:12px;border:1px solid #8e3b42;border-radius:9px;background:#2a1c20}
+.stage-admin-material-delete-confirm[hidden]{display:none}
+.stage-admin-material-delete-confirm b{font-size:12px}
+.stage-admin-material-delete-confirm span{color:#d2aeb1;font-size:10px}
+.stage-admin-material-delete-confirm>div{display:flex;justify-content:flex-end;gap:8px;margin-top:4px}
+@media(max-width:520px){.stage-admin-material-dialog form{padding:14px}.stage-admin-material-fields{grid-template-columns:1fr}.stage-admin-material-stock{grid-column:1}.stage-admin-material-dialog form>footer{flex-direction:column}.stage-admin-material-dialog form>footer>div{justify-content:flex-end}}
+
 
 /* BELAVISTA_MAP_CONTROLS_OVER_VIEW_LAYER_V1
    The persistent map is a background plane, but its HUD is a sibling-level
