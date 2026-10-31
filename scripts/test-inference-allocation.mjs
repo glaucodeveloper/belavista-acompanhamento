@@ -46,6 +46,7 @@ const inferenceResults = new Map();
 const inferencePromises = new Map();
 const editResults = new Map();
 const editPromises = new Map();
+const evidenceUploads = [];
 
 async function waitForMessage(page, text) {
   try {
@@ -99,6 +100,13 @@ try {
     memoryData = body.data;
     revision = `e2e-revision-${Number(revision.split('-').at(-1)) + 1}`;
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: memoryData, revision }) });
+  });
+  await page.route(`${workerOrigin}/api/activity-evidence`, async route => {
+    const body = route.request().postDataJSON();
+    assert.equal(body.image?.mimeType?.startsWith('image/'), true, 'O upload de evidência precisa conter a imagem.');
+    assert.ok(body.image?.data?.length > 0, 'O upload de evidência precisa conter bytes.');
+    evidenceUploads.push(body);
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ repositoryPath: `field-evidence/e2e/${body.evidenceId}.png`, filename: body.filename, mimeType: body.image.mimeType, size: Buffer.from(body.image.data, 'base64').length }) });
   });
   page.on('response', response => {
     if (response.url().includes('/api/inference/attachment')) {
@@ -235,8 +243,9 @@ try {
     const beforeServices = memoryData.services.length;
     const expectedActivity = activityById.get(testCase.expectedActivityId);
     assert.ok(expectedActivity, `Atividade esperada ausente no catálogo: ${testCase.expectedActivityId}`);
+    const beforeEvidence = memoryData.stages.find(stage => stage.id === expectedActivity.stage.id)?.activities.find(activity => activity.id === expectedActivity.id)?.fieldEvidence?.length || 0;
 
-    await page.locator('.chat-composer input[type="file"]').first().setInputFiles(path.join(serviceEvidenceFixtureDir, testCase.filename));
+    await page.locator('.chat-composer input[type="file"]').first().setInputFiles({ name: testCase.filename, mimeType: 'image/png', buffer: await readFile(path.join(serviceEvidenceFixtureDir, testCase.pathFilename || testCase.filename)) });
     await page.getByLabel('Mensagem').fill(testCase.context);
     inferenceStartedAt.set(testCase.filename, Date.now());
     await page.getByRole('button', { name: /Enviar/ }).click();
@@ -248,21 +257,25 @@ try {
     const result = inferenceResults.get(testCase.filename);
     assert.ok(result, `${testCase.filename}: o Worker não devolveu JSON.`);
     if (process.env.ALLOCATION_E2E_DIAGNOSTICS === '1') console.log(`DIAGNOSTIC ${testCase.id}: ${JSON.stringify(result)}`);
-    assert.equal(result.category, 'service_evidence', `${testCase.id}: fotografia de serviço não foi separada da nota financeira.`);
+    assert.equal(result.category, null, `${testCase.id}: foto ganhou categoria financeira própria.`);
+    assert.equal(result.intent, 'stage_activity_evidence', `${testCase.id}: foto não foi reconhecida como evidência de atividade.`);
     assert.equal(result.documentType, 'field_service_photo', `${testCase.id}: tipo de documento incorreto.`);
     assert.equal(result.direction, null, `${testCase.id}: fotografia foi marcada como entrada ou saída financeira.`);
-    assert.equal(result.allocation?.destination, 'fieldEvidence', `${testCase.id}: destino da evidência incorreto.`);
+    assert.equal(result.allocation?.destination, 'stages', `${testCase.id}: foto não foi destinada às etapas.`);
     assert.equal(result.recognized?.amount, null, `${testCase.id}: inventou um valor financeiro.`);
     assert.deepEqual(result.recognized?.items, [], `${testCase.id}: criou itens financeiros para uma fotografia.`);
-    assert.equal(result.serviceEvidence?.activityId, testCase.expectedActivityId, `${testCase.id}: atividade de catálogo incorreta.`);
-    assert.equal(result.serviceEvidence?.stageId, expectedActivity.stage.id, `${testCase.id}: etapa incorreta.`);
+    assert.equal(result.fieldEvidence?.activityId, testCase.expectedActivityId, `${testCase.id}: atividade de catálogo incorreta.`);
+    assert.equal(result.fieldEvidence?.stageId, expectedActivity.stage.id, `${testCase.id}: etapa incorreta.`);
     assert.equal(Boolean(result.needsClarification), testCase.expectedClarification, `${testCase.id}: estado de esclarecimento incorreto.`);
     assert.equal(memoryData.materials.length, beforeMaterials, `${testCase.id}: alterou Materiais indevidamente.`);
     assert.equal(memoryData.services.length, beforeServices, `${testCase.id}: alterou Serviços financeiros indevidamente.`);
     assert.equal(await page.locator('.classification-card').count(), 0, `${testCase.id}: apareceu formulário financeiro de confirmação.`);
 
     if (testCase.expectedClarification) {
-      assert.ok(/rua|quadra|área/.test(result.question || ''), `${testCase.id}: não perguntou a localização ausente.`);
+      if (testCase.clarificationKind === 'activity')
+        assert.ok(/confirma|atividade|complement/i.test(result.question || ''), `${testCase.id}: não pediu confirmação/complemento para o vínculo ambíguo.`);
+      else
+        assert.ok(/rua|quadra|área/.test(result.question || ''), `${testCase.id}: não perguntou a localização ausente.`);
       const visibleQuestion = await chatMessage.locator('.chat-assistant-reply p').innerText();
       assert.ok(visibleQuestion.includes(result.question), `${testCase.id}: pergunta de localização não chegou ao chat.`);
       await page.getByLabel('Mensagem').fill(testCase.followUp);
@@ -271,27 +284,45 @@ try {
       await waitForMessage(page, testCase.followUp);
       await editPromises.get(testCase.followUp);
       const edit = editResults.get(testCase.followUp);
-      assert.equal(edit?.patch?.serviceEvidence?.location, testCase.expectedLocation, `${testCase.id}: resposta não foi aplicada como localização.`);
-      const evidenceText = await chatMessage.locator('.service-evidence-card').innerText();
+      if (testCase.clarificationKind === 'activity')
+        assert.equal(edit?.patch?.fieldEvidence?.confirmed, true, `${testCase.id}: confirmação do usuário não foi aplicada ao vínculo.`);
+      else
+        assert.equal(edit?.patch?.fieldEvidence?.location, testCase.expectedLocation, `${testCase.id}: resposta não foi aplicada como localização.`);
+      const evidenceText = await chatMessage.locator('.activity-evidence-card').innerText();
       assert.ok(evidenceText.includes(testCase.expectedLocation), `${testCase.id}: localização respondida não aparece na evidência do chat.`);
       assert.equal(memoryData.materials.length, beforeMaterials, `${testCase.id}: resposta criou material financeiro.`);
       assert.equal(memoryData.services.length, beforeServices, `${testCase.id}: resposta criou serviço financeiro.`);
     } else {
-      assert.equal(result.serviceEvidence?.location, testCase.expectedLocation, `${testCase.id}: área informada não foi reconhecida.`);
-      assert.ok(result.serviceEvidence?.summary, `${testCase.id}: descrição visual vazia.`);
-      assert.ok(result.serviceEvidence?.observedStatus, `${testCase.id}: situação observada ausente.`);
-      const evidenceText = await chatMessage.locator('.service-evidence-card').innerText();
+      assert.equal(result.fieldEvidence?.location, testCase.expectedLocation, `${testCase.id}: área informada não foi reconhecida.`);
+      assert.ok(result.fieldEvidence?.summary, `${testCase.id}: descrição visual vazia.`);
+      assert.ok(result.fieldEvidence?.observedStatus, `${testCase.id}: situação observada ausente.`);
+      const evidenceText = await chatMessage.locator('.activity-evidence-card').innerText();
       assert.ok(evidenceText.includes(expectedActivity.title), `${testCase.id}: vínculo com etapa/atividade não aparece no chat.`);
       assert.ok(evidenceText.includes(testCase.expectedLocation), `${testCase.id}: área não aparece no chat.`);
     }
+    const savedActivity = memoryData.stages.find(stage => stage.id === expectedActivity.stage.id)?.activities.find(activity => activity.id === expectedActivity.id);
+    assert.equal(savedActivity?.fieldEvidence?.length, beforeEvidence + 1, `${testCase.id}: evidência não foi salva dentro da atividade da etapa.`);
+    assert.equal(savedActivity.fieldEvidence.at(-1).filename, testCase.filename, `${testCase.id}: nome da imagem não foi preservado na atividade.`);
+    assert.match(savedActivity.fieldEvidence.at(-1).repositoryPath, /^field-evidence\//, `${testCase.id}: imagem não foi encaminhada ao repositório privado.`);
+    assert.equal(evidenceUploads.at(-1)?.filename, testCase.filename, `${testCase.id}: Worker não recebeu a fotografia original.`);
     await page.screenshot({ path: path.join(outputDir, `evidence-${testCase.id}.png`), fullPage: true });
     passedCases++;
-    console.log(`PASS ${testCase.id}: foto → ${expectedActivity.stage.name} / ${expectedActivity.title}${testCase.expectedClarification ? ' → perguntou a área e aplicou a resposta' : ` → ${testCase.expectedLocation}`}; sem lançamento financeiro. Tempo: ${timingSummary(inferenceTimingStart) || 'sem métrica'}.`);
+    console.log(`PASS ${testCase.id}: foto → ${expectedActivity.stage.name} / ${expectedActivity.title}${testCase.expectedClarification ? ` → perguntou ${testCase.clarificationKind === 'activity' ? 'confirmação/complemento' : 'a área'} e aplicou a resposta` : ` → ${testCase.expectedLocation}`}; sem lançamento financeiro. Tempo: ${timingSummary(inferenceTimingStart) || 'sem métrica'}.`);
   }
 
   const viewport = await page.evaluate(() => ({ width: innerWidth, documentWidth: document.documentElement.scrollWidth, chatWidth: document.querySelector('.assistant-chat')?.scrollWidth || 0 }));
   assert.ok(viewport.documentWidth <= viewport.width, `Overflow horizontal no mobile: ${viewport.documentWidth}px para viewport ${viewport.width}px.`);
   console.log(`PASS viewport mobile: ${viewport.width}px sem extrapolação horizontal.`);
+  if (serviceEvidenceCases.some(selected)) {
+    await page.getByRole('button', { name: 'Fechar assistente' }).click();
+    const evidenceStage = memoryData.stages.find(stage => stage.activities.some(activity => (activity.fieldEvidence || []).some(evidence => serviceEvidenceCases.filter(selected).some(testCase => evidence.filename === testCase.filename))));
+    assert.ok(evidenceStage, 'Não foi encontrada a etapa que recebeu as fotos.');
+    await page.getByRole('tab', { name: new RegExp(evidenceStage.name) }).click();
+    await page.locator('.stage-field-evidence-card').waitFor({ state: 'visible' });
+    const savedEvidenceList = await page.locator('.stage-field-evidence-card').innerText();
+    assert.ok(serviceEvidenceCases.filter(selected).some(testCase => savedEvidenceList.includes(testCase.filename)), 'A página Etapas não exibiu as fotos anexadas às atividades.');
+    console.log('PASS página Etapas: fotos persistidas aparecem junto às atividades selecionadas.');
+  }
   await context.close();
 } catch (error) {
   failures++;

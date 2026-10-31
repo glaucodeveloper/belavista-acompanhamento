@@ -33,6 +33,16 @@
 .stage-items-card > header h3 { margin: 4px 0 3px; color: #23334a; font-size: 16px; }
 .stage-items-card > header p:last-child { margin: 0; color: #758299; font-size: 12px; }
 .stage-item-count { padding: 5px 9px; border-radius: 999px; background: #eef2f7; color: #64738a; font-size: 10px; white-space: nowrap; }
+.stage-field-evidence-card { min-width: 0; overflow: hidden; border: 1px solid #e0e6ed; border-radius: 14px; background: #fff; box-shadow: 0 5px 18px #17223508; }
+.stage-field-evidence-card > header { padding: 17px 19px 10px; }
+.stage-field-evidence-card h3 { margin: 4px 0 3px; color: #23334a; font-size: 16px; }
+.stage-field-evidence-card header p:last-child { margin: 0; color: #758299; font-size: 12px; }
+.stage-field-evidence-list { display: grid; gap: 8px; padding: 0 19px 16px; }
+.stage-field-evidence-item { display: grid; gap: 5px; padding: 11px 12px; border: 1px solid #e2e8ef; border-radius: 10px; background: #f8fafc; }
+.stage-field-evidence-item > div { display: grid; gap: 3px; }
+.stage-field-evidence-item strong { color: #34445a; font-size: 12px; }
+.stage-field-evidence-item small { color: #748197; font-size: 10px; line-height: 1.45; overflow-wrap: anywhere; }
+.stage-field-evidence-item p { margin: 0; color: #4e5f76; font-size: 11px; line-height: 1.5; }
 .stage-items-table { border-width: 1px 0 0; border-radius: 0; }
 .stage-items-table table { min-width: 720px; }
 .stage-items-table td strong { color: #33445a; font-size: 12px; }
@@ -139,3 +149,10 @@
   .stage-activity-description { grid-column: 1 / -1; }
   .stage-activity-property-row { grid-template-columns: 1fr 1fr 30px; }
 }
+html[data-theme="dark"] .stage-field-evidence-card { border-color: #354154; background: #1b2636; }
+html[data-theme="dark"] .stage-field-evidence-card h3,
+html[data-theme="dark"] .stage-field-evidence-item strong { color: #e5eaf2; }
+html[data-theme="dark"] .stage-field-evidence-card header p:last-child,
+html[data-theme="dark"] .stage-field-evidence-item small { color: #aab7ca; }
+html[data-theme="dark"] .stage-field-evidence-item { border-color: #354154; background: #172131; }
+html[data-theme="dark"] .stage-field-evidence-item p { color: #c3ccda; }

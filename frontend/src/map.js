@@ -1,4 +1,5 @@
 import priceCatalog from './assets/tabela-precos.json';
+import streetSegmentCatalog from './assets/street-segments.json';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const WIDTH = 2329, HEIGHT = 2759, ARTWORK_HEIGHT = 2581;
@@ -18,7 +19,7 @@ function centroid(points) {
 }
 
 /** Renderiza a planta e informa a seleção de uma área do loteamento. */
-export async function mountLotMap(host, { onLotSelect, selectedLotIds = [], focusLotIds = [], selectionMode = false, onSelectionChange, selectionColor = '#2878ff', selectionColors = {} } = {}) {
+export async function mountLotMap(host, { onLotSelect, onStreetSelect, onSocialAreaSelect, selectedLotIds = [], selectedStreetSegmentIds = [], selectedSocialAreaIds = [], focusLotIds = [], focusStreetSegmentIds = [], selectionMode = false, onSelectionChange, selectionColor = '#2878ff', selectionColors = {} } = {}) {
   const [geometryResponse, mappingResponse] = await Promise.all([
     fetch(new URL('./assets/lotes.json', import.meta.url)),
     fetch(new URL('./assets/mapeamento.json', import.meta.url)),
@@ -37,8 +38,36 @@ export async function mountLotMap(host, { onLotSelect, selectedLotIds = [], focu
   image.draggable = false;
   const svg = document.createElementNS(SVG, 'svg');
   svg.setAttribute('viewBox', `0 0 ${WIDTH} ${HEIGHT}`);
-  svg.setAttribute('aria-label', 'Áreas dos lotes');
+  svg.setAttribute('aria-label', 'Polígonos dos lotes e dos trechos de rua');
   svg.setAttribute('role', 'img');
+  for (const segment of streetSegmentCatalog.segments) {
+    const polygon = document.createElementNS(SVG, 'path');
+    polygon.dataset.streetSegmentId = segment.id;
+    polygon.dataset.streetLabel = segment.label;
+    polygon.dataset.frontageLotId = segment.lotId;
+    polygon.dataset.frontageLotLabel = segment.lotLabel;
+    polygon.dataset.frontageLotNumber = String(segment.lotNumber);
+    polygon.setAttribute('d', segment.rings.map(ring => ring.map((point, index) => `${index ? 'L' : 'M'}${point[0] + ADDED_LEFT_MARGIN},${point[1]}`).join(' ') + ' Z').join(' '));
+    polygon.setAttribute('fill-rule', 'evenodd');
+    polygon.setAttribute('class', 'lot-map-street-segment');
+    const title = document.createElementNS(SVG, 'title');
+    title.textContent = `${segment.label} · via pavimentada`;
+    polygon.append(title);
+    svg.append(polygon);
+  }
+  if (streetSegmentCatalog.socialArea?.rings?.length) {
+    const area = document.createElementNS(SVG, 'path');
+    area.dataset.socialAreaId = streetSegmentCatalog.socialArea.id;
+    area.dataset.socialAreaLabel = streetSegmentCatalog.socialArea.label;
+    if (onSocialAreaSelect) area.classList.add('is-selectable');
+    area.setAttribute('d', streetSegmentCatalog.socialArea.rings.map(ring => ring.map((point, index) => `${index ? 'L' : 'M'}${point[0] + ADDED_LEFT_MARGIN},${point[1]}`).join(' ') + ' Z').join(' '));
+    area.setAttribute('fill-rule', 'evenodd');
+    area.setAttribute('class', 'lot-map-social-area');
+    const title = document.createElementNS(SVG, 'title');
+    title.textContent = streetSegmentCatalog.socialArea.label;
+    area.append(title);
+    svg.append(area);
+  }
   for (const entry of mapping.mappings) {
     const points = geometry.lots[entry.greenPolygonId];
     if (!Array.isArray(points) || points.length < 3) continue;
@@ -84,7 +113,11 @@ export async function mountLotMap(host, { onLotSelect, selectedLotIds = [], focu
   fitButton.textContent = 'Enquadrar planta';
   fitButton.setAttribute('aria-label', 'Mostrar a planta inteira');
   fitButton.addEventListener('pointerdown', event => event.stopPropagation());
-  svg.querySelectorAll('[data-lot-id]').forEach(area => { area.style.pointerEvents = 'all'; area.style.cursor = 'pointer'; });
+  svg.querySelectorAll('[data-lot-id], [data-street-segment-id]').forEach(area => { area.style.pointerEvents = 'all'; area.style.cursor = 'pointer'; });
+  svg.querySelectorAll('[data-social-area-id]').forEach(area => {
+    area.style.pointerEvents = onSocialAreaSelect ? 'all' : 'none';
+    if (onSocialAreaSelect) area.style.cursor = 'pointer';
+  });
   host.classList.add('lot-map'); host.replaceChildren(stage, fitButton);
   host.setAttribute('aria-label', 'Mapa do loteamento. Arraste para mover, use Ctrl e arraste para aproximar ou afastar, ou use dois dedos.');
   let scale = 1, minScale = 1, x = 0, y = 0, gesture = null;
@@ -92,6 +125,8 @@ export async function mountLotMap(host, { onLotSelect, selectedLotIds = [], focu
   const startTargets = new Map();
   const render = () => { stage.style.transform = `translate(${x}px, ${y}px) scale(${scale})`; host.dataset.zoom = String(scale); };
   const selected = new Set(selectedLotIds);
+  const selectedStreetSegments = new Set(selectedStreetSegmentIds);
+  const selectedSocialAreas = new Set(selectedSocialAreaIds);
   let lotColors = { ...selectionColors };
   host.style.setProperty('--lot-selection-color', selectionColor);
   const paintSelection = () => svg.querySelectorAll('[data-lot-id]').forEach(area => {
@@ -102,7 +137,15 @@ export async function mountLotMap(host, { onLotSelect, selectedLotIds = [], focu
       area.style.fill = color; area.style.fillOpacity = '.45'; area.style.stroke = color; area.style.strokeWidth = '3px';
     } else { area.style.removeProperty('fill'); area.style.removeProperty('fill-opacity'); area.style.removeProperty('stroke'); area.style.removeProperty('stroke-width'); }
   });
+  const paintStreetSelection = () => svg.querySelectorAll('[data-street-segment-id]').forEach(area => {
+    area.classList.toggle('is-selected', selectedStreetSegments.has(area.dataset.streetSegmentId));
+  });
+  const paintSocialAreaSelection = () => svg.querySelectorAll('[data-social-area-id]').forEach(area => {
+    area.classList.toggle('is-selected', selectedSocialAreas.has(area.dataset.socialAreaId));
+  });
   const setSelectedLotIds = ids => { selected.clear(); ids.forEach(id => selected.add(String(id))); paintSelection(); };
+  const setSelectedStreetSegmentIds = ids => { selectedStreetSegments.clear(); ids.forEach(id => selectedStreetSegments.add(String(id))); paintStreetSelection(); };
+  const setSelectedSocialAreaIds = ids => { selectedSocialAreas.clear(); ids.forEach(id => selectedSocialAreas.add(String(id))); paintSocialAreaSelection(); };
   const setSelectionColors = colors => { lotColors = { ...colors }; paintSelection(); };
   const position = event => { const rect = host.getBoundingClientRect(); return { x: event.clientX - rect.left, y: event.clientY - rect.top }; };
   const constrain = () => {
@@ -138,10 +181,22 @@ export async function mountLotMap(host, { onLotSelect, selectedLotIds = [], focu
     constrain();
     render();
   };
+  const focusStreetSegments = ids => {
+    const rect = host.getBoundingClientRect();
+    const targets = streetSegmentCatalog.segments.filter(segment => ids.includes(segment.id)).flatMap(segment => segment.rings.flat()).map(([px, py]) => [px + ADDED_LEFT_MARGIN, py]);
+    if (!targets.length || !rect.width || !rect.height) return;
+    const xs = targets.map(point => point[0]), ys = targets.map(point => point[1]);
+    const left = Math.min(...xs), right = Math.max(...xs), top = Math.min(...ys), bottom = Math.max(...ys);
+    const boundsWidth = Math.max(1, right - left), boundsHeight = Math.max(1, bottom - top);
+    scale = Math.max(minScale, Math.min(minScale * 12, Math.min(rect.width * 0.72 / boundsWidth, rect.height * 0.72 / boundsHeight)));
+    x = rect.width / 2 - ((left + right) / 2) * scale;
+    y = rect.height / 2 - ((top + bottom) / 2) * scale;
+    constrain(); render();
+  };
   host.addEventListener('pointerdown', event => {
     host.setPointerCapture(event.pointerId);
     const point = position(event); pointers.set(event.pointerId, point);
-    const area = event.target.closest?.('[data-lot-id]');
+    const area = event.target.closest?.('[data-lot-id], [data-street-segment-id], [data-social-area-id]');
     startTargets.set(event.pointerId, area ? { area, point } : null);
     if (pointers.size === 1 && event.ctrlKey) gesture = { type: 'ctrl-zoom', point, scale, x, y };
     else resetGesture();
@@ -171,12 +226,18 @@ export async function mountLotMap(host, { onLotSelect, selectedLotIds = [], focu
   const end = event => {
     const point = pointers.get(event.pointerId), target = startTargets.get(event.pointerId);
     if (target && pointers.size === 1 && point && Math.hypot(point.x - target.point.x, point.y - target.point.y) < 8 && target.area.isConnected) {
-      const lot = { lotId: target.area.dataset.lotId, number: Number(target.area.dataset.lotNumber), catalogLabel: target.area.dataset.catalogLabel };
-      if (selectionMode) {
-        selected.has(lot.lotId) ? selected.delete(lot.lotId) : selected.add(lot.lotId);
-        paintSelection();
-        onSelectionChange?.([...selected], lot);
-      } else onLotSelect?.(lot);
+      if (target.area.dataset.socialAreaId) {
+        onSocialAreaSelect?.({ socialAreaId: target.area.dataset.socialAreaId, label: target.area.dataset.socialAreaLabel });
+      } else if (target.area.dataset.streetSegmentId) {
+        onStreetSelect?.({ streetSegmentId: target.area.dataset.streetSegmentId, lotId: target.area.dataset.frontageLotId, lotLabel: target.area.dataset.frontageLotLabel, lotNumber: Number(target.area.dataset.frontageLotNumber), label: target.area.dataset.streetLabel });
+      } else {
+        const lot = { lotId: target.area.dataset.lotId, number: Number(target.area.dataset.lotNumber), catalogLabel: target.area.dataset.catalogLabel };
+        if (selectionMode) {
+          selected.has(lot.lotId) ? selected.delete(lot.lotId) : selected.add(lot.lotId);
+          paintSelection();
+          onSelectionChange?.([...selected], lot);
+        } else onLotSelect?.(lot);
+      }
     }
     pointers.delete(event.pointerId); startTargets.delete(event.pointerId); resetGesture();
   };
@@ -187,7 +248,8 @@ export async function mountLotMap(host, { onLotSelect, selectedLotIds = [], focu
     scale = Math.max(minScale, Math.min(minScale * 12, scale * Math.exp(-event.deltaY * 0.0015)));
     const ratio = scale / before; x = point.x - (point.x - x) * ratio; y = point.y - (point.y - y) * ratio; constrain(); render();
   }, { passive: false });
-  const observer = new ResizeObserver(() => { fit(); if (selected.size) focusLots([...selected]); }); observer.observe(host); fit(); paintSelection();
+  const observer = new ResizeObserver(() => { fit(); if (selected.size) focusLots([...selected]); else if (selectedStreetSegments.size) focusStreetSegments([...selectedStreetSegments]); }); observer.observe(host); fit(); paintSelection(); paintStreetSelection(); paintSocialAreaSelection();
   if (focusLotIds.length) focusLots(focusLotIds);
-  return { setSelectedLotIds, setSelectionColors, focusLots, fit, destroy() { observer.disconnect(); host.replaceChildren(); } };
+  if (focusStreetSegmentIds.length) focusStreetSegments(focusStreetSegmentIds);
+  return { setSelectedLotIds, setSelectedStreetSegmentIds, setSelectedSocialAreaIds, setSelectionColors, focusLots, focusStreetSegments, fit, destroy() { observer.disconnect(); host.replaceChildren(); } };
 }

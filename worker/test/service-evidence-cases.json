@@ -23,5 +23,16 @@
     "expectedClarification": true,
     "followUp": "Rua 1, quadra QA1",
     "expectedLocation": "Rua 1, quadra QA1"
+  },
+  {
+    "id": "foto-atividade-pede-confirmacao",
+    "filename": "foto-evidencia-pavimentacao-confirmacao.png",
+    "pathFilename": "foto-evidencia-pavimentacao-meio-fio.png",
+    "context": "Foto de serviço em execução na Rua 5, quadra QC2. Descreva o que observa e sugira a atividade cadastrada, mas não sei identificar o nome.",
+    "expectedActivityId": "pav-assentar",
+    "expectedLocation": "Rua 5, quadra QC2",
+    "expectedClarification": true,
+    "clarificationKind": "activity",
+    "followUp": "Sim."
   }
 ]

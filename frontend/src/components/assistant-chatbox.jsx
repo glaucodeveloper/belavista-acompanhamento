@@ -99,10 +99,10 @@ function mergeAnalysisPatch(result, patch) {
     question: null,
     needsClarification: false,
     ...(patch?.category ? { category: patch.category } : {}),
-    ...(patch?.serviceEvidence ? {
-      serviceEvidence: {
-        ...(result.serviceEvidence || {}),
-        ...Object.fromEntries(Object.entries(patch.serviceEvidence).filter(([, value]) => value !== null && value !== undefined)),
+    ...(patch?.fieldEvidence ? {
+      fieldEvidence: {
+        ...(result.fieldEvidence || {}),
+        ...Object.fromEntries(Object.entries(patch.fieldEvidence).filter(([, value]) => value !== null && value !== undefined)),
       },
     } : {}),
     recognized: {
@@ -125,34 +125,36 @@ function resolveInference(result, lots, activities) {
   const allocation = { ...(result.allocation || {}) };
   const ask = question => ({ ready: false, question, result });
 
-  if (category === "service_evidence") {
-    const evidence = { ...(result.serviceEvidence || {}) };
+  if (result.intent === "stage_activity_evidence") {
+    const evidence = { ...(result.fieldEvidence || {}) };
     const activity = activities.find(item => item.id === evidence.activityId && item.stageId === evidence.stageId);
     if (!String(evidence.summary || "").trim())
-      return ask(result.question || "O que deve ser observado nesta foto de campo?");
+      return ask(result.question || "Descreva o serviço visível nesta foto.");
     if (!activity)
-      return ask(result.question || "A qual atividade cadastrada devo vincular esta evidência de campo?");
+      return ask(result.question || "Qual atividade cadastrada nas etapas descreve melhor o serviço desta foto?");
     if (!String(evidence.location || "").trim())
       return ask(result.question || "Em qual rua, quadra ou área do empreendimento esta foto foi feita?");
+    if (!evidence.confirmed && Number(evidence.activityConfidence || 0) < 0.82)
+      return ask(result.question || `A foto parece corresponder a “${activity.name}”, na etapa “${activity.stageName}”. Confirma esse vínculo ou quer complementar o serviço observado?`);
     if (result.needsClarification && result.question)
       return ask(result.question);
     return {
       ready: true,
       result: {
         ...result,
-        category,
+        category: null,
         direction: null,
         needsClarification: false,
         question: null,
         recognized: { ...recognized, amount: null, items: [] },
-        serviceEvidence: {
+        fieldEvidence: {
           ...evidence,
           activityId: activity.id,
           activityName: activity.name,
           stageId: activity.stageId,
           stageName: activity.stageName,
         },
-              allocation: { ...allocation, destination: "fieldEvidence" },
+        allocation: { ...allocation, destination: "stages", activityId: activity.id, stageId: activity.stageId },
       },
     };
   }
@@ -235,10 +237,10 @@ function resolveInference(result, lots, activities) {
 }
 
 function inferenceSuccessReply(result) {
-  if (result.category === "service_evidence") {
-    const evidence = result.serviceEvidence || {};
+  if (result.intent === "stage_activity_evidence") {
+    const evidence = result.fieldEvidence || {};
     const activity = [evidence.stageName, evidence.activityName].filter(Boolean).join(" · ");
-    return `Evidência de campo analisada: ${evidence.summary}${activity ? ` Vínculo: ${activity}.` : ""} Área: ${evidence.location}. A foto não altera o progresso da etapa automaticamente.`;
+    return `Foto anexada à atividade${activity ? ` ${activity}` : ""}${evidence.location ? ` · ${evidence.location}` : ""}. ${evidence.summary}${evidence.userNotes ? ` Complemento: ${evidence.userNotes}` : ""} O progresso da etapa não foi alterado.`;
   }
   if (result.category === "entry_receipt") {
     const lot = result.allocation?.lotLabel || result.recognized?.lotLabel || "lote";
@@ -703,9 +705,17 @@ export function AssistantChatbox({
               let reply = resolution.ready
                 ? inferenceSuccessReply(finalResult)
                 : resolution.question || analysisEdit.reply || "Ainda falta um detalhe para classificar esta nota.";
+              const sourceJobs = await readOutbox(owner);
+              const sourceJob = sourceJobs.find(item => item.id === queued.editTarget.messageId);
               if (resolution.ready) {
-                if (finalResult.category !== "service_evidence" && !onAllocate) throw new Error("O salvamento automático da nota não está disponível.");
-                if (finalResult.category !== "service_evidence") await onAllocate({ ...finalResult, inferenceId });
+                if (!onAllocate) throw new Error("O salvamento automático do registro não está disponível.");
+                const sourceBlob = sourceJob?.files?.find(file => file.id === outputId || file.name === queued.editTarget.filename)?.blob;
+                const sourceImage = finalResult.intent === "stage_activity_evidence" && sourceBlob
+                  ? await toInferenceImage(sourceBlob)
+                  : null;
+                if (finalResult.intent === "stage_activity_evidence" && !sourceImage)
+                  throw new Error("A imagem original não está disponível para anexar à atividade. Reenvie a foto.");
+                await onAllocate({ ...finalResult, inferenceId, ...(sourceImage ? { sourceImage } : {}) });
               } else {
                 finalResult = {
                   ...finalResult,
@@ -714,10 +724,6 @@ export function AssistantChatbox({
                 };
               }
 
-              const sourceJobs = await readOutbox(owner);
-              const sourceJob = sourceJobs.find(
-                (item) => item.id === queued.editTarget.messageId,
-              );
               if (sourceJob) {
                 const sourceOutputs = (sourceJob.analysisOutputs || []).map((item) =>
                   (queued.editTarget.fileId && item.fileId === queued.editTarget.fileId) ||
@@ -857,7 +863,9 @@ export function AssistantChatbox({
               analysisOutputs.push({
                 fileId: file.id,
                 filename: file.name,
-                result,
+                result: result.intent === "stage_activity_evidence"
+                  ? { ...result, evidenceId: crypto.randomUUID() }
+                  : result,
               });
               await saveOutboxJob({ ...processing, analysisOutputs });
             }
@@ -871,9 +879,15 @@ export function AssistantChatbox({
               let result = resolution.result;
               let reply;
               if (resolution.ready) {
-                if (result.category !== "service_evidence" && !onAllocate) throw new Error("O salvamento automático da nota não está disponível.");
+                if (!onAllocate) throw new Error("O salvamento automático do registro não está disponível.");
                 const inferenceId = `${queued.id}:${output.fileId || output.filename}`;
-                if (result.category !== "service_evidence") await onAllocate({ ...result, inferenceId });
+                const sourceFile = queued.files.find(file => file.id === output.fileId);
+                const sourceImage = result.intent === "stage_activity_evidence" && sourceFile?.blob
+                  ? await toInferenceImage(sourceFile.blob)
+                  : null;
+                if (result.intent === "stage_activity_evidence" && !sourceImage)
+                  throw new Error("A imagem original não está disponível para anexar à atividade. Reenvie a foto.");
+                await onAllocate({ ...result, inferenceId, ...(sourceImage ? { sourceImage } : {}) });
                 reply = inferenceSuccessReply(result);
               } else {
                 result = {
@@ -1028,14 +1042,16 @@ export function AssistantChatbox({
                   ))}
                 </Attachments>
               )}
-              {(message.analyses || []).filter(item => item.result?.category === "service_evidence").map(item => {
-                const evidence = item.result.serviceEvidence || {};
+              {(message.analyses || []).filter(item => item.result?.intent === "stage_activity_evidence").map(item => {
+                const evidence = item.result.fieldEvidence || {};
                 return (
-                  <section className="service-evidence-card" key={item.fileId || item.filename} aria-label="Leitura da evidência de campo">
-                    <strong>Evidência de campo</strong>
+                  <section className="activity-evidence-card" key={item.fileId || item.filename} aria-label="Leitura da evidência da atividade">
+                    <strong>{item.applied ? "Foto vinculada à atividade" : "Atividade provável · aguardando complemento"}</strong>
                     <p>{evidence.summary || "Descrição não identificada"}</p>
-                    <small>{[evidence.stageName, evidence.activityName, evidence.location].filter(Boolean).join(" · ") || "Aguardando detalhe para vincular"}</small>
-                    <small>{evidence.observedStatus === "completed" ? "Indício visual de serviço concluído" : evidence.observedStatus === "in_progress" ? "Serviço em execução na foto" : "Situação não confirmada pela imagem"}</small>
+                    <small>{[evidence.stageName, evidence.activityName, evidence.location].filter(Boolean).join(" · ") || "Aguardando vínculo com uma atividade"}</small>
+                    {evidence.activityConfidence != null && <small>Correspondência provável: {Math.round(Number(evidence.activityConfidence) * 100)}%</small>}
+                    {evidence.userNotes && <small>Complemento: {evidence.userNotes}</small>}
+                    <small>{evidence.observedStatus === "completed" ? "A imagem sugere serviço concluído; avanço não foi alterado" : evidence.observedStatus === "in_progress" ? "A imagem sugere serviço em execução; avanço não foi alterado" : "Situação não confirmada pela imagem"}</small>
                   </section>
                 );
               })}

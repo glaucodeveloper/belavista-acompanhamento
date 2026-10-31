@@ -342,6 +342,46 @@ function App() {
   const allocateClassification = async result => {
     const recognized = result.recognized || {};
     const currentData = dataRef.current;
+    if (result.intent === 'stage_activity_evidence') {
+      const evidence = result.fieldEvidence || {};
+      const stage = (currentData.stages || []).find(row => row.id === evidence.stageId);
+      const activity = stage?.activities?.find(row => row.id === evidence.activityId);
+      if (!stage || !activity) throw new Error('A atividade de destino não existe mais. Atualize as etapas e tente novamente.');
+      const evidenceId = result.evidenceId || crypto.randomUUID();
+      if ((activity.fieldEvidence || []).some(item => item.inferenceId === result.inferenceId || item.id === evidenceId)) return;
+      if (!result.sourceImage?.data || !result.sourceImage?.mimeType) throw new Error('A imagem original não está disponível para anexar à atividade. Reenvie a foto.');
+      const token = sessionStorage.getItem('alianca-session-token');
+      const upload = await fetch(`${WORKER}/api/activity-evidence`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ evidenceId, filename: result.filename || 'foto-de-servico', image: result.sourceImage }),
+      });
+      const uploaded = await upload.json().catch(() => ({}));
+      if (!upload.ok) throw new Error(uploaded.error || 'Não foi possível guardar a foto no repositório privado.');
+      const savedEvidence = {
+        id: evidenceId,
+        inferenceId: result.inferenceId,
+        filename: result.filename || uploaded.filename,
+        repositoryPath: uploaded.repositoryPath,
+        mimeType: uploaded.mimeType,
+        size: uploaded.size,
+        summary: String(evidence.summary || recognized.description || '').trim(),
+        userNotes: String(evidence.userNotes || '').trim(),
+        location: String(evidence.location || '').trim(),
+        observedStatus: evidence.observedStatus || 'unclear',
+        activityConfidence: Number(evidence.activityConfidence || 0),
+        createdAt: new Date().toISOString(),
+      };
+      const nextStages = (currentData.stages || []).map(row => row.id !== stage.id ? row : {
+        ...row,
+        activities: row.activities.map(item => item.id !== activity.id ? item : {
+          ...item,
+          fieldEvidence: [...(item.fieldEvidence || []), savedEvidence],
+        }),
+      });
+      await saveRecords('stages', nextStages);
+      return;
+    }
     if (result.category === 'entry_receipt') {
       const target = (currentData.lots || []).find(lot => lot.id === result.allocation?.lotId || String(lot.label || '').toLowerCase() === String(recognized.lotLabel || '').toLowerCase());
       if (!target) throw new Error('Selecione um lote antes de aplicar a entrada.');
