@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3, MapPin, Plus, Trash2, X } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3, MapPin, Package, Plus, Trash2, X } from 'lucide-react';
 import { mountLotMap } from '../map.js';
 import mapLotIndex from '../assets/mapeamento.json';
 import streetSegmentCatalog from '../assets/street-segments.json';
+import { collectStageMaterialChoices, materialReferenceKey } from '../material-allocations.js';
 
 const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const dateKey = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -58,12 +59,15 @@ function CalendarGrid({ month, selectedDate, events, onPickDate, onOpenEvent }) 
   </div>;
 }
 
-function EventModal({ event, initialDate, onClose, onSave, onDelete }) {
+function EventModal({ event, initialDate, onClose, onSave, onDelete, stages, materials }) {
   const isDetails = event?.mode === 'details';
   const existing = event?.item || null;
-  const [draft, setDraft] = useState(() => existing ? { ...existing, areaIds: [...(existing.areaIds || [])], areaNumbers: [...(existing.areaNumbers || [])], streetSegmentIds: [...(existing.streetSegmentIds || [])], socialAreaIds: [...(existing.socialAreaIds || [])] } : { id: crypto.randomUUID(), title: '', date: initialDate, startTime: '', endTime: '', description: '', areaIds: [], areaNumbers: [], streetSegmentIds: [], socialAreaIds: [] });
+  const [draft, setDraft] = useState(() => existing ? { ...existing, areaIds: [...(existing.areaIds || [])], areaNumbers: [...(existing.areaNumbers || [])], streetSegmentIds: [...(existing.streetSegmentIds || [])], socialAreaIds: [...(existing.socialAreaIds || [])], materialAllocations: [...(existing.materialAllocations || [])] } : { id: crypto.randomUUID(), title: '', date: initialDate, startTime: '', endTime: '', description: '', areaIds: [], areaNumbers: [], streetSegmentIds: [], socialAreaIds: [], materialAllocations: [] });
   const [editing, setEditing] = useState(!isDetails);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const [materialChoice, setMaterialChoice] = useState('');
+  const materialChoices = useMemo(() => collectStageMaterialChoices(stages, materials), [stages, materials]);
+  const materialChoiceByKey = useMemo(() => new Map(materialChoices.map(item => [item.key, item])), [materialChoices]);
   const [focusLotIds, setFocusLotIds] = useState(isDetails ? (existing?.areaIds || []) : []);
   const areaToggle = area => setDraft(current => {
     const areaIds = current.areaIds || [], areaNumbers = current.areaNumbers || [];
@@ -84,11 +88,31 @@ function EventModal({ event, initialDate, onClose, onSave, onDelete }) {
     formEvent.preventDefault();
     if (!draft.title.trim()) { setError('Informe o título do compromisso.'); return; }
     if (draft.endTime && draft.startTime && draft.endTime < draft.startTime) { setError('O horário final precisa ser posterior ao inicial.'); return; }
+    const materialAllocations = (draft.materialAllocations || []).map(allocation => {
+      const quantity = Number(allocation.quantity);
+      const currentChoice = materialChoiceByKey.get(allocation.key);
+      return { ...allocation, ...(currentChoice || {}), quantity };
+    });
+    if (materialAllocations.some(allocation => !Number.isFinite(allocation.quantity) || allocation.quantity <= 0)) { setError('A quantidade alocada de cada material deve ser maior que zero.'); return; }
     setBusy(true); setError('');
-    try { await onSave({ ...draft, title: draft.title.trim(), description: draft.description.trim(), areaIds: draft.areaIds || [], areaNumbers: draft.areaNumbers || [], streetSegmentIds: draft.streetSegmentIds || [], socialAreaIds: draft.socialAreaIds || [] }); onClose(); }
+    try { await onSave({ ...draft, title: draft.title.trim(), description: draft.description.trim(), areaIds: draft.areaIds || [], areaNumbers: draft.areaNumbers || [], streetSegmentIds: draft.streetSegmentIds || [], socialAreaIds: draft.socialAreaIds || [], materialAllocations }); onClose(); }
     catch (err) { setError(err.message); }
     finally { setBusy(false); }
   }
+  function addMaterialAllocation() {
+    const choice = materialChoiceByKey.get(materialChoice);
+    if (!choice || (draft.materialAllocations || []).some(row => row.key === choice.key)) return;
+    const quantity = choice.plannedQuantity > 0 ? choice.plannedQuantity : 1;
+    setDraft(current => ({ ...current, materialAllocations: [...(current.materialAllocations || []), { ...choice, quantity }] }));
+    setMaterialChoice('');
+  }
+  function updateMaterialAllocation(key, quantity) {
+    setDraft(current => ({ ...current, materialAllocations: (current.materialAllocations || []).map(row => row.key === key ? { ...row, quantity } : row) }));
+  }
+  function removeMaterialAllocation(key) {
+    setDraft(current => ({ ...current, materialAllocations: (current.materialAllocations || []).filter(row => row.key !== key) }));
+  }
+  const allocatedMaterials = (draft.materialAllocations || []).map(allocation => ({ ...allocation, ...(materialChoiceByKey.get(allocation.key) || {}) }));
   const selectedAreaTags = draft.areaIds.map((lotId, index) => {
     const mapEntry = mapLotIndex.mappings.find(entry => entry.lotId === lotId);
     const number = draft.areaNumbers[index] ?? mapEntry?.number;
@@ -109,20 +133,25 @@ function EventModal({ event, initialDate, onClose, onSave, onDelete }) {
     <header className="agenda-modal-header"><div><p className="eyebrow">AGENDA DE OBRA</p><h2 id="agenda-modal-title">{editing ? (existing ? 'Editar compromisso' : 'Novo compromisso') : draft.title}</h2><p>{formatDate(draft.date)}{!editing && ` · ${timeText}`}</p></div><button type="button" className="quiet-button agenda-close" aria-label="Fechar modal" onClick={onClose}><X size={18} /></button></header>
     {editing ? <form className="agenda-form" onSubmit={submit}>
       <div className="agenda-fields"><label>Título<input autoFocus required maxLength={120} value={draft.title} onChange={event => setDraft({ ...draft, title: event.target.value })} placeholder="Ex.: Concretagem da quadra QA" /></label><div className="agenda-time-fields"><label>Data<input type="date" required value={draft.date} onChange={event => setDraft({ ...draft, date: event.target.value })} /></label><label>Início<input type="time" value={draft.startTime || ''} onChange={event => setDraft({ ...draft, startTime: event.target.value })} /></label><label>Fim<input type="time" value={draft.endTime || ''} onChange={event => setDraft({ ...draft, endTime: event.target.value })} /></label></div><label>Detalhes<textarea rows={3} maxLength={1200} value={draft.description || ''} onChange={event => setDraft({ ...draft, description: event.target.value })} placeholder="Equipe, materiais, instruções…" /></label></div>
+      <section className="agenda-materials"><div className="agenda-materials-heading"><div><h3>Materiais da etapa</h3><p>Alocação prevista para este compromisso, separada da quantidade total cadastrada.</p></div><span><Package size={13} /> {allocatedMaterials.length}</span></div>
+        <div className="agenda-material-add"><label htmlFor="agenda-material-choice">Adicionar material</label><div><select id="agenda-material-choice" value={materialChoice} onChange={event => setMaterialChoice(event.target.value)}><option value="">Selecione um material vinculado a etapa</option>{materialChoices.filter(choice => !(draft.materialAllocations || []).some(row => row.key === choice.key)).map(choice => <option value={choice.key} key={choice.key}>{choice.stageName} · {choice.activityName} · {choice.name} ({choice.plannedQuantity || 0} {choice.unit})</option>)}</select><button className="quiet-button" type="button" disabled={!materialChoice} onClick={addMaterialAllocation}><Plus size={15} /> Adicionar</button></div></div>
+        {allocatedMaterials.length ? <ul className="agenda-material-list">{allocatedMaterials.map(allocation => <li key={allocation.key || materialReferenceKey(allocation.sourceType, allocation.itemId)}><div className="agenda-material-info"><strong>{allocation.name || 'Material sem descrição'}</strong><small>{allocation.stageName || 'Etapa removida'} · {allocation.activityName || 'Atividade não informada'}{allocation.plannedQuantity > 0 ? ` · previsto ${allocation.plannedQuantity} ${allocation.unit || 'un'}` : ''}</small></div><label className="agenda-material-quantity">Quantidade neste compromisso<input type="number" min="0.001" step="any" value={allocation.quantity ?? ''} onChange={event => updateMaterialAllocation(allocation.key, event.target.value)} /></label><button className="icon-button subtle" type="button" aria-label={`Remover ${allocation.name || 'material'}`} onClick={() => removeMaterialAllocation(allocation.key)}><X size={15} /></button></li>)}</ul> : <p className="agenda-material-empty">Nenhum material alocado.</p>}
+      </section>
       <section className="agenda-map-selection"><div className="agenda-map-title"><div><h3>Áreas do loteamento</h3><p>Selecione um lote, a rua em frente a ele ou a área social das quadras.</p></div><span>{selectedAreaCount} selecionada{selectedAreaCount === 1 ? '' : 's'}</span></div><div className="agenda-map-legend"><span><i className="agenda-map-legend-lot" /> Lotes</span><span><i className="agenda-map-legend-street" /> Rua em frente a cada lote</span><span><i className="agenda-map-legend-social" /> Área social das quadras</span></div><AgendaMap selectedLotIds={draft.areaIds} selectedStreetSegmentIds={draft.streetSegmentIds} selectedSocialAreaIds={draft.socialAreaIds} onLotSelect={selectArea} onStreetSelect={selectStreet} onSocialAreaSelect={selectSocial} /></section>
       {!!selectedAreaTags.length && <div className="agenda-area-tags" aria-label="Áreas selecionadas">{selectedAreaTags.map(area => <span className={area.kind === 'street' ? 'is-street' : area.kind === 'social' ? 'is-social' : ''} key={area.id}><MapPin size={12} /> {area.label}{editing && <button type="button" aria-label={`Remover ${area.label}`} onClick={() => removeArea(area)}><X size={12} /></button>}</span>)}</div>}
       {error && <p className="error-message" role="alert">{error}</p>}
       <footer className="agenda-modal-actions"><button type="button" className="quiet-button" onClick={onClose}>Cancelar</button><button type="submit" className="primary-button" disabled={busy}>{busy ? 'Salvando…' : 'Salvar compromisso'}</button></footer>
     </form> : <div className="agenda-event-details">
       {draft.description && <p className="agenda-description">{draft.description}</p>}
-      <div className="agenda-detail-meta"><span><CalendarDays size={15} /> {formatDate(draft.date)}</span><span><Clock3 size={15} /> {timeText}</span><span><MapPin size={15} /> {selectedAreaCount} áreas</span></div>
+      <div className="agenda-detail-meta"><span><CalendarDays size={15} /> {formatDate(draft.date)}</span><span><Clock3 size={15} /> {timeText}</span><span><MapPin size={15} /> {selectedAreaCount} áreas</span><span><Package size={15} /> {allocatedMaterials.length} materiais</span></div>
+      {!!allocatedMaterials.length && <section className="agenda-materials agenda-materials-readonly"><div className="agenda-materials-heading"><div><h3>Materiais alocados</h3><p>Quantidades reservadas para este compromisso.</p></div></div><ul className="agenda-material-list">{allocatedMaterials.map(allocation => <li key={allocation.key || materialReferenceKey(allocation.sourceType, allocation.itemId)}><div className="agenda-material-info"><strong>{allocation.name || 'Material sem descrição'}</strong><small>{allocation.stageName || 'Etapa removida'} · {allocation.activityName || 'Atividade não informada'}</small></div><span className="agenda-material-readonly-quantity">{allocation.quantity} {allocation.unit || 'un'}</span></li>)}</ul></section>}
       {selectedAreaCount ? <><section className="agenda-map-selection"><div className="agenda-map-title"><div><h3>Áreas do compromisso</h3><p>Cada trecho viário acompanha a frente do lote correspondente.</p></div><span>{selectedAreaCount} selecionada{selectedAreaCount === 1 ? '' : 's'}</span></div><div className="agenda-map-legend"><span><i className="agenda-map-legend-lot" /> Lotes</span><span><i className="agenda-map-legend-street" /> Rua em frente a cada lote</span><span><i className="agenda-map-legend-social" /> Área social das quadras</span></div><AgendaMap selectedLotIds={draft.areaIds} selectedStreetSegmentIds={draft.streetSegmentIds} selectedSocialAreaIds={draft.socialAreaIds} focusLotIds={focusLotIds} focusStreetSegmentIds={draft.streetSegmentIds} /></section><div className="agenda-area-tags" aria-label="Áreas vinculadas">{selectedAreaTags.map(area => <span className={area.kind === 'street' ? 'is-street' : area.kind === 'social' ? 'is-social' : ''} key={area.id}><MapPin size={12} /> {area.label}</span>)}</div></> : <div className="agenda-no-area">Este compromisso não tem áreas vinculadas.</div>}
       <footer className="agenda-modal-actions"><button type="button" className="quiet-button danger-button" onClick={onDelete}><Trash2 size={15} /> Excluir</button><button type="button" className="quiet-button" onClick={onClose}>Fechar</button><button type="button" className="primary-button" onClick={() => { setEditing(true); setFocusLotIds([]); }}>Editar compromisso</button></footer>
     </div>}
   </section></div>;
 }
 
-export function AgendaPage({ events = [], onSave }) {
+export function AgendaPage({ events = [], stages = [], materials = [], onSave }) {
   const [month, setMonth] = useState(() => { const now = new Date(); return new Date(now.getFullYear(), now.getMonth(), 1); });
   const [selectedDate, setSelectedDate] = useState(dateKey(new Date()));
   const [modal, setModal] = useState(null), [saveError, setSaveError] = useState('');
@@ -142,7 +171,7 @@ export function AgendaPage({ events = [], onSave }) {
     <div className="agenda-layout"><section className="agenda-calendar-panel" aria-label="Calendário de compromissos"><div className="agenda-month-toolbar"><div><h3>{monthTitle(month)}</h3><span>{sortedEvents.length} compromisso{sortedEvents.length === 1 ? '' : 's'} no calendário</span></div><div className="agenda-month-controls"><button type="button" className="quiet-button" aria-label="Mês anterior" onClick={() => changeMonth(-1)}><ChevronLeft size={17} /></button><button type="button" className="quiet-button" onClick={() => { const today = new Date(); setMonth(new Date(today.getFullYear(), today.getMonth(), 1)); setSelectedDate(dateKey(today)); }}>Hoje</button><button type="button" className="quiet-button" aria-label="Próximo mês" onClick={() => changeMonth(1)}><ChevronRight size={17} /></button></div></div>
       <CalendarGrid month={month} selectedDate={selectedDate} events={sortedEvents} onPickDate={setSelectedDate} onOpenEvent={event => setModal({ mode: 'details', item: event })} />
     </section><aside className="agenda-day-panel"><div className="agenda-day-heading"><div><p className="eyebrow">DIA SELECIONADO</p><h3>{parseDate(selectedDate).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}</h3><p>{formatDate(selectedDate)}</p></div><button type="button" className="quiet-button" aria-label="Adicionar compromisso neste dia" onClick={() => setModal({ mode: 'create', date: selectedDate })}><Plus size={17} /></button></div>
-      {dayEvents.length ? <div className="agenda-day-list">{dayEvents.map(event => { const areaCount = (event.areaIds || []).length + (event.streetSegmentIds || []).length + (event.socialAreaIds || []).length; return <button type="button" className="agenda-day-event" key={event.id} onClick={() => setModal({ mode: 'details', item: event })}><span className="agenda-event-time">{event.startTime || 'Dia todo'}</span><strong>{event.title}</strong>{event.description && <small>{event.description}</small>}{!!areaCount && <span className="agenda-event-area"><MapPin size={12} /> {areaCount} áreas do mapa</span>}</button>; })}</div> : <div className="agenda-empty-day"><CalendarDays size={22} /><p>Nenhum compromisso neste dia.</p><button type="button" className="quiet-button" onClick={() => setModal({ mode: 'create', date: selectedDate })}>Adicionar compromisso</button></div>}</aside></div>
-    {modal && <EventModal event={modal} initialDate={modal.date || selectedDate} onClose={() => setModal(null)} onSave={async event => { try { await saveEvent(event); } catch (err) { setSaveError(err.message); throw err; } }} onDelete={async () => { try { await deleteEvent(modal.item); } catch (err) { setSaveError(err.message); } }} />}
+      {dayEvents.length ? <div className="agenda-day-list">{dayEvents.map(event => { const areaCount = (event.areaIds || []).length + (event.streetSegmentIds || []).length + (event.socialAreaIds || []).length, materialCount = (event.materialAllocations || []).length; return <button type="button" className="agenda-day-event" key={event.id} onClick={() => setModal({ mode: 'details', item: event })}><span className="agenda-event-time">{event.startTime || 'Dia todo'}</span><strong>{event.title}</strong>{event.description && <small>{event.description}</small>}{!!areaCount && <span className="agenda-event-area"><MapPin size={12} /> {areaCount} áreas do mapa</span>}{!!materialCount && <span className="agenda-event-area"><Package size={12} /> {materialCount} materiais alocados</span>}</button>; })}</div> : <div className="agenda-empty-day"><CalendarDays size={22} /><p>Nenhum compromisso neste dia.</p><button type="button" className="quiet-button" onClick={() => setModal({ mode: 'create', date: selectedDate })}>Adicionar compromisso</button></div>}</aside></div>
+    {modal && <EventModal event={modal} initialDate={modal.date || selectedDate} stages={stages} materials={materials} onClose={() => setModal(null)} onSave={async event => { try { await saveEvent(event); } catch (err) { setSaveError(err.message); throw err; } }} onDelete={async () => { try { await deleteEvent(modal.item); } catch (err) { setSaveError(err.message); } }} />}
   </div>;
 }

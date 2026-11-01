@@ -93,6 +93,12 @@
 .stage-item-edit-description { grid-column: 1 / -1; }
 .stage-item-edit-dialog > footer { display: flex; justify-content: end; gap: 8px; padding-top: 10px; border-top: 1px solid #edf0f4; }
 .stage-item-edit-dialog > footer .primary-button { display: inline-flex; align-items: center; gap: 6px; }
+.stage-item-edit-footer > span { flex: 1; }
+.stage-item-delete-confirm { display: grid; gap: 8px; padding: 12px; border: 1px solid #f0d2d2; border-radius: 9px; background: #fff7f7; color: #7f3434; font-size: 12px; }
+.stage-item-delete-confirm > span { color: #8b5555; font-size: 11px; }
+.stage-item-delete-confirm > div { display: flex; flex-wrap: wrap; justify-content: end; gap: 7px; }
+.stage-tree-record .kibo-tree-trigger { outline: none; }
+.stage-tree-record .kibo-tree-trigger:focus-visible { box-shadow: 0 0 0 3px #2d70d926; }
 .stage-items-empty, .stage-empty { display: grid; justify-items: center; gap: 6px; padding: 38px 18px; color: #78869a; text-align: center; }
 .stage-items-empty strong, .stage-empty strong { color: #3e4d62; font-size: 13px; }
 .stage-items-empty span, .stage-empty span { font-size: 11px; }
@@ -140,6 +146,9 @@
   .stage-item-edit-dialog { padding: 14px; }
   .stage-item-edit-fields { grid-template-columns: 1fr; }
   .stage-item-edit-description { grid-column: auto; }
+  .stage-item-edit-footer { flex-wrap: wrap; }
+  .stage-item-edit-footer > span { display: none; }
+  .stage-item-edit-footer > button { flex: 1; justify-content: center; }
   .stage-edit-card { padding: 14px; }
   .stage-edit-grid { grid-template-columns: 1fr; }
   .stage-description-field { grid-column: auto; }

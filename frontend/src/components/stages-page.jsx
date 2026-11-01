@@ -2,18 +2,23 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Pencil, Trash2, X, Check, MoreHorizontal, MoveRight, Package, BriefcaseBusiness } from 'lucide-react';
 import { TreeProvider, TreeView, TreeNode, TreeNodeTrigger, TreeExpander, TreeIcon, TreeLabel, TreeNodeContent } from './kibo-ui/tree.jsx';
 import '../stages-page.css';
+import { dispatchStageItemChange } from '../material-allocations.js';
 
 const statusLabels = { planejado: 'Planejada', andamento: 'Em andamento', concluido: 'Concluída', bloqueado: 'Bloqueada' };
 const uid = () => crypto.randomUUID();
 
 function collectItems(stage, materials = [], services = []) {
   const materialRows = [
-    ...(stage.materials || []).map(material => ({ ...material, activityName: material.activityName || 'Etapa', stageId: stage.id, activityId: null, sourceType: null, movable: false })),
-    ...(stage.activities || []).flatMap(activity => (activity.materials || []).map(material => ({ ...material, activityName: activity.title, stageId: stage.id, activityId: activity.id, sourceType: null, movable: false }))),
+    ...(stage.materials || []).map(material => ({ ...material, activityName: material.activityName || 'Etapa', stageId: stage.id, activityId: null, sourceType: 'stage', movable: false })),
+    ...(stage.activities || []).flatMap(activity => (activity.materials || []).map(material => ({ ...material, activityName: activity.title, stageId: stage.id, activityId: activity.id, sourceType: 'stage', movable: false }))),
   ].map(material => ({
     id: material.id,
     kind: 'Material',
+    sourceType: material.sourceType,
+    row: material,
     name: material.name,
+    stageId: material.stageId,
+    activityId: material.activityId,
     activity: material.activityName,
     detail: `${Number(material.quantity || material.plannedQuantity || 0).toLocaleString('pt-BR')} ${material.unit || 'un'}`,
     status: material.status || 'planejado',
@@ -49,6 +54,7 @@ export function StagesPage({ stages = [], materials = [], services = [], onSave,
   const [moveTarget, setMoveTarget] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
   const [itemDraft, setItemDraft] = useState(null);
+  const [confirmingItemDelete, setConfirmingItemDelete] = useState(false);
   const selected = stages.find(stage => stage.id === selectedId) || stages[0] || null;
   const items = useMemo(() => selected ? collectItems(selected, materials, services) : [], [selected, materials, services]);
 
@@ -126,13 +132,14 @@ export function StagesPage({ stages = [], materials = [], services = [], onSave,
 
   function startEditItem(item) {
     setActiveMenu(null); setError(''); setNotice('');
-    const row = (item.sourceType === 'materials' ? materials : services).find(entry => entry.id === item.id);
+    const row = item.sourceType === 'stage' ? item.row : (item.sourceType === 'materials' ? materials : services).find(entry => entry.id === item.id);
     if (!row) { setError('O item não foi encontrado para edição.'); return; }
+    setConfirmingItemDelete(false);
     setEditingItem({ ...item, row });
     setItemDraft({
       name: row.name || row.description || '',
       description: row.description || '',
-      quantity: String(row.quantity ?? 1),
+      quantity: String(row.quantity ?? row.plannedQuantity ?? 1),
       unit: row.unit || 'un',
       unitPrice: String(row.unitPrice ?? (Number(row.total ?? row.amount ?? 0) / Math.max(1, Number(row.quantity ?? 1)))),
       total: String(row.total ?? row.amount ?? 0),
@@ -170,9 +177,39 @@ export function StagesPage({ stages = [], materials = [], services = [], onSave,
     if (![unitPrice, total].every(value => Number.isFinite(value) && value >= 0)) { setError('Informe valores válidos para preço e total.'); return; }
     setBusy(true); setError(''); setNotice('');
     try {
+      if (editingItem.sourceType === 'stage') {
+        const updatedItem = {
+          ...editingItem.row,
+          name: itemDraft.name.trim(),
+          description: itemDraft.description.trim(),
+          quantity,
+          plannedQuantity: quantity,
+          unit: itemDraft.unit.trim() || 'un',
+          unitPrice,
+          total,
+          amount: total,
+          supplier: itemDraft.supplier.trim(),
+          invoiceNumber: itemDraft.invoiceNumber.trim(),
+          date: itemDraft.date,
+        };
+        const updatedStages = stages.map(stage => {
+          if (stage.id !== editingItem.stageId) return stage;
+          const updateRows = rows => (rows || []).map(row => row.id !== editingItem.id ? row : updatedItem);
+          if (editingItem.activityId) return { ...stage, activities: (stage.activities || []).map(activity => activity.id === editingItem.activityId ? { ...activity, materials: updateRows(activity.materials) } : activity) };
+          return { ...stage, materials: updateRows(stage.materials) };
+        });
+        await onSave(updatedStages);
+        const stage = stages.find(row => row.id === editingItem.stageId);
+        const activity = stage?.activities?.find(row => row.id === editingItem.activityId);
+        dispatchStageItemChange({ action: 'updated', kind: editingItem.kind, sourceType: 'stage', itemId: editingItem.id, stageId: editingItem.stageId, activityId: editingItem.activityId || null, stageName: stage?.name, activityName: activity?.title || 'Etapa', item: updatedItem });
+        setEditingItem(null); setItemDraft(null);
+        setNotice(`“${itemDraft.name.trim()}” atualizado na lista da etapa.`);
+        return;
+      }
       const rows = editingItem.sourceType === 'materials' ? materials : services;
-      const updated = rows.map(row => row.id !== editingItem.id ? row : ({
-        ...row,
+      const existingRow = rows.find(row => row.id === editingItem.id) || {};
+      const updatedItem = {
+        ...existingRow,
         name: itemDraft.name.trim(),
         description: itemDraft.description.trim(),
         quantity,
@@ -183,11 +220,38 @@ export function StagesPage({ stages = [], materials = [], services = [], onSave,
         supplier: itemDraft.supplier.trim(),
         invoiceNumber: itemDraft.invoiceNumber.trim(),
         date: itemDraft.date,
-      }));
+      };
+      const updated = rows.map(row => row.id !== editingItem.id ? row : updatedItem);
       await onSaveRecords(editingItem.sourceType, updated);
+      const stage = stages.find(row => row.id === updatedItem.stageId);
+      const activity = stage?.activities?.find(row => row.id === updatedItem.activityId);
+      dispatchStageItemChange({ action: 'updated', kind: editingItem.kind, sourceType: editingItem.sourceType, itemId: editingItem.id, stageId: updatedItem.stageId, activityId: updatedItem.activityId || null, stageName: updatedItem.stageName || stage?.name, activityName: updatedItem.activityName || activity?.title, item: updatedItem });
       setEditingItem(null); setItemDraft(null);
       setNotice(`Detalhes de “${itemDraft.name.trim()}” atualizados.`);
     } catch (saveError) { setError(saveError.message || 'Não foi possível salvar os detalhes do item.'); }
+    finally { setBusy(false); }
+  }
+
+  async function deleteItem() {
+    if (!editingItem) return;
+    setBusy(true); setError(''); setNotice('');
+    try {
+      if (editingItem.sourceType === 'stage') {
+        const updatedStages = stages.map(stage => {
+          if (stage.id !== editingItem.stageId) return stage;
+          if (editingItem.activityId) return { ...stage, activities: (stage.activities || []).map(activity => activity.id === editingItem.activityId ? { ...activity, materials: (activity.materials || []).filter(row => row.id !== editingItem.id) } : activity) };
+          return { ...stage, materials: (stage.materials || []).filter(row => row.id !== editingItem.id) };
+        });
+        await onSave(updatedStages);
+      } else {
+        if (!onSaveRecords) throw new Error('A exclusão dos itens não está disponível.');
+        const rows = editingItem.sourceType === 'materials' ? materials : services;
+        await onSaveRecords(editingItem.sourceType, rows.filter(row => row.id !== editingItem.id));
+      }
+      dispatchStageItemChange({ action: 'deleted', kind: editingItem.kind, sourceType: editingItem.sourceType, itemId: editingItem.id, stageId: editingItem.stageId, activityId: editingItem.activityId || null });
+      setEditingItem(null); setItemDraft(null); setConfirmingItemDelete(false);
+      setNotice(`“${editingItem.name}” excluído da etapa.`);
+    } catch (saveError) { setError(saveError.message || 'Não foi possível excluir o item.'); }
     finally { setBusy(false); }
   }
 
@@ -209,6 +273,8 @@ export function StagesPage({ stages = [], materials = [], services = [], onSave,
         category: targetActivity?.title || targetStage.name,
       }));
       await onSaveRecords?.(movingItem.sourceType, next);
+      const movedItem = next.find(row => row.id === movingItem.id);
+      dispatchStageItemChange({ action: 'updated', kind: movingItem.kind, sourceType: movingItem.sourceType, itemId: movingItem.id, stageId: targetStage.id, activityId: targetActivity?.id || null, stageName: targetStage.name, activityName: targetActivity?.title || targetStage.name, item: movedItem });
       setSelectedId(targetStage.id); setMovingItem(null); setMoveTarget(null);
       setNotice(`“${movingItem.name}” movido para ${targetStage.name}${targetActivity ? ` · ${targetActivity.title}` : ''}.`);
     } catch (saveError) { setError(saveError.message || 'Não foi possível mover o item.'); }
@@ -226,7 +292,7 @@ export function StagesPage({ stages = [], materials = [], services = [], onSave,
   }
 
   const itemNode = (item, level, isLast) => <TreeNode nodeId={`record:${item.kind}:${item.id}`} level={level} isLast={isLast} key={`${item.kind}-${item.id}`} role="treeitem" aria-level={level + 1}>
-    <div className="stage-tree-record"><TreeNodeTrigger><TreeExpander /><TreeIcon icon={item.kind === 'Material' ? <Package size={15} /> : <BriefcaseBusiness size={15} />} /><TreeLabel><span className="stage-tree-record-copy"><strong>{item.name}</strong><small>{item.detail}</small></span></TreeLabel><span className={`stage-item-kind ${item.kind === 'Material' ? 'is-material' : ''}`}>{item.kind}</span>{item.status && <span className={`stage-status stage-status-${item.status}`}>{statusLabels[item.status] || item.status}</span>}</TreeNodeTrigger>
+    <div className="stage-tree-record"><TreeNodeTrigger role="button" tabIndex={0} aria-label={`Editar ou excluir ${item.kind.toLowerCase()} ${item.name}`} onClick={event => { event.stopPropagation(); startEditItem(item); }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); startEditItem(item); } }}><TreeExpander /><TreeIcon icon={item.kind === 'Material' ? <Package size={15} /> : <BriefcaseBusiness size={15} />} /><TreeLabel><span className="stage-tree-record-copy"><strong>{item.name}</strong><small>{item.detail}</small></span></TreeLabel><span className={`stage-item-kind ${item.kind === 'Material' ? 'is-material' : ''}`}>{item.kind}</span>{item.status && <span className={`stage-status stage-status-${item.status}`}>{statusLabels[item.status] || item.status}</span>}</TreeNodeTrigger>
       {item.movable && <div className="stage-item-menu"><button type="button" className="stage-item-menu-trigger" aria-label={`Ações para ${item.name}`} aria-haspopup="menu" aria-expanded={activeMenu === item.id} onClick={() => setActiveMenu(activeMenu === item.id ? null : item.id)}><MoreHorizontal size={17} /></button>{activeMenu === item.id && <div className="stage-item-menu-popover" role="menu"><button type="button" role="menuitem" onClick={() => startEditItem(item)}><Pencil size={14} /> Editar detalhes do item</button><button type="button" role="menuitem" onClick={() => startMove(item)}><MoveRight size={14} /> Mover para etapa ou atividade</button></div>}</div>}
     </div>
   </TreeNode>;
@@ -255,6 +321,6 @@ export function StagesPage({ stages = [], materials = [], services = [], onSave,
       {(selected.activities || []).some(activity => activity.fieldEvidence?.length) && <section className="stage-field-evidence-card"><header><div><p className="eyebrow">REGISTROS DE CAMPO</p><h3>Fotos vinculadas às atividades</h3><p>O assistente guarda a imagem e a vincula à atividade escolhida, sem alterar o avanço da etapa.</p></div></header><div className="stage-field-evidence-list">{(selected.activities || []).flatMap(activity => (activity.fieldEvidence || []).map(evidence => ({ ...evidence, activityTitle: activity.title }))).map(evidence => <article className="stage-field-evidence-item" key={evidence.id}><div><strong>{evidence.activityTitle}</strong><small>{evidence.filename} · {evidence.location || 'Área não informada'}</small></div><p>{evidence.summary || 'Descrição visual não informada.'}</p>{evidence.userNotes && <p>Complemento: {evidence.userNotes}</p>}<small>{evidence.observedStatus === 'completed' ? 'Imagem sugere serviço concluído' : evidence.observedStatus === 'in_progress' ? 'Imagem sugere serviço em execução' : 'Situação não confirmada pela imagem'} · guardada no repositório privado</small></article>)}</div></section>}
     </section> : !editing && <div className="stage-empty"><strong>Comece pelo cadastro de uma etapa</strong><span>As etapas importadas do projeto arquivado aparecem aqui depois da sincronização.</span></div>}
     {movingItem && <div className="stage-move-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !busy) { setMovingItem(null); setMoveTarget(null); } }}><section className="stage-move-dialog" role="dialog" aria-modal="true" aria-labelledby="stage-move-title"><header><div><p className="eyebrow">REALOCAR ITEM</p><h3 id="stage-move-title">Mover material ou serviço</h3><p><strong>{movingItem.name}</strong> · atualmente em {movingItem.stageId ? (stages.find(stage => stage.id === movingItem.stageId)?.name || 'Etapa removida') : 'Sem etapa'}</p></div><button type="button" className="icon-button" aria-label="Fechar" disabled={busy} onClick={() => { setMovingItem(null); setMoveTarget(null); }}><X size={16} /></button></header><div className="stage-move-tree"><TreeProvider defaultExpandedIds={stages.map(stage => `destination-stage:${stage.id}`)} selectedIds={moveTarget ? [moveTarget.activityId ? `destination-activity:${moveTarget.activityId}` : `destination-stage:${moveTarget.stageId}`] : []} onSelectionChange={selectMoveDestination} showLines showIcons indent={19}><TreeView aria-label="Selecione uma etapa ou atividade">{stages.map(stage => { const nodeId = `destination-stage:${stage.id}`; const activities = stage.activities || []; return <TreeNode nodeId={nodeId} level={0} key={nodeId} role="treeitem" aria-expanded={activities.length > 0}><TreeNodeTrigger><TreeExpander hasChildren={activities.length > 0} /><TreeIcon hasChildren={activities.length > 0} /><TreeLabel><span className="stage-tree-group-label"><strong>{stage.name}</strong><small>{stage.description || 'Mover para a etapa'}</small></span></TreeLabel></TreeNodeTrigger><TreeNodeContent hasChildren={activities.length > 0} className="stage-tree-children">{activities.map((activity, index) => { const activityNodeId = `destination-activity:${activity.id}`; return <TreeNode nodeId={activityNodeId} level={1} isLast={index === activities.length - 1} key={activityNodeId} role="treeitem"><TreeNodeTrigger><TreeExpander /><TreeIcon /><TreeLabel><span className="stage-tree-group-label"><strong>{activity.title}</strong>{activity.description && <small>{activity.description}</small>}</span></TreeLabel></TreeNodeTrigger></TreeNode>; })}</TreeNodeContent></TreeNode>; })}</TreeView></TreeProvider></div>{error && <p className="error-message" role="alert">{error}</p>}<footer><button type="button" className="quiet-button" disabled={busy} onClick={() => { setMovingItem(null); setMoveTarget(null); }}>Cancelar</button><button type="button" className="primary-button" disabled={busy || !moveTarget || (moveTarget.stageId === movingItem.stageId && (moveTarget.activityId || null) === (movingItem.activityId || null))} onClick={saveMove}><MoveRight size={15} /> {busy ? 'Movendo…' : 'Mover item'}</button></footer></section></div>}
-    {editingItem && itemDraft && <div className="stage-move-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !busy) { setEditingItem(null); setItemDraft(null); } }}><form className="stage-item-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="stage-item-edit-title" onSubmit={saveItemDetails}><header><div><p className="eyebrow">DETALHES DA NOTA</p><h3 id="stage-item-edit-title">Editar {editingItem.kind.toLowerCase()}</h3><p>Atualize os dados reconhecidos na nota. O total acompanha quantidade e valor unitário.</p></div><button type="button" className="icon-button" aria-label="Fechar" disabled={busy} onClick={() => { setEditingItem(null); setItemDraft(null); }}><X size={16} /></button></header><div className="stage-item-edit-fields"><label>Item<input autoFocus value={itemDraft.name} onChange={event => updateItemDraft('name', event.target.value)} required /></label><label className="stage-item-edit-description">Descrição<textarea rows="2" value={itemDraft.description} onChange={event => updateItemDraft('description', event.target.value)} /></label><label>Quantidade<input type="number" min="0.001" step="any" value={itemDraft.quantity} onChange={event => updateItemDraft('quantity', event.target.value)} required /></label><label>Unidade<input value={itemDraft.unit} onChange={event => updateItemDraft('unit', event.target.value)} placeholder="un" /></label><label>Valor unitário (R$)<input type="number" min="0" step="0.01" value={itemDraft.unitPrice} onChange={event => updateItemDraft('unitPrice', event.target.value)} required /></label><label>Total (R$)<input type="number" min="0" step="0.01" value={itemDraft.total} onChange={event => updateItemDraft('total', event.target.value)} required /></label><label>Fornecedor<input value={itemDraft.supplier} onChange={event => updateItemDraft('supplier', event.target.value)} /></label><label>Número da nota<input value={itemDraft.invoiceNumber} onChange={event => updateItemDraft('invoiceNumber', event.target.value)} /></label><label>Data<input type="date" value={itemDraft.date} onChange={event => updateItemDraft('date', event.target.value)} /></label></div>{error && <p className="error-message" role="alert">{error}</p>}<footer><button type="button" className="quiet-button" disabled={busy} onClick={() => { setEditingItem(null); setItemDraft(null); }}>Cancelar</button><button type="submit" className="primary-button" disabled={busy}><Check size={15} /> {busy ? 'Salvando…' : 'Salvar detalhes'}</button></footer></form></div>}
+    {editingItem && itemDraft && <div className="stage-move-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !busy) { setEditingItem(null); setItemDraft(null); setConfirmingItemDelete(false); } }}><form className="stage-item-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="stage-item-edit-title" onSubmit={saveItemDetails}><header><div><p className="eyebrow">{editingItem.sourceType === 'stage' ? 'CONTEÚDO DA ETAPA' : 'DETALHES DA NOTA'}</p><h3 id="stage-item-edit-title">Editar {editingItem.kind.toLowerCase()}</h3><p>{editingItem.sourceType === 'stage' ? 'Edite ou remova este item previsto na etapa.' : 'Atualize os dados reconhecidos na nota. O total acompanha quantidade e valor unitário.'}</p></div><button type="button" className="icon-button" aria-label="Fechar" disabled={busy} onClick={() => { setEditingItem(null); setItemDraft(null); setConfirmingItemDelete(false); }}><X size={16} /></button></header><div className="stage-item-edit-fields"><label>Item<input autoFocus value={itemDraft.name} onChange={event => updateItemDraft('name', event.target.value)} required /></label><label className="stage-item-edit-description">Descrição<textarea rows="2" value={itemDraft.description} onChange={event => updateItemDraft('description', event.target.value)} /></label><label>Quantidade<input type="number" min="0.001" step="any" value={itemDraft.quantity} onChange={event => updateItemDraft('quantity', event.target.value)} required /></label><label>Unidade<input value={itemDraft.unit} onChange={event => updateItemDraft('unit', event.target.value)} placeholder="un" /></label><label>Valor unitário (R$)<input type="number" min="0" step="0.01" value={itemDraft.unitPrice} onChange={event => updateItemDraft('unitPrice', event.target.value)} required /></label><label>Total (R$)<input type="number" min="0" step="0.01" value={itemDraft.total} onChange={event => updateItemDraft('total', event.target.value)} required /></label><label>Fornecedor<input value={itemDraft.supplier} onChange={event => updateItemDraft('supplier', event.target.value)} /></label><label>Número da nota<input value={itemDraft.invoiceNumber} onChange={event => updateItemDraft('invoiceNumber', event.target.value)} /></label><label>Data<input type="date" value={itemDraft.date} onChange={event => updateItemDraft('date', event.target.value)} /></label></div>{confirmingItemDelete && <div className="stage-item-delete-confirm" role="alert"><strong>Excluir “{editingItem.name}”?</strong><span>Esta alteração será salva nos dados da aplicação.</span><div><button type="button" className="quiet-button" disabled={busy} onClick={() => setConfirmingItemDelete(false)}>Manter item</button><button type="button" className="quiet-button danger-button" disabled={busy} onClick={deleteItem}><Trash2 size={14} /> {busy ? 'Excluindo…' : 'Confirmar exclusão'}</button></div></div>}{error && <p className="error-message" role="alert">{error}</p>}<footer className="stage-item-edit-footer"><button type="button" className="quiet-button danger-button" disabled={busy || confirmingItemDelete} onClick={() => setConfirmingItemDelete(true)}><Trash2 size={14} /> Excluir</button><span /><button type="button" className="quiet-button" disabled={busy} onClick={() => { setEditingItem(null); setItemDraft(null); setConfirmingItemDelete(false); }}>Cancelar</button><button type="submit" className="primary-button" disabled={busy}><Check size={15} /> {busy ? 'Salvando…' : 'Salvar detalhes'}</button></footer></form></div>}
   </div>;
 }

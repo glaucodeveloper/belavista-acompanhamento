@@ -9,6 +9,7 @@ import { FileSpreadsheet, FileText, Printer, Plus, X, Trash2, Sun, Moon, Ellipsi
 import { exportReportCsv, exportReportPdf } from './report-exports.js';
 import { TreeProvider, TreeView, TreeNode, TreeNodeTrigger, TreeNodeContent, TreeLabel } from './components/kibo-tree.jsx';
 import { StagesPage } from './components/stages-page.jsx';
+import { materialReferenceKey, STAGE_ITEM_CHANGE_EVENT } from './material-allocations.js';
 import aliancaLogo from './assets/alianca-park-logo-mark.png';
 import lotPlan from './assets/planta.webp';
 import mapLotIndex from './assets/mapeamento.json';
@@ -292,6 +293,7 @@ function App() {
   const menuRef = useRef(null), pageContentRef = useRef(null);
   const [data, setData] = useState(emptyData), [revision, setRevision] = useState(null), [syncError, setSyncError] = useState('');
   const dataRef = useRef(data), revisionRef = useRef(revision);
+  const stageItemSyncQueueRef = useRef(Promise.resolve());
   const page = section === 'assistant' ? { title: 'Assistente' } : pages.find(item => item.id === active) || pages[0];
   async function loadRemoteData() {
     let stored = await sync.read();
@@ -338,6 +340,64 @@ function App() {
     dataRef.current = next; revisionRef.current = saved.revision;
     setData(next); setRevision(saved.revision); setSyncError('');
   }
+  useEffect(() => {
+    if (!user) return undefined;
+    const handleStageItemChange = event => {
+      const change = event.detail || {};
+      if (change.kind !== 'Material' || !['stage', 'materials'].includes(change.sourceType) || !change.itemId) return;
+      stageItemSyncQueueRef.current = stageItemSyncQueueRef.current.then(async () => {
+        let base = dataRef.current;
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          let changed = false;
+          const agenda = (base.agenda || []).map(appointment => {
+            const allocations = appointment.materialAllocations || [];
+            const matching = allocation => (allocation.sourceType === change.sourceType && String(allocation.itemId) === String(change.itemId))
+              || allocation.key === materialReferenceKey(change.sourceType, change.itemId);
+            const nextAllocations = change.action === 'deleted'
+              ? allocations.filter(allocation => !matching(allocation))
+              : allocations.map(allocation => {
+                if (!matching(allocation)) return allocation;
+                changed = true;
+                const item = change.item || {};
+                return {
+                  ...allocation,
+                  key: allocation.key || materialReferenceKey(change.sourceType, change.itemId),
+                  itemId: change.itemId,
+                  sourceType: change.sourceType,
+                  name: item.name || item.description || allocation.name,
+                  unit: item.unit || allocation.unit || 'un',
+                  plannedQuantity: Number(item.plannedQuantity ?? item.quantity ?? allocation.plannedQuantity ?? 0),
+                  stageId: change.stageId || allocation.stageId,
+                  activityId: change.activityId || null,
+                  stageName: change.stageName || allocation.stageName,
+                  activityName: change.activityName || allocation.activityName,
+                };
+              });
+            if (change.action === 'deleted' && nextAllocations.length !== allocations.length) changed = true;
+            return nextAllocations.length === allocations.length && nextAllocations.every((row, index) => row === allocations[index])
+              ? appointment
+              : { ...appointment, materialAllocations: nextAllocations };
+          });
+          if (!changed) return;
+          const next = { ...base, agenda };
+          try {
+            const saved = await sync.write(next, revisionRef.current);
+            dataRef.current = next; revisionRef.current = saved.revision;
+            setData(next); setRevision(saved.revision); setSyncError('');
+            return;
+          } catch (error) {
+            if (error.status !== 409 || attempt > 0) throw error;
+            const latest = await sync.read();
+            base = { ...emptyData(), ...latest.data };
+            dataRef.current = base; revisionRef.current = latest.revision;
+            setData(base); setRevision(latest.revision);
+          }
+        }
+      }).catch(error => setSyncError(`Falha ao sincronizar materiais da agenda: ${error.message}`));
+    };
+    window.addEventListener(STAGE_ITEM_CHANGE_EVENT, handleStageItemChange);
+    return () => window.removeEventListener(STAGE_ITEM_CHANGE_EVENT, handleStageItemChange);
+  }, [user]);
   async function signOut() { const token = sessionStorage.getItem('alianca-session-token'); try { await fetch(`${WORKER}/api/logout`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); } finally { sessionStorage.removeItem('alianca-session-token'); dataRef.current = emptyData(); revisionRef.current = null; setUser(null); setData(emptyData()); setRevision(null); } }
   const allocateClassification = async result => {
     const recognized = result.recognized || {};
@@ -403,7 +463,7 @@ function App() {
     await saveRecords(type, next);
   };
   if (!user) return <Login theme={theme} onThemeChange={setTheme} onLogin={async account => { setUser(account); try { await loadRemoteData(); } catch (error) { setSyncError(error.message); } }} />;
-  return <div className="app-shell has-assistant-toggle"><main className="workspace"><header className="page-header"><div className="page-heading"><div className="page-brand"><img className="mobile-brand-logo" src={aliancaLogo} alt="" /><p className="eyebrow">ALIANÇA PARK</p></div><h1>{page.title}</h1></div><div className="page-header-actions"><span className="sync-state">{syncError || 'Dados sincronizados'}</span><div className="top-menu" ref={menuRef}><button className="top-menu-trigger" type="button" aria-label="Abrir menu" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(open => !open)}><EllipsisVertical size={22} aria-hidden="true" /></button>{menuOpen && <div className="top-menu-dropdown" role="menu" aria-label="Menu da aplicação"><span className="top-menu-heading">NAVEGAR</span>{pages.map(item => <button key={item.id} className="top-menu-item" type="button" role="menuitem" aria-current={active === item.id && section === 'menu' ? 'page' : undefined} onClick={() => navigate(item.id)}><span aria-hidden="true">{item.icon}</span>{item.label}</button>)}<div className="top-menu-preferences"><span>Aparência</span><ThemeToggle theme={theme} onChange={setTheme} /></div><button className="top-menu-item top-menu-signout" type="button" role="menuitem" onClick={signOut}>Sair da conta</button></div>}</div></div></header><section ref={pageContentRef} className="page-content" aria-live="polite">{section === 'assistant' ? <AssistantChatbox owner={user.username} lots={data.lots || []} stages={data.stages || []} inferenceReady={revision !== null} onAllocate={allocateClassification} /> : active === 'agenda' ? <AgendaPage events={data.agenda || []} onSave={events => saveRecords('agenda', events)} /> : active === 'map' ? <LotDevelopmentPage lots={data.lots || []} onSave={saveRecords} /> : active === 'stages' ? <StagesPage stages={data.stages || []} materials={data.materials || []} services={data.services || []} onSave={stages => saveRecords('stages', stages)} onSaveRecords={saveRecords} /> : active === 'transfers' ? <RepassePage rows={data.transfers || []} lots={data.lots || []} onSave={saveRecords} owner={user.username} /> : <DataPage type={active} rows={data[active] || []} lots={data.lots || []} onSave={saveRecords} owner={user.username} />}</section></main><button className={`assistant-fab${section === 'assistant' ? ' is-active' : ''}`} type="button" aria-label={section === 'assistant' ? 'Fechar assistente' : 'Abrir assistente'} aria-pressed={section === 'assistant'} onClick={() => setSection(current => current === 'assistant' ? 'menu' : 'assistant')}><MessageCircle size={19} aria-hidden="true" /><span>{section === 'assistant' ? 'Fechar assistente' : 'Assistente'}</span></button></div>;
+  return <div className="app-shell has-assistant-toggle"><main className="workspace"><header className="page-header"><div className="page-heading"><div className="page-brand"><img className="mobile-brand-logo" src={aliancaLogo} alt="" /><p className="eyebrow">ALIANÇA PARK</p></div><h1>{page.title}</h1></div><div className="page-header-actions"><span className="sync-state">{syncError || 'Dados sincronizados'}</span><div className="top-menu" ref={menuRef}><button className="top-menu-trigger" type="button" aria-label="Abrir menu" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(open => !open)}><EllipsisVertical size={22} aria-hidden="true" /></button>{menuOpen && <div className="top-menu-dropdown" role="menu" aria-label="Menu da aplicação"><span className="top-menu-heading">NAVEGAR</span>{pages.map(item => <button key={item.id} className="top-menu-item" type="button" role="menuitem" aria-current={active === item.id && section === 'menu' ? 'page' : undefined} onClick={() => navigate(item.id)}><span aria-hidden="true">{item.icon}</span>{item.label}</button>)}<div className="top-menu-preferences"><span>Aparência</span><ThemeToggle theme={theme} onChange={setTheme} /></div><button className="top-menu-item top-menu-signout" type="button" role="menuitem" onClick={signOut}>Sair da conta</button></div>}</div></div></header><section ref={pageContentRef} className="page-content" aria-live="polite">{section === 'assistant' ? <AssistantChatbox owner={user.username} lots={data.lots || []} stages={data.stages || []} inferenceReady={revision !== null} onAllocate={allocateClassification} /> : active === 'agenda' ? <AgendaPage events={data.agenda || []} stages={data.stages || []} materials={data.materials || []} onSave={events => saveRecords('agenda', events)} /> : active === 'map' ? <LotDevelopmentPage lots={data.lots || []} onSave={saveRecords} /> : active === 'stages' ? <StagesPage stages={data.stages || []} materials={data.materials || []} services={data.services || []} onSave={stages => saveRecords('stages', stages)} onSaveRecords={saveRecords} /> : active === 'transfers' ? <RepassePage rows={data.transfers || []} lots={data.lots || []} onSave={saveRecords} owner={user.username} /> : <DataPage type={active} rows={data[active] || []} lots={data.lots || []} onSave={saveRecords} owner={user.username} />}</section></main><button className={`assistant-fab${section === 'assistant' ? ' is-active' : ''}`} type="button" aria-label={section === 'assistant' ? 'Fechar assistente' : 'Abrir assistente'} aria-pressed={section === 'assistant'} onClick={() => setSection(current => current === 'assistant' ? 'menu' : 'assistant')}><MessageCircle size={19} aria-hidden="true" /><span>{section === 'assistant' ? 'Fechar assistente' : 'Assistente'}</span></button></div>;
 }
 
 createRoot(document.getElementById('app')).render(<App />);

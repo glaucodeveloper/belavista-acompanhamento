@@ -246,6 +246,33 @@ html[data-theme="dark"] .top-menu-item:hover,
 html[data-theme="dark"] .top-menu-item[aria-current="page"] { background: #2a394d; color: #fff; }
 html[data-theme="dark"] .top-menu-preferences { border-top-color: #354154; color: #c3ccda; }
 html[data-theme="dark"] .top-menu-signout { border-top-color: #354154; }
+html[data-theme="dark"] .agenda-calendar-panel,
+html[data-theme="dark"] .agenda-day-panel,
+html[data-theme="dark"] .agenda-modal,
+html[data-theme="dark"] .agenda-day-event,
+html[data-theme="dark"] .agenda-materials,
+html[data-theme="dark"] .agenda-material-list li { border-color: #354154; background: #1b2636; color: #e5eaf2; }
+html[data-theme="dark"] .agenda-month-toolbar,
+html[data-theme="dark"] .agenda-modal-header,
+html[data-theme="dark"] .agenda-day-heading,
+html[data-theme="dark"] .agenda-modal-actions { border-color: #354154; }
+html[data-theme="dark"] .agenda-month-toolbar h3,
+html[data-theme="dark"] .agenda-day-heading h3,
+html[data-theme="dark"] .agenda-modal-header h2,
+html[data-theme="dark"] .agenda-map-title h3,
+html[data-theme="dark"] .agenda-materials-heading h3,
+html[data-theme="dark"] .agenda-material-info strong { color: #e5eaf2; }
+html[data-theme="dark"] .agenda-day,
+html[data-theme="dark"] .agenda-day.is-outside { border-color: #2b3748; background: #172131; }
+html[data-theme="dark"] .agenda-day.is-selected { background: #202f45; }
+html[data-theme="dark"] .agenda-event-chip { background: #263b5b; color: #bfd4f8; }
+html[data-theme="dark"] .agenda-material-add select,
+html[data-theme="dark"] .agenda-material-quantity input,
+html[data-theme="dark"] .agenda-fields input,
+html[data-theme="dark"] .agenda-fields textarea { border-color: #435168; background: #172131; color: #e5eaf2; }
+html[data-theme="dark"] .agenda-material-empty,
+html[data-theme="dark"] .agenda-no-area { border-color: #435168; color: #aab7ca; }
+html[data-theme="dark"] .agenda-materials-readonly { background: #172131; }
 html[data-theme="dark"] .assistant-fab { border-color: #435570; background: #2b3a50; color: #f4f7fb; }
 html[data-theme="dark"] .assistant-fab:hover { background: #354967; }
 html[data-theme="dark"] .assistant-fab.is-active { border-color: #417ce1; background: #2869d1; }
@@ -529,6 +556,28 @@ html[data-theme="dark"] .signout-button:hover { color: #fff; }
 .agenda-day-event strong { font-size: 12px; }
 .agenda-day-event small { display: -webkit-box; overflow: hidden; color: #78869a; font-size: 10px; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .agenda-event-area { display: inline-flex; align-items: center; gap: 4px; color: #65758c; font-size: 10px; }
+.agenda-materials { display: grid; gap: 10px; min-width: 0; padding: 13px; border: 1px solid #dfe6ef; border-radius: 11px; background: #f9fbfd; }
+.agenda-materials-heading { display: flex; align-items: start; justify-content: space-between; gap: 10px; }
+.agenda-materials-heading h3 { margin: 0; color: #2b3b50; font-size: 13px; }
+.agenda-materials-heading p { margin: 3px 0 0; color: #7a8799; font-size: 10px; }
+.agenda-materials-heading > span { display: inline-flex; align-items: center; gap: 4px; padding: 4px 7px; border-radius: 999px; background: #eaf1ff; color: #3567b4; font-size: 10px; font-weight: 700; }
+.agenda-material-add { display: grid; gap: 5px; min-width: 0; }
+.agenda-material-add > label, .agenda-material-quantity { color: #56657a; font-size: 10px; font-weight: 650; }
+.agenda-material-add > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; min-width: 0; }
+.agenda-material-add select, .agenda-material-quantity input { box-sizing: border-box; width: 100%; min-width: 0; min-height: 36px; padding: 7px 9px; border: 1px solid #d8dfe8; border-radius: 8px; background: #fff; color: #26374b; font: inherit; font-size: 11px; }
+.agenda-material-add .quiet-button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 36px; padding: 0 10px; font-size: 10px; white-space: nowrap; }
+.agenda-material-list { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.agenda-material-list li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(145px, 190px) 30px; align-items: center; gap: 10px; min-width: 0; padding: 9px; border: 1px solid #e2e8f0; border-radius: 9px; background: #fff; }
+.agenda-material-info { display: grid; gap: 3px; min-width: 0; }
+.agenda-material-info strong { overflow: hidden; color: #293a50; font-size: 11px; text-overflow: ellipsis; }
+.agenda-material-info small { overflow: hidden; color: #7a8799; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.agenda-material-quantity { display: grid; gap: 4px; }
+.agenda-material-quantity input { min-height: 32px; }
+.agenda-material-list .icon-button { display: grid; width: 30px; min-width: 30px; height: 30px; place-items: center; padding: 0; }
+.agenda-material-empty { margin: 0; padding: 10px; border: 1px dashed #d7e0eb; border-radius: 8px; color: #8490a1; font-size: 10px; text-align: center; }
+.agenda-materials-readonly { background: #fff; }
+.agenda-materials-readonly .agenda-material-list li { grid-template-columns: minmax(0, 1fr) auto; }
+.agenda-material-readonly-quantity { color: #315fbc; font-size: 11px; font-weight: 700; white-space: nowrap; }
 .agenda-empty-day { display: grid; justify-items: center; gap: 8px; padding: 22px 8px; color: #9aa5b4; text-align: center; }
 .agenda-empty-day p { margin: 0; color: #78869a; font-size: 11px; }
 .agenda-empty-day .quiet-button { min-height: 32px; font-size: 10px; }
@@ -593,6 +642,12 @@ html[data-theme="dark"] .signout-button:hover { color: #fff; }
   .agenda-map { height: 36vh; min-height: 190px; }
   .agenda-time-fields { grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
   .agenda-modal-actions { flex-wrap: wrap; }
+  .agenda-material-add > div { grid-template-columns: 1fr; }
+  .agenda-material-add .quiet-button { justify-self: start; }
+  .agenda-material-list li { grid-template-columns: minmax(0, 1fr) 30px; gap: 8px; }
+  .agenda-material-quantity { grid-column: 1 / -1; grid-row: 2; }
+  .agenda-material-list li > .icon-button { grid-column: 2; grid-row: 1; }
+  .agenda-materials-readonly .agenda-material-list li { grid-template-columns: minmax(0, 1fr) auto; }
 }
 
 /* Login: the real site plan introduces the product; the form stays limited to account credentials. */
