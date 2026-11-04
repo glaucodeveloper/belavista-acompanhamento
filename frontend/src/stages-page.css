@@ -40,6 +40,10 @@
 .stage-field-evidence-list { display: grid; gap: 8px; padding: 0 19px 16px; }
 .stage-field-evidence-item { display: grid; gap: 5px; padding: 11px 12px; border: 1px solid #e2e8ef; border-radius: 10px; background: #f8fafc; }
 .stage-field-evidence-item > div { display: grid; gap: 3px; }
+.stage-field-evidence-heading { display: flex !important; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.stage-field-evidence-heading > div { display: grid; min-width: 0; gap: 3px; }
+.stage-field-evidence-remove { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 5px; min-height: 30px; padding: 0 9px; }
+.stage-field-evidence-remove:disabled { opacity: .65; cursor: wait; }
 .stage-field-evidence-item strong { color: #34445a; font-size: 12px; }
 .stage-field-evidence-item small { color: #748197; font-size: 10px; line-height: 1.45; overflow-wrap: anywhere; }
 .stage-field-evidence-item p { margin: 0; color: #4e5f76; font-size: 11px; line-height: 1.5; }
