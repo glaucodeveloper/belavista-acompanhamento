@@ -29,3 +29,9 @@ async function transact(mode, operation) {
 export const readOutbox = owner => transact('readonly', store => store.getAll()).then(jobs => jobs.filter(job => job.owner === owner).sort((a, b) => a.createdAt - b.createdAt));
 export const saveOutboxJob = job => transact('readwrite', store => store.put(job));
 export const removeOutboxJob = id => transact('readwrite', store => store.delete(id));
+export const clearOutbox = owner => transact('readwrite', store => {
+  const request = store.openCursor();
+  request.onsuccess = () => { const cursor = request.result; if (!cursor) return; if (cursor.value.owner === owner) cursor.delete(); cursor.continue(); };
+  // The cursor has its own success handler; transaction completion confirms all deletes.
+  return null;
+});

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Capacitor, registerPlugin } from "@capacitor/core";
-import { Camera, Mic, Square, X } from "lucide-react";
+import { Camera, Mic, Square, Trash2, X } from "lucide-react";
 import {
   Attachment,
   AttachmentInfo,
@@ -8,7 +8,7 @@ import {
   AttachmentRemove,
   Attachments,
 } from "./ai-elements/attachments.jsx";
-import { readOutbox, removeOutboxJob, saveOutboxJob } from "../outbox.js";
+import { clearOutbox, readOutbox, removeOutboxJob, saveOutboxJob } from "../outbox.js";
 
 const WORKER =
   "https://belavista-cloudflare-worker.icaroglaucooliveira.workers.dev";
@@ -344,6 +344,7 @@ export function AssistantChatbox({
   const [queueCount, setQueueCount] = useState(0);
   const [queueVersion, setQueueVersion] = useState(0);
   const [outboxReady, setOutboxReady] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [voiceState, setVoiceState] = useState("idle");
   const [voiceProgress, setVoiceProgress] = useState(null);
@@ -354,6 +355,7 @@ export function AssistantChatbox({
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const processingRef = useRef(false);
+  const clearingRef = useRef(false);
   const mountedRef = useRef(true);
   const objectUrlsRef = useRef(new Set());
   const activityOptions = stages.flatMap((stage) =>
@@ -731,7 +733,7 @@ export function AssistantChatbox({
   }
 
   useEffect(() => {
-    if (!online || !outboxReady || !inferenceReady || processingRef.current)
+    if (!online || !outboxReady || !inferenceReady || processingRef.current || clearingRef.current)
       return;
     async function processQueue() {
       processingRef.current = true;
@@ -1150,6 +1152,20 @@ export function AssistantChatbox({
     setQueueVersion((value) => value + 1);
   }
 
+  async function clearConversation() {
+    if (processingRef.current || clearingRef.current || busy) return;
+    clearingRef.current = true;
+    setClearing(true);
+    try {
+      await clearOutbox(owner);
+      for (const message of messages) for (const file of message.files || []) {
+        if (file.url) { URL.revokeObjectURL(file.url); objectUrlsRef.current.delete(file.url); }
+      }
+      setMessages([]); setQueueCount(0); setError('');
+    } catch (err) { setError(`Não foi possível limpar a conversa: ${err.message}`); }
+    finally { clearingRef.current = false; setClearing(false); setQueueVersion(value => value + 1); }
+  }
+
   const latestMessage = messages.at(-1);
   const sourceMessage = latestMessage?.sourceMessageId
     ? messages.find(message => message.id === latestMessage.sourceMessageId)
@@ -1178,6 +1194,7 @@ export function AssistantChatbox({
               : "Online"
             : `Offline · ${queueCount} para processar`}
         </span>
+        <button type="button" className="chat-clear" aria-label="Limpar conversa" title={messages.some(message => message.status === 'processing') ? 'Aguarde o processamento terminar' : 'Limpar conversa'} disabled={!outboxReady || !messages.length || busy || clearing || messages.some(message => message.status === 'processing')} onClick={clearConversation}><Trash2 size={16} aria-hidden="true" /><span>Limpar</span></button>
       </header>
       <div className="chat-messages" aria-live="polite">
         {displayedMessages.length === 0 ? (
