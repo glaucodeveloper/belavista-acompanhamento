@@ -6,6 +6,7 @@ export function createSyncClient({ workerUrl, getToken, fetcher = fetch }) {
     if (!token) throw new Error('Autenticação necessária para sincronizar.');
     const response = await fetcher(endpoint, {
       method,
+      cache: 'no-store',
       headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });

@@ -1,6 +1,6 @@
 {
   "name": "alianca-park-rebuild",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "Aliança Park — acompanhamento de obras, lotes e repasses",
   "author": "Aliança Park",
   "private": true,
@@ -23,8 +23,8 @@
     "user:create": "node scripts/create-user.mjs"
   },
   "devDependencies": {
-    "@capacitor/cli": "^8.6.0",
     "@capacitor/android": "^8.6.0",
+    "@capacitor/cli": "^8.6.0",
     "@capacitor/core": "^8.6.0",
     "electron": "44.2.0",
     "electron-builder": "^26.18.0",
@@ -69,5 +69,9 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
     }
+  },
+  "dependencies": {
+    "@desert-ant-labs/voz": "^4.3.0",
+    "onnxruntime-web": "^1.31.1"
   }
 }

@@ -6,12 +6,13 @@ protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: t
 app.whenReady().then(() => {
   const isLocalRenderer = origin => origin === 'app://local' || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin || '');
   session.defaultSession.setPermissionCheckHandler((_webContents, permission, requestingOrigin, details) =>
-    permission === 'media' && isLocalRenderer(requestingOrigin) && (details?.mediaType === 'video' || details?.mediaTypes?.includes('video'))
+    permission === 'media' && isLocalRenderer(requestingOrigin) && (['audio', 'video'].includes(details?.mediaType) || details?.mediaTypes?.some(type => ['audio', 'video'].includes(type)))
   );
   session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
-    const origin = details?.requestingUrl ? new URL(details.requestingUrl).origin : '';
-    const wantsVideo = details?.mediaTypes?.includes('video') || details?.mediaType === 'video';
-    callback(permission === 'media' && wantsVideo && isLocalRenderer(origin));
+    const requestingUrl = details?.requestingUrl ? new URL(details.requestingUrl) : null;
+    const origin = requestingUrl?.protocol === 'app:' && requestingUrl.hostname === 'local' ? 'app://local' : requestingUrl?.origin || '';
+    const wantsMedia = details?.mediaTypes?.some(type => ['audio', 'video'].includes(type)) || ['audio', 'video'].includes(details?.mediaType);
+    callback(permission === 'media' && wantsMedia && isLocalRenderer(origin));
   });
   const root = path.resolve(__dirname, '../frontend/dist');
   protocol.handle('app', request => {

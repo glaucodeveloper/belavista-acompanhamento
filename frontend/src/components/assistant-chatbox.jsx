@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Camera, X } from "lucide-react";
+import { Capacitor, registerPlugin } from "@capacitor/core";
+import { Camera, Mic, Square, X } from "lucide-react";
 import {
   Attachment,
   AttachmentInfo,
@@ -12,6 +13,7 @@ import { readOutbox, removeOutboxJob, saveOutboxJob } from "../outbox.js";
 const WORKER =
   "https://belavista-cloudflare-worker.icaroglaucooliveira.workers.dev";
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
+const NativeVoz = registerPlugin('NativeVoz');
 const INFERENCE_TIMEOUT_MS = 120_000;
 const formatSize = (bytes) =>
   bytes < 1024 * 1024
@@ -68,6 +70,35 @@ async function toInferenceImage(blob) {
   } finally {
     bitmap.close?.();
   }
+}
+
+// Em DANFEs fotografados de lado, o total costuma ficar no quadro financeiro
+// à direita. Enviamos o recorte apenas como apoio à leitura, sem alterar o anexo.
+async function toInvoiceTotalCrop(blob) {
+  if (!/^image\/(png|jpeg)$/i.test(blob?.type || "") || typeof createImageBitmap !== "function") return null;
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(blob);
+    if (bitmap.width >= bitmap.height) return null;
+    const rotated = document.createElement("canvas");
+    const scale = Math.min(1, 2200 / Math.max(bitmap.width, bitmap.height));
+    rotated.width = Math.max(1, Math.round(bitmap.height * scale));
+    rotated.height = Math.max(1, Math.round(bitmap.width * scale));
+    const context = rotated.getContext("2d");
+    if (!context) return null;
+    context.translate(0, rotated.height); context.rotate(-Math.PI / 2);
+    context.drawImage(bitmap, 0, 0, rotated.height, rotated.width);
+    const crop = document.createElement("canvas");
+    const sx = Math.round(rotated.width * .45), sy = Math.round(rotated.height * .22);
+    const sw = rotated.width - sx, sh = Math.round(rotated.height * .32);
+    crop.width = Math.min(1600, sw * 2); crop.height = Math.round(crop.width * sh / sw);
+    const cropContext = crop.getContext("2d");
+    if (!cropContext) return null;
+    cropContext.drawImage(rotated, sx, sy, sw, sh, 0, 0, crop.width, crop.height);
+    const output = await new Promise(resolve => crop.toBlob(resolve, "image/jpeg", .92));
+    return output ? { mimeType: "image/jpeg", data: await toBase64(output) } : null;
+  } catch { return null; }
+  finally { bitmap?.close?.(); }
 }
 
 const statusLabels = {
@@ -129,15 +160,13 @@ function resolveInference(result, lots, activities) {
     const evidence = { ...(result.fieldEvidence || {}) };
     const activity = activities.find(item => item.id === evidence.activityId && item.stageId === evidence.stageId);
     if (!String(evidence.summary || "").trim())
-      return ask(result.question || "Descreva o serviço visível nesta foto.");
+      return ask("Descreva o serviço visível nesta foto.");
     if (!activity)
-      return ask(result.question || "Qual atividade cadastrada nas etapas descreve melhor o serviço desta foto?");
-    if (!String(evidence.location || "").trim())
-      return ask(result.question || "Em qual rua, quadra ou área do empreendimento esta foto foi feita?");
+      return ask("Qual atividade cadastrada nas etapas descreve melhor o serviço desta foto?");
+
     if (!evidence.confirmed && Number(evidence.activityConfidence || 0) < 0.82)
-      return ask(result.question || `A foto parece corresponder a “${activity.name}”, na etapa “${activity.stageName}”. Confirma esse vínculo ou quer complementar o serviço observado?`);
-    if (result.needsClarification && result.question)
-      return ask(result.question);
+      return ask(`A foto parece corresponder a “${activity.name}”, na etapa “${activity.stageName}”. Confirma esse vínculo ou quer complementar o serviço observado?`);
+
     return {
       ready: true,
       result: {
@@ -251,6 +280,54 @@ function inferenceSuccessReply(result) {
   return `${count === 1 ? "Item" : `${count} itens`} identificado${count === 1 ? "" : "s"} e adicionado${count === 1 ? "" : "s"} automaticamente a ${destination}.`;
 }
 
+function CatalogMaterialForm({ stages, inferredAmount, inferredDate, onSave }) {
+  const dialogRef = useRef(null);
+  const titleId = React.useId();
+  const [stageId, setStageId] = useState("");
+  const [activityId, setActivityId] = useState("");
+  const [materialIndex, setMaterialIndex] = useState("");
+  const [quantity, setQuantity] = useState("1");
+  const [amount, setAmount] = useState(() => typeof inferredAmount === "number" && Number.isFinite(inferredAmount) ? inferredAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "");
+  const [date, setDate] = useState(() => /^\d{4}-\d{2}-\d{2}$/.test(String(inferredDate || "")) ? inferredDate : "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const stage = stages.find(item => item.id === stageId);
+  const activity = stage?.activities?.find(item => item.id === activityId);
+  const material = materialIndex === "" ? null : activity?.materials?.[Number(materialIndex)];
+  async function submit(event) {
+    event.preventDefault();
+    const value = Number(amount.includes(",") ? amount.replace(/\./g, "").replace(",", ".") : amount);
+    if (!(Number(quantity) > 0) || !amount.trim() || !Number.isFinite(value) || value < 0 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      setError("Informe a data da nota, a quantidade e um valor total válido.");
+      return;
+    }
+    setSaving(true); setError("");
+    try { await onSave({ stage, activity, material, quantity: Number(quantity), amount: value, date }); dialogRef.current?.close(); }
+    catch (err) { setError(err.message || "Não foi possível salvar o material."); }
+    finally { setSaving(false); }
+  }
+  return <div className="material-allocation">
+    <div className="material-allocation-heading"><strong>{material?.name || "Material não selecionado"}</strong><button type="button" onClick={() => dialogRef.current?.showModal()}>Alocar</button></div>
+    <dialog ref={dialogRef} className="material-allocation-dialog" aria-labelledby={titleId} onCancel={event => { if (saving) event.preventDefault(); }}>
+    <form onSubmit={submit} className="catalog-material-form">
+      <header className="material-allocation-dialog-header"><div><small>DESTINO DO MATERIAL</small><h2 id={titleId}>Confirmar alocação</h2></div><button type="button" className="material-close" disabled={saving} onClick={() => dialogRef.current?.close()} aria-label="Fechar">×</button></header>
+    <div className="catalog-material-picker">
+      <p>Etapa, atividade e material são opcionais. Confira os valores da nota.</p>
+      <label>Etapa (opcional)<select value={stageId} onChange={e => { setStageId(e.target.value); setActivityId(""); setMaterialIndex(""); }}><option value="">Não informada</option>{stages.filter(s => s.activities?.some(a => a.materials?.length)).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+      <label>Atividade (opcional)<select value={activityId} onChange={e => { setActivityId(e.target.value); setMaterialIndex(""); }}><option value="">Não informada</option>{(stage?.activities || []).filter(a => a.materials?.length).map(a => <option key={a.id} value={a.id}>{a.title}</option>)}</select></label>
+      <label>Material (opcional)<select value={materialIndex} onChange={e => setMaterialIndex(e.target.value)}><option value="">Não informado</option>{(activity?.materials || []).map((m, index) => <option key={m.id || index} value={index}>{m.name}</option>)}</select></label>
+    </div>
+      <p className="catalog-destination">Destino: <strong>Materiais</strong> · Categoria: <strong>{activity?.title || 'Sem atividade'}</strong>{stage?.name ? ` · ${stage.name}` : ''}</p>
+      <label>Data da nota<input required type="date" value={date} onChange={event => setDate(event.target.value)} /></label>
+      <p>{date ? "Data sugerida pela nota. Confira antes de confirmar." : "Informe a data de emissão impressa na nota."}</p>
+      <label>Quantidade<input required type="number" min="0.001" step="any" value={quantity} onChange={e => setQuantity(e.target.value)} /></label>
+      <label>Valor total (R$)<input required inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0,00" /></label>
+      <p>{typeof inferredAmount === "number" && Number.isFinite(inferredAmount) ? "Valor sugerido pela leitura da nota. Confira antes de confirmar." : "Não foi possível identificar o valor total. Confira a nota e informe-o."}</p>
+      {error && <p role="alert">{error}</p>}
+      <footer className="material-allocation-actions"><button type="button" className="material-cancel" disabled={saving} onClick={() => dialogRef.current?.close()}>Cancelar</button><button type="submit" disabled={saving}>{saving ? "Salvando…" : "Confirmar alocação"}</button></footer>
+    </form></dialog></div>;
+}
+
 export function AssistantChatbox({
   lots = [],
   stages = [],
@@ -268,7 +345,11 @@ export function AssistantChatbox({
   const [queueVersion, setQueueVersion] = useState(0);
   const [outboxReady, setOutboxReady] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [voiceState, setVoiceState] = useState("idle");
+  const [voiceProgress, setVoiceProgress] = useState(null);
+  const voiceRecorderRef = useRef(null), voiceStreamRef = useRef(null), vozRef = useRef(null);
   const inputRef = useRef(null);
+  const audioInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -296,6 +377,67 @@ export function AssistantChatbox({
     })),
   );
 
+  useEffect(() => () => {
+    const recorder = voiceRecorderRef.current;
+    if (recorder && recorder.state !== 'inactive') { recorder.onstop = null; recorder.stop(); }
+    voiceStreamRef.current?.getTracks().forEach(track => track.stop());
+  }, []);
+
+  async function transcribeAudio(blob) {
+    setError('');
+    try {
+      setVoiceState('loading'); setVoiceProgress(null);
+      const audio = new AudioContext();
+      let decoded;
+      try { decoded = await audio.decodeAudioData(await blob.arrayBuffer()); }
+      finally { await audio.close(); }
+      if (!decoded.duration || decoded.duration > 120) throw new Error('Use um áudio de até 2 minutos.');
+      const resampler = new OfflineAudioContext(1, Math.ceil(decoded.duration * 16000), 16000);
+      const source = resampler.createBufferSource(); source.buffer = decoded; source.connect(resampler.destination); source.start();
+      const samples = (await resampler.startRendering()).getChannelData(0);
+      let result;
+      if (Capacitor.getPlatform() === 'android') {
+        result = await NativeVoz.transcribe({ samplesBase64: await toBase64(new Blob([samples])), sampleRate: 16000 });
+      } else {
+        if (!vozRef.current) {
+          const { Voz } = await import('@desert-ant-labs/voz');
+          vozRef.current = await Voz.load({ onProgress: value => setVoiceProgress(Math.round(value * 100)) });
+        }
+        setVoiceState('transcribing');
+        result = await vozRef.current.transcribe({ samples, sampleRate: 16000 });
+      }
+      if (!result.text?.trim()) throw new Error('Nenhuma fala foi reconhecida. Tente novamente.');
+      setText(current => [current.trim(), result.text.trim()].filter(Boolean).join(' '));
+    } catch (err) { setError(err.message || 'Não foi possível transcrever o áudio.'); }
+    finally { setVoiceState('idle'); setVoiceProgress(null); }
+  }
+
+  async function toggleVoice() {
+    if (voiceState === 'recording') { voiceRecorderRef.current?.stop(); return; }
+    if (voiceState !== 'idle') return;
+    setError('');
+    try {
+      if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) throw new Error('Gravação de voz indisponível neste dispositivo.');
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      voiceStreamRef.current = stream;
+      const recorder = new MediaRecorder(stream);
+      const chunks = [];
+      voiceRecorderRef.current = recorder;
+      recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
+      recorder.onerror = () => { stream.getTracks().forEach(track => track.stop()); setVoiceState('idle'); setError('Não foi possível gravar o áudio.'); };
+      recorder.onstop = () => {
+        stream.getTracks().forEach(track => track.stop());
+        voiceStreamRef.current = null; voiceRecorderRef.current = null;
+        transcribeAudio(new Blob(chunks, { type: recorder.mimeType }));
+      };
+      recorder.start(); setVoiceState('recording');
+    } catch (err) {
+      voiceStreamRef.current?.getTracks().forEach(track => track.stop());
+      voiceStreamRef.current = null; setVoiceState('idle');
+      setError(err.name === 'NotAllowedError' ? 'Permita o acesso ao microfone para gravar.' : (err.message || 'Não foi possível iniciar a gravação.'));
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
     const refreshQueue = async () => {
@@ -312,6 +454,7 @@ export function AssistantChatbox({
           recovered.map((job) => ({
             id: job.id,
             text: job.text,
+            sourceMessageId: job.editTarget?.messageId,
             files: job.files.map((file) => {
               const url = URL.createObjectURL(file.blob);
               objectUrlsRef.current.add(url);
@@ -512,7 +655,7 @@ export function AssistantChatbox({
     if (!text.trim() && !files.length) return;
     setBusy(true);
     setError("");
-    const pendingAnalysis = files.length
+    const pendingAnalysis = files.length || !/\b(corrig(?:ir|e|a)|alter(?:ar|e|a)|ajust(?:ar|e|a)|complement(?:ar|e|a))\b/i.test(text)
       ? null
       : [...messages]
           .reverse()
@@ -522,6 +665,7 @@ export function AssistantChatbox({
               .map((analysis) => ({ message, analysis })),
           )
           .find(({ analysis }) => !analysis.applied);
+    try {
     const job = {
       id: crypto.randomUUID(),
       owner,
@@ -556,13 +700,13 @@ export function AssistantChatbox({
         }),
       ),
     };
-    try {
       await saveOutboxJob(job);
       setMessages((current) => [
         ...current,
         {
           id: job.id,
           text: job.text,
+          sourceMessageId: job.editTarget?.messageId,
           files: files.map(({ id, name, size, type, url }) => ({
             id,
             filename: name,
@@ -573,20 +717,8 @@ export function AssistantChatbox({
           analyses: [],
           status: "pending",
           error: "",
-          ...(job.text && !job.files.length && !job.editTarget
-            ? {
-                status: "completed",
-                reply: "Anexe uma nota primeiro. Depois, envie uma mensagem para corrigir os dados reconhecidos.",
-              }
-            : {}),
         },
       ]);
-      if (job.text && !job.files.length && !job.editTarget) {
-        await removeOutboxJob(job.id);
-        setText("");
-        setFiles([]);
-        return;
-      }
       setQueueCount((value) => value + 1);
       setQueueVersion((value) => value + 1);
       setText("");
@@ -636,6 +768,27 @@ export function AssistantChatbox({
           );
           let analysisOutputs = [...(queued.analysisOutputs || [])];
           try {
+            if (!queued.files.length && !queued.editTarget) {
+              const controller = new AbortController();
+              const timeout = window.setTimeout(() => controller.abort(), INFERENCE_TIMEOUT_MS);
+              let response;
+              try {
+                response = await fetch(`${WORKER}/api/assistant/message`, {
+                  method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ text: queued.text, stages: stages.map(stage => ({ name: stage.name, status: stage.status, activities: (stage.activities || []).map(activity => ({ title: activity.title })) })) }), signal: controller.signal,
+                });
+              } finally { window.clearTimeout(timeout); }
+              const result = await response.json().catch(() => ({}));
+              if (!response.ok || !result.reply) {
+                const failure = new Error(result.error || 'Não foi possível responder à mensagem.');
+                failure.status = response.status;
+                failure.retryable = result.retryable ?? (response.status === 429 || response.status >= 500);
+                throw failure;
+              }
+              await saveOutboxJob({ ...processing, status: 'completed', error: '', reply: result.reply });
+              setMessages(current => current.map(message => message.id === queued.id ? { ...message, status: 'completed', error: '', reply: result.reply } : message));
+              continue;
+            }
             let analysisEdit = null;
             if (!queued.files.length && queued.editTarget) {
               const activities = stages.flatMap((stage) =>
@@ -740,6 +893,7 @@ export function AssistantChatbox({
                   ...sourceJob,
                   status: "completed",
                   error: "",
+                  reply,
                   analysisOutputs: sourceOutputs,
                 });
               }
@@ -833,6 +987,7 @@ export function AssistantChatbox({
                       activities,
                       stages: stageCatalog,
                       image: await toInferenceImage(file.blob),
+                      totalImage: await toInvoiceTotalCrop(file.blob),
                     }),
                     signal: controller.signal,
                   },
@@ -875,7 +1030,10 @@ export function AssistantChatbox({
                 resolvedOutputs.push(output);
                 continue;
               }
-              const resolution = resolveInference(output.result, lots, activityOptions);
+              const wantsMaterial = /\b(?:material|materiais)\b/i.test(queued.text || "");
+              const resolution = wantsMaterial
+                ? { ready: false, result: output.result, question: "Confira o destino e confirme o material escolhido." }
+                : resolveInference(output.result, lots, activityOptions);
               let result = resolution.result;
               let reply;
               if (resolution.ready) {
@@ -992,6 +1150,17 @@ export function AssistantChatbox({
     setQueueVersion((value) => value + 1);
   }
 
+  const latestMessage = messages.at(-1);
+  const sourceMessage = latestMessage?.sourceMessageId
+    ? messages.find(message => message.id === latestMessage.sourceMessageId)
+    : null;
+  const displayedMessages = latestMessage ? [{
+    ...latestMessage,
+    files: sourceMessage?.files || latestMessage.files,
+    analyses: sourceMessage?.analyses || latestMessage.analyses,
+    attachmentMessageId: sourceMessage?.id || latestMessage.id,
+  }] : [];
+
   return (
     <section className="assistant-chat" aria-label="Chat com assistente">
       <header className="chat-header">
@@ -1011,7 +1180,7 @@ export function AssistantChatbox({
         </span>
       </header>
       <div className="chat-messages" aria-live="polite">
-        {messages.length === 0 ? (
+        {displayedMessages.length === 0 ? (
           <div className="chat-empty">
             <span className="chat-empty-icon" aria-hidden="true">
               ✦
@@ -1023,15 +1192,13 @@ export function AssistantChatbox({
             </p>
           </div>
         ) : (
-          messages.map((message) => (
+          displayedMessages.map((message) => (
             <article className="chat-message" key={message.id}>
-              {message.text && <p>{message.text}</p>}
-              {message.reply && (
-                <div className="chat-assistant-reply">
-                  <strong>Assistente de obra</strong>
-                  <p>{message.reply}</p>
-                </div>
-              )}
+              <div className="chat-assistant-reply">
+                <strong>Assistente de obra</strong>
+                {message.reply && <p>{message.reply}</p>}
+                {!message.reply && ["pending", "processing"].includes(message.status) && <p>Analisando o conteúdo enviado…</p>}
+              </div>
               {!!message.files.length && (
                 <Attachments variant="grid">
                   {message.files.map((file) => (
@@ -1054,6 +1221,30 @@ export function AssistantChatbox({
                     <small>{evidence.observedStatus === "completed" ? "A imagem sugere serviço concluído; avanço não foi alterado" : evidence.observedStatus === "in_progress" ? "A imagem sugere serviço em execução; avanço não foi alterado" : "Situação não confirmada pela imagem"}</small>
                   </section>
                 );
+              })}
+              {(message.analyses || []).filter(item => item.applied && item.result?.category === "material_expense").map(item => (
+                <section className="material-destination-card" key={item.fileId || item.filename} aria-label="Destino do material">
+                  <strong>Destino: Materiais</strong>
+                  {(item.result.recognized?.items || []).map((material, index) => <div key={index}>
+                    <span>{material.description || "Material não informado"}</span>
+                    <small>Categoria: {material.activityName || material.category || "Sem atividade"}{material.stageName ? ` · Etapa: ${material.stageName}` : ""}</small>
+                  </div>)}
+                </section>
+              ))}
+              {message.status !== "processing" && message.status !== "pending" && message.files.filter(file => file.mediaType?.startsWith("image/") && !(message.analyses || []).some(item => item.fileId === file.id && item.applied)).map(file => {
+                const inferred = (message.analyses || []).find(item => item.fileId === file.id)?.result?.recognized || {};
+                return <CatalogMaterialForm key={file.id} stages={stages} inferredAmount={inferred.amount} inferredDate={inferred.date} onSave={async ({ stage, activity, material, quantity, amount, date }) => {
+                  const inferenceId = `${message.attachmentMessageId}:${file.id}`;
+                  const result = { filename: file.filename, inferenceId, source: "Seleção manual", category: "material_expense", direction: "saida", allocation: { destination: "materials" }, recognized: { ...inferred, amount, date, items: [{ description: material?.name || "Material não informado", quantity, unit: material?.unit || "unidade", amount, stageId: stage?.id || null, stageName: stage?.name || null, activityId: activity?.id || null, activityName: activity?.title || null }] } };
+                  await onAllocate(result);
+                  const job = (await readOutbox(owner)).find(item => item.id === message.attachmentMessageId);
+                  if (job) {
+                    const output = { fileId: file.id, filename: file.filename, result, applied: true, reply: "Material escolhido registrado em Materiais." };
+                    const analysisOutputs = [...(job.analysisOutputs || []).filter(item => item.fileId !== file.id), output];
+                    await saveOutboxJob({ ...job, status: "completed", error: "", reply: output.reply, analysisOutputs });
+                    setMessages(current => current.map(item => item.id === message.id || item.id === message.attachmentMessageId ? { ...item, status: "completed", error: "", reply: output.reply, analyses: analysisOutputs } : item));
+                  }
+                }} />;
               })}
               {message.status && (
                 <div className={`outbox-status outbox-${message.status}`}>
@@ -1148,6 +1339,7 @@ export function AssistantChatbox({
               event.target.value = "";
             }}
           />
+          <input ref={audioInputRef} type="file" accept="audio/*" hidden onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) transcribeAudio(file); }} />
           <button
             className="attach-button"
             type="button"
@@ -1167,6 +1359,11 @@ export function AssistantChatbox({
             <Camera size={16} aria-hidden="true" />
             <span> Câmera</span>
           </button>
+          <button className="camera-button voice-button" type="button" onClick={toggleVoice} disabled={voiceState === 'loading' || voiceState === 'transcribing'} aria-label={voiceState === 'recording' ? 'Parar gravação' : 'Gravar mensagem de voz'}>
+            {voiceState === 'recording' ? <Square size={16} aria-hidden="true" /> : <Mic size={16} aria-hidden="true" />}
+            <span>{voiceState === 'recording' ? ' Parar' : ' Voz'}</span>
+          </button>
+          <button className="camera-button voice-file-button" type="button" onClick={() => audioInputRef.current?.click()} disabled={voiceState !== 'idle'} aria-label="Transcrever arquivo de áudio"><span>Áudio</span></button>
           <span className="chat-hint">Imagem até 8 MB para leitura NVIDIA</span>
           <button
             className="send-button"
@@ -1176,6 +1373,7 @@ export function AssistantChatbox({
             {busy ? "Guardando…" : "Enviar"} <span aria-hidden="true">↑</span>
           </button>
         </div>
+        {voiceState !== 'idle' && <p className="chat-voice-status" role="status">{voiceState === 'recording' ? 'Gravando. Toque em Parar para transcrever.' : voiceState === 'loading' ? `Preparando o modelo de voz${voiceProgress == null ? '…' : ` · ${voiceProgress}%`}` : 'Transcrevendo no dispositivo…'}</p>}
       </form>
       {cameraOpen && (
         <div

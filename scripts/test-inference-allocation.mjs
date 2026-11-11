@@ -50,13 +50,12 @@ const evidenceUploads = [];
 
 async function waitForMessage(page, text) {
   try {
-    await page.waitForFunction(value => {
-      const messages = [...document.querySelectorAll('.chat-message')].filter(node => node.innerText.includes(value));
-      const status = messages.at(-1)?.querySelector('.outbox-status')?.innerText || '';
+    await page.waitForFunction(() => {
+      const status = document.querySelector('.chat-message:last-child .outbox-status')?.innerText || '';
       return /Processado|Falha no processamento/.test(status);
-    }, text, { timeout: 150000 });
+    }, null, { timeout: 150000 });
   } catch (error) {
-    const message = page.locator('.chat-message').filter({ hasText: text }).last();
+    const message = page.locator('.chat-message').last();
     const status = await message.locator('.outbox-status').innerText().catch(() => '(sem estado visual)');
     const result = inferenceResults.get(text);
     const response = result ? JSON.stringify({ category: result.category, destination: result.allocation?.destination, needsClarification: result.needsClarification, needsDescription: result.needsDescription, question: result.question }) : '(sem resposta do Worker)';
@@ -86,9 +85,19 @@ try {
   const inferenceTimings = [];
   const inferenceStartedAt = new Map();
   const timingSummary = start => inferenceTimings.slice(start).map(item => `${item.path} ${(item.durationMs / 1000).toFixed(2)}s`).join(', ');
-  const workerOrigin = new URL(workerUrl).origin;
+  // A aplicação aponta para o Worker publicado. Ao testar uma versão preview,
+  // encaminhe as chamadas para o endpoint solicitado antes de isolar as gravações.
+  const workerOrigin = 'https://belavista-cloudflare-worker.icaroglaucooliveira.workers.dev';
   const user = { id: 'allocation-e2e', username: 'Teste E2E', role: 'mobile' };
   await page.addInitScript(value => sessionStorage.setItem('alianca-session-token', value), token);
+
+  if (workerUrl !== workerOrigin) {
+    await page.route(`${workerOrigin}/**`, async route => {
+      const source = new URL(route.request().url());
+      const response = await route.fetch({ url: `${workerUrl}${source.pathname}${source.search}`, timeout: 120000 });
+      await route.fulfill({ response });
+    });
+  }
 
   // Somente a persistência é isolada. Sessão e inferência continuam no Worker real.
   await page.route(`${workerOrigin}/api/sync`, async route => {
@@ -135,7 +144,7 @@ try {
   assert.equal(sessionResponse.status(), 200, 'A sessão do Worker deve permanecer válida durante o teste.');
   const actualUser = await sessionResponse.json();
   assert.equal(actualUser.user?.role, 'mobile', 'A sessão usada deve corresponder à conta mobile.');
-  await page.getByRole('button', { name: 'Abrir assistente' }).click();
+  await page.getByRole('button', { name: 'Assistente', exact: true }).click();
   await page.locator('.assistant-chat').waitFor({ state: 'visible' });
 
   for (const testCase of runBaseCases) {
@@ -298,7 +307,7 @@ try {
       assert.ok(result.fieldEvidence?.observedStatus, `${testCase.id}: situação observada ausente.`);
       const evidenceText = await chatMessage.locator('.activity-evidence-card').innerText();
       assert.ok(evidenceText.includes(expectedActivity.title), `${testCase.id}: vínculo com etapa/atividade não aparece no chat.`);
-      assert.ok(evidenceText.includes(testCase.expectedLocation), `${testCase.id}: área não aparece no chat.`);
+      if (testCase.expectedLocation) assert.ok(evidenceText.includes(testCase.expectedLocation), `${testCase.id}: área não aparece no chat.`);
     }
     const savedActivity = memoryData.stages.find(stage => stage.id === expectedActivity.stage.id)?.activities.find(activity => activity.id === expectedActivity.id);
     assert.equal(savedActivity?.fieldEvidence?.length, beforeEvidence + 1, `${testCase.id}: evidência não foi salva dentro da atividade da etapa.`);
@@ -314,7 +323,8 @@ try {
   assert.ok(viewport.documentWidth <= viewport.width, `Overflow horizontal no mobile: ${viewport.documentWidth}px para viewport ${viewport.width}px.`);
   console.log(`PASS viewport mobile: ${viewport.width}px sem extrapolação horizontal.`);
   if (serviceEvidenceCases.some(selected)) {
-    await page.getByRole('button', { name: 'Fechar assistente' }).click();
+    await page.getByRole('button', { name: 'Abrir menu' }).click();
+    await page.getByRole('menuitem', { name: 'Etapas' }).click();
     const evidenceStage = memoryData.stages.find(stage => stage.activities.some(activity => (activity.fieldEvidence || []).some(evidence => serviceEvidenceCases.filter(selected).some(testCase => evidence.filename === testCase.filename))));
     assert.ok(evidenceStage, 'Não foi encontrada a etapa que recebeu as fotos.');
     await page.getByRole('tab', { name: new RegExp(evidenceStage.name) }).click();

@@ -1,5 +1,8 @@
 {
   "appId": "com.aliancapark.app",
   "appName": "Aliança Park",
-  "webDir": "frontend/dist"
+  "webDir": "frontend/dist",
+  "plugins": {
+    "SystemBars": { "insetsHandling": "native" }
+  }
 }

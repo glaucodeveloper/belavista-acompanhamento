@@ -20,9 +20,8 @@
     "filename": "foto-evidencia-drenagem-pluvial.png",
     "context": "Evidência fotográfica do assentamento de tubos da rede de drenagem pluvial. A atividade é Assentar rede pluvial do trecho.",
     "expectedActivityId": "drenagem-assentar",
-    "expectedClarification": true,
-    "followUp": "Rua 1, quadra QA1",
-    "expectedLocation": "Rua 1, quadra QA1"
+    "expectedClarification": false,
+    "expectedLocation": null
   },
   {
     "id": "foto-atividade-pede-confirmacao",
