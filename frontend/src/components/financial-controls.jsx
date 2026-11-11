@@ -66,6 +66,27 @@ export function PeriodNavigator({ rows, mode, selected, onMode, onSelect, label 
   return <div className="period-navigator"><label>{label}<select aria-label={`${label} - agrupamento`} value={mode} onChange={event => { onMode(event.target.value); onSelect(''); }}><option value="all">Todos</option><option value="month">Mensal</option><option value="semester">Semestral</option></select></label>{mode !== 'all' && <div className="period-navigation"><button type="button" className="quiet-button" aria-label="Período anterior" disabled={index < 0 || index === options.length - 1} onClick={() => onSelect(options[index + 1])}>‹</button><label><span className="sr-only">Selecionar período</span><select aria-label={`${label} selecionado`} value={active} onChange={event => onSelect(event.target.value)}>{!options.length && <option value="">Nenhum período</option>}{options.map(key => <option key={key} value={key}>{periodLabel(key, mode)}</option>)}</select></label><button type="button" className="quiet-button" aria-label="Próximo período" disabled={index <= 0} onClick={() => onSelect(options[index - 1])}>›</button></div>}</div>;
 }
 
+export function TransferPeriodSummary({ rows, mode }) {
+  const grouping = mode === 'semester' ? 'semester' : 'month';
+  const groups = new Map();
+  for (const row of rows) {
+    const period = periodKey(row.date, grouping);
+    const category = row.reason === 'signal' ? 'Sinal' : ['installment', 'intermediate', 'monthly'].includes(row.reason) ? 'Parcelas' : 'Não classificado';
+    const key = `${period}:${category}`;
+    const item = groups.get(key) || { period, category, count: 0, amount: 0, tax: 0, expenses: 0, allocations: 0, net: 0 };
+    item.count += 1;
+    item.amount += Number(row.amount || 0);
+    item.tax += Number(row.taxAmount || 0);
+    item.expenses += Number(row.fixedExpenses || 0);
+    const allocations = row.automaticLotEntry ? Number(row.allocatedBroker || 0) + Number(row.allocatedOther || 0) : 0;
+    item.allocations += allocations;
+    item.net += Number(row.amount || 0) - Number(row.taxAmount || 0) - Number(row.fixedExpenses || 0) - allocations;
+    groups.set(key, item);
+  }
+  const items = [...groups.values()].sort((a, b) => b.period.localeCompare(a.period) || a.category.localeCompare(b.category, 'pt-BR'));
+  return <section className="transfer-period-summary" aria-label="Distribuição dos repasses por período"><div className="transfer-period-heading"><div><h3>Distribuição por período</h3><p>{grouping === 'semester' ? 'Totais semestrais' : 'Totais mensais'} dos repasses exibidos, separados por sinal e parcelas.</p></div></div>{items.length ? <div className="table-wrap"><table><thead><tr><th>Período</th><th>Origem</th><th>Registros</th><th>Recebido</th><th>Imposto</th><th>Despesas</th><th>Distribuído</th><th>Repasse líquido</th></tr></thead><tbody>{items.map(item => <tr key={`${item.period}:${item.category}`}><td data-label="Período">{periodLabel(item.period, grouping)}</td><td data-label="Origem">{item.category}</td><td data-label="Registros">{item.count}</td><td data-label="Recebido">{money(round(item.amount))}</td><td data-label="Imposto">{money(round(item.tax))}</td><td data-label="Despesas">{money(round(item.expenses))}</td><td data-label="Distribuído">{money(round(item.allocations))}</td><td data-label="Repasse líquido">{money(round(item.net))}</td></tr>)}</tbody></table></div> : <p className="transfer-period-empty">Nenhum repasse no período selecionado.</p>}</section>;
+}
+
 export function LotBalanceTable({ lots }) {
   const [mode, setMode] = useState('month'), [selected, setSelected] = useState('');
   const entries = lots.flatMap(lot => (lot.entryHistory || []).map(entry => ({ ...entry, lotLabel: lot.label || 'Lote', quadra: lot.quadra || '' })));

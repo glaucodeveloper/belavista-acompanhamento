@@ -16,7 +16,7 @@ const csvCell = value => {
 function reportColumns(type) {
   if (type === 'transfers') return [
     ['id', 'Identificação'], ['date', 'Data'], ['broker', 'Corretor'], ['lotLabel', 'Lote'], ['reason', 'Tipo de entrada'],
-    ['amount', 'Entrada recebida'], ['taxAmount', 'Imposto'], ['fixedExpenses', 'Despesas fixas'], ['netTransfer', 'Repasse líquido'], ['commissionPercent', 'Comissão (%)'], ['commission', 'Comissão calculada'], ['warley', 'Warley'], ['partner', 'Parceiro'],
+    ['amount', 'Entrada recebida'], ['taxAmount', 'Imposto'], ['fixedExpenses', 'Despesas fixas'], ['allocated', 'Distribuído'], ['netTransfer', 'Repasse líquido'], ['commissionPercent', 'Comissão (%)'], ['commission', 'Comissão calculada'], ['warley', 'Warley'], ['partner', 'Parceiro'],
   ];
   return [
     ['id', 'Identificação'], ['name', type === 'materials' ? 'Material' : 'Serviço'], ['category', 'Categoria'],
@@ -29,9 +29,10 @@ function cellValue(type, row, key, repasseDetails) {
   if (type === 'transfers') {
     if (key === 'date') return dateLabel(row.date);
     if (key === 'reason') return repasseDetails(row).reason || row.reason || '—';
-    if (key === 'commissionPercent') return `${decimal(row.commissionPercent)}%`;
+    if (key === 'commissionPercent') return row.automaticLotEntry ? '—' : `${decimal(row.commissionPercent)}%`;
     if (key === 'amount') return money(row.amount);
-    if (['commission', 'warley', 'partner', 'taxAmount', 'fixedExpenses', 'netTransfer'].includes(key)) return money(repasseDetails(row)[key]);
+    if (key === 'allocated') return money(Number(row.allocatedBroker || 0) + Number(row.allocatedOther || 0));
+    if (['commission', 'warley', 'partner', 'taxAmount', 'fixedExpenses', 'netTransfer'].includes(key)) { const value = repasseDetails(row)[key]; return value == null ? '—' : money(value); }
     return row[key] ?? '—';
   }
   if (key === 'quantity') return decimal(row.quantity);
