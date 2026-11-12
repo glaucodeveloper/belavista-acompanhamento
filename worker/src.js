@@ -42,9 +42,35 @@ async function currentUser(request, env) {
   const path = `sessions/${await sha256(token)}.json`;
   const session = await githubFile(env, path);
   if (!session || session.value.expiresAt <= Date.now()) return null;
+  if (session.value.githubUser) return { ...session.value.githubUser, sessionPath: path, sessionSha: session.sha };
   const user = await githubFile(env, `users/${session.value.userKey}.json`);
   if (!user) return null;
   return { id: user.value.id, username: user.value.username, role: user.value.role, sessionPath: path, sessionSha: session.sha };
+}
+async function patLogin(request, env) {
+  const address = request.headers.get('CF-Connecting-IP');
+  if (!address || !env.LOGIN_LIMITER) return json({ error: 'Proteção de autenticação indisponível.' }, 503);
+  if (!(await env.LOGIN_LIMITER.limit({ key: address })).success) return json({ error: 'Muitas tentativas. Tente novamente mais tarde.' }, 429);
+  if (!env.GITHUB_DATA_REPOSITORY) return json({ error: 'Repositório privado não configurado.' }, 503);
+  const body = await request.json();
+  const pat = String(body.pat || '').trim(), client = String(body.client || '');
+  if (!pat || pat.length > 1024 || !['desktop', 'mobile'].includes(client)) return json({ error: 'Informe um PAT e o tipo de acesso.' }, 400);
+  const auth = { Authorization: `Bearer ${pat}`, Accept: 'application/vnd.github+json', 'User-Agent': 'alianca-park-worker', 'X-GitHub-Api-Version': '2022-11-28' };
+  const [identity, repository] = await Promise.all([fetch('https://api.github.com/user', { headers: auth }), fetch(`https://api.github.com/repos/${env.GITHUB_DATA_REPOSITORY}`, { headers: auth })]);
+  if (identity.status === 401 || repository.status === 401 || repository.status === 403 || repository.status === 404) return json({ error: 'PAT inválido ou sem permissão de escrita no repositório de dados.' }, 401);
+  if (!identity.ok || !repository.ok) return json({ error: 'Não foi possível validar o PAT no GitHub. Tente novamente.' }, 502);
+  const account = await identity.json(), repo = await repository.json();
+  if (!account.id || !account.login || !repo.permissions?.push) return json({ error: 'O PAT precisa de permissão de escrita no repositório de dados.' }, 403);
+  // An intentionally incomplete contents request cannot create or change a file.
+  // GitHub must authorize contents:write before responding with a validation error.
+  const probe = await fetch(`https://api.github.com/repos/${env.GITHUB_DATA_REPOSITORY}/contents/.atlas-auth-check`, { method: 'PUT', headers: { ...auth, 'Content-Type': 'application/json' }, body: '{}' });
+  if (probe.status === 401 || probe.status === 403 || probe.status === 404) return json({ error: 'O PAT precisa de permissão de escrita no conteúdo do repositório de dados.' }, 403);
+  if (probe.status !== 422) return json({ error: 'Não foi possível verificar a permissão de escrita do PAT.' }, 502);
+  const token = hex(crypto.getRandomValues(new Uint8Array(32)));
+  const expiresAt = Date.now() + 12 * 60 * 60 * 1000;
+  const user = { id: `github:${account.id}`, username: String(account.login), role: client };
+  await githubFile(env, `sessions/${await sha256(token)}.json`, 'PUT', { githubUser: user, expiresAt });
+  return json({ token, expiresAt, user });
 }
 async function login(request, env) {
   const address = request.headers.get('CF-Connecting-IP');
@@ -733,6 +759,7 @@ export default {
       const path = new URL(request.url).pathname;
       if (path === '/health' && request.method === 'GET') return json({ ok: true, service: 'alianca-park-rebuild' });
       if (path === '/api/login' && request.method === 'POST') return await login(request, env);
+      if (path === '/api/pat-login' && request.method === 'POST') return await patLogin(request, env);
       const user = await currentUser(request, env);
       if (!user) return json({ error: 'Autenticação necessária.' }, 401);
       if (path === '/api/session' && request.method === 'GET') return json({ user: { id: user.id, username: user.username, role: user.role } });

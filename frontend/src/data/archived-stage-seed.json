@@ -33,7 +33,8 @@
           "progress": 68,
           "materials": []
         }
-      ]
+      ],
+      "materials": []
     },
     {
       "id": "drenagem",
@@ -68,28 +69,7 @@
           "durationDays": 3,
           "status": "andamento",
           "progress": 42,
-          "materials": [
-            {
-              "id": "drenagem-assentar-material-1",
-              "name": "Tubo/manilha de drenagem",
-              "quantity": 160,
-              "unit": "m",
-              "plannedQuantity": 160,
-              "receivedQuantity": 0,
-              "usedQuantity": 0,
-              "status": "planejado"
-            },
-            {
-              "id": "drenagem-assentar-material-2",
-              "name": "Brita",
-              "quantity": 45,
-              "unit": "m3",
-              "plannedQuantity": 45,
-              "receivedQuantity": 0,
-              "usedQuantity": 0,
-              "status": "planejado"
-            }
-          ]
+          "materials": []
         },
         {
           "id": "drenagem-compactar",
@@ -97,20 +77,10 @@
           "durationDays": 2,
           "status": "andamento",
           "progress": 42,
-          "materials": [
-            {
-              "id": "drenagem-compactar-material-1",
-              "name": "Areia",
-              "quantity": 32,
-              "unit": "m3",
-              "plannedQuantity": 32,
-              "receivedQuantity": 0,
-              "usedQuantity": 0,
-              "status": "planejado"
-            }
-          ]
+          "materials": []
         }
-      ]
+      ],
+      "materials": []
     },
     {
       "id": "agua",
@@ -145,28 +115,7 @@
           "durationDays": 4,
           "status": "planejado",
           "progress": 12,
-          "materials": [
-            {
-              "id": "agua-rede-principal-material-1",
-              "name": "Tubo PEAD",
-              "quantity": 620,
-              "unit": "m",
-              "plannedQuantity": 620,
-              "receivedQuantity": 0,
-              "usedQuantity": 0,
-              "status": "planejado"
-            },
-            {
-              "id": "agua-rede-principal-material-2",
-              "name": "Conexões PEAD",
-              "quantity": 72,
-              "unit": "un",
-              "plannedQuantity": 72,
-              "receivedQuantity": 0,
-              "usedQuantity": 0,
-              "status": "planejado"
-            }
-          ]
+          "materials": []
         },
         {
           "id": "agua-ramais",
@@ -174,28 +123,7 @@
           "durationDays": 3,
           "status": "planejado",
           "progress": 12,
-          "materials": [
-            {
-              "id": "agua-ramais-material-1",
-              "name": "Ramais de água",
-              "quantity": 46,
-              "unit": "un",
-              "plannedQuantity": 46,
-              "receivedQuantity": 0,
-              "usedQuantity": 0,
-              "status": "planejado"
-            },
-            {
-              "id": "agua-ramais-material-2",
-              "name": "Cavaletes",
-              "quantity": 54,
-              "unit": "un",
-              "plannedQuantity": 54,
-              "receivedQuantity": 0,
-              "usedQuantity": 0,
-              "status": "planejado"
-            }
-          ]
+          "materials": []
         },
         {
           "id": "agua-testar",
@@ -205,7 +133,8 @@
           "progress": 12,
           "materials": []
         }
-      ]
+      ],
+      "materials": []
     },
     {
       "id": "eletrica",
@@ -240,18 +169,7 @@
           "durationDays": 4,
           "status": "planejado",
           "progress": 8,
-          "materials": [
-            {
-              "id": "eletrica-postes-material-1",
-              "name": "Poste",
-              "quantity": 24,
-              "unit": "un",
-              "plannedQuantity": 24,
-              "receivedQuantity": 0,
-              "usedQuantity": 0,
-              "status": "planejado"
-            }
-          ]
+          "materials": []
         },
         {
           "id": "eletrica-cabos",
@@ -259,30 +177,10 @@
           "durationDays": 4,
           "status": "planejado",
           "progress": 8,
-          "materials": [
-            {
-              "id": "eletrica-cabos-material-1",
-              "name": "Cabo elétrico",
-              "quantity": 1700,
-              "unit": "m",
-              "plannedQuantity": 1700,
-              "receivedQuantity": 0,
-              "usedQuantity": 0,
-              "status": "planejado"
-            },
-            {
-              "id": "eletrica-cabos-material-2",
-              "name": "Transformador",
-              "quantity": 1,
-              "unit": "un",
-              "plannedQuantity": 1,
-              "receivedQuantity": 0,
-              "usedQuantity": 0,
-              "status": "planejado"
-            }
-          ]
+          "materials": []
         }
-      ]
+      ],
+      "materials": []
     },
     {
       "id": "pavimentacao",
@@ -322,18 +220,7 @@
           "durationDays": 3,
           "status": "planejado",
           "progress": 0,
-          "materials": [
-            {
-              "id": "pav-base-material-1",
-              "name": "Base/Brita graduada",
-              "quantity": 380,
-              "unit": "m3",
-              "plannedQuantity": 380,
-              "receivedQuantity": 0,
-              "usedQuantity": 0,
-              "status": "planejado"
-            }
-          ]
+          "materials": []
         },
         {
           "id": "pav-assentar",
@@ -341,30 +228,10 @@
           "durationDays": 5,
           "status": "planejado",
           "progress": 0,
-          "materials": [
-            {
-              "id": "pav-assentar-material-1",
-              "name": "Paralelepípedo",
-              "quantity": 2400,
-              "unit": "m2",
-              "plannedQuantity": 2400,
-              "receivedQuantity": 0,
-              "usedQuantity": 0,
-              "status": "planejado"
-            },
-            {
-              "id": "pav-assentar-material-2",
-              "name": "Meio-fio",
-              "quantity": 540,
-              "unit": "m",
-              "plannedQuantity": 540,
-              "receivedQuantity": 0,
-              "usedQuantity": 0,
-              "status": "planejado"
-            }
-          ]
+          "materials": []
         }
-      ]
+      ],
+      "materials": []
     },
     {
       "id": "pracas",
@@ -398,20 +265,10 @@
           "durationDays": 6,
           "status": "planejado",
           "progress": 0,
-          "materials": [
-            {
-              "id": "praca-implantar-material-1",
-              "name": "Piso externo",
-              "quantity": 420,
-              "unit": "m2",
-              "plannedQuantity": 420,
-              "receivedQuantity": 0,
-              "usedQuantity": 0,
-              "status": "planejado"
-            }
-          ]
+          "materials": []
         }
-      ]
+      ],
+      "materials": []
     },
     {
       "id": "arborizacao",
@@ -445,20 +302,10 @@
           "durationDays": 4,
           "status": "planejado",
           "progress": 0,
-          "materials": [
-            {
-              "id": "arbor-plantio-material-1",
-              "name": "Mudas",
-              "quantity": 120,
-              "unit": "un",
-              "plannedQuantity": 120,
-              "receivedQuantity": 0,
-              "usedQuantity": 0,
-              "status": "planejado"
-            }
-          ]
+          "materials": []
         }
-      ]
+      ],
+      "materials": []
     }
   ]
 }

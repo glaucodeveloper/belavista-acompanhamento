@@ -148,6 +148,7 @@ for _, item in enumerate(mapping['mappings'], 1):
     if not points or len(points) < 3:
         continue
     points = simplify_closed([mask_point(point) for point in points], tolerance=1.5)
+    centroid = (sum(p[0] for p in points) / len(points), sum(p[1] for p in points) / len(points))
     edge_candidates = []
     mask_candidates = []
     for index, start in enumerate(points):
@@ -198,6 +199,7 @@ for _, item in enumerate(mapping['mappings'], 1):
             'partNumber': frontage_part,
             'edgeIndex': index,
             'frontEdge': [start, end],
+            'lotCentroid': centroid,
             'edgeConfidence': round(score, 3),
         })
         seed_draw.line([(round(start[0]), round(start[1])), (round(end[0]), round(end[1]))], fill=frontage_id, width=1)
@@ -247,11 +249,34 @@ for y in range(height - 1, -1, -1):
 # that sit farther from a lot frontage.
 regions = defaultdict(list)
 counts = Counter()
+# The asphalt colour also appears in parcel markings. Exclude every mapped lot
+# before partitioning and bound each region by its own frontage endpoints.
+lots_image = Image.new('1', (width, height), 0)
+lots_draw = ImageDraw.Draw(lots_image)
+for polygon in geometry['lots'].values():
+    if len(polygon) >= 3:
+        lots_draw.polygon([mask_point(point) for point in polygon], fill=1)
+lot_pixels = lots_image.tobytes()
+lot_stride = (width + 7) // 8
+frontage_by_id = {item['labelId']: item for item in frontages}
 for index, is_road in enumerate(road):
     label_id = nearest[index]
     mask_offset = index * 3
     is_selected_asphalt = mask_rgb[mask_offset] in road_ids and mask_rgb[mask_offset + 2] == 0
     if is_road and label_id and (distance[index] <= 72 or is_selected_asphalt):
+        x, y = index % width, index // width
+        if lot_pixels[y * lot_stride + x // 8] & (128 >> (x % 8)):
+            continue
+        frontage = frontage_by_id[label_id]
+        (ax, ay), (bx, by) = frontage['frontEdge']
+        dx, dy = bx - ax, by - ay
+        length2 = dx * dx + dy * dy
+        projection = ((x - ax) * dx + (y - ay) * dy) / length2
+        cx, cy = frontage['lotCentroid']
+        lot_side = dx * (cy - ay) - dy * (cx - ax)
+        pixel_side = dx * (y - ay) - dy * (x - ax)
+        if not (0 <= projection <= 1) or pixel_side * lot_side > 0:
+            continue
         regions[label_id].append(index)
         counts[label_id] += 1
 

@@ -19,7 +19,7 @@ function centroid(points) {
 }
 
 /** Renderiza a planta e informa a seleção de uma área do loteamento. */
-export async function mountLotMap(host, { onLotSelect, onStreetSelect, onSocialAreaSelect, selectedLotIds = [], selectedStreetSegmentIds = [], selectedSocialAreaIds = [], focusLotIds = [], focusStreetSegmentIds = [], selectionMode = false, onSelectionChange, selectionColor = '#2878ff', selectionColors = {} } = {}) {
+export async function mountLotMap(host, { onLotSelect, onStreetSelect, onSocialAreaSelect, selectedLotIds = [], selectedStreetSegmentIds = [], selectedSocialAreaIds = [], focusLotIds = [], focusStreetSegmentIds = [], selectionMode = false, onSelectionChange, selectionColor = '#2878ff', selectionColors = {}, onProgressPoint, onProgressStroke, onProgressSelect } = {}) {
   const [geometryResponse, mappingResponse] = await Promise.all([
     fetch(new URL('./assets/lotes.json', import.meta.url)),
     fetch(new URL('./assets/mapeamento.json', import.meta.url)),
@@ -106,6 +106,8 @@ export async function mountLotMap(host, { onLotSelect, onStreetSelect, onSocialA
     if (blockLabel) svg.append(blockLabel);
     svg.append(label);
   }
+  const progressLayer = document.createElementNS(SVG, 'g');
+  svg.append(progressLayer);
   stage.append(image, svg);
   const fitButton = document.createElement('button');
   fitButton.type = 'button';
@@ -121,6 +123,34 @@ export async function mountLotMap(host, { onLotSelect, onStreetSelect, onSocialA
   host.classList.add('lot-map'); host.replaceChildren(stage, fitButton);
   host.setAttribute('aria-label', 'Mapa do loteamento. Arraste para mover, use Ctrl e arraste para aproximar ou afastar, ou use dois dedos.');
   let scale = 1, minScale = 1, x = 0, y = 0, gesture = null;
+  let progressAreas = [], progressDraft = [], progressDraftRings = [], progressDrawing = false, progressShape = 'free', progressSelectingBase = false, selectedProgressId = null, progressStroke = [], progressDraftColor = '#2878ff';
+  const paintProgress = () => {
+    progressLayer.replaceChildren();
+    for (const area of progressAreas) {
+      const rings = Array.isArray(area.rings) && area.rings.length ? area.rings : [area.points];
+      if (!rings.some(ring => Array.isArray(ring) && ring.length >= 3)) continue;
+      const polygon = document.createElementNS(SVG, 'path');
+      polygon.dataset.progressId = area.id;
+      polygon.setAttribute('d', rings.filter(ring => Array.isArray(ring) && ring.length >= 3).map(ring => ring.map((point, index) => `${index ? 'L' : 'M'}${point.join(',')}`).join(' ') + ' Z').join(' '));
+      polygon.setAttribute('fill-rule', 'evenodd');
+      polygon.setAttribute('fill', /^#[0-9a-f]{6}$/i.test(area.color) ? area.color : '#2878ff');
+      polygon.setAttribute('fill-opacity', '.42'); polygon.setAttribute('stroke', selectedProgressId === area.id ? '#111827' : area.color || '#2878ff');
+      polygon.setAttribute('stroke-width', selectedProgressId === area.id ? '6' : '3'); polygon.setAttribute('vector-effect', 'non-scaling-stroke');
+      polygon.style.pointerEvents = progressDrawing || progressSelectingBase ? 'none' : 'all'; polygon.style.cursor = 'pointer';
+      const title = document.createElementNS(SVG, 'title'); title.textContent = `${area.name} · ${area.progress}%`; polygon.append(title); progressLayer.append(polygon);
+    }
+    const stroke = progressStroke.length > 1 && progressShape === 'rectangle' ? [progressStroke[0], [progressStroke.at(-1)[0], progressStroke[0][1]], progressStroke.at(-1), [progressStroke[0][0], progressStroke.at(-1)[1]]] : progressStroke;
+    const displayedDraft = stroke.length > 1 ? stroke : progressDraft;
+    if (progressDraftRings.length && stroke.length <= 1) {
+      const preview = document.createElementNS(SVG, 'path'); preview.setAttribute('d', progressDraftRings.filter(ring => ring.length >= 3).map(ring => ring.map((point, index) => `${index ? 'L' : 'M'}${point.join(',')}`).join(' ') + ' Z').join(' ')); preview.setAttribute('fill-rule', 'evenodd'); preview.setAttribute('fill', progressDraftColor); preview.setAttribute('fill-opacity', '.3'); preview.setAttribute('stroke', progressDraftColor); preview.setAttribute('stroke-width', '3'); preview.setAttribute('vector-effect', 'non-scaling-stroke'); preview.style.pointerEvents = 'none'; progressLayer.append(preview);
+    }
+    if (displayedDraft.length && (!progressDraftRings.length || stroke.length > 1)) {
+      const line = document.createElementNS(SVG, 'polyline'); line.setAttribute('points', displayedDraft.map(point => point.join(',')).join(' '));
+      line.setAttribute('fill', displayedDraft.length >= 3 ? progressDraftColor : 'none'); line.setAttribute('fill-opacity', '.3'); line.setAttribute('stroke', progressDraftColor); line.setAttribute('stroke-width', '4'); line.setAttribute('vector-effect', 'non-scaling-stroke'); line.style.pointerEvents = 'none'; progressLayer.append(line);
+      for (const point of displayedDraft) { const dot = document.createElementNS(SVG, 'circle'); dot.setAttribute('cx', point[0]); dot.setAttribute('cy', point[1]); dot.setAttribute('r', '10'); dot.setAttribute('fill', progressDraftColor); dot.style.pointerEvents = 'none'; progressLayer.append(dot); }
+    }
+  };
+  const setProgress = ({ areas = [], draft = [], draftRings = [], drawing = false, shape = 'free', selectingBase = false, selectedId = null, draftColor = '#2878ff' }) => { progressAreas = areas; progressDraft = draft; progressDraftRings = draftRings; progressDrawing = drawing; progressShape = shape; progressSelectingBase = selectingBase; selectedProgressId = selectedId; progressDraftColor = /^#[0-9a-f]{6}$/i.test(draftColor) ? draftColor : '#2878ff'; if (!drawing) progressStroke = []; host.style.cursor = drawing ? 'crosshair' : ''; paintProgress(); };
   const pointers = new Map();
   const startTargets = new Map();
   const render = () => { stage.style.transform = `translate(${x}px, ${y}px) scale(${scale})`; host.dataset.zoom = String(scale); };
@@ -148,6 +178,7 @@ export async function mountLotMap(host, { onLotSelect, onStreetSelect, onSocialA
   const setSelectedSocialAreaIds = ids => { selectedSocialAreas.clear(); ids.forEach(id => selectedSocialAreas.add(String(id))); paintSocialAreaSelection(); };
   const setSelectionColors = colors => { lotColors = { ...colors }; paintSelection(); };
   const position = event => { const rect = host.getBoundingClientRect(); return { x: event.clientX - rect.left, y: event.clientY - rect.top }; };
+  const toProgressPoint = point => { const px = (point.x - x) / scale, py = (point.y - y) / scale; return px >= 0 && px <= WIDTH && py >= 0 && py <= HEIGHT ? [Math.round(px * 10) / 10, Math.round(py * 10) / 10] : null; };
   const constrain = () => {
     const rect = host.getBoundingClientRect();
     const scaledWidth = WIDTH * scale, scaledHeight = HEIGHT * scale;
@@ -196,15 +227,25 @@ export async function mountLotMap(host, { onLotSelect, onStreetSelect, onSocialA
   host.addEventListener('pointerdown', event => {
     host.setPointerCapture(event.pointerId);
     const point = position(event); pointers.set(event.pointerId, point);
-    const area = event.target.closest?.('[data-lot-id], [data-street-segment-id], [data-social-area-id]');
-    startTargets.set(event.pointerId, area ? { area, point } : null);
+    const area = event.target.closest?.('[data-progress-id], [data-lot-id], [data-street-segment-id], [data-social-area-id]');
+    startTargets.set(event.pointerId, { area, point });
+    if (progressDrawing && pointers.size === 1 && !event.ctrlKey) { const p = toProgressPoint(point); progressStroke = p ? [p] : []; }
+    else if (pointers.size > 1) progressStroke = [];
     if (pointers.size === 1 && event.ctrlKey) gesture = { type: 'ctrl-zoom', point, scale, x, y };
-    else resetGesture();
+    else if (!progressDrawing || pointers.size > 1) resetGesture();
   });
   host.addEventListener('pointermove', event => {
     if (!pointers.has(event.pointerId)) return;
     pointers.set(event.pointerId, position(event));
     const values = [...pointers.values()];
+    if (progressDrawing && values.length === 1 && progressStroke.length && !gesture) {
+      const p = toProgressPoint(values[0]), last = progressStroke.at(-1);
+      if (p && Math.hypot(p[0] - last[0], p[1] - last[1]) * scale >= 5) {
+        if (progressStroke.length >= 200) progressStroke = progressStroke.filter((_, index) => index % 2 === 0);
+        progressStroke.push(p); paintProgress();
+      }
+      return;
+    }
     if (gesture?.type === 'ctrl-zoom' && values.length === 1) {
       const point = values[0];
       scale = Math.max(minScale, Math.min(minScale * 12, gesture.scale * Math.exp((gesture.point.y - point.y) * 0.008)));
@@ -225,13 +266,23 @@ export async function mountLotMap(host, { onLotSelect, onStreetSelect, onSocialA
   });
   const end = event => {
     const point = pointers.get(event.pointerId), target = startTargets.get(event.pointerId);
-    if (target && pointers.size === 1 && point && Math.hypot(point.x - target.point.x, point.y - target.point.y) < 8 && target.area.isConnected) {
-      if (target.area.dataset.socialAreaId) {
+    if (progressDrawing && target && pointers.size === 1 && progressStroke.length >= (progressShape === 'rectangle' ? 2 : 3) && point) {
+      const first = progressStroke[0], last = progressStroke.at(-1);
+      const points = progressShape === 'rectangle' ? [first, [last[0], first[1]], last, [first[0], last[1]]] : progressStroke;
+      onProgressStroke?.(points); progressStroke = []; paintProgress();
+    } else if (target && pointers.size === 1 && point && Math.hypot(point.x - target.point.x, point.y - target.point.y) < 8) {
+      if (progressDrawing) {
+        const p = toProgressPoint(point); if (p) onProgressPoint?.(p);
+      } else if (target.area?.dataset.progressId) {
+        onProgressSelect?.(target.area.dataset.progressId);
+      } else if (target.area?.dataset.socialAreaId) {
         onSocialAreaSelect?.({ socialAreaId: target.area.dataset.socialAreaId, label: target.area.dataset.socialAreaLabel });
-      } else if (target.area.dataset.streetSegmentId) {
-        onStreetSelect?.({ streetSegmentId: target.area.dataset.streetSegmentId, lotId: target.area.dataset.frontageLotId, lotLabel: target.area.dataset.frontageLotLabel, lotNumber: Number(target.area.dataset.frontageLotNumber), label: target.area.dataset.streetLabel });
-      } else {
-        const lot = { lotId: target.area.dataset.lotId, number: Number(target.area.dataset.lotNumber), catalogLabel: target.area.dataset.catalogLabel };
+      } else if (target.area?.dataset.streetSegmentId) {
+        const segment = streetSegmentCatalog.segments.find(item => item.id === target.area.dataset.streetSegmentId);
+        onStreetSelect?.({ streetSegmentId: target.area.dataset.streetSegmentId, lotId: target.area.dataset.frontageLotId, lotLabel: target.area.dataset.frontageLotLabel, lotNumber: Number(target.area.dataset.frontageLotNumber), label: target.area.dataset.streetLabel, rings: segment?.rings?.map(ring => ring.map(([px, py]) => [px + ADDED_LEFT_MARGIN, py])) || [] });
+      } else if (target.area?.dataset.lotId) {
+        const mapped = mapping.mappings.find(item => item.lotId === target.area.dataset.lotId);
+        const lot = { lotId: target.area.dataset.lotId, number: Number(target.area.dataset.lotNumber), catalogLabel: target.area.dataset.catalogLabel, points: (geometry.lots[mapped?.greenPolygonId] || []).map(imagePoint) };
         if (selectionMode) {
           selected.has(lot.lotId) ? selected.delete(lot.lotId) : selected.add(lot.lotId);
           paintSelection();
@@ -239,7 +290,7 @@ export async function mountLotMap(host, { onLotSelect, onStreetSelect, onSocialA
         } else onLotSelect?.(lot);
       }
     }
-    pointers.delete(event.pointerId); startTargets.delete(event.pointerId); resetGesture();
+    progressStroke = []; pointers.delete(event.pointerId); startTargets.delete(event.pointerId); resetGesture();
   };
   host.addEventListener('pointerup', end); host.addEventListener('pointercancel', end);
   host.addEventListener('wheel', event => {
@@ -251,5 +302,5 @@ export async function mountLotMap(host, { onLotSelect, onStreetSelect, onSocialA
   const observer = new ResizeObserver(() => { fit(); if (selected.size) focusLots([...selected]); else if (selectedStreetSegments.size) focusStreetSegments([...selectedStreetSegments]); }); observer.observe(host); fit(); paintSelection(); paintStreetSelection(); paintSocialAreaSelection();
   if (focusLotIds.length) focusLots(focusLotIds);
   if (focusStreetSegmentIds.length) focusStreetSegments(focusStreetSegmentIds);
-  return { setSelectedLotIds, setSelectedStreetSegmentIds, setSelectedSocialAreaIds, setSelectionColors, focusLots, focusStreetSegments, fit, destroy() { observer.disconnect(); host.replaceChildren(); } };
+  return { setSelectedLotIds, setSelectedStreetSegmentIds, setSelectedSocialAreaIds, setSelectionColors, setProgress, focusLots, focusStreetSegments, fit, destroy() { observer.disconnect(); host.replaceChildren(); } };
 }

@@ -3,6 +3,9 @@
   "appName": "Aliança Park",
   "webDir": "frontend/dist",
   "plugins": {
-    "SystemBars": { "insetsHandling": "native" }
-  }
+    "SystemBars": {
+      "insetsHandling": "native"
+    }
+  },
+  "loggingBehavior": "none"
 }

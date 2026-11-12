@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import logoDataUrl from './assets/alianca-park-logo-mark.png?inline';
+import { savePlotPdf, saveReportCsv } from './plot-export.js';
 
 const roundMoney = value => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 const decimal = value => Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -13,13 +14,13 @@ const csvCell = value => {
   return `"${text.replaceAll('"', '""')}"`;
 };
 
-function reportColumns(type) {
+export function reportColumns(type) {
   if (type === 'transfers') return [
     ['id', 'Identificação'], ['date', 'Data'], ['broker', 'Corretor'], ['lotLabel', 'Lote'], ['reason', 'Tipo de entrada'],
     ['amount', 'Entrada recebida'], ['taxAmount', 'Imposto'], ['fixedExpenses', 'Despesas fixas'], ['allocated', 'Distribuído'], ['netTransfer', 'Repasse líquido'], ['commissionPercent', 'Comissão (%)'], ['commission', 'Comissão calculada'], ['warley', 'Warley'], ['partner', 'Parceiro'],
   ];
   return [
-    ['id', 'Identificação'], ['name', type === 'materials' ? 'Material' : 'Serviço'], ['category', 'Categoria'],
+    ['id', 'Identificação'], ['name', type === 'materials' ? 'Material' : 'Serviço'], ['date', 'Data'], ['category', 'Categoria'], ['stage', 'Etapa'], ['filename', 'Nota / arquivo'], ['description', 'Descrição'],
     ['unit', 'Unidade'], ['quantity', 'Quantidade'], ['unitPrice', 'Valor unitário'], ['total', 'Valor total'],
   ];
 }
@@ -36,6 +37,8 @@ function cellValue(type, row, key, repasseDetails) {
     return row[key] ?? '—';
   }
   if (key === 'quantity') return decimal(row.quantity);
+  if (key === 'date') return dateLabel(row.date);
+  if (key === 'stage') return row.stageName || row.stage || row.stageId || '—';
   if (key === 'unitPrice') return money(row.unitPrice);
   if (key === 'total') return money(row.total ?? Number(row.quantity || 0) * Number(row.unitPrice || 0));
   return row[key] ?? '—';
@@ -75,16 +78,14 @@ export function exportReportCsv({ type, rows, title, owner, query = '', repasseD
     ...totals,
     '', header, ...body,
   ];
-  const blob = new Blob([`\uFEFF${meta.join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob), anchor = document.createElement('a');
-  anchor.href = url; anchor.download = `${safeFilePart(title)}-${new Date().toISOString().slice(0, 10)}.csv`;
-  anchor.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  const bytes = new TextEncoder().encode(`\uFEFF${meta.join('\r\n')}`).buffer;
+  return saveReportCsv(bytes, `${safeFilePart(title)}-${new Date().toISOString().slice(0, 10)}.csv`);
 }
 
-export function exportReportPdf({ type, rows, title, owner, query = '', repasseDetails }) {
+export function exportReportPdf({ type, rows, title, owner, query = '', repasseDetails, selectedColumns, periodDescription = '' }) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
   const pageWidth = doc.internal.pageSize.getWidth(), pageHeight = doc.internal.pageSize.getHeight();
-  const columns = reportColumns(type), summaries = summaryItems(type, rows, repasseDetails);
+  const columns = reportColumns(type).filter(([key]) => !selectedColumns || selectedColumns.includes(key)), summaries = summaryItems(type, rows, repasseDetails);
   const body = rows.map(row => columns.map(([key]) => cellValue(type, row, key, repasseDetails)));
   const emitted = new Date().toLocaleString('pt-BR');
   autoTable(doc, {
@@ -93,13 +94,13 @@ export function exportReportPdf({ type, rows, title, owner, query = '', repasseD
     styles: { font: 'helvetica', fontSize: 7, cellPadding: 2.1, textColor: [42, 55, 75], lineColor: [222, 229, 237], lineWidth: 0.15, overflow: 'linebreak', valign: 'middle' },
     headStyles: { fillColor: [20, 34, 53], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.2 },
     alternateRowStyles: { fillColor: [246, 248, 251] },
-    columnStyles: { 0: { cellWidth: 31 }, ...(type === 'transfers' ? { 1: { cellWidth: 20 }, 5: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right' } } : { 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' } }) },
+    columnStyles: Object.fromEntries(columns.flatMap(([key], index) => ['quantity', 'unitPrice', 'total', 'amount', 'taxAmount', 'netTransfer', 'commission'].includes(key) ? [[index, { halign: 'right' }]] : [])),
     didDrawPage: data => {
       doc.setFillColor(17, 29, 46); doc.rect(0, 0, pageWidth, 28, 'F');
       doc.addImage(logoDataUrl, 'PNG', 12, 4, 19, 19);
       doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.text('ALIANÇA PARK', 37, 12);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.text(title, 37, 19);
-      doc.setTextColor(205, 216, 231); doc.setFontSize(7); doc.text(`Emitido ${emitted}  ·  Responsável: ${owner || '—'}${query ? `  ·  Filtro: ${query}` : ''}`, 37, 24);
+      doc.setTextColor(205, 216, 231); doc.setFontSize(7); doc.text(doc.splitTextToSize(`Emitido ${emitted}  ·  Responsável: ${owner || '—'}${periodDescription ? `  ·  Período: ${periodDescription}` : ''}${query ? `  ·  Filtro: ${query}` : ''}`, pageWidth - 49)[0], 37, 24);
       if (data.pageNumber === 1) {
         const gap = 4, cardWidth = (pageWidth - 24 - gap * (summaries.length - 1)) / summaries.length;
         summaries.forEach(([label, value], index) => {
@@ -113,5 +114,5 @@ export function exportReportPdf({ type, rows, title, owner, query = '', repasseD
       doc.text(`Página ${data.pageNumber}`, pageWidth - 12, pageHeight - 5, { align: 'right' });
     },
   });
-  doc.save(`${safeFilePart(title)}-${new Date().toISOString().slice(0, 10)}.pdf`);
+  return savePlotPdf(doc, `${safeFilePart(title)}-${new Date().toISOString().slice(0, 10)}.pdf`);
 }

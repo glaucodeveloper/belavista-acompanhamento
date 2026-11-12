@@ -1,5 +1,5 @@
 /** Sincroniza dados da aplicação pelo Worker, sem enviar credenciais do GitHub ao frontend. */
-export function createSyncClient({ workerUrl, getToken, getLocalMode = () => false, fetcher = fetch }) {
+export function createSyncClient({ workerUrl, getToken, refreshSession, getLocalMode = () => false, fetcher = fetch }) {
   const endpoint = new URL('/api/sync', workerUrl);
   async function request(method, body) {
     if (getLocalMode()) {
@@ -11,14 +11,19 @@ export function createSyncClient({ workerUrl, getToken, getLocalMode = () => fal
       localStorage.setItem(key, JSON.stringify(next));
       return { data: next.data, revision: String(next.revision) };
     }
-    const token = await getToken();
+    let token = await getToken();
     if (!token) throw new Error('Autenticação necessária para sincronizar.');
-    const response = await fetcher(endpoint, {
+    const send = currentToken => fetcher(endpoint, {
       method,
       cache: 'no-store',
-      headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      headers: { Authorization: `Bearer ${currentToken}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
+    let response = await send(token);
+    if (response.status === 401 && refreshSession) {
+      token = await refreshSession();
+      if (token) response = await send(token);
+    }
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
       const error = new Error(result.error || `Falha na sincronização (HTTP ${response.status}).`);
